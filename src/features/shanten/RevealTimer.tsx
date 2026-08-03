@@ -1,3 +1,5 @@
+import { Pause, Play } from 'lucide-react'
+
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
@@ -29,9 +31,13 @@ export function RevealTimer({
         disabled={disabled}
         onClick={running ? onPause : onPlay}
         aria-label={running ? 'Pause and conceal' : 'Reveal hand'}
-        className="flex size-11 items-center justify-center rounded-full bg-neutral-900 text-lg text-white disabled:opacity-30 dark:bg-neutral-100 dark:text-neutral-900"
+        className="flex size-11 items-center justify-center rounded-full bg-neutral-900 text-white disabled:opacity-30 dark:bg-neutral-100 dark:text-neutral-900"
       >
-        {running ? '❚❚' : '▶'}
+        {running ? (
+          <Pause className="size-5 fill-current" />
+        ) : (
+          <Play className="size-5 fill-current" />
+        )}
       </button>
       {timerEnabled && (
         <span className="font-mono text-lg tabular-nums text-neutral-600 dark:text-neutral-400">

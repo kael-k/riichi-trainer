@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { Tile } from '../components/tiles/Tile'
 import { parseTenhou } from '../core/tiles'
 
@@ -23,7 +24,10 @@ const MODES = [
 export function HomePage() {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-4">
-      <header className="flex flex-col items-center gap-3 pt-8">
+      <div className="flex justify-end">
+        <ThemeToggle />
+      </div>
+      <header className="flex flex-col items-center gap-3">
         <div className="flex [--tile-w:calc(var(--tile-w-base)*0.7)]">
           {parseTenhou('19m19p19s1234567z').map((t, i) => (
             <Tile key={i} id={t.id} />

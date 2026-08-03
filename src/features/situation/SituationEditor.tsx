@@ -1,3 +1,4 @@
+import { ArrowRight, Check, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { TrainerLayout } from '../../components/TrainerLayout'
@@ -115,9 +116,11 @@ export function SituationEditor() {
         </div>
 
         {errors.length > 0 && (
-          <ul className="text-sm text-red-600 dark:text-red-400">
+          <ul className="flex flex-col gap-1 text-sm text-red-600 dark:text-red-400">
             {errors.map((e) => (
-              <li key={e}>⚠ {e}</li>
+              <li key={e} className="flex items-center gap-1.5">
+                <TriangleAlert className="size-4 shrink-0" /> {e}
+              </li>
             ))}
           </ul>
         )}
@@ -206,15 +209,16 @@ export function SituationEditor() {
           <button
             type="button"
             onClick={copyLink}
-            className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+            className="flex min-h-11 items-center gap-1.5 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
           >
-            {copied ? 'Copied ✓' : 'Copy link'}
+            {copied && <Check className="size-4" />}
+            {copied ? 'Copied' : 'Copy link'}
           </button>
           <Link
             to={`/efficiency${query ? `?${query}` : ''}`}
-            className="flex min-h-11 items-center rounded-lg border border-neutral-300 px-4 font-medium dark:border-neutral-700"
+            className="flex min-h-11 items-center gap-1.5 rounded-lg border border-neutral-300 px-4 font-medium dark:border-neutral-700"
           >
-            Train efficiency →
+            Train efficiency <ArrowRight className="size-4" />
           </Link>
           <button
             type="button"

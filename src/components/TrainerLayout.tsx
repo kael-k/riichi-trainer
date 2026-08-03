@@ -1,6 +1,8 @@
+import { ArrowLeft, Settings, X } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useLog } from '../store/log'
+import { ThemeToggle } from './ThemeToggle'
 import { Tile } from './tiles/Tile'
 
 interface TrainerLayoutProps {
@@ -20,36 +22,30 @@ export function TrainerLayout({ title, settings, showLog = true, children }: Tra
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-3xl flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-neutral-200 bg-white/90 px-2 py-1 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">
-        <Link
-          to="/"
-          aria-label="Back to menu"
-          className="flex size-11 items-center justify-center text-xl"
-        >
-          ←
+        <Link to="/" aria-label="Back to menu" className="flex size-11 items-center justify-center">
+          <ArrowLeft className="size-5" />
         </Link>
         <h1 className="flex-1 font-semibold">{title}</h1>
+        <ThemeToggle />
         {settings && (
           <>
             <button
               type="button"
               aria-label="Settings"
               onClick={() => dialogRef.current?.showModal()}
-              className="flex size-11 items-center justify-center text-xl"
+              className="flex size-11 items-center justify-center"
             >
-              ⚙
+              <Settings className="size-5" />
             </button>
             <dialog
               ref={dialogRef}
-              className="m-auto w-[min(90vw,24rem)] rounded-xl p-0 backdrop:bg-black/40 dark:bg-neutral-900 dark:text-neutral-100"
+              className="m-auto w-[min(90vw,24rem)] rounded-xl p-0 backdrop:bg-black/40 md:fixed md:inset-y-0 md:right-0 md:left-auto md:m-0 md:h-svh md:w-96 md:max-w-[90vw] md:rounded-none md:rounded-l-2xl dark:bg-neutral-900 dark:text-neutral-100"
             >
-              <form method="dialog" className="flex flex-col">
+              <form method="dialog" className="flex h-full flex-col">
                 <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
                   <h2 className="font-semibold">{title} settings</h2>
-                  <button
-                    className="flex size-11 items-center justify-center text-xl"
-                    aria-label="Close"
-                  >
-                    ✕
+                  <button className="flex size-11 items-center justify-center" aria-label="Close">
+                    <X className="size-5" />
                   </button>
                 </div>
                 <div className="flex flex-col gap-4 p-4">{settings}</div>

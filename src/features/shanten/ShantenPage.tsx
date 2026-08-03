@@ -1,3 +1,4 @@
+import { CheckCircle2, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { SettingRow, TrainerLayout } from '../../components/TrainerLayout'
@@ -36,6 +37,23 @@ export function ShantenPage() {
   }, [round.result])
 
   useEffect(() => setGuessInput(''), [round.hand])
+
+  // Space toggles reveal/pause — the number input auto-focuses on reveal, so typing a
+  // digit + Enter already submits without any extra wiring
+  useEffect(() => {
+    if (round.result) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code !== 'Space') return
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return
+      e.preventDefault()
+      if (round.running) round.pause()
+      else round.reveal()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round.running, round.result, round.pause, round.reveal])
 
   const submitGuess = (value: number) => {
     if (Number.isNaN(value) || value < 0) return
@@ -118,9 +136,17 @@ export function ShantenPage() {
         {round.result && (
           <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
             <p
-              className={`font-semibold ${round.result.correct ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
+              className={`flex items-center gap-1.5 font-semibold ${round.result.correct ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
             >
-              {round.result.correct ? '✓ Correct' : `✗ You said ${round.result.guess}`}
+              {round.result.correct ? (
+                <>
+                  <CheckCircle2 className="size-4" /> Correct
+                </>
+              ) : (
+                <>
+                  <XCircle className="size-4" /> You said {round.result.guess}
+                </>
+              )}
             </p>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
               Actual shanten: {round.result.actual.value}

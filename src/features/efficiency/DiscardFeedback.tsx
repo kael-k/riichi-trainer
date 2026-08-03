@@ -1,3 +1,4 @@
+import { CheckCircle2 } from 'lucide-react'
 import { isBestDiscard, type DiscardOption } from '../../core/efficiency'
 import { Tile, UkeireTiles } from '../../components/tiles/Tile'
 import type { TurnResult } from './useEfficiencyRound'
@@ -37,7 +38,9 @@ export function DiscardFeedback({
     <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
       <FeedbackRow label="Your discard" option={result.yours} showShanten={showShanten} />
       {isBest ? (
-        <p className="text-sm font-medium text-green-600 dark:text-green-400">✓ Best discard</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
+          <CheckCircle2 className="size-4" /> Best discard
+        </p>
       ) : (
         <>
           <FeedbackRow label="Best discard" option={result.best} showShanten={showShanten} />

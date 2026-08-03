@@ -3,8 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#863bff" />
     <title>Riichi Trainer</title>
+    <script>
+      // applied before first paint so the persisted theme choice never flashes light-then-dark
+      try {
+        var raw = localStorage.getItem('riichi-trainer-settings')
+        var theme = raw ? JSON.parse(raw).state.theme : 'system'
+        var isDark =
+          theme === 'dark' ||
+          (theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.toggle('dark', isDark)
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

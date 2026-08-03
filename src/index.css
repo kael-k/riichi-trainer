@@ -1,11 +1,18 @@
 @import 'tailwindcss';
+/* class-based dark mode (driven by the theme store), instead of prefers-color-scheme only */
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   /* base tile width; components scale it via --tile-w overrides */
   --tile-w-base: clamp(1.375rem, 6.4vw, 2.75rem);
   --tile-w: var(--tile-w-base);
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
+  @apply bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100;
 }
