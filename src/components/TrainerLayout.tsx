@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useLog } from '../store/log'
 import { Tile } from './tiles/Tile'
@@ -14,6 +14,9 @@ interface TrainerLayoutProps {
 
 export function TrainerLayout({ title, settings, showLog = true, children }: TrainerLayoutProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const clearLog = useLog((s) => s.clear)
+  // the log store is a single global instance; each trainer page starts its own log
+  useEffect(() => clearLog(), [clearLog])
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-3xl flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-neutral-200 bg-white/90 px-2 py-1 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">
