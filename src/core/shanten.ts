@@ -9,7 +9,13 @@ function evaluate(sets: number, partials: number, hasPair: boolean): number {
 }
 
 /** Backtracking search over the 5-block decomposition (4 sets + 1 pair). Mutates `counts` but restores it. */
-function search(counts: Uint8Array, i: number, sets: number, partials: number, hasPair: boolean): number {
+function search(
+  counts: Uint8Array,
+  i: number,
+  sets: number,
+  partials: number,
+  hasPair: boolean,
+): number {
   if (i >= NUM_TILE_TYPES) return evaluate(sets, partials, hasPair)
   if (counts[i] === 0) return search(counts, i + 1, sets, partials, hasPair)
 

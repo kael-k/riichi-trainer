@@ -28,7 +28,10 @@ export function improvingTiles(hand: Hand): TileId[] {
  */
 export function ukeire(hand: Hand, visible?: Uint8Array): UkeireTile[] {
   const seen = visible ?? hand.counts
-  return improvingTiles(hand).map((tile) => ({ tile, remaining: 4 - seen[tile] }))
+  return improvingTiles(hand).map((tile) => ({
+    tile,
+    remaining: 4 - seen[tile],
+  }))
 }
 
 export function totalRemaining(tiles: UkeireTile[]): number {

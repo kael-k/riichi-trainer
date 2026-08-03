@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
+    "tiles": "node scripts/build-tile-sprite.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

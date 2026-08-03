@@ -1,4 +1,10 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+:root {
+  /* base tile width; components scale it via --tile-w overrides */
+  --tile-w-base: clamp(1.375rem, 6.4vw, 2.75rem);
+  --tile-w: var(--tile-w-base);
+}
 
 body {
   margin: 0;

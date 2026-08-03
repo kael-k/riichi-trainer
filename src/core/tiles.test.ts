@@ -5,7 +5,17 @@ describe('parseTenhou', () => {
   it('parses a mixed hand', () => {
     const tiles = parseTenhou('123m456p789s11z')
     expect(tiles.map((t) => tileName(t.id))).toEqual([
-      '1m', '2m', '3m', '4p', '5p', '6p', '7s', '8s', '9s', 'E', 'E',
+      '1m',
+      '2m',
+      '3m',
+      '4p',
+      '5p',
+      '6p',
+      '7s',
+      '8s',
+      '9s',
+      'E',
+      'E',
     ])
   })
 
@@ -20,9 +30,7 @@ describe('parseTenhou', () => {
 
   it('parses all seven honor kinds', () => {
     const tiles = parseTenhou('1234567z')
-    expect(tiles.map((t) => tileName(t.id))).toEqual([
-      'E', 'S', 'W', 'N', 'haku', 'hatsu', 'chun',
-    ])
+    expect(tiles.map((t) => tileName(t.id))).toEqual(['E', 'S', 'W', 'N', 'haku', 'hatsu', 'chun'])
   })
 
   it('returns empty array for empty input', () => {

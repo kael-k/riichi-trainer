@@ -60,7 +60,12 @@ export function parseTenhou(input: string): ParsedTile[] {
 
 /** Serializes tiles to tenhou notation, grouped by suit, ascending rank, red five as "0". */
 export function serializeTenhou(tiles: ParsedTile[]): string {
-  const groups: Record<'m' | 'p' | 's' | 'z', ParsedTile[]> = { m: [], p: [], s: [], z: [] }
+  const groups: Record<'m' | 'p' | 's' | 'z', ParsedTile[]> = {
+    m: [],
+    p: [],
+    s: [],
+    z: [],
+  }
   for (const tile of tiles) groups[suitOf(tile.id)].push(tile)
 
   let out = ''
@@ -78,6 +83,23 @@ export function serializeTenhou(tiles: ParsedTile[]): string {
   return out
 }
 
+/**
+ * Serializes tiles to tenhou notation preserving the given order (adjacent
+ * same-suit tiles share one suit letter). Use for walls/rivers where draw or
+ * discard order matters; `serializeTenhou` sorts and is for hands/display.
+ */
+export function serializeTenhouOrdered(tiles: ParsedTile[]): string {
+  let out = ''
+  for (let i = 0; i < tiles.length; i++) {
+    const tile = tiles[i]
+    const suit = suitOf(tile.id)
+    out += tile.red ? '0' : String(suit === 'z' ? tile.id - HONOR + 1 : (tile.id % 9) + 1)
+    if (i === tiles.length - 1 || suitOf(tiles[i + 1].id) !== suit) out += suit
+  }
+  return out
+}
+
+// prettier-ignore
 const TILE_NAMES = [
   '1m', '2m', '3m', '4m', '5m', '6m', '7m', '8m', '9m',
   '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p',
