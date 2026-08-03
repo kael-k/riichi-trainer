@@ -43,11 +43,13 @@ function buildRoundWall(situation: Situation, seed: string): TileId[] {
 /** Drives one efficiency round: deal, discard, draw, repeat, until `totalTurns` or the wall runs dry. */
 export function useEfficiencyRound(situation: Situation, totalTurns: number) {
   const [restartCount, setRestartCount] = useState(0)
+  // stable per mount, so an unspecified seed still gets a fresh deal each page load
+  const [randomSeed] = useState(() => Math.random().toString(36).slice(2))
   const round = useRef<{ hand: Hand; wall: TileId[]; discards: Uint8Array }>(undefined)
   const [state, setState] = useState<RoundState>(() => startRound())
 
   function startRound(): RoundState {
-    const seed = `${situation.seed || 'efficiency-demo'}:${restartCount}`
+    const seed = `${situation.seed || randomSeed}:${restartCount}`
     const wall = buildRoundWall(situation, seed)
     const hand = createHand()
     for (const t of situation.hand) addTile(hand, t.id)

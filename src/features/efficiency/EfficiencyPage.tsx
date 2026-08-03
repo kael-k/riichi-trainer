@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router'
 import { SettingRow, TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, tileCode } from '../../components/tiles/Tile'
+import { isBestDiscard } from '../../core/efficiency'
 import { useLog } from '../../store/log'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
@@ -20,7 +21,7 @@ export function EfficiencyPage() {
   useEffect(() => {
     if (!round.lastResult) return
     const { turn, yours, best } = round.lastResult
-    if (yours.discard === best.discard) {
+    if (isBestDiscard(yours, best)) {
       log(
         `Turn ${turn}: discarded ${tileCode(yours.discard)} — best choice (ukeire ${yours.ukeireCount})`,
         [{ id: yours.discard, red: false }],

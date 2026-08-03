@@ -31,3 +31,13 @@ export function evaluateDiscards(hand: Hand, visible?: Uint8Array): DiscardOptio
   options.sort((a, b) => a.shanten - b.shanten || b.ukeireCount - a.ukeireCount)
   return options
 }
+
+/**
+ * True when `option` ties the top of a ranked `evaluateDiscards` list — same shanten and
+ * same ukeire count as `best`. `best` (e.g. `options[0]`) is just whichever tied discard
+ * sorted first, so comparing by tile id instead of by these two fields would wrongly mark
+ * every other equally-good discard as a mistake.
+ */
+export function isBestDiscard(option: DiscardOption, best: DiscardOption): boolean {
+  return option.shanten === best.shanten && option.ukeireCount === best.ukeireCount
+}

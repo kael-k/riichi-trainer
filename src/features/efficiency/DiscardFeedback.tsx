@@ -1,4 +1,4 @@
-import type { DiscardOption } from '../../core/efficiency'
+import { isBestDiscard, type DiscardOption } from '../../core/efficiency'
 import { Tile, UkeireTiles } from '../../components/tiles/Tile'
 import type { TurnResult } from './useEfficiencyRound'
 
@@ -31,7 +31,7 @@ export function DiscardFeedback({
   result: TurnResult
   showShanten: boolean
 }) {
-  const isBest = result.yours.discard === result.best.discard
+  const isBest = isBestDiscard(result.yours, result.best)
   const shantenGap = result.yours.shanten - result.best.shanten
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
