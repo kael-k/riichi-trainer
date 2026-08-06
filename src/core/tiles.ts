@@ -115,3 +115,15 @@ const TILE_NAMES = [
 export function tileName(id: TileId): string {
   return TILE_NAMES[id]
 }
+
+const HONOR_LABELS = ['E', 'S', 'W', 'N', 'Wh', 'G', 'R']
+
+/**
+ * Short corner label for the tile overlay: the rank alone for suited tiles
+ * (`0` for a red five), wind letters and dragon initials (white/green/red) for
+ * honors. Deliberately not tenhou notation — the suit is already the artwork.
+ */
+export function tileLabel(id: TileId, red = false): string {
+  if (id >= HONOR) return HONOR_LABELS[id - HONOR]
+  return red ? '0' : String((id % 9) + 1)
+}

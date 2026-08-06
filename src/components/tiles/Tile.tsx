@@ -1,4 +1,4 @@
-import { tileCode, tileName, type ParsedTile, type TileId } from '../../core/tiles'
+import { tileCode, tileLabel, tileName, type ParsedTile, type TileId } from '../../core/tiles'
 import { useSettings } from '../../features/settings/settingsStore'
 
 interface TileProps {
@@ -26,17 +26,18 @@ export function Tile({ id, red = false, className = '' }: TileProps) {
           <use href={`#tile-${tileCode(id, red)}`} />
           {showNumbers && (
             <text
-              x="16"
-              y="52"
-              fontSize="42"
+              x="286"
+              y="76"
+              textAnchor="end"
+              fontSize="63"
               fontWeight="800"
-              fill="#111"
+              fill="#dc2626"
               stroke="#fff"
-              strokeWidth="8"
+              strokeWidth="10"
               paintOrder="stroke"
               className="pointer-events-none select-none"
             >
-              {tileCode(id, red)}
+              {tileLabel(id, red)}
             </text>
           )}
         </>

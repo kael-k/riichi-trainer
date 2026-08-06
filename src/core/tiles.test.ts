@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { parseTenhou, serializeTenhou, tileName, isTerminal, isTerminalOrHonor } from './tiles'
+import {
+  parseTenhou,
+  serializeTenhou,
+  tileLabel,
+  tileName,
+  isTerminal,
+  isTerminalOrHonor,
+} from './tiles'
 
 describe('parseTenhou', () => {
   it('parses a mixed hand', () => {
@@ -70,5 +77,17 @@ describe('isTerminal / isTerminalOrHonor', () => {
     expect(isTerminalOrHonor(8)).toBe(true)
     expect(isTerminalOrHonor(27)).toBe(true)
     expect(isTerminalOrHonor(4)).toBe(false)
+  })
+})
+
+describe('tileLabel', () => {
+  it('labels suited tiles by rank, red fives as 0', () => {
+    expect(parseTenhou('19m5p').map((t) => tileLabel(t.id, t.red))).toEqual(['1', '9', '5'])
+    expect(tileLabel(13, true)).toBe('0') // red 5p
+  })
+
+  it('labels winds and dragons by letter', () => {
+    const honors = parseTenhou('1234567z')
+    expect(honors.map((t) => tileLabel(t.id))).toEqual(['E', 'S', 'W', 'N', 'Wh', 'G', 'R'])
   })
 })
