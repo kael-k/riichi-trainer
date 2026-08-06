@@ -23,7 +23,7 @@ export function TrainerLayout({ title, settings, children }: TrainerLayoutProps)
   // the log store is a single global instance; each trainer page starts its own log
   useEffect(() => clearLog(), [clearLog])
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-3xl flex-col">
+    <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-neutral-200 bg-white/90 px-2 py-1 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">
         <Link
           to="/"
@@ -37,7 +37,16 @@ export function TrainerLayout({ title, settings, children }: TrainerLayoutProps)
       </header>
       <main
         className="flex-1 p-3"
-        style={{ '--tile-w-base': `calc(var(--tile-w-raw) * ${tileScale})` } as CSSProperties}
+        style={
+          {
+            '--tile-w-base': `calc(var(--tile-w-raw) * ${tileScale})`,
+            // re-declared here (not just --tile-w-base) so plain, non-overriding tile
+            // usages (e.g. the main hand) actually pick up the scale: --tile-w's var()
+            // reference resolves once at whichever element declares it, not freshly per
+            // inheriting descendant, and it was previously only ever declared at :root
+            '--tile-w': 'var(--tile-w-base)',
+          } as CSSProperties
+        }
       >
         {children}
       </main>
