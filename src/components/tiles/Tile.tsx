@@ -64,7 +64,7 @@ export function TileButton({ id, red, onClick, className = '' }: TileButtonProps
 
 interface HandDisplayProps {
   tiles: ParsedTile[]
-  /** Drawn tile shown leftmost, separated from the hand; clicks report index `tiles.length`. */
+  /** Drawn tile shown rightmost, separated from the hand; clicks report index `tiles.length`. */
   drawn?: ParsedTile
   onTileClick?: (index: number) => void
   concealed?: boolean
@@ -84,8 +84,8 @@ export function HandDisplay({ tiles, drawn, onTileClick, concealed }: HandDispla
     )
   return (
     <div className="flex flex-wrap items-start">
-      {drawn && <div className="mr-2">{render(drawn, tiles.length)}</div>}
       {tiles.map(render)}
+      {drawn && <div className="ml-2">{render(drawn, tiles.length)}</div>}
     </div>
   )
 }
