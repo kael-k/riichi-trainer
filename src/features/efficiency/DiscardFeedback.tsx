@@ -7,10 +7,12 @@ function FeedbackRow({
   label,
   option,
   showShanten,
+  showUkeire,
 }: {
   label: string
   option: DiscardOption
   showShanten: boolean
+  showUkeire: boolean
 }) {
   return (
     <div>
@@ -20,7 +22,7 @@ function FeedbackRow({
         {showShanten && <span className="text-neutral-500">shanten {option.shanten}</span>}
         <span className="text-neutral-500">· {option.ukeireCount} tiles</span>
       </div>
-      <UkeireTiles tiles={option.ukeireTiles} />
+      {showUkeire && <UkeireTiles tiles={option.ukeireTiles} />}
     </div>
   )
 }
@@ -28,22 +30,34 @@ function FeedbackRow({
 export function DiscardFeedback({
   result,
   showShanten,
+  showUkeire,
 }: {
   result: TurnResult
   showShanten: boolean
+  showUkeire: boolean
 }) {
   const isBest = isBestDiscard(result.yours, result.best)
   const shantenGap = result.yours.shanten - result.best.shanten
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <FeedbackRow label="Your discard" option={result.yours} showShanten={showShanten} />
+      <FeedbackRow
+        label="Your discard"
+        option={result.yours}
+        showShanten={showShanten}
+        showUkeire={showUkeire}
+      />
       {isBest ? (
         <p className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
           <CheckCircle2 className="size-4" /> Best discard
         </p>
       ) : (
         <>
-          <FeedbackRow label="Best discard" option={result.best} showShanten={showShanten} />
+          <FeedbackRow
+            label="Best discard"
+            option={result.best}
+            showShanten={showShanten}
+            showUkeire={showUkeire}
+          />
           <p className="text-sm text-amber-700 dark:text-amber-400">
             {shantenGap > 0
               ? `This discard is ${shantenGap} shanten worse.`

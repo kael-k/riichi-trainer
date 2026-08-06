@@ -16,13 +16,14 @@ describe('urlCodec', () => {
   it('round-trips a full situation', () => {
     const s = emptySituation()
     s.seed = 'abc'
-    s.turn = 5
     s.hand = parseTenhou('123m456p789s1122z')
     s.wall = parseTenhou('9m1z5s')
-    s.rivers[0] = parseTenhou('1z9p')
-    s.rivers[3] = parseTenhou('2s')
+    s.river = parseTenhou('1z9p')
     s.round = 'S'
     s.seat = 'W'
+    s.opponents = true
+    s.deadWall = false
+    s.aka = true
     expect(decodeSituation(new URLSearchParams(encodeSituation(s)))).toEqual(s)
   })
 

@@ -13,23 +13,17 @@ import {
   type Wind,
 } from './urlCodec'
 
-type ZoneKey = 'hand' | 'wall' | 'river0' | 'river1' | 'river2' | 'river3'
+type ZoneKey = 'hand' | 'wall'
 
 const ZONES: { key: ZoneKey; label: string }[] = [
   { key: 'hand', label: 'Hand' },
   { key: 'wall', label: 'Wall' },
-  { key: 'river0', label: 'River E' },
-  { key: 'river1', label: 'River S' },
-  { key: 'river2', label: 'River W' },
-  { key: 'river3', label: 'River N' },
 ]
 
 const WINDS: Wind[] = ['E', 'S', 'W', 'N']
 
 function zoneTiles(s: Situation, zone: ZoneKey): ParsedTile[] {
-  if (zone === 'hand') return s.hand
-  if (zone === 'wall') return s.wall
-  return s.rivers[Number(zone[5])]
+  return zone === 'hand' ? s.hand : s.wall
 }
 
 const PICKER_ROWS = [
@@ -163,7 +157,7 @@ export function SituationEditor() {
           ))}
         </div>
 
-        {/* seed / turn / winds */}
+        {/* seed / winds */}
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <label className="flex flex-col gap-1">
             Seed
@@ -172,18 +166,6 @@ export function SituationEditor() {
               value={situation.seed}
               placeholder="random"
               onChange={(e) => update((s) => void (s.seed = e.target.value))}
-              className="min-h-11 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            Turn
-            <input
-              type="number"
-              min={0}
-              value={situation.turn}
-              onChange={(e) =>
-                update((s) => void (s.turn = Math.max(0, Number(e.target.value) || 0)))
-              }
               className="min-h-11 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>

@@ -4,7 +4,20 @@ import { persist } from 'zustand/middleware'
 export type Theme = 'system' | 'light' | 'dark'
 
 export interface Settings {
-  efficiency: { showShanten: boolean; timerEnabled: boolean }
+  efficiency: {
+    showShanten: boolean
+    timerEnabled: boolean
+    /** Show the improving tiles under discard feedback, not just the count. */
+    showUkeire: boolean
+    /** Simulated opponents that draw and tsumogiri every turn. */
+    opponents: boolean
+    /** Reserve a dead wall and show its dora indicator. */
+    deadWall: boolean
+    /** Seed one red five per suit into random walls. */
+    aka: boolean
+    /** Reveal the live wall in draw order. */
+    showWall: boolean
+  }
   shanten: { timerEnabled: boolean }
 }
 
@@ -17,7 +30,15 @@ interface SettingsState extends Settings {
 export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
-      efficiency: { showShanten: true, timerEnabled: true },
+      efficiency: {
+        showShanten: true,
+        timerEnabled: true,
+        showUkeire: true,
+        opponents: true,
+        deadWall: true,
+        aka: true,
+        showWall: false,
+      },
       shanten: { timerEnabled: true },
       theme: 'system',
       setTheme: (theme) => set({ theme }),

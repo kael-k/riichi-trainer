@@ -16,7 +16,7 @@ Mobile-first riichi mahjong trainer: efficiency (discard/ukeire) and shanten dri
 
 ## Modes
 
-- **Efficiency trainer** (`/efficiency`) — 14-tile hand; tap a discard, get feedback: your shanten/ukeire vs. the best discard, with the actual improving tiles and their remaining counts. Draw, discard, repeat until the wall runs dry; cumulative "ukeire lost" scores the round.
+- **Efficiency trainer** (`/efficiency`) — 14-tile hand; tap a discard, get feedback: your shanten/ukeire vs. the best discard, with the actual improving tiles and their remaining counts. Draw, discard, repeat until the wall runs dry; cumulative "ukeire lost" scores the round. Optional (all on by default except the wall view): simulated opponents that tsumogiri every turn, a dead wall with visible dora indicator, red fives in the deal, and a face-up wall view. "Copy situation link" exports the current round mid-game as a URL.
 - **Shanten trainer** (`/shanten`) — hand is dealt face-down; revealing starts a pausable timer. Guess the shanten count (Enter or quick buttons); standard, chiitoitsu and kokushi are all considered.
 - **Scoring trainer** — han/fu scoring drills. *TODO, not implemented yet.*
 - **Folding trainer** — defend against riichi. *TODO, not implemented yet.*
@@ -29,11 +29,12 @@ Trainers read their whole scenario from the query string, so one URL fully repro
 | --- | --- |
 | `seed` | deterministic shuffle of the remaining tile pool; omitted = fresh random round each load |
 | `hand` | starting hand; the efficiency trainer fills it to 14 tiles from the wall |
-| `wall` | forced draw order; when exhausted, draws fall back to the seeded pool |
-| `river` | your own discards so far, in discard order |
-| `turn`, `round`, `seat` | parsed and round-tripped by the codec, not yet used in play |
+| `wall` | forced draw order, consumed by whoever draws next (opponents included); when exhausted, draws fall back to the seeded pool |
+| `river` | your own discards so far, replayed from the deal to rebuild a round mid-game |
+| `round`, `seat` | round wind (display only) and your seat — opponents seated before you tsumogiri before your first draw |
+| `opponents`, `deadwall`, `aka` | `1`/`0` — pin the round rules into the link, overriding the receiver's settings so it reproduces exactly |
 
-Opponents' rivers are never specified: opponents are assumed to always tsumogiri, so their discards are fully determined by the wall. Every tile pinned in `hand`/`wall`/`river` is removed from the seeded pool, so no tile can appear more than four times. Example:
+Opponents' rivers are never specified: opponents always tsumogiri, so their discards are fully determined by the wall. Every tile pinned in `hand`/`wall` is removed from the seeded pool, so no tile can appear more than four times (the `river` is a replay of tiles already there, not extra copies). Example:
 
 ```
 /efficiency?hand=19m19p19s1234567z&wall=9m&seed=kokushi-drill
