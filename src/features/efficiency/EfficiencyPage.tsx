@@ -154,7 +154,11 @@ export function EfficiencyPage() {
               {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
             </p>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              {t('efficiency.totalLost', { turns: round.turn, lost: round.cumulativeLost })}
+              {t('efficiency.totalLost', {
+                count: round.turn,
+                turns: round.turn,
+                lost: round.cumulativeLost,
+              })}
             </p>
             <button
               type="button"
