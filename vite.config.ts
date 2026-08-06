@@ -1,10 +1,19 @@
 /// <reference types="vitest/config" />
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// GITHUB_SHA is set by Actions; fall back to the local checkout for dev builds
+const commitSha = (process.env.GITHUB_SHA ?? execSync('git rev-parse HEAD').toString())
+  .trim()
+  .slice(0, 7)
+
 export default defineConfig({
+  define: {
+    __COMMIT_SHA__: JSON.stringify(commitSha),
+  },
   plugins: [
     react(),
     tailwindcss(),

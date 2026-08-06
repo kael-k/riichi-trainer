@@ -46,6 +46,9 @@ export function HomePage() {
           <div className="text-sm text-neutral-500">Han/fu scoring drills — coming later.</div>
         </div>
       </nav>
+      <p className="mt-auto text-center text-xs text-neutral-400">
+        release version: {__COMMIT_SHA__}
+      </p>
     </div>
   )
 }
