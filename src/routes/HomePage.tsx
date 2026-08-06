@@ -14,11 +14,6 @@ const MODES = [
     title: 'Shanten trainer',
     desc: 'Guess how far a hand is from tenpai, against the clock.',
   },
-  {
-    to: '/situation',
-    title: 'Situation editor',
-    desc: 'Build a specific hand, wall and rivers — then share or train it.',
-  },
 ]
 
 export function HomePage() {

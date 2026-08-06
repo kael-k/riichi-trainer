@@ -9,12 +9,10 @@ interface TrainerLayoutProps {
   title: string
   /** Form controls rendered inside the settings dialog; omit to hide the gear. */
   settings?: ReactNode
-  /** Show the action log panel below the trainer (default true). */
-  showLog?: boolean
   children: ReactNode
 }
 
-export function TrainerLayout({ title, settings, showLog = true, children }: TrainerLayoutProps) {
+export function TrainerLayout({ title, settings, children }: TrainerLayoutProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const clearLog = useLog((s) => s.clear)
   // the log store is a single global instance; each trainer page starts its own log
@@ -55,7 +53,7 @@ export function TrainerLayout({ title, settings, showLog = true, children }: Tra
         )}
       </header>
       <main className="flex-1 p-3">{children}</main>
-      {showLog && <LogPanel />}
+      <LogPanel />
     </div>
   )
 }

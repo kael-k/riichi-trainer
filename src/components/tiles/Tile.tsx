@@ -30,35 +30,17 @@ export function Tile({ id, red = false, className = '' }: TileProps) {
 
 interface TileButtonProps extends TileProps {
   onClick?: () => void
-  disabled?: boolean
-  selected?: boolean
-  /** Small label under the tile (e.g. remaining count). */
-  badge?: string
 }
 
 /** Tappable tile with a ≥44px hit area. */
-export function TileButton({
-  id,
-  red,
-  onClick,
-  disabled,
-  selected,
-  badge,
-  className = '',
-}: TileButtonProps) {
+export function TileButton({ id, red, onClick, className = '' }: TileButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
-      className={`flex min-h-11 flex-col items-center justify-start rounded p-0.5 transition-transform enabled:active:scale-95 disabled:opacity-30 ${
-        selected ? 'bg-amber-200 dark:bg-amber-700' : ''
-      } ${className}`}
+      className={`flex min-h-11 flex-col items-center justify-start rounded p-0.5 transition-transform active:scale-95 ${className}`}
     >
       <Tile id={id} red={red} />
-      {badge !== undefined && (
-        <span className="text-xs leading-tight text-neutral-500">{badge}</span>
-      )}
     </button>
   )
 }

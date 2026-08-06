@@ -1,11 +1,4 @@
-import {
-  parseTenhou,
-  serializeTenhouOrdered,
-  suitOf,
-  tileName,
-  NUM_TILE_TYPES,
-  type ParsedTile,
-} from '../../core/tiles'
+import { parseTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
 
 export type Wind = 'E' | 'S' | 'W' | 'N'
 export const WINDS: Wind[] = ['E', 'S', 'W', 'N']
@@ -77,23 +70,4 @@ export function encodeSituation(s: Situation): string {
  *  discards drawn from these, not additional tiles. */
 export function allTiles(s: Situation): ParsedTile[] {
   return [...s.hand, ...s.wall]
-}
-
-/** Human-readable validation errors; empty when the situation is legal. */
-export function validateSituation(s: Situation): string[] {
-  const errors: string[] = []
-  const counts = new Uint8Array(NUM_TILE_TYPES)
-  const reds: Record<string, number> = { m: 0, p: 0, s: 0 }
-  for (const tile of allTiles(s)) {
-    counts[tile.id]++
-    if (tile.red) reds[suitOf(tile.id)]++
-  }
-  for (let id = 0; id < NUM_TILE_TYPES; id++) {
-    if (counts[id] > 4) errors.push(`more than 4 copies of ${tileName(id)}`)
-  }
-  for (const suit of ['m', 'p', 's']) {
-    if (reds[suit] > 1) errors.push(`more than 1 red five of ${suit}`)
-  }
-  if (s.hand.length > 14) errors.push(`hand has ${s.hand.length} tiles (max 14)`)
-  return errors
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseTenhou, serializeTenhouOrdered } from '../../core/tiles'
-import { decodeSituation, emptySituation, encodeSituation, validateSituation } from './urlCodec'
+import { decodeSituation, emptySituation, encodeSituation } from './urlCodec'
 
 describe('serializeTenhouOrdered', () => {
   it('preserves order and red fives', () => {
@@ -30,20 +30,5 @@ describe('urlCodec', () => {
   it('decodes empty params to the empty situation', () => {
     expect(decodeSituation(new URLSearchParams(''))).toEqual(emptySituation())
     expect(encodeSituation(emptySituation())).toBe('')
-  })
-
-  it('flags impossible tile counts', () => {
-    const s = emptySituation()
-    s.hand = parseTenhou('1111m')
-    s.wall = parseTenhou('1m')
-    expect(validateSituation(s)).toEqual(['more than 4 copies of 1m'])
-  })
-
-  it('flags duplicate red fives and oversized hands', () => {
-    const s = emptySituation()
-    s.hand = parseTenhou('00p123456789m1234s')
-    const errors = validateSituation(s)
-    expect(errors).toContain('more than 1 red five of p')
-    expect(errors).toContain('hand has 15 tiles (max 14)')
   })
 })
