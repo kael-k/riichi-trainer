@@ -24,6 +24,9 @@ export interface Settings {
 interface SettingsState extends Settings {
   theme: Theme
   setTheme: (theme: Theme) => void
+  /** Overlay the tenhou code (e.g. "3m") on each tile face, for players still learning to read pips. */
+  showTileNumbers: boolean
+  setShowTileNumbers: (show: boolean) => void
   update: <K extends keyof Settings>(section: K, patch: Partial<Settings[K]>) => void
 }
 
@@ -42,6 +45,8 @@ export const useSettings = create<SettingsState>()(
       shanten: { timerEnabled: true },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
+      showTileNumbers: false,
+      setShowTileNumbers: (showTileNumbers) => set({ showTileNumbers }),
       update: (section, patch) => set((s) => ({ ...s, [section]: { ...s[section], ...patch } })),
     }),
     {

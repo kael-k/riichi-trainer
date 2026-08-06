@@ -1,4 +1,5 @@
 import { tileCode, tileName, type ParsedTile, type TileId } from '../../core/tiles'
+import { useSettings } from '../../features/settings/settingsStore'
 
 interface TileProps {
   /** Omit for a face-down tile. */
@@ -9,6 +10,7 @@ interface TileProps {
 
 /** One tile face rendered from the SVG sprite. Width comes from `--tile-w`. */
 export function Tile({ id, red = false, className = '' }: TileProps) {
+  const showNumbers = useSettings((s) => s.showTileNumbers)
   return (
     <svg
       viewBox="0 0 300 400"
@@ -22,6 +24,21 @@ export function Tile({ id, red = false, className = '' }: TileProps) {
         <>
           <use href="#tile-front" />
           <use href={`#tile-${tileCode(id, red)}`} />
+          {showNumbers && (
+            <text
+              x="16"
+              y="52"
+              fontSize="42"
+              fontWeight="800"
+              fill="#111"
+              stroke="#fff"
+              strokeWidth="8"
+              paintOrder="stroke"
+              className="pointer-events-none select-none"
+            >
+              {tileCode(id, red)}
+            </text>
+          )}
         </>
       )}
     </svg>

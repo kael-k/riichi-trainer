@@ -23,6 +23,8 @@ export function ShantenPage() {
   const situation = useMemo(() => decodeSituation(params), [params])
   const settings = useSettings((s) => s.shanten)
   const update = useSettings((s) => s.update)
+  const showTileNumbers = useSettings((s) => s.showTileNumbers)
+  const setShowTileNumbers = useSettings((s) => s.setShowTileNumbers)
   const log = useLog((s) => s.log)
   const [guessInput, setGuessInput] = useState('')
 
@@ -69,14 +71,24 @@ export function ShantenPage() {
     <TrainerLayout
       title="Shanten trainer"
       settings={
-        <SettingRow label="Timer">
-          <input
-            type="checkbox"
-            checked={settings.timerEnabled}
-            onChange={(e) => update('shanten', { timerEnabled: e.target.checked })}
-            className="size-5"
-          />
-        </SettingRow>
+        <>
+          <SettingRow label="Timer">
+            <input
+              type="checkbox"
+              checked={settings.timerEnabled}
+              onChange={(e) => update('shanten', { timerEnabled: e.target.checked })}
+              className="size-5"
+            />
+          </SettingRow>
+          <SettingRow label="Numbers on tiles">
+            <input
+              type="checkbox"
+              checked={showTileNumbers}
+              onChange={(e) => setShowTileNumbers(e.target.checked)}
+              className="size-5"
+            />
+          </SettingRow>
+        </>
       }
     >
       <div className="flex flex-col gap-4">

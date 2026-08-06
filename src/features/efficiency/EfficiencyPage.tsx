@@ -14,6 +14,8 @@ export function EfficiencyPage() {
   const situation = useMemo(() => decodeSituation(params), [params])
   const settings = useSettings((s) => s.efficiency)
   const update = useSettings((s) => s.update)
+  const showTileNumbers = useSettings((s) => s.showTileNumbers)
+  const setShowTileNumbers = useSettings((s) => s.setShowTileNumbers)
   const [copied, setCopied] = useState(false)
 
   // situation overrides pin round behavior so shared links reproduce exactly
@@ -60,6 +62,14 @@ export function EfficiencyPage() {
           {toggle('deadWall', 'Dead wall & dora')}
           {toggle('aka', 'Red fives')}
           {toggle('showWall', 'Show wall')}
+          <SettingRow label="Numbers on tiles">
+            <input
+              type="checkbox"
+              checked={showTileNumbers}
+              onChange={(e) => setShowTileNumbers(e.target.checked)}
+              className="size-5"
+            />
+          </SettingRow>
         </>
       }
     >

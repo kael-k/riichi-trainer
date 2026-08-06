@@ -65,9 +65,11 @@ if (!srcDir) {
   srcDir = join(tmp, 'riichi-mahjong-tiles-master', 'Regular')
 }
 
-const symbols = Object.entries(FILES).map(([file, code]) =>
-  toSymbol(readFileSync(join(srcDir, `${file}.svg`), 'utf8'), `tile-${code}`, code),
-)
+const symbols = Object.entries(FILES).map(([file, code]) => {
+  const symbol = toSymbol(readFileSync(join(srcDir, `${file}.svg`), 'utf8'), `tile-${code}`, code)
+  // FluffyStuff's back is red; every standard riichi set uses yellow
+  return code === 'back' ? symbol.replaceAll('fill:#ff3737', 'fill:#eab308') : symbol
+})
 
 const out = join(
   dirname(fileURLToPath(import.meta.url)),
