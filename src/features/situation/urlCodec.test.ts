@@ -24,6 +24,7 @@ describe('urlCodec', () => {
     s.opponents = true
     s.deadWall = false
     s.aka = true
+    s.sanma = true
     expect(decodeSituation(new URLSearchParams(encodeSituation(s)))).toEqual(s)
   })
 

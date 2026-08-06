@@ -3,6 +3,10 @@ import { persist } from 'zustand/middleware'
 
 export type Theme = 'system' | 'light' | 'dark'
 
+/** Languages with a translation; 'auto' resolves from the browser at apply time. */
+export const LOCALES = ['en', 'ja', 'zh', 'it'] as const
+export type Locale = 'auto' | (typeof LOCALES)[number]
+
 export interface Settings {
   efficiency: {
     showShanten: boolean
@@ -21,12 +25,23 @@ export interface Settings {
   shanten: { timerEnabled: boolean }
 }
 
+/** Trainer tile size presets; multiplies the base tile width. */
+export const TILE_SCALES = [0.8, 1, 1.25, 1.5] as const
+
 interface SettingsState extends Settings {
   theme: Theme
   setTheme: (theme: Theme) => void
   /** Overlay the tenhou code (e.g. "3m") on each tile face, for players still learning to read pips. */
   showTileNumbers: boolean
   setShowTileNumbers: (show: boolean) => void
+  /** Trainer tile size multiplier; one of TILE_SCALES. Does not affect the log panel. */
+  tileScale: number
+  setTileScale: (scale: number) => void
+  /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats, nukidora. Applies to both trainers. */
+  sanma: boolean
+  setSanma: (sanma: boolean) => void
+  locale: Locale
+  setLocale: (locale: Locale) => void
   update: <K extends keyof Settings>(section: K, patch: Partial<Settings[K]>) => void
 }
 
@@ -47,6 +62,12 @@ export const useSettings = create<SettingsState>()(
       setTheme: (theme) => set({ theme }),
       showTileNumbers: false,
       setShowTileNumbers: (showTileNumbers) => set({ showTileNumbers }),
+      tileScale: 1,
+      setTileScale: (tileScale) => set({ tileScale }),
+      sanma: false,
+      setSanma: (sanma) => set({ sanma }),
+      locale: 'auto',
+      setLocale: (locale) => set({ locale }),
       update: (section, patch) => set((s) => ({ ...s, [section]: { ...s[section], ...patch } })),
     }),
     {

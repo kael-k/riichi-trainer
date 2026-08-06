@@ -24,6 +24,11 @@ describe('improvingTiles', () => {
       expect(shanten(trial)).toBeLessThan(before)
     }
   })
+
+  it('excludes 2m-8m in sanma — those ids are never in the wall', () => {
+    const hand = handFromTenhou('34556788m123p11s')
+    expect(improvingTiles(hand, true).some((id) => id >= 1 && id <= 7)).toBe(false)
+  })
 })
 
 describe('ukeire', () => {
@@ -45,5 +50,10 @@ describe('ukeire', () => {
   it('totalRemaining sums remaining across all improving tiles', () => {
     const hand = handFromTenhou('1112345678999m')
     expect(totalRemaining(ukeire(hand))).toBeGreaterThan(0)
+  })
+
+  it('never reports remaining copies for 2m-8m in sanma', () => {
+    const hand = handFromTenhou('34556788m123p11s')
+    expect(ukeire(hand, undefined, true).some((t) => t.tile >= 1 && t.tile <= 7)).toBe(false)
   })
 })

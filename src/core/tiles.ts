@@ -22,6 +22,11 @@ export function isTerminalOrHonor(id: TileId): boolean {
   return id >= HONOR || id % 9 === 0 || id % 9 === 8
 }
 
+/** Sanma (three-player) drops 2m-8m from the tile set; everything else is unchanged. */
+export function inTileSet(id: TileId, sanma: boolean): boolean {
+  return !sanma || id < MAN + 1 || id > MAN + 7
+}
+
 export function suitOf(id: TileId): 'm' | 'p' | 's' | 'z' {
   if (id < PIN) return 'm'
   if (id < SOU) return 'p'

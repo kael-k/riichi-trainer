@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { tileCode, tileLabel, tileName, type ParsedTile, type TileId } from '../../core/tiles'
 import { useSettings } from '../../features/settings/settingsStore'
 
@@ -10,12 +11,13 @@ interface TileProps {
 
 /** One tile face rendered from the SVG sprite. Width comes from `--tile-w`. */
 export function Tile({ id, red = false, className = '' }: TileProps) {
+  const { t } = useTranslation()
   const showNumbers = useSettings((s) => s.showTileNumbers)
   return (
     <svg
       viewBox="0 0 300 400"
       role="img"
-      aria-label={id === undefined ? 'face-down tile' : tileName(id)}
+      aria-label={id === undefined ? t('common.faceDownTile') : tileName(id)}
       className={`aspect-3/4 w-(--tile-w) shrink-0 drop-shadow-sm ${className}`}
     >
       {id === undefined ? (

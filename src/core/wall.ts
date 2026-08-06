@@ -1,15 +1,17 @@
 import { addTile, createHand, type Hand } from './hand'
 import { mulberry32, shuffle } from './rng'
-import { NUM_TILE_TYPES, type TileId } from './tiles'
+import { inTileSet, NUM_TILE_TYPES, type TileId } from './tiles'
 
 export const TILES_PER_KIND = 4
 export const DEAD_WALL_SIZE = 14
 export const INITIAL_HAND_SIZE = 13
 
-/** Full 136-tile wall in draw order, deterministically shuffled from `seed`. */
-export function buildWall(seed: string): TileId[] {
+/** Full wall in draw order, deterministically shuffled from `seed`: 136 tiles (34 kinds),
+ *  or 108 (27 kinds) with `sanma` — 2m-8m never enter the wall. */
+export function buildWall(seed: string, sanma = false): TileId[] {
   const tiles: TileId[] = []
   for (let id = 0; id < NUM_TILE_TYPES; id++) {
+    if (!inTileSet(id, sanma)) continue
     for (let copy = 0; copy < TILES_PER_KIND; copy++) tiles.push(id)
   }
   return shuffle(tiles, mulberry32(seed))
@@ -23,8 +25,8 @@ export interface Deal {
 }
 
 /** Deals a fresh hand from a seed, splitting off the dead wall and first dora indicator. */
-export function deal(seed: string, handSize = INITIAL_HAND_SIZE): Deal {
-  const wall = buildWall(seed)
+export function deal(seed: string, handSize = INITIAL_HAND_SIZE, sanma = false): Deal {
+  const wall = buildWall(seed, sanma)
   const hand = createHand()
   for (let i = 0; i < handSize; i++) addTile(hand, wall[i])
 

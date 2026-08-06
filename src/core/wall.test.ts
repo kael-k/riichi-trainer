@@ -19,6 +19,13 @@ describe('buildWall', () => {
   it('differs for different seeds', () => {
     expect(buildWall('seed-x')).not.toEqual(buildWall('seed-y'))
   })
+
+  it('drops 2m-8m in sanma: 27 kinds, 108 tiles, still deterministic per seed', () => {
+    const wall = buildWall('sanma-seed', true)
+    expect(wall).toHaveLength(27 * TILES_PER_KIND)
+    expect(wall.some((id) => id >= 1 && id <= 7)).toBe(false)
+    expect(buildWall('sanma-seed', true)).toEqual(wall)
+  })
 })
 
 describe('deal', () => {
@@ -42,6 +49,12 @@ describe('deal', () => {
   it('draws the dora indicator from the dead wall', () => {
     const { deadWall, doraIndicators } = deal('dora')
     expect(doraIndicators).toEqual([deadWall[0]])
+  })
+
+  it('deals from the 108-tile sanma wall', () => {
+    const { hand, liveWall } = deal('sanma-deal', INITIAL_HAND_SIZE, true)
+    expect(tileCount(hand)).toBe(INITIAL_HAND_SIZE)
+    expect(liveWall).toHaveLength(27 * TILES_PER_KIND - INITIAL_HAND_SIZE - DEAD_WALL_SIZE)
   })
 })
 

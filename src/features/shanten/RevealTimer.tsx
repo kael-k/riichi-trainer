@@ -1,4 +1,5 @@
 import { Play, Square } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 
 interface RevealTimerProps {
@@ -12,12 +13,13 @@ interface RevealTimerProps {
 /** Play/stop control; stopping re-conceals and deals a fresh hand. Timer readout
  *  only shown when enabled. */
 export function RevealTimer({ running, elapsed, timerEnabled, onPlay, onStop }: RevealTimerProps) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center gap-3">
       <button
         type="button"
         onClick={running ? onStop : onPlay}
-        aria-label={running ? 'Stop and deal a new hand' : 'Reveal hand'}
+        aria-label={t(running ? 'shanten.stopHand' : 'shanten.revealHand')}
         className="flex size-11 items-center justify-center rounded-full bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
       >
         {running ? (

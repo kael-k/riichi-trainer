@@ -3,7 +3,6 @@ import { addTile, createHand, type Hand } from '../../core/hand'
 import { chiitoiShanten, kokushiShanten, standardShanten } from '../../core/shanten'
 import { NUM_TILE_TYPES, serializeTenhou, type ParsedTile } from '../../core/tiles'
 import { deal, INITIAL_HAND_SIZE } from '../../core/wall'
-import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLog } from '../../store/log'
 import type { Situation } from '../situation/urlCodec'
 
@@ -58,7 +57,7 @@ function computeBreakdown(hand: Hand): ShantenBreakdown {
 
 /** Drives a continuous stream of hands: reveal once, then guess after guess with
  *  the feedback for the last one alongside the hand already dealt. */
-export function useShantenRound(situation: Situation, timerEnabled: boolean) {
+export function useShantenRound(situation: Situation, timerEnabled: boolean, sanma: boolean) {
   const [handIndex, setHandIndex] = useState(0)
   // stable per mount, so an unspecified seed still gets a fresh hand each page load
   const [randomSeed] = useState(() => Math.random().toString(36).slice(2))
@@ -94,7 +93,7 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean) {
       // keep the situation's tiles (not counts) so red-five flags survive to display
       return { hand: [...situation.hand].sort((a, b) => a.id - b.id), ...carry }
     }
-    const hand = deal(seed, INITIAL_HAND_SIZE).hand
+    const hand = deal(seed, INITIAL_HAND_SIZE, sanma).hand
     handRef.current = hand
     return { hand: handToTiles(hand), ...carry }
   }
@@ -102,7 +101,7 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean) {
   useEffect(() => {
     setState((s) => nextHand(s))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [situation, handIndex])
+  }, [situation, handIndex, sanma])
 
   useEffect(() => {
     if (!state.running || !timerEnabled) return
@@ -143,12 +142,21 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean) {
       const actual = computeBreakdown(handRef.current)
       const correct = guess === actual.value
       const elapsed = elapsedNow()
-      // logged here rather than from a page effect, so entries stay in play order
-      const paths = actual.paths.join(' / ')
-      const via = paths === 'standard' ? '' : ` (via ${paths})`
-      const time = timerEnabled ? ` in ${formatElapsedMs(elapsed)}` : ''
+      // logged here rather than from a page effect, so entries stay in play order. Raw paths/
+      // correct/timerEnabled/elapsed go through as params (not formatted text) so a later
+      // language switch re-translates the line instead of leaving stale fragments — see
+      // formatLogEntry's special case for this key.
       log(
-        `Hand ${totalCount + 1}: guessed ${guess}, actual ${actual.value}${via} — ${correct ? 'correct' : 'wrong'}${time}`,
+        'log.shanten.result',
+        {
+          hand: totalCount + 1,
+          guess,
+          actual: actual.value,
+          paths: actual.paths,
+          correct,
+          timerEnabled,
+          elapsedMs: elapsed,
+        },
         state.hand,
         serializeTenhou(state.hand),
       )

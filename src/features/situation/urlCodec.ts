@@ -19,9 +19,11 @@ export interface Situation {
   opponents?: boolean
   deadWall?: boolean
   aka?: boolean
+  /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
+  sanma?: boolean
 }
 
-const FLAGS = ['opponents', 'deadWall', 'aka'] as const
+const FLAGS = ['opponents', 'deadWall', 'aka', 'sanma'] as const
 
 export function emptySituation(): Situation {
   return {

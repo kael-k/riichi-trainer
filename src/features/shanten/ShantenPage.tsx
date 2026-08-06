@@ -1,9 +1,12 @@
+import type { TFunction } from 'i18next'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { SettingRow, TrainerLayout } from '../../components/TrainerLayout'
+import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
 import { RevealTimer } from './RevealTimer'
@@ -11,21 +14,21 @@ import { useShantenRound, type ShantenBreakdown } from './useShantenRound'
 
 const QUICK_GUESSES = [0, 1, 2, 3, 4, 5, 6]
 
-function pathsLabel(breakdown: ShantenBreakdown): string | null {
+function pathsLabel(breakdown: ShantenBreakdown, t: TFunction): string | null {
   if (breakdown.paths.length === 1 && breakdown.paths[0] === 'standard') return null
-  return `via ${breakdown.paths.join(' / ')}`
+  return t('shanten.via', { paths: breakdown.paths.map((p) => t(`shanten.path.${p}`)).join(' / ') })
 }
 
 export function ShantenPage() {
+  const { t } = useTranslation()
   const [params] = useSearchParams()
   const situation = useMemo(() => decodeSituation(params), [params])
   const settings = useSettings((s) => s.shanten)
   const update = useSettings((s) => s.update)
-  const showTileNumbers = useSettings((s) => s.showTileNumbers)
-  const setShowTileNumbers = useSettings((s) => s.setShowTileNumbers)
+  const sanma = useSettings((s) => s.sanma)
   const [guessInput, setGuessInput] = useState('')
 
-  const round = useShantenRound(situation, settings.timerEnabled)
+  const round = useShantenRound(situation, settings.timerEnabled, situation.sanma ?? sanma)
 
   useEffect(() => setGuessInput(''), [round.hand])
 
@@ -52,22 +55,14 @@ export function ShantenPage() {
 
   return (
     <TrainerLayout
-      title="Shanten trainer"
+      title={t('trainer.shanten.title')}
       settings={
         <>
-          <SettingRow label="Timer">
+          <SettingRow label={t('shanten.settings.timer')}>
             <input
               type="checkbox"
               checked={settings.timerEnabled}
               onChange={(e) => update('shanten', { timerEnabled: e.target.checked })}
-              className="size-5"
-            />
-          </SettingRow>
-          <SettingRow label="Numbers on tiles">
-            <input
-              type="checkbox"
-              checked={showTileNumbers}
-              onChange={(e) => setShowTileNumbers(e.target.checked)}
               className="size-5"
             />
           </SettingRow>
@@ -76,10 +71,12 @@ export function ShantenPage() {
     >
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between text-sm text-neutral-500">
-          <span>Hand {round.totalCount + 1}</span>
+          <span>{t('shanten.handNumber', { count: round.totalCount + 1 })}</span>
           <span>
-            Correct: {round.correctCount} / {round.totalCount}
-            {settings.timerEnabled && <> · avg {formatElapsedMs(round.averageTime)}</>}
+            {t('shanten.correctScore', { correct: round.correctCount, total: round.totalCount })}
+            {settings.timerEnabled && (
+              <> {t('shanten.avgTime', { time: formatElapsedMs(round.averageTime) })}</>
+            )}
           </span>
         </div>
 
@@ -108,14 +105,14 @@ export function ShantenPage() {
                 autoFocus
                 value={guessInput}
                 onChange={(e) => setGuessInput(e.target.value)}
-                placeholder="shanten?"
+                placeholder={t('shanten.placeholder')}
                 className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
               />
               <button
                 type="submit"
                 className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
               >
-                Submit
+                {t('common.submit')}
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -140,17 +137,19 @@ export function ShantenPage() {
             >
               {round.lastResult.correct ? (
                 <>
-                  <CheckCircle2 className="size-4" /> Correct
+                  <CheckCircle2 className="size-4" /> {t('shanten.correctLabel')}
                 </>
               ) : (
                 <>
-                  <XCircle className="size-4" /> You said {round.lastResult.guess}
+                  <XCircle className="size-4" />{' '}
+                  {t('shanten.youSaid', { guess: round.lastResult.guess })}
                 </>
               )}
             </p>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Previous hand — actual shanten: {round.lastResult.actual.value}
-              {pathsLabel(round.lastResult.actual) && ` (${pathsLabel(round.lastResult.actual)})`}
+              {t('shanten.previousHand', { value: round.lastResult.actual.value })}
+              {pathsLabel(round.lastResult.actual, t) &&
+                ` ${pathsLabel(round.lastResult.actual, t)}`}
             </p>
             <div className="[--tile-w:calc(var(--tile-w-base)*0.55)]">
               <HandDisplay tiles={round.lastResult.hand} />

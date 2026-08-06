@@ -9,7 +9,7 @@ describe('useShantenRound', () => {
   it('deals a concealed 13-tile hand', () => {
     const situation = emptySituation()
     situation.seed = 'shanten-seed'
-    const { result } = renderHook(() => useShantenRound(situation, true))
+    const { result } = renderHook(() => useShantenRound(situation, true, false))
     expect(result.current.hand).toHaveLength(13)
     expect(result.current.concealed).toBe(true)
     expect(result.current.running).toBe(false)
@@ -18,7 +18,7 @@ describe('useShantenRound', () => {
   it('reveal shows the hand; stop re-conceals, resets the timer and deals a new hand', () => {
     const situation = emptySituation()
     situation.seed = 'stop-seed'
-    const { result } = renderHook(() => useShantenRound(situation, true))
+    const { result } = renderHook(() => useShantenRound(situation, true, false))
     act(() => result.current.reveal())
     expect(result.current.running).toBe(true)
     expect(result.current.concealed).toBe(false)
@@ -36,7 +36,7 @@ describe('useShantenRound', () => {
     const situation = emptySituation()
     // seven distinct pairs: tenpai (0-shanten) via chiitoitsu, worse via standard
     situation.hand = parseTenhou('1122334455667m')
-    const { result } = renderHook(() => useShantenRound(situation, true))
+    const { result } = renderHook(() => useShantenRound(situation, true, false))
 
     act(() => result.current.reveal())
     act(() => result.current.submit(0))
@@ -52,14 +52,14 @@ describe('useShantenRound', () => {
   it('preserves a red five pinned in the situation hand', () => {
     const situation = emptySituation()
     situation.hand = parseTenhou('123456789m0p112z') // 13 tiles incl. red 5p
-    const { result } = renderHook(() => useShantenRound(situation, true))
+    const { result } = renderHook(() => useShantenRound(situation, true, false))
     expect(result.current.hand).toContainEqual({ id: 13, red: true })
   })
 
   it('rolls straight into the next hand, still revealed and timing', () => {
     const situation = emptySituation()
     situation.seed = 'stream-seed'
-    const { result } = renderHook(() => useShantenRound(situation, true))
+    const { result } = renderHook(() => useShantenRound(situation, true, false))
     act(() => result.current.reveal())
     const first = result.current.hand
 
@@ -77,7 +77,7 @@ describe('useShantenRound', () => {
   it('clearing the log resets the score and the average', () => {
     const situation = emptySituation()
     situation.hand = parseTenhou('1122334455667m')
-    const { result } = renderHook(() => useShantenRound(situation, true))
+    const { result } = renderHook(() => useShantenRound(situation, true, false))
     act(() => result.current.reveal())
     act(() => result.current.submit(0))
     expect(result.current.correctCount).toBe(1)
@@ -87,5 +87,12 @@ describe('useShantenRound', () => {
     expect(result.current.correctCount).toBe(0)
     expect(result.current.totalCount).toBe(0)
     expect(result.current.averageTime).toBe(0)
+  })
+
+  it('deals sanma hands without 2m-8m', () => {
+    const situation = emptySituation()
+    situation.seed = 'shanten-sanma-seed'
+    const { result } = renderHook(() => useShantenRound(situation, true, true))
+    expect(result.current.hand.some((t) => t.id >= 1 && t.id <= 7)).toBe(false)
   })
 })

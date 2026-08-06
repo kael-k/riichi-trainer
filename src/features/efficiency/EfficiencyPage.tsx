@@ -1,21 +1,23 @@
 import { Check, Link as LinkIcon, Pause, Play } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { SettingRow, TrainerLayout } from '../../components/TrainerLayout'
+import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, River, Tile } from '../../components/tiles/Tile'
 import { formatElapsed } from '../../lib/formatElapsed'
+import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation, WINDS } from '../situation/urlCodec'
 import { DiscardFeedback } from './DiscardFeedback'
-import { useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
+import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
 
 export function EfficiencyPage() {
+  const { t } = useTranslation()
   const [params] = useSearchParams()
   const situation = useMemo(() => decodeSituation(params), [params])
   const settings = useSettings((s) => s.efficiency)
   const update = useSettings((s) => s.update)
-  const showTileNumbers = useSettings((s) => s.showTileNumbers)
-  const setShowTileNumbers = useSettings((s) => s.setShowTileNumbers)
+  const sanma = useSettings((s) => s.sanma)
   const [copied, setCopied] = useState(false)
 
   // situation overrides pin round behavior so shared links reproduce exactly
@@ -24,8 +26,9 @@ export function EfficiencyPage() {
       opponents: situation.opponents ?? settings.opponents,
       deadWall: situation.deadWall ?? settings.deadWall,
       aka: situation.aka ?? settings.aka,
+      sanma: situation.sanma ?? sanma,
     }),
-    [situation, settings.opponents, settings.deadWall, settings.aka],
+    [situation, settings.opponents, settings.deadWall, settings.aka, sanma],
   )
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
@@ -39,8 +42,8 @@ export function EfficiencyPage() {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  const toggle = (key: keyof typeof settings, label: string) => (
-    <SettingRow label={label}>
+  const toggle = (key: keyof typeof settings, labelKey: string) => (
+    <SettingRow label={t(labelKey)}>
       <input
         type="checkbox"
         checked={settings[key]}
@@ -52,38 +55,30 @@ export function EfficiencyPage() {
 
   return (
     <TrainerLayout
-      title="Efficiency trainer"
+      title={t('trainer.efficiency.title')}
       settings={
         <>
-          {toggle('showShanten', 'Show shanten')}
-          {toggle('timerEnabled', 'Timer')}
-          {toggle('showUkeire', 'Show ukeire tiles')}
-          {toggle('opponents', 'Opponents (tsumogiri)')}
-          {toggle('deadWall', 'Dead wall & dora')}
-          {toggle('aka', 'Red fives')}
-          {toggle('showWall', 'Show wall')}
-          <SettingRow label="Numbers on tiles">
-            <input
-              type="checkbox"
-              checked={showTileNumbers}
-              onChange={(e) => setShowTileNumbers(e.target.checked)}
-              className="size-5"
-            />
-          </SettingRow>
+          {toggle('showShanten', 'efficiency.settings.showShanten')}
+          {toggle('timerEnabled', 'efficiency.settings.timer')}
+          {toggle('showUkeire', 'efficiency.settings.showUkeire')}
+          {toggle('opponents', 'efficiency.settings.opponents')}
+          {toggle('deadWall', 'efficiency.settings.deadWall')}
+          {toggle('aka', 'efficiency.settings.redFives')}
+          {toggle('showWall', 'efficiency.settings.showWall')}
         </>
       }
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
           <span>
-            {situation.round} round · turn {round.turn}
+            {t('efficiency.roundStatus', { round: t(`wind.${situation.round}`), turn: round.turn })}
           </span>
           {settings.timerEnabled && (
             <span className="flex items-center gap-1">
               <span className="font-mono tabular-nums">{formatElapsed(round.elapsed)}</span>
               <button
                 type="button"
-                aria-label={round.paused ? 'Resume timer' : 'Pause timer'}
+                aria-label={t(round.paused ? 'efficiency.resumeTimer' : 'efficiency.pauseTimer')}
                 onClick={round.togglePause}
                 className="flex size-6 items-center justify-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
               >
@@ -91,13 +86,16 @@ export function EfficiencyPage() {
               </button>
             </span>
           )}
-          <span>Wall: {round.wallRemaining} tiles</span>
+          <span>{t('efficiency.wallStatus', { count: round.wallRemaining })}</span>
           {round.doraIndicator && (
             <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-              Dora indicator <Tile id={round.doraIndicator.id} red={round.doraIndicator.red} />
+              {t('efficiency.doraIndicator')}{' '}
+              <Tile id={round.doraIndicator.id} red={round.doraIndicator.red} />
             </span>
           )}
-          <span className="ml-auto">Ukeire lost: {round.cumulativeLost}</span>
+          <span className="ml-auto">
+            {t('efficiency.ukeireLost', { count: round.cumulativeLost })}
+          </span>
         </div>
 
         <HandDisplay
@@ -106,26 +104,39 @@ export function EfficiencyPage() {
           onTileClick={round.finished ? undefined : (i) => round.discard(i)}
         />
 
+        {options.sanma && !round.finished && round.hand.some((tile) => tile.id === NORTH) && (
+          <button
+            type="button"
+            onClick={round.kita}
+            className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+          >
+            {t('efficiency.kitaButton')}
+          </button>
+        )}
+
         {round.lastResult && (
           <DiscardFeedback
             result={round.lastResult}
             showShanten={settings.showShanten}
             showUkeire={settings.showUkeire}
+            sanma={options.sanma}
           />
         )}
 
         {round.finished && (
           <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
-            <p className="font-semibold">{round.tenpai ? 'Tenpai reached' : 'Round complete'}</p>
+            <p className="font-semibold">
+              {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
+            </p>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Total ukeire lost across {round.turn} turns: {round.cumulativeLost}
+              {t('efficiency.totalLost', { turns: round.turn, lost: round.cumulativeLost })}
             </p>
             <button
               type="button"
               onClick={round.restart}
               className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
             >
-              New round
+              {t('common.newRound')}
             </button>
           </div>
         )}
@@ -135,27 +146,33 @@ export function EfficiencyPage() {
             seat === round.seatIndex || options.opponents ? (
               <div key={seat} className="flex flex-col gap-1">
                 <span className="text-xs text-neutral-500">
-                  {WINDS[seat]}
-                  {seat === round.seatIndex && ' (you)'}
+                  {t(`wind.${WINDS[seat]}`)}
+                  {seat === round.seatIndex && ` ${t('efficiency.you')}`}
                 </span>
                 {river.length > 0 ? (
                   <River tiles={river} />
                 ) : (
-                  <span className="text-xs text-neutral-400">—</span>
+                  <span className="text-xs text-neutral-400">{t('efficiency.emptyRiver')}</span>
                 )}
               </div>
             ) : null,
+          )}
+          {options.sanma && round.nuki.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-neutral-500">{t('efficiency.nukiPile')}</span>
+              <River tiles={round.nuki} />
+            </div>
           )}
         </div>
 
         {settings.showWall && (
           <details className="text-sm text-neutral-500">
             <summary className="cursor-pointer">
-              Wall ({round.wallRemaining} tiles, draw order)
+              {t('efficiency.wallDetails', { count: round.wallRemaining })}
             </summary>
             <div className="mt-2 flex flex-wrap [--tile-w:calc(var(--tile-w-base)*0.55)]">
-              {round.liveWall.map((t, i) => (
-                <Tile key={i} id={t.id} red={t.red} />
+              {round.liveWall.map((tile, i) => (
+                <Tile key={i} id={tile.id} red={tile.red} />
               ))}
             </div>
           </details>
@@ -167,7 +184,7 @@ export function EfficiencyPage() {
           className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
         >
           {copied ? <Check className="size-4" /> : <LinkIcon className="size-4" />}
-          {copied ? 'Copied' : 'Copy situation link'}
+          {copied ? t('common.copied') : t('efficiency.copySituationLink')}
         </button>
       </div>
     </TrainerLayout>

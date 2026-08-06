@@ -1,0 +1,120 @@
+{
+  "common": {
+    "back": "Back to menu",
+    "close": "Close",
+    "clear": "Clear",
+    "noActions": "No actions yet.",
+    "copyHand": "Copy hand in tenhou format",
+    "copied": "Copied",
+    "faceDownTile": "face-down tile",
+    "log": "Log ({{count}})",
+    "newRound": "New round",
+    "submit": "Submit"
+  },
+  "settings": {
+    "button": "Settings",
+    "title": "{{title}} settings",
+    "titleFallback": "Settings",
+    "global": "Global",
+    "theme": "Theme",
+    "themeSystem": "System theme",
+    "themeLight": "Light theme",
+    "themeDark": "Dark theme",
+    "tileSize": "Tile size",
+    "ruleset": "Ruleset",
+    "yonma": "Yonma",
+    "sanma": "Sanma",
+    "numbersOnTiles": "Numbers on tiles",
+    "language": "Language",
+    "languageAuto": "Auto (browser)"
+  },
+  "wind": { "E": "E", "S": "S", "W": "W", "N": "N" },
+  "home": {
+    "title": "Riichi Trainer",
+    "releaseVersion": "release version: {{sha}}",
+    "scoringTitle": "Scoring trainer",
+    "scoringDesc": "Han/fu scoring drills — coming later."
+  },
+  "trainer": {
+    "efficiency": {
+      "title": "Efficiency trainer",
+      "desc": "Pick the best discard; see the tiles that improve your hand."
+    },
+    "shanten": {
+      "title": "Shanten trainer",
+      "desc": "Guess how far a hand is from tenpai, against the clock."
+    }
+  },
+  "efficiency": {
+    "settings": {
+      "showShanten": "Show shanten",
+      "timer": "Timer",
+      "showUkeire": "Show ukeire tiles",
+      "opponents": "Opponents (tsumogiri)",
+      "deadWall": "Dead wall & dora",
+      "redFives": "Red fives",
+      "showWall": "Show wall"
+    },
+    "roundStatus": "{{round}} round · turn {{turn}}",
+    "resumeTimer": "Resume timer",
+    "pauseTimer": "Pause timer",
+    "wallStatus_one": "Wall: {{count}} tile",
+    "wallStatus_other": "Wall: {{count}} tiles",
+    "doraIndicator": "Dora indicator",
+    "ukeireLost": "Ukeire lost: {{count}}",
+    "tenpaiReached": "Tenpai reached",
+    "roundComplete": "Round complete",
+    "totalLost_one": "Total ukeire lost across {{turns}} turn: {{lost}}",
+    "totalLost_other": "Total ukeire lost across {{turns}} turns: {{lost}}",
+    "you": "(you)",
+    "emptyRiver": "—",
+    "wallDetails_one": "Wall ({{count}} tile, draw order)",
+    "wallDetails_other": "Wall ({{count}} tiles, draw order)",
+    "copySituationLink": "Copy situation link",
+    "kitaButton": "Kita",
+    "nukiPile": "Nuki"
+  },
+  "discardFeedback": {
+    "yourDiscard": "Your discard",
+    "yourKita": "Your kita",
+    "bestDiscard": "Best discard",
+    "bestKita": "Kita",
+    "shantenLine": "shanten {{count}}",
+    "tilesSuffix_one": "· {{count}} tile",
+    "tilesSuffix_other": "· {{count}} tiles",
+    "shantenWorse": "This discard is {{count}} shanten worse.",
+    "fewerTiles_one": "{{count}} fewer tile improves your hand this way.",
+    "fewerTiles_other": "{{count}} fewer tiles improve your hand this way."
+  },
+  "shanten": {
+    "settings": { "timer": "Timer" },
+    "handNumber": "Hand {{count}}",
+    "correctScore": "Correct: {{correct}} / {{total}}",
+    "avgTime": "· avg {{time}}",
+    "placeholder": "shanten?",
+    "correctLabel": "Correct",
+    "correct": "correct",
+    "wrong": "wrong",
+    "youSaid": "You said {{guess}}",
+    "previousHand": "Previous hand — actual shanten: {{value}}",
+    "via": "(via {{paths}})",
+    "inTime": "in {{time}}",
+    "stopHand": "Stop and deal a new hand",
+    "revealHand": "Reveal hand",
+    "path": { "standard": "standard", "chiitoitsu": "chiitoitsu", "kokushi": "kokushi" }
+  },
+  "log": {
+    "efficiency": {
+      "discardBest": "Turn {{turn}}: discarded {{tile}} — best choice (ukeire {{ukeire}})",
+      "discardBestDrew": "Turn {{turn}}: drew {{drawn}}, discarded {{tile}} — best choice (ukeire {{ukeire}})",
+      "discardMistake": "Turn {{turn}}: discarded {{tile}} (ukeire {{yours}}); best was {{best}} (ukeire {{bestUkeire}})",
+      "discardMistakeDrew": "Turn {{turn}}: drew {{drawn}}, discarded {{tile}} (ukeire {{yours}}); best was {{best}} (ukeire {{bestUkeire}})",
+      "tenpai": "Tenpai on turn {{turn}} — waiting on",
+      "kitaBest": "Turn {{turn}}: pulled north (nuki) — best choice (ukeire {{ukeire}})",
+      "kitaMistake": "Turn {{turn}}: pulled north (nuki) (ukeire {{yours}}); best was {{best}} (ukeire {{bestUkeire}})"
+    },
+    "shanten": {
+      "result": "Hand {{hand}}: guessed {{guess}}, actual {{actual}}{{via}} — {{result}}{{time}}"
+    }
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "common": {
+    "back": "Torna al menu",
+    "close": "Chiudi",
+    "clear": "Cancella",
+    "noActions": "Nessuna azione ancora.",
+    "copyHand": "Copia la mano in formato tenhou",
+    "copied": "Copiato",
+    "faceDownTile": "tessera coperta",
+    "log": "Registro ({{count}})",
+    "newRound": "Nuova mano",
+    "submit": "Conferma"
+  },
+  "settings": {
+    "button": "Impostazioni",
+    "title": "Impostazioni — {{title}}",
+    "titleFallback": "Impostazioni",
+    "global": "Generali",
+    "theme": "Tema",
+    "themeSystem": "Tema di sistema",
+    "themeLight": "Tema chiaro",
+    "themeDark": "Tema scuro",
+    "tileSize": "Dimensione tessere",
+    "ruleset": "Regolamento",
+    "yonma": "Yonma",
+    "sanma": "Sanma",
+    "numbersOnTiles": "Numeri sulle tessere",
+    "language": "Lingua",
+    "languageAuto": "Automatica (browser)"
+  },
+  "wind": { "E": "E", "S": "S", "W": "O", "N": "N" },
+  "home": {
+    "title": "Riichi Trainer",
+    "releaseVersion": "versione: {{sha}}",
+    "scoringTitle": "Allenamento punteggio",
+    "scoringDesc": "Esercizi su han e fu — in arrivo."
+  },
+  "trainer": {
+    "efficiency": {
+      "title": "Allenamento efficienza",
+      "desc": "Scegli lo scarto migliore; guarda le tessere che migliorano la mano."
+    },
+    "shanten": {
+      "title": "Allenamento shanten",
+      "desc": "Indovina a quanto shanten sei dal tenpai, contro il tempo."
+    }
+  },
+  "efficiency": {
+    "settings": {
+      "showShanten": "Mostra shanten",
+      "timer": "Timer",
+      "showUkeire": "Mostra tessere di ukeire",
+      "opponents": "Avversari (tsumogiri)",
+      "deadWall": "Muro morto e dora",
+      "redFives": "Cinque rossi",
+      "showWall": "Mostra il muro"
+    },
+    "roundStatus": "vento {{round}} · turno {{turn}}",
+    "resumeTimer": "Riprendi il timer",
+    "pauseTimer": "Metti in pausa il timer",
+    "wallStatus_one": "Muro: {{count}} tessera",
+    "wallStatus_other": "Muro: {{count}} tessere",
+    "doraIndicator": "Indicatore dora",
+    "ukeireLost": "Ukeire perso: {{count}}",
+    "tenpaiReached": "Tenpai raggiunto",
+    "roundComplete": "Mano conclusa",
+    "totalLost_one": "Ukeire perso in {{turns}} turno: {{lost}}",
+    "totalLost_other": "Ukeire perso in {{turns}} turni: {{lost}}",
+    "you": "(tu)",
+    "emptyRiver": "—",
+    "wallDetails_one": "Muro ({{count}} tessera, ordine di pescata)",
+    "wallDetails_other": "Muro ({{count}} tessere, ordine di pescata)",
+    "copySituationLink": "Copia link della situazione",
+    "kitaButton": "Kita",
+    "nukiPile": "Nuki"
+  },
+  "discardFeedback": {
+    "yourDiscard": "Il tuo scarto",
+    "yourKita": "Il tuo kita",
+    "bestDiscard": "Scarto migliore",
+    "bestKita": "Kita",
+    "shantenLine": "shanten {{count}}",
+    "tilesSuffix_one": "· {{count}} tessera",
+    "tilesSuffix_other": "· {{count}} tessere",
+    "shantenWorse": "Questo scarto è peggiore di {{count}} shanten.",
+    "fewerTiles_one": "Con questo scarto hai {{count}} tessera di ukeire in meno.",
+    "fewerTiles_other": "Con questo scarto hai {{count}} tessere di ukeire in meno."
+  },
+  "shanten": {
+    "settings": { "timer": "Timer" },
+    "handNumber": "Mano {{count}}",
+    "correctScore": "Corrette: {{correct}} / {{total}}",
+    "avgTime": "· media {{time}}",
+    "placeholder": "shanten?",
+    "correctLabel": "Corretto",
+    "correct": "corretto",
+    "wrong": "sbagliato",
+    "youSaid": "Hai risposto {{guess}}",
+    "previousHand": "Mano precedente — shanten reale: {{value}}",
+    "via": "(via {{paths}})",
+    "inTime": "in {{time}}",
+    "stopHand": "Interrompi e passa a una nuova mano",
+    "revealHand": "Rivela la mano",
+    "path": { "standard": "standard", "chiitoitsu": "chiitoitsu", "kokushi": "kokushi" }
+  },
+  "log": {
+    "efficiency": {
+      "discardBest": "Turno {{turn}}: scartato {{tile}} — scelta migliore (ukeire {{ukeire}})",
+      "discardBestDrew": "Turno {{turn}}: pescato {{drawn}}, scartato {{tile}} — scelta migliore (ukeire {{ukeire}})",
+      "discardMistake": "Turno {{turn}}: scartato {{tile}} (ukeire {{yours}}); il migliore era {{best}} (ukeire {{bestUkeire}})",
+      "discardMistakeDrew": "Turno {{turn}}: pescato {{drawn}}, scartato {{tile}} (ukeire {{yours}}); il migliore era {{best}} (ukeire {{bestUkeire}})",
+      "tenpai": "Tenpai al turno {{turn}} — in attesa di",
+      "kitaBest": "Turno {{turn}}: tirato fuori il nord (nuki) — scelta migliore (ukeire {{ukeire}})",
+      "kitaMistake": "Turno {{turn}}: tirato fuori il nord (nuki) (ukeire {{yours}}); il migliore era {{best}} (ukeire {{bestUkeire}})"
+    },
+    "shanten": {
+      "result": "Mano {{hand}}: risposto {{guess}}, reale {{actual}}{{via}} — {{result}}{{time}}"
+    }
+  }
+}

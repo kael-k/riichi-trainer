@@ -1,0 +1,115 @@
+{
+  "common": {
+    "back": "メニューに戻る",
+    "close": "閉じる",
+    "clear": "クリア",
+    "noActions": "まだ操作はありません。",
+    "copyHand": "天鳳形式でコピー",
+    "copied": "コピーしました",
+    "faceDownTile": "裏向きの牌",
+    "log": "ログ ({{count}})",
+    "newRound": "次の局へ",
+    "submit": "決定"
+  },
+  "settings": {
+    "button": "設定",
+    "title": "{{title}}の設定",
+    "titleFallback": "設定",
+    "global": "共通設定",
+    "theme": "テーマ",
+    "themeSystem": "システムに合わせる",
+    "themeLight": "ライトモード",
+    "themeDark": "ダークモード",
+    "tileSize": "牌のサイズ",
+    "ruleset": "ルール",
+    "yonma": "四人麻雀",
+    "sanma": "三人麻雀",
+    "numbersOnTiles": "牌に数字を表示",
+    "language": "言語",
+    "languageAuto": "自動(ブラウザ設定)"
+  },
+  "wind": { "E": "東", "S": "南", "W": "西", "N": "北" },
+  "home": {
+    "title": "リーチトレーナー",
+    "releaseVersion": "リリースバージョン: {{sha}}",
+    "scoringTitle": "点数計算トレーナー",
+    "scoringDesc": "符・翻の計算練習 — 近日公開。"
+  },
+  "trainer": {
+    "efficiency": {
+      "title": "牌効率トレーナー",
+      "desc": "最善の打牌を選び、手牌をよくする牌を確認しよう。"
+    },
+    "shanten": {
+      "title": "シャンテン数トレーナー",
+      "desc": "時間内に手牌のシャンテン数を当てよう。"
+    }
+  },
+  "efficiency": {
+    "settings": {
+      "showShanten": "シャンテン数を表示",
+      "timer": "タイマー",
+      "showUkeire": "受け入れ牌を表示",
+      "opponents": "他家(ツモ切り)",
+      "deadWall": "王牌とドラ",
+      "redFives": "赤ドラ",
+      "showWall": "山を表示"
+    },
+    "roundStatus": "{{round}}場・{{turn}}巡目",
+    "resumeTimer": "タイマーを再開",
+    "pauseTimer": "タイマーを一時停止",
+    "wallStatus_other": "山: 残り{{count}}枚",
+    "doraIndicator": "ドラ表示牌",
+    "ukeireLost": "失った受け入れ: {{count}}",
+    "tenpaiReached": "テンパイ達成",
+    "roundComplete": "局終了",
+    "totalLost_other": "{{turns}}巡で失った受け入れの合計: {{lost}}",
+    "you": "(自分)",
+    "emptyRiver": "—",
+    "wallDetails_other": "山(残り{{count}}枚、ツモ順)",
+    "copySituationLink": "局面リンクをコピー",
+    "kitaButton": "北抜き",
+    "nukiPile": "抜き北"
+  },
+  "discardFeedback": {
+    "yourDiscard": "あなたの打牌",
+    "yourKita": "あなたの北抜き",
+    "bestDiscard": "最善の打牌",
+    "bestKita": "北抜き",
+    "shantenLine": "シャンテン {{count}}",
+    "tilesSuffix_other": "・{{count}}種",
+    "shantenWorse": "この打牌はシャンテン数が{{count}}悪化します。",
+    "fewerTiles_other": "この打牌では受け入れが{{count}}種少なくなります。"
+  },
+  "shanten": {
+    "settings": { "timer": "タイマー" },
+    "handNumber": "{{count}}問目",
+    "correctScore": "正解数: {{correct}} / {{total}}",
+    "avgTime": "・平均 {{time}}",
+    "placeholder": "シャンテン数?",
+    "correctLabel": "正解",
+    "correct": "正解",
+    "wrong": "不正解",
+    "youSaid": "あなたの回答: {{guess}}",
+    "previousHand": "前の手牌 — 正しいシャンテン数: {{value}}",
+    "via": "({{paths}})",
+    "inTime": "{{time}}",
+    "stopHand": "中断して次の手牌へ",
+    "revealHand": "手牌を表示",
+    "path": { "standard": "通常形", "chiitoitsu": "七対子", "kokushi": "国士無双" }
+  },
+  "log": {
+    "efficiency": {
+      "discardBest": "{{turn}}巡目: {{tile}}を切った — 最善の選択 (受け入れ{{ukeire}})",
+      "discardBestDrew": "{{turn}}巡目: {{drawn}}をツモり、{{tile}}を切った — 最善の選択 (受け入れ{{ukeire}})",
+      "discardMistake": "{{turn}}巡目: {{tile}}を切った (受け入れ{{yours}}); 最善は{{best}} (受け入れ{{bestUkeire}})",
+      "discardMistakeDrew": "{{turn}}巡目: {{drawn}}をツモり、{{tile}}を切った (受け入れ{{yours}}); 最善は{{best}} (受け入れ{{bestUkeire}})",
+      "tenpai": "{{turn}}巡目でテンパイ — 待ち",
+      "kitaBest": "{{turn}}巡目: 北を抜いた — 最善の選択 (受け入れ{{ukeire}})",
+      "kitaMistake": "{{turn}}巡目: 北を抜いた (受け入れ{{yours}}); 最善は{{best}} (受け入れ{{bestUkeire}})"
+    },
+    "shanten": {
+      "result": "{{hand}}問目: 回答{{guess}}、正解{{actual}}{{via}} — {{result}}{{time}}"
+    }
+  }
+}

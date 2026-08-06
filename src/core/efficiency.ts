@@ -14,12 +14,12 @@ export interface DiscardOption {
  * Evaluates every distinct discard from a 14-tile hand, ranked best first
  * (lowest resulting shanten, then highest ukeire count).
  */
-export function evaluateDiscards(hand: Hand, visible?: Uint8Array): DiscardOption[] {
+export function evaluateDiscards(hand: Hand, visible?: Uint8Array, sanma = false): DiscardOption[] {
   const options: DiscardOption[] = []
   for (let id = 0; id < NUM_TILE_TYPES; id++) {
     if (hand.counts[id] === 0) continue
     removeTile(hand, id)
-    const tiles = ukeire(hand, visible)
+    const tiles = ukeire(hand, visible, sanma)
     options.push({
       discard: id,
       shanten: shanten(hand),

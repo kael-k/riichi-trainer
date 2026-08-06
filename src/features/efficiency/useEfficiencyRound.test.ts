@@ -2,10 +2,10 @@ import { renderHook, act } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { parseTenhou } from '../../core/tiles'
 import { decodeSituation, emptySituation } from '../situation/urlCodec'
-import { useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
+import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
 
-/** Bare-table options: no opponents, no dead wall, no aka — fully deterministic. */
-const BARE: RoundOptions = { opponents: false, deadWall: false, aka: false }
+/** Bare-table options: no opponents, no dead wall, no aka, no sanma — fully deterministic. */
+const BARE: RoundOptions = { opponents: false, deadWall: false, aka: false, sanma: false }
 
 describe('useEfficiencyRound', () => {
   it('deals 13 tiles plus a separated drawn tile and evaluates discards', () => {
@@ -168,7 +168,7 @@ describe('useEfficiencyRound', () => {
   it('situationQuery round-trips the exact round state', () => {
     const situation = emptySituation()
     situation.seed = 'dump-seed'
-    const opts: RoundOptions = { opponents: true, deadWall: true, aka: true }
+    const opts: RoundOptions = { opponents: true, deadWall: true, aka: true, sanma: false }
     const a = renderHook(() => useEfficiencyRound(situation, opts, true))
     act(() => a.result.current.discard(0))
     act(() => a.result.current.discard(3))
@@ -181,6 +181,7 @@ describe('useEfficiencyRound', () => {
           opponents: decoded.opponents ?? false,
           deadWall: decoded.deadWall ?? false,
           aka: decoded.aka ?? false,
+          sanma: decoded.sanma ?? false,
         },
         true,
       ),
@@ -192,5 +193,115 @@ describe('useEfficiencyRound', () => {
     expect(b.result.current.rivers).toEqual(a.result.current.rivers)
     expect(b.result.current.wallRemaining).toBe(a.result.current.wallRemaining)
     expect(b.result.current.doraIndicator).toEqual(a.result.current.doraIndicator)
+  })
+
+  it('sanma: never deals 2m-8m, and aka seeds only two red fives (no 5m)', () => {
+    const situation = emptySituation()
+    situation.seed = 'sanma-tileset-seed'
+    const { result } = renderHook(() =>
+      useEfficiencyRound(situation, { ...BARE, sanma: true, aka: true }, true),
+    )
+    const everywhere = [
+      ...result.current.hand,
+      ...(result.current.drawn ? [result.current.drawn] : []),
+      ...result.current.liveWall,
+    ]
+    expect(everywhere.some((t) => t.id >= 1 && t.id <= 7)).toBe(false) // 2m-8m
+    const reds = everywhere.filter((t) => t.red)
+    expect(reds).toHaveLength(2)
+    expect(reds.some((t) => t.id === 4)).toBe(false) // no red 5m
+  })
+
+  it('sanma: 3 rivers, wall drains 3 tiles per turn, only 2 hidden opponent hands reserved', () => {
+    const situation = emptySituation()
+    situation.seed = 'sanma-opp-seed'
+    situation.hand = parseTenhou('123456789p1122z')
+    const { result } = renderHook(() =>
+      useEfficiencyRound(situation, { ...BARE, sanma: true, opponents: true }, true),
+    )
+    expect(result.current.rivers).toHaveLength(3)
+    // 108 - 13 pinned - 26 hidden (2 opponents * 13) - 1 user draw
+    expect(result.current.wallRemaining).toBe(108 - 13 - 26 - 1)
+
+    act(() => result.current.discard(0))
+    expect(result.current.wallRemaining).toBe(108 - 13 - 26 - 1 - 3)
+    expect(result.current.rivers.map((r) => r.length)).toEqual([1, 1, 1])
+  })
+
+  it('sanma clamps an out-of-range seat (e.g. yonma North) instead of indexing past rivers', () => {
+    const situation = emptySituation()
+    situation.seed = 'sanma-seat-seed'
+    situation.seat = 'N'
+    const { result } = renderHook(() =>
+      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
+    )
+    expect(result.current.seatIndex).toBe(2)
+    expect(result.current.rivers).toHaveLength(3)
+  })
+
+  it('kita pulls the held north to the nuki pile and draws a replacement, keeping 14 tiles', () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456789p11224z') // includes one North (4z)
+    situation.wall = parseTenhou('5p')
+    const { result } = renderHook(() =>
+      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
+    )
+
+    expect(result.current.hand.some((t) => t.id === NORTH)).toBe(true)
+    expect(result.current.nuki).toHaveLength(0)
+
+    act(() => result.current.kita())
+
+    expect(result.current.nuki).toEqual([{ id: NORTH, red: false }])
+    expect(result.current.hand.some((t) => t.id === NORTH)).toBe(false)
+    expect(result.current.drawn).toEqual(parseTenhou('5p')[0])
+    expect(result.current.hand).toHaveLength(13) // drawn shown separately, 13+1 = 14
+    expect(result.current.turn).toBe(1) // kita doesn't advance the turn
+    expect(result.current.lastResult?.kind).toBe('kita')
+
+    act(() => result.current.kita()) // no north left — no-op
+    expect(result.current.nuki).toHaveLength(1)
+  })
+
+  it('kita is a no-op outside sanma', () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456789p11224z')
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    act(() => result.current.kita())
+    expect(result.current.nuki).toHaveLength(0)
+    expect(result.current.hand.some((t) => t.id === NORTH)).toBe(true)
+  })
+
+  it('kita on a genuinely useless drawn north ties the best discard', () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456789p123s1z') // tenpai, tanki wait on 1z
+    situation.wall = parseTenhou('4z') // draws a useless North
+    const { result } = renderHook(() =>
+      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
+    )
+
+    expect(result.current.drawn).toEqual(parseTenhou('4z')[0])
+    act(() => result.current.kita())
+    expect(result.current.lastResult?.kind).toBe('kita')
+    expect(result.current.lastResult!.yours.shanten).toBe(result.current.lastResult!.best.shanten)
+    expect(result.current.lastResult!.yours.ukeireCount).toBe(
+      result.current.lastResult!.best.ukeireCount,
+    )
+  })
+
+  it("kita pulling one of a load-bearing north pair (the hand's head) is graded a mistake", () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456789p23s44z') // tenpai on 1s/4s; the North pair is the head
+    situation.wall = parseTenhou('9s') // draws an unrelated, genuinely discardable tile
+    const { result } = renderHook(() =>
+      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
+    )
+
+    expect(result.current.drawn).toEqual(parseTenhou('9s')[0])
+    act(() => result.current.kita())
+    expect(result.current.lastResult?.kind).toBe('kita')
+    expect(result.current.lastResult!.yours.shanten).toBeGreaterThan(
+      result.current.lastResult!.best.shanten,
+    )
   })
 })

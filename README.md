@@ -16,7 +16,7 @@ Mobile-first riichi mahjong trainer: efficiency (discard/ukeire) and shanten dri
 
 ## Modes
 
-- **Efficiency trainer** (`/efficiency`) — 14-tile hand; tap a discard, get feedback: your shanten/ukeire vs. the best discard, with the actual improving tiles and their remaining counts. Draw, discard, repeat until the wall runs dry; cumulative "ukeire lost" scores the round. Optional (all on by default except the wall view): simulated opponents that tsumogiri every turn, a dead wall with visible dora indicator, red fives in the deal, and a face-up wall view. "Copy situation link" exports the current round mid-game as a URL.
+- **Efficiency trainer** (`/efficiency`) — 14-tile hand; tap a discard, get feedback: your shanten/ukeire vs. the best discard, with the actual improving tiles and their remaining counts. Draw, discard, repeat until the wall runs dry; cumulative "ukeire lost" scores the round. Optional (all on by default except the wall view): simulated opponents that tsumogiri every turn, a dead wall with visible dora indicator, red fives in the deal, and a face-up wall view. In sanma (three-player, a global setting), the wall drops 2m-8m, there are two opponents, and a "Kita" button pulls a held north out for a replacement draw — graded the same way a discard is, so a pair of norths worth keeping isn't auto-pulled. "Copy situation link" exports the current round mid-game as a URL.
 - **Shanten trainer** (`/shanten`) — hand is dealt face-down; revealing starts the timer. Guess the shanten count (Enter or quick buttons); standard, chiitoitsu and kokushi are all considered. Guessing deals the next hand immediately, keeping the previous hand's feedback alongside; stop abandons the current hand for a fresh one. Score and average time reset when the log is cleared.
 - **Scoring trainer** — han/fu scoring drills. _TODO, not implemented yet._
 - **Folding trainer** — defend against riichi. _TODO, not implemented yet._
@@ -25,14 +25,14 @@ Mobile-first riichi mahjong trainer: efficiency (discard/ukeire) and shanten dri
 
 Trainers read their whole scenario from the query string, so one URL fully reproduces a drill. Tile lists use tenhou notation: `123m406p789s11z` (`m`/`p`/`s` = man/pin/sou, `z` = honors E,S,W,N,haku,hatsu,chun as 1–7, `0` = red five).
 
-| param                          | meaning                                                                                                                                             |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `seed`                         | deterministic shuffle of the remaining tile pool; omitted = fresh random round each load                                                            |
-| `hand`                         | starting hand; the efficiency trainer fills it to 14 tiles from the wall                                                                            |
-| `wall`                         | forced draw order, consumed by whoever draws next (opponents included); when exhausted, draws fall back to the seeded pool                          |
-| `river`                        | your own discards so far, replayed from the deal to rebuild a round mid-game (replay stops early if a discard reaches tenpai, which ends the round) |
-| `round`, `seat`                | round wind (display only) and your seat — opponents seated before you tsumogiri before your first draw                                              |
-| `opponents`, `deadwall`, `aka` | `1`/`0` — pin the round rules into the link, overriding the receiver's settings so it reproduces exactly                                            |
+| param                                   | meaning                                                                                                                                             |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `seed`                                  | deterministic shuffle of the remaining tile pool; omitted = fresh random round each load                                                            |
+| `hand`                                  | starting hand; the efficiency trainer fills it to 14 tiles from the wall                                                                            |
+| `wall`                                  | forced draw order, consumed by whoever draws next (opponents included); when exhausted, draws fall back to the seeded pool                          |
+| `river`                                 | your own discards so far, replayed from the deal to rebuild a round mid-game (replay stops early if a discard reaches tenpai, which ends the round) |
+| `round`, `seat`                         | round wind (display only) and your seat — opponents seated before you tsumogiri before your first draw                                              |
+| `opponents`, `deadwall`, `aka`, `sanma` | `1`/`0` — pin the round rules into the link, overriding the receiver's settings so it reproduces exactly                                            |
 
 Opponents' rivers are never specified: opponents always tsumogiri, so their discards are fully determined by the wall. Every tile pinned in `hand`/`wall` is removed from the seeded pool, so no tile can appear more than four times (the `river` is a replay of tiles already there, not extra copies). Example:
 
@@ -40,7 +40,7 @@ Opponents' rivers are never specified: opponents always tsumogiri, so their disc
 /efficiency?hand=19m19p19s1234567z&wall=9m&seed=kokushi-drill
 ```
 
-The shanten trainer uses `hand` only when it is exactly 13 tiles; otherwise it deals fresh hands from `seed`.
+The shanten trainer uses `hand` only when it is exactly 13 tiles; otherwise it deals fresh hands from `seed` — sanma (from `sanma` or the global setting) drops 2m-8m from that deal too.
 
 ## Stack
 

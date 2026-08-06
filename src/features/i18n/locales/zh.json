@@ -1,0 +1,115 @@
+{
+  "common": {
+    "back": "返回菜单",
+    "close": "关闭",
+    "clear": "清空",
+    "noActions": "暂无操作记录。",
+    "copyHand": "以天凤格式复制",
+    "copied": "已复制",
+    "faceDownTile": "扣牌",
+    "log": "记录 ({{count}})",
+    "newRound": "下一局",
+    "submit": "提交"
+  },
+  "settings": {
+    "button": "设置",
+    "title": "{{title}}设置",
+    "titleFallback": "设置",
+    "global": "通用设置",
+    "theme": "主题",
+    "themeSystem": "跟随系统",
+    "themeLight": "浅色模式",
+    "themeDark": "深色模式",
+    "tileSize": "牌张大小",
+    "ruleset": "规则",
+    "yonma": "四人麻将",
+    "sanma": "三人麻将",
+    "numbersOnTiles": "牌面显示数字",
+    "language": "语言",
+    "languageAuto": "自动(跟随浏览器)"
+  },
+  "wind": { "E": "东", "S": "南", "W": "西", "N": "北" },
+  "home": {
+    "title": "立直训练器",
+    "releaseVersion": "版本: {{sha}}",
+    "scoringTitle": "算番训练",
+    "scoringDesc": "符数与番数计算练习 — 即将推出。"
+  },
+  "trainer": {
+    "efficiency": {
+      "title": "牌效率训练",
+      "desc": "选择最佳出牌,查看能改善手牌的进张。"
+    },
+    "shanten": {
+      "title": "上听数训练",
+      "desc": "限时猜出手牌距离听牌还差几步。"
+    }
+  },
+  "efficiency": {
+    "settings": {
+      "showShanten": "显示上听数",
+      "timer": "计时器",
+      "showUkeire": "显示进张",
+      "opponents": "其他玩家(摸切)",
+      "deadWall": "死墙与宝牌",
+      "redFives": "赤宝牌",
+      "showWall": "显示牌山"
+    },
+    "roundStatus": "{{round}}场 · 第{{turn}}巡",
+    "resumeTimer": "恢复计时",
+    "pauseTimer": "暂停计时",
+    "wallStatus_other": "牌山: 剩余{{count}}张",
+    "doraIndicator": "宝牌指示牌",
+    "ukeireLost": "损失的进张: {{count}}",
+    "tenpaiReached": "已听牌",
+    "roundComplete": "本局结束",
+    "totalLost_other": "{{turns}}巡内损失的进张合计: {{lost}}",
+    "you": "(你)",
+    "emptyRiver": "—",
+    "wallDetails_other": "牌山(剩余{{count}}张,摸牌顺序)",
+    "copySituationLink": "复制局面链接",
+    "kitaButton": "拔北",
+    "nukiPile": "已拔北"
+  },
+  "discardFeedback": {
+    "yourDiscard": "你的出牌",
+    "yourKita": "你的拔北",
+    "bestDiscard": "最佳出牌",
+    "bestKita": "拔北",
+    "shantenLine": "上听数 {{count}}",
+    "tilesSuffix_other": "· {{count}}种",
+    "shantenWorse": "这张出牌会让上听数变差{{count}}。",
+    "fewerTiles_other": "这样出牌会少{{count}}种进张。"
+  },
+  "shanten": {
+    "settings": { "timer": "计时器" },
+    "handNumber": "第{{count}}题",
+    "correctScore": "正确: {{correct}} / {{total}}",
+    "avgTime": "· 平均 {{time}}",
+    "placeholder": "上听数?",
+    "correctLabel": "正确",
+    "correct": "正确",
+    "wrong": "错误",
+    "youSaid": "你的答案: {{guess}}",
+    "previousHand": "上一手牌 — 正确上听数: {{value}}",
+    "via": "({{paths}})",
+    "inTime": "{{time}}",
+    "stopHand": "中断并换下一手牌",
+    "revealHand": "显示手牌",
+    "path": { "standard": "标准型", "chiitoitsu": "七对子", "kokushi": "国士无双" }
+  },
+  "log": {
+    "efficiency": {
+      "discardBest": "第{{turn}}巡: 打出{{tile}} — 最佳选择 (进张{{ukeire}})",
+      "discardBestDrew": "第{{turn}}巡: 摸到{{drawn}},打出{{tile}} — 最佳选择 (进张{{ukeire}})",
+      "discardMistake": "第{{turn}}巡: 打出{{tile}} (进张{{yours}}); 最佳为{{best}} (进张{{bestUkeire}})",
+      "discardMistakeDrew": "第{{turn}}巡: 摸到{{drawn}},打出{{tile}} (进张{{yours}}); 最佳为{{best}} (进张{{bestUkeire}})",
+      "tenpai": "第{{turn}}巡听牌 — 等待",
+      "kitaBest": "第{{turn}}巡: 拔出北 — 最佳选择 (进张{{ukeire}})",
+      "kitaMistake": "第{{turn}}巡: 拔出北 (进张{{yours}}); 最佳为{{best}} (进张{{bestUkeire}})"
+    },
+    "shanten": {
+      "result": "第{{hand}}题: 回答{{guess}},正确{{actual}}{{via}} — {{result}}{{time}}"
+    }
+  }
+}

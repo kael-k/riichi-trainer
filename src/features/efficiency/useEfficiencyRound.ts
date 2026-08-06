@@ -3,6 +3,7 @@ import { evaluateDiscards, isBestDiscard, type DiscardOption } from '../../core/
 import { addTile, createHand, removeTile, tileCount, type Hand } from '../../core/hand'
 import { shanten } from '../../core/shanten'
 import {
+  HONOR,
   MAN,
   NUM_TILE_TYPES,
   PIN,
@@ -15,23 +16,31 @@ import { buildWall, DEAD_WALL_SIZE, INITIAL_HAND_SIZE } from '../../core/wall'
 import { useLog } from '../../store/log'
 import { allTiles, encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
 
-// ponytail: sanma will make this 3 and shrink the tile set inside buildWall — keep
-// player count flowing from this one constant, never hardcode 4/3 below
-const PLAYERS = 4
-const RED_FIVE_IDS: TileId[] = [MAN + 4, PIN + 4, SOU + 4]
-
 /** Options that change how a round plays out; resolved from settings with
  *  per-situation overrides so shared links reproduce exactly. */
 export interface RoundOptions {
   opponents: boolean
   deadWall: boolean
   aka: boolean
+  /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
+  sanma: boolean
 }
+
+function redFiveIds(sanma: boolean): TileId[] {
+  return sanma ? [PIN + 4, SOU + 4] : [MAN + 4, PIN + 4, SOU + 4]
+}
+
+/** North — the nukidora (kita) tile in sanma. */
+export const NORTH: TileId = HONOR + 3
 
 export interface TurnResult {
   turn: number
   yours: DiscardOption
   best: DiscardOption
+  /** 'kita' when this grades a nukidora pull rather than an actual discard — the DiscardFeedback
+   *  labels differ since pulling isn't discarding, even though `yours`/`best` share the same
+   *  DiscardOption shape (north's own evaluateDiscards entry doubles as "what if I nuki"). */
+  kind: 'discard' | 'kita'
 }
 
 /** Mutable state of one round. The engine `Hand` only keeps counts, so redness is
@@ -41,16 +50,23 @@ interface RoundCore {
   reds: Set<TileId>
   /** Upcoming draws, consumed front-first by whoever draws next. */
   liveWall: ParsedTile[]
+  /** Materialized (not just a reserved count) so a kita pull can draw a replacement from its
+   *  far end and backfill from the live wall, same as a kan would. Empty when the dead wall
+   *  setting is off — a kita replacement then falls back to the live wall directly. */
+  deadWall: ParsedTile[]
   doraIndicator: ParsedTile | null
   /** Count of every face-up tile: all rivers plus the dora indicator. */
   visible: Uint8Array
   /** Discards per seat (0 = East); the user's is rivers[seatIndex]. */
   rivers: ParsedTile[][]
+  /** Norths pulled via kita, in pull order. */
+  nuki: ParsedTile[]
   seatIndex: number
   /** Tile drawn to reach the current 14-tile hand; undefined when the situation
    *  pinned all 14 (no draw happened) or the wall ran dry. */
   drawn: ParsedTile | undefined
   turn: number
+  players: number
 }
 
 interface RoundState {
@@ -60,6 +76,7 @@ interface RoundState {
   turn: number
   doraIndicator: ParsedTile | null
   rivers: ParsedTile[][]
+  nuki: ParsedTile[]
   seatIndex: number
   liveWall: ParsedTile[]
   wallRemaining: number
@@ -96,6 +113,30 @@ function userDraw(core: RoundCore): void {
   core.drawn = tile
 }
 
+/** Pulls the held north to the nuki pile and draws its replacement — from the dead wall's
+ *  far end (backfilled from the live wall tail, same as a kan) when one exists, else straight
+ *  from the live wall. Hand stays at 14, ready for the discard that follows; no turn/opponent
+ *  advance, this is a sub-step of the current turn, not a turn of its own. */
+function pullNorth(core: RoundCore): ParsedTile | undefined {
+  removeTile(core.hand, NORTH)
+  core.nuki.push({ id: NORTH, red: false })
+  core.visible[NORTH]++
+
+  let drawn = core.deadWall.pop()
+  if (drawn) {
+    const backfill = core.liveWall.pop()
+    if (backfill) core.deadWall.unshift(backfill)
+  } else {
+    drawn = core.liveWall.shift()
+  }
+  if (drawn) {
+    addTile(core.hand, drawn.id)
+    if (drawn.red) core.reds.add(drawn.id)
+  }
+  core.drawn = drawn
+  return drawn
+}
+
 /** Discards `tile` for the user, lets the opponents tsumogiri around the table,
  *  and draws the user's next tile. Returns false when the drill is over instead —
  *  either the discard reached tenpai or the wall ran dry. */
@@ -111,8 +152,8 @@ function advanceAfterDiscard(core: RoundCore, tile: ParsedTile, options: RoundOp
     return false
   }
   if (options.opponents) {
-    for (let k = 1; k < PLAYERS; k++) {
-      opponentTsumogiri(core, (core.seatIndex + k) % PLAYERS)
+    for (let k = 1; k < core.players; k++) {
+      opponentTsumogiri(core, (core.seatIndex + k) % core.players)
     }
   }
   if (core.liveWall.length === 0) {
@@ -128,13 +169,14 @@ function advanceAfterDiscard(core: RoundCore, tile: ParsedTile, options: RoundOp
  *  hidden opponent hands reserved from the pool tail (never the pinned prefix),
  *  deal, seat-ordered first draws, then replay of the situation's river. */
 function createRound(situation: Situation, options: RoundOptions, seed: string): RoundCore {
+  const players = options.sanma ? 3 : 4
   const used = new Uint8Array(NUM_TILE_TYPES)
   const pinnedRedSuits = new Set<TileId>()
   for (const t of allTiles(situation)) {
     used[t.id]++
     if (t.red) pinnedRedSuits.add(t.id)
   }
-  let pool: ParsedTile[] = buildWall(seed)
+  let pool: ParsedTile[] = buildWall(seed, options.sanma)
     .filter((id) => {
       if (used[id] === 0) return true
       used[id]--
@@ -142,7 +184,7 @@ function createRound(situation: Situation, options: RoundOptions, seed: string):
     })
     .map((id) => ({ id, red: false }))
   if (options.aka) {
-    for (const redId of RED_FIVE_IDS) {
+    for (const redId of redFiveIds(options.sanma)) {
       if (pinnedRedSuits.has(redId)) continue
       const i = pool.findIndex((t) => t.id === redId)
       if (i >= 0) pool[i] = { id: redId, red: true }
@@ -150,14 +192,16 @@ function createRound(situation: Situation, options: RoundOptions, seed: string):
   }
 
   let reserved = 0
+  let deadWall: ParsedTile[] = []
   let doraIndicator: ParsedTile | null = null
   if (options.deadWall) {
     const dead = Math.min(DEAD_WALL_SIZE, pool.length)
-    doraIndicator = dead > 0 ? pool[pool.length - dead] : null
+    deadWall = pool.slice(pool.length - dead)
+    doraIndicator = dead > 0 ? deadWall[0] : null
     reserved += dead
   }
   if (options.opponents) {
-    reserved += Math.min((PLAYERS - 1) * INITIAL_HAND_SIZE, pool.length - reserved)
+    reserved += Math.min((players - 1) * INITIAL_HAND_SIZE, pool.length - reserved)
   }
   const liveWall = [...situation.wall, ...pool.slice(0, pool.length - reserved)]
 
@@ -170,16 +214,21 @@ function createRound(situation: Situation, options: RoundOptions, seed: string):
   const visible = new Uint8Array(NUM_TILE_TYPES)
   if (doraIndicator) visible[doraIndicator.id]++
 
+  // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
+  const seatIndex = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
   const core: RoundCore = {
     hand,
     reds,
     liveWall,
+    deadWall,
     doraIndicator,
     visible,
-    rivers: Array.from({ length: PLAYERS }, () => []),
-    seatIndex: Math.max(0, WINDS.indexOf(situation.seat)),
+    rivers: Array.from({ length: players }, () => []),
+    nuki: [],
+    seatIndex,
     drawn: undefined,
     turn: 1,
+    players,
   }
 
   while (tileCount(hand) < INITIAL_HAND_SIZE && liveWall.length > 0) {
@@ -217,6 +266,7 @@ function snapshot(core: RoundCore, prev?: RoundState): RoundState {
     turn: core.turn,
     doraIndicator: core.doraIndicator,
     rivers: core.rivers.map((r) => [...r]),
+    nuki: [...core.nuki],
     seatIndex: core.seatIndex,
     liveWall: [...core.liveWall],
     wallRemaining: core.liveWall.length,
@@ -255,7 +305,7 @@ export function useEfficiencyRound(
   useEffect(() => {
     setState(startRound())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [situation, options.opponents, options.deadWall, options.aka, restartCount])
+  }, [situation, options.opponents, options.deadWall, options.aka, options.sanma, restartCount])
 
   useEffect(() => {
     if (state.finished || state.paused || !timerEnabled) return
@@ -271,37 +321,99 @@ export function useEfficiencyRound(
 
     const seen = new Uint8Array(NUM_TILE_TYPES)
     for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = r.hand.counts[i] + r.visible[i]
-    const ranked = evaluateDiscards(r.hand, seen)
+    const ranked = evaluateDiscards(r.hand, seen, options.sanma)
     const yours = ranked.find((o) => o.discard === tile.id)!
     const best = ranked[0]
     // ukeire counts only compare directly at the same shanten (best is always <= yours,
     // since options are sorted shanten-first); a worse shanten forfeits the whole ukeire gap
     const lost =
       yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
-    const lastResult: TurnResult = { turn: r.turn, yours, best }
+    const lastResult: TurnResult = { turn: r.turn, yours, best, kind: 'discard' }
 
-    // one entry per turn, logged here (not from a page effect) so entries stay in play order
-    const drew = state.drawn ? `drew ${tileCode(state.drawn.id, state.drawn.red)}, ` : ''
+    // one entry per turn, logged here (not from a page effect) so entries stay in play order.
+    // Keys carry raw params (tile notation is locale-invariant) rather than formatted text, so
+    // a later language switch re-translates the whole log instead of leaving stale fragments.
+    const drewCode = state.drawn ? tileCode(state.drawn.id, state.drawn.red) : undefined
     const drewTiles = state.drawn ? [state.drawn] : []
     if (isBestDiscard(yours, best)) {
       log(
-        `Turn ${r.turn}: ${drew}discarded ${tileCode(tile.id, tile.red)} — best choice (ukeire ${yours.ukeireCount})`,
+        drewCode ? 'log.efficiency.discardBestDrew' : 'log.efficiency.discardBest',
+        {
+          turn: r.turn,
+          drawn: drewCode,
+          tile: tileCode(tile.id, tile.red),
+          ukeire: yours.ukeireCount,
+        },
         [...drewTiles, tile],
       )
     } else {
       log(
-        `Turn ${r.turn}: ${drew}discarded ${tileCode(tile.id, tile.red)} (ukeire ${yours.ukeireCount}); best was ${tileCode(best.discard)} (ukeire ${best.ukeireCount})`,
+        drewCode ? 'log.efficiency.discardMistakeDrew' : 'log.efficiency.discardMistake',
+        {
+          turn: r.turn,
+          drawn: drewCode,
+          tile: tileCode(tile.id, tile.red),
+          yours: yours.ukeireCount,
+          best: tileCode(best.discard),
+          bestUkeire: best.ukeireCount,
+        },
         [...drewTiles, tile, { id: best.discard, red: false }],
       )
     }
     if (yours.shanten <= 0) {
       log(
-        `Tenpai on turn ${r.turn} — waiting on`,
+        'log.efficiency.tenpai',
+        { turn: r.turn },
         yours.ukeireTiles.map((t) => ({ id: t.tile, red: false })),
       )
     }
 
     advanceAfterDiscard(r, tile, options)
+    setState((s) => ({
+      ...snapshot(r, s),
+      lastResult,
+      cumulativeLost: s.cumulativeLost + lost,
+    }))
+  }
+
+  /** Pulls a held north (sanma only). Graded like a discard by reusing north's own
+   *  evaluateDiscards entry (id `NORTH`) — that entry already IS "shanten/ukeire with this
+   *  north removed", which is exactly what pulling it costs. A pair of norths serving as the
+   *  hand's head costs shanten/ukeire in that entry the same way a bad discard would, so it's
+   *  correctly graded a mistake rather than always recommending the pull. */
+  function kita() {
+    const r = core.current
+    if (!r || state.finished || !options.sanma || r.hand.counts[NORTH] === 0) return
+
+    const seen = new Uint8Array(NUM_TILE_TYPES)
+    for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = r.hand.counts[i] + r.visible[i]
+    const ranked = evaluateDiscards(r.hand, seen, options.sanma)
+    const yours = ranked.find((o) => o.discard === NORTH)!
+    const best = ranked[0]
+    const lost =
+      yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
+    const lastResult: TurnResult = { turn: r.turn, yours, best, kind: 'kita' }
+    const isBest = isBestDiscard(yours, best)
+
+    const northTile: ParsedTile = { id: NORTH, red: false }
+    const drawn = pullNorth(r)
+    const tiles = drawn ? [northTile, drawn] : [northTile]
+
+    if (isBest) {
+      log('log.efficiency.kitaBest', { turn: r.turn, ukeire: yours.ukeireCount }, tiles)
+    } else {
+      log(
+        'log.efficiency.kitaMistake',
+        {
+          turn: r.turn,
+          yours: yours.ukeireCount,
+          best: tileCode(best.discard),
+          bestUkeire: best.ukeireCount,
+        },
+        tiles,
+      )
+    }
+
     setState((s) => ({
       ...snapshot(r, s),
       lastResult,
@@ -324,6 +436,7 @@ export function useEfficiencyRound(
   return {
     ...state,
     discard,
+    kita,
     situationQuery,
     togglePause: () => setState((s) => ({ ...s, paused: !s.paused })),
     restart: () => setRestartCount((n) => n + 1),

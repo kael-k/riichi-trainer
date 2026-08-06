@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
 import { Outlet } from 'react-router'
 import sprite from '../assets/tiles/sprite.svg?raw'
+import i18n, { resolveLocale } from '../features/i18n'
 import { useSettings } from '../features/settings/settingsStore'
 
 export function AppShell() {
   const theme = useSettings((s) => s.theme)
+  const locale = useSettings((s) => s.locale)
 
   useEffect(() => {
     const apply = () => {
@@ -19,6 +21,12 @@ export function AppShell() {
     mq.addEventListener('change', apply)
     return () => mq.removeEventListener('change', apply)
   }, [theme])
+
+  useEffect(() => {
+    const resolved = resolveLocale(locale)
+    void i18n.changeLanguage(resolved)
+    document.documentElement.lang = resolved
+  }, [locale])
 
   return (
     <>
