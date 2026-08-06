@@ -2,7 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { evaluateDiscards, isBestDiscard, type DiscardOption } from '../../core/efficiency'
 import { addTile, createHand, removeTile, tileCount, type Hand } from '../../core/hand'
 import { shanten } from '../../core/shanten'
-import { MAN, NUM_TILE_TYPES, PIN, SOU, tileCode, type ParsedTile, type TileId } from '../../core/tiles'
+import {
+  MAN,
+  NUM_TILE_TYPES,
+  PIN,
+  SOU,
+  tileCode,
+  type ParsedTile,
+  type TileId,
+} from '../../core/tiles'
 import { buildWall, DEAD_WALL_SIZE, INITIAL_HAND_SIZE } from '../../core/wall'
 import { useLog } from '../../store/log'
 import { allTiles, encodeSituation, WINDS, type Situation } from '../situation/urlCodec'

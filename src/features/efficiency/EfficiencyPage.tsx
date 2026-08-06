@@ -150,7 +150,9 @@ export function EfficiencyPage() {
 
         {settings.showWall && (
           <details className="text-sm text-neutral-500">
-            <summary className="cursor-pointer">Wall ({round.wallRemaining} tiles, draw order)</summary>
+            <summary className="cursor-pointer">
+              Wall ({round.wallRemaining} tiles, draw order)
+            </summary>
             <div className="mt-2 flex flex-wrap [--tile-w:calc(var(--tile-w-base)*0.55)]">
               {round.liveWall.map((t, i) => (
                 <Tile key={i} id={t.id} red={t.red} />
