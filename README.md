@@ -30,7 +30,7 @@ Trainers read their whole scenario from the query string, so one URL fully repro
 | `seed` | deterministic shuffle of the remaining tile pool; omitted = fresh random round each load |
 | `hand` | starting hand; the efficiency trainer fills it to 14 tiles from the wall |
 | `wall` | forced draw order, consumed by whoever draws next (opponents included); when exhausted, draws fall back to the seeded pool |
-| `river` | your own discards so far, replayed from the deal to rebuild a round mid-game |
+| `river` | your own discards so far, replayed from the deal to rebuild a round mid-game (replay stops early if a discard reaches tenpai, which ends the round) |
 | `round`, `seat` | round wind (display only) and your seat — opponents seated before you tsumogiri before your first draw |
 | `opponents`, `deadwall`, `aka` | `1`/`0` — pin the round rules into the link, overriding the receiver's settings so it reproduces exactly |
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { evaluateDiscards, isBestDiscard, type DiscardOption } from '../../core/efficiency'
 import { addTile, createHand, removeTile, tileCount, type Hand } from '../../core/hand'
+import { shanten } from '../../core/shanten'
 import { MAN, NUM_TILE_TYPES, PIN, SOU, tileCode, type ParsedTile, type TileId } from '../../core/tiles'
 import { buildWall, DEAD_WALL_SIZE, INITIAL_HAND_SIZE } from '../../core/wall'
 import { useLog } from '../../store/log'
@@ -57,6 +58,8 @@ interface RoundState {
   lastResult: TurnResult | null
   cumulativeLost: number
   finished: boolean
+  /** Finished because the hand reached tenpai (rather than the wall drying up). */
+  tenpai: boolean
   elapsed: number
   paused: boolean
 }
@@ -86,12 +89,19 @@ function userDraw(core: RoundCore): void {
 }
 
 /** Discards `tile` for the user, lets the opponents tsumogiri around the table,
- *  and draws the user's next tile. Returns false when the wall ran dry instead. */
+ *  and draws the user's next tile. Returns false when the drill is over instead —
+ *  either the discard reached tenpai or the wall ran dry. */
 function advanceAfterDiscard(core: RoundCore, tile: ParsedTile, options: RoundOptions): boolean {
   removeTile(core.hand, tile.id)
   if (tile.red) core.reds.delete(tile.id)
   core.rivers[core.seatIndex].push(tile)
   core.visible[tile.id]++
+  // tenpai is the goal, so stop here: the hand stays at 13 tiles, which is what
+  // "finished" is derived from, and the opponents/wall are left untouched
+  if (shanten(core.hand) <= 0) {
+    core.drawn = undefined
+    return false
+  }
   if (options.opponents) {
     for (let k = 1; k < PLAYERS; k++) {
       opponentTsumogiri(core, (core.seatIndex + k) % PLAYERS)
@@ -187,6 +197,7 @@ function createRound(situation: Situation, options: RoundOptions, seed: string):
 }
 
 function snapshot(core: RoundCore, prev?: RoundState): RoundState {
+  const finished = tileCount(core.hand) < 14
   let hand = handToTiles(core.hand, core.reds)
   if (core.drawn) {
     const i = hand.findIndex((t) => t.id === core.drawn!.id && t.red === core.drawn!.red)
@@ -201,7 +212,8 @@ function snapshot(core: RoundCore, prev?: RoundState): RoundState {
     seatIndex: core.seatIndex,
     liveWall: [...core.liveWall],
     wallRemaining: core.liveWall.length,
-    finished: tileCount(core.hand) < 14,
+    finished,
+    tenpai: finished && shanten(core.hand) <= 0,
     lastResult: prev?.lastResult ?? null,
     cumulativeLost: prev?.cumulativeLost ?? 0,
     elapsed: prev?.elapsed ?? 0,
@@ -272,6 +284,12 @@ export function useEfficiencyRound(
       log(
         `Turn ${r.turn}: ${drew}discarded ${tileCode(tile.id, tile.red)} (ukeire ${yours.ukeireCount}); best was ${tileCode(best.discard)} (ukeire ${best.ukeireCount})`,
         [...drewTiles, tile, { id: best.discard, red: false }],
+      )
+    }
+    if (yours.shanten <= 0) {
+      log(
+        `Tenpai on turn ${r.turn} — waiting on`,
+        yours.ukeireTiles.map((t) => ({ id: t.tile, red: false })),
       )
     }
 

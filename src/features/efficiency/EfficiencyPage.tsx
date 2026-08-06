@@ -116,7 +116,7 @@ export function EfficiencyPage() {
 
         {round.finished && (
           <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
-            <p className="font-semibold">Round complete</p>
+            <p className="font-semibold">{round.tenpai ? 'Tenpai reached' : 'Round complete'}</p>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
               Total ukeire lost across {round.turn} turns: {round.cumulativeLost}
             </p>

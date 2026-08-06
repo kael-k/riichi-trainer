@@ -34,7 +34,7 @@ describe('useEfficiencyRound', () => {
     expect(result.current.drawn).toBeUndefined()
   })
 
-  it('finishes only once the wall is exhausted, not after a fixed turn count', () => {
+  it('runs until tenpai, not for a fixed turn count', () => {
     const situation = emptySituation()
     situation.seed = 'drain-seed'
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
@@ -43,7 +43,22 @@ describe('useEfficiencyRound', () => {
       act(() => result.current.discard(0))
     }
     expect(result.current.finished).toBe(true)
-    expect(result.current.wallRemaining).toBe(0)
+    expect(result.current.tenpai).toBe(true)
+    expect(result.current.turn).toBeGreaterThan(1)
+  })
+
+  it('ends the round as soon as a discard reaches tenpai', () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456789m11227z') // discard 7z -> shanpon tenpai
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+
+    expect(result.current.finished).toBe(false)
+    act(() => result.current.discard(13)) // the 7z
+    expect(result.current.finished).toBe(true)
+    expect(result.current.tenpai).toBe(true)
+    expect(result.current.hand).toHaveLength(13)
+    expect(result.current.drawn).toBeUndefined()
+    expect(result.current.wallRemaining).toBeGreaterThan(0) // stopped early, wall untouched
   })
 
   it('restart deals a fresh hand', () => {
@@ -66,7 +81,7 @@ describe('useEfficiencyRound', () => {
 
   it('draws a red five from a pinned wall and drops it again on discard', () => {
     const situation = emptySituation()
-    situation.hand = parseTenhou('123456789m1122z') // 13 tiles
+    situation.hand = parseTenhou('123456789m1234z') // 13 tiles, still far from tenpai
     situation.wall = parseTenhou('0s5s')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
 
@@ -140,7 +155,7 @@ describe('useEfficiencyRound', () => {
   it('replays the situation river to reach the saved decision point', () => {
     const situation = emptySituation()
     situation.seed = 'replay-seed'
-    situation.hand = parseTenhou('123456789m11227z')
+    situation.hand = parseTenhou('123456789m12347z')
     situation.river = parseTenhou('7z')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
 
