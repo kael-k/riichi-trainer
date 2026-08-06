@@ -1,6 +1,6 @@
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, TriangleAlert } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { isBestDiscard, type DiscardOption } from '../../core/efficiency'
+import type { DiscardOption } from '../../core/efficiency'
 import { Tile, UkeireTiles } from '../../components/tiles/Tile'
 import { NORTH, type TurnResult } from './useEfficiencyRound'
 
@@ -49,13 +49,18 @@ export function DiscardFeedback({
   sanma: boolean
 }) {
   const { t } = useTranslation()
-  const isBest = isBestDiscard(result.yours, result.best)
   const shantenGap = result.yours.shanten - result.best.shanten
   const yoursLabel = t(
-    result.kind === 'kita' ? 'discardFeedback.yourKita' : 'discardFeedback.yourDiscard',
+    result.kind === 'kita'
+      ? 'discardFeedback.yourKita'
+      : result.kind === 'kan'
+        ? 'discardFeedback.yourKan'
+        : 'discardFeedback.yourDiscard',
   )
   // when best turns out to be the kita entry (sanma only), the recommended move was pulling
-  // it, not discarding it plainly — a real discard of north is strictly worse for the same cost
+  // it, not discarding it plainly — a real discard of north is strictly worse for the same cost.
+  // Kan never surfaces as `best` this way: it's never a real discard option, only ever its own
+  // separate (always <=) comparison, so no analogous relabeling is needed for it here.
   const bestLabel = t(
     sanma && result.best.discard === NORTH
       ? 'discardFeedback.bestKita'
@@ -69,10 +74,23 @@ export function DiscardFeedback({
         showShanten={showShanten}
         showUkeire={showUkeire}
       />
-      {isBest ? (
-        <p className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
-          <CheckCircle2 className="size-4" /> {bestLabel}
-        </p>
+      {result.grade !== 'error' ? (
+        <>
+          <p className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
+            <CheckCircle2 className="size-4" /> {bestLabel}
+          </p>
+          {result.grade === 'warning' && result.missed && (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
+              <TriangleAlert className="size-4 shrink-0" />
+              {t(
+                result.missed.kind === 'kita'
+                  ? 'discardFeedback.missedKita'
+                  : 'discardFeedback.missedKan',
+              )}
+              <Tile id={result.missed.tile} />
+            </p>
+          )}
+        </>
       ) : (
         <>
           <FeedbackRow
@@ -81,7 +99,7 @@ export function DiscardFeedback({
             showShanten={showShanten}
             showUkeire={showUkeire}
           />
-          <p className="text-sm text-amber-700 dark:text-amber-400">
+          <p className="text-sm text-red-600 dark:text-red-400">
             {shantenGap > 0
               ? t('discardFeedback.shantenWorse', { count: shantenGap })
               : t('discardFeedback.fewerTiles', {

@@ -33,6 +33,12 @@ export function EfficiencyPage() {
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
 
+  // tiles held four times (hand + the separated drawn tile) can be closed-kanned
+  const counts = new Map<number, number>()
+  for (const t of round.hand) counts.set(t.id, (counts.get(t.id) ?? 0) + 1)
+  if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
+  const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
+
   const copySituation = async () => {
     const query = round.situationQuery()
     await navigator.clipboard.writeText(
@@ -87,10 +93,12 @@ export function EfficiencyPage() {
             </span>
           )}
           <span>{t('efficiency.wallStatus', { count: round.wallRemaining })}</span>
-          {round.doraIndicator && (
+          {round.doraIndicators.length > 0 && (
             <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
               {t('efficiency.doraIndicator')}{' '}
-              <Tile id={round.doraIndicator.id} red={round.doraIndicator.red} />
+              {round.doraIndicators.map((indicator, i) => (
+                <Tile key={i} id={indicator.id} red={indicator.red} />
+              ))}
             </span>
           )}
           <span className="ml-auto">
@@ -104,14 +112,31 @@ export function EfficiencyPage() {
           onTileClick={round.finished ? undefined : (i) => round.discard(i)}
         />
 
-        {options.sanma && !round.finished && round.hand.some((tile) => tile.id === NORTH) && (
-          <button
-            type="button"
-            onClick={round.kita}
-            className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-          >
-            {t('efficiency.kitaButton')}
-          </button>
+        {(options.sanma || kanEligible.length > 0) && !round.finished && (
+          <div className="flex flex-wrap gap-2">
+            {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
+              <button
+                type="button"
+                onClick={round.kita}
+                className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+              >
+                {t('efficiency.kitaButton')}
+              </button>
+            )}
+            {kanEligible.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => round.kan(id)}
+                className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+              >
+                <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
+                  <Tile id={id} />
+                </span>
+                {t('efficiency.kanButton')}
+              </button>
+            ))}
+          </div>
         )}
 
         {round.lastResult && (
@@ -161,6 +186,12 @@ export function EfficiencyPage() {
             <div className="flex flex-col gap-1">
               <span className="text-xs text-neutral-500">{t('efficiency.nukiPile')}</span>
               <River tiles={round.nuki} />
+            </div>
+          )}
+          {round.kans.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-neutral-500">{t('efficiency.kanPile')}</span>
+              <River tiles={round.kans.flat()} />
             </div>
           )}
         </div>

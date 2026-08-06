@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { evaluateDiscards, isBestDiscard, type DiscardOption } from '../../core/efficiency'
+import { evaluateDiscards, evaluateKan, isBestDiscard, type DiscardOption } from '../../core/efficiency'
 import { addTile, createHand, removeTile, tileCount, type Hand } from '../../core/hand'
 import { shanten } from '../../core/shanten'
 import {
@@ -33,14 +33,26 @@ function redFiveIds(sanma: boolean): TileId[] {
 /** North — the nukidora (kita) tile in sanma. */
 export const NORTH: TileId = HONOR + 3
 
+/** Real dead walls hold 5 kan-dora indicators (the 5th only ever flips if all four other
+ *  players' kans plus the user's are drawn); reserved up front so replacement draws (which
+ *  keep pulling from the dead wall's other end) can never eat into them. */
+const MAX_DORA_INDICATORS = 5
+
 export interface TurnResult {
   turn: number
   yours: DiscardOption
   best: DiscardOption
-  /** 'kita' when this grades a nukidora pull rather than an actual discard — the DiscardFeedback
-   *  labels differ since pulling isn't discarding, even though `yours`/`best` share the same
-   *  DiscardOption shape (north's own evaluateDiscards entry doubles as "what if I nuki"). */
-  kind: 'discard' | 'kita'
+  /** 'kita' / 'kan' when this grades a nukidora pull or an ankan rather than an actual
+   *  discard — the DiscardFeedback labels differ since neither is a discard, even though
+   *  `yours`/`best` share the same DiscardOption shape (north's own evaluateDiscards entry
+   *  doubles as "what if I nuki"; `evaluateKan`'s entry as "what if I kan"). */
+  kind: 'discard' | 'kita' | 'kan'
+  /** 'error' when the chosen action itself loses shanten/ukeire vs. the true best.
+   *  'warning' only applies to a plain discard that ties the best line while passing up a
+   *  same-value kan/kita call — no ukeire is lost, so it's a softer nudge than 'error'. */
+  grade: 'ok' | 'warning' | 'error'
+  /** Set alongside a 'warning' grade: which call was available for free and skipped. */
+  missed?: { kind: 'kan' | 'kita'; tile: TileId }
 }
 
 /** Mutable state of one round. The engine `Hand` only keeps counts, so redness is
@@ -50,17 +62,24 @@ interface RoundCore {
   reds: Set<TileId>
   /** Upcoming draws, consumed front-first by whoever draws next. */
   liveWall: ParsedTile[]
-  /** Materialized (not just a reserved count) so a kita pull can draw a replacement from its
-   *  far end and backfill from the live wall, same as a kan would. Empty when the dead wall
-   *  setting is off — a kita replacement then falls back to the live wall directly. */
+  /** Materialized (not just a reserved count) so a kita/kan pull can draw a replacement from
+   *  its far end and backfill from the live wall. Empty when the dead wall setting is off — a
+   *  replacement draw then falls back to the live wall directly. Disjoint from `doraStack` so
+   *  a replacement backfill can never disturb an indicator that hasn't flipped yet. */
   deadWall: ParsedTile[]
-  doraIndicator: ParsedTile | null
-  /** Count of every face-up tile: all rivers plus the dora indicator. */
+  /** Unflipped kan-dora indicators, front-first, reserved from the dead wall at deal time. */
+  doraStack: ParsedTile[]
+  /** Indicators flipped so far (the original dora indicator, then one per kan called). */
+  doraIndicators: ParsedTile[]
+  /** Count of every face-up tile: all rivers plus every flipped dora indicator plus every
+   *  kanned/nuki'd tile still tracked separately from the (now-empty) hand slot it left. */
   visible: Uint8Array
   /** Discards per seat (0 = East); the user's is rivers[seatIndex]. */
   rivers: ParsedTile[][]
   /** Norths pulled via kita, in pull order. */
   nuki: ParsedTile[]
+  /** Closed kans called, each the four tiles (one possibly red) in call order. */
+  kans: ParsedTile[][]
   seatIndex: number
   /** Tile drawn to reach the current 14-tile hand; undefined when the situation
    *  pinned all 14 (no draw happened) or the wall ran dry. */
@@ -74,9 +93,10 @@ interface RoundState {
   hand: ParsedTile[]
   drawn: ParsedTile | undefined
   turn: number
-  doraIndicator: ParsedTile | null
+  doraIndicators: ParsedTile[]
   rivers: ParsedTile[][]
   nuki: ParsedTile[]
+  kans: ParsedTile[][]
   seatIndex: number
   liveWall: ParsedTile[]
   wallRemaining: number
@@ -113,15 +133,10 @@ function userDraw(core: RoundCore): void {
   core.drawn = tile
 }
 
-/** Pulls the held north to the nuki pile and draws its replacement — from the dead wall's
- *  far end (backfilled from the live wall tail, same as a kan) when one exists, else straight
- *  from the live wall. Hand stays at 14, ready for the discard that follows; no turn/opponent
- *  advance, this is a sub-step of the current turn, not a turn of its own. */
-function pullNorth(core: RoundCore): ParsedTile | undefined {
-  removeTile(core.hand, NORTH)
-  core.nuki.push({ id: NORTH, red: false })
-  core.visible[NORTH]++
-
+/** Draws a kita/kan replacement tile — from the dead wall's far end (backfilled from the live
+ *  wall tail so the dead wall stays the same size) when one exists, else straight from the live
+ *  wall. Never touches `doraStack`, which is a disjoint reservation. */
+function drawReplacement(core: RoundCore): ParsedTile | undefined {
   let drawn = core.deadWall.pop()
   if (drawn) {
     const backfill = core.liveWall.pop()
@@ -129,6 +144,50 @@ function pullNorth(core: RoundCore): ParsedTile | undefined {
   } else {
     drawn = core.liveWall.shift()
   }
+  return drawn
+}
+
+/** Pulls the held north to the nuki pile and draws its replacement. Hand stays at 14, ready
+ *  for the discard that follows; no turn/opponent advance, this is a sub-step of the current
+ *  turn, not a turn of its own. */
+function pullNorth(core: RoundCore): ParsedTile | undefined {
+  removeTile(core.hand, NORTH)
+  core.nuki.push({ id: NORTH, red: false })
+  core.visible[NORTH]++
+
+  const drawn = drawReplacement(core)
+  if (drawn) {
+    addTile(core.hand, drawn.id)
+    if (drawn.red) core.reds.add(drawn.id)
+  }
+  core.drawn = drawn
+  return drawn
+}
+
+/** Locks a held quad as a closed kan meld, flips the next kan-dora indicator (dead wall
+ *  permitting), and draws the replacement — the kan/kita counterpart of `pullNorth`. Hand
+ *  stays at 14 (10 concealed + 1 meld + the replacement draw), ready for the discard that
+ *  follows. */
+function pullKan(core: RoundCore, id: TileId): ParsedTile | undefined {
+  const red = core.reds.has(id)
+  for (let k = 0; k < 4; k++) removeTile(core.hand, id)
+  core.hand.melds++
+  core.reds.delete(id)
+  core.visible[id] += 4
+  core.kans.push([
+    { id, red },
+    { id, red: false },
+    { id, red: false },
+    { id, red: false },
+  ])
+
+  const indicator = core.doraStack.shift()
+  if (indicator) {
+    core.doraIndicators.push(indicator)
+    core.visible[indicator.id]++
+  }
+
+  const drawn = drawReplacement(core)
   if (drawn) {
     addTile(core.hand, drawn.id)
     if (drawn.red) core.reds.add(drawn.id)
@@ -193,11 +252,16 @@ function createRound(situation: Situation, options: RoundOptions, seed: string):
 
   let reserved = 0
   let deadWall: ParsedTile[] = []
-  let doraIndicator: ParsedTile | null = null
+  let doraStack: ParsedTile[] = []
+  const doraIndicators: ParsedTile[] = []
   if (options.deadWall) {
     const dead = Math.min(DEAD_WALL_SIZE, pool.length)
-    deadWall = pool.slice(pool.length - dead)
-    doraIndicator = dead > 0 ? deadWall[0] : null
+    const reservedChunk = pool.slice(pool.length - dead)
+    const doraCount = Math.min(MAX_DORA_INDICATORS, dead)
+    doraStack = reservedChunk.slice(0, doraCount)
+    deadWall = reservedChunk.slice(doraCount)
+    const first = doraStack.shift()
+    if (first) doraIndicators.push(first)
     reserved += dead
   }
   if (options.opponents) {
@@ -212,7 +276,7 @@ function createRound(situation: Situation, options: RoundOptions, seed: string):
     if (t.red) reds.add(t.id)
   }
   const visible = new Uint8Array(NUM_TILE_TYPES)
-  if (doraIndicator) visible[doraIndicator.id]++
+  for (const indicator of doraIndicators) visible[indicator.id]++
 
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const seatIndex = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
@@ -221,10 +285,12 @@ function createRound(situation: Situation, options: RoundOptions, seed: string):
     reds,
     liveWall,
     deadWall,
-    doraIndicator,
+    doraStack,
+    doraIndicators,
     visible,
     rivers: Array.from({ length: players }, () => []),
     nuki: [],
+    kans: [],
     seatIndex,
     drawn: undefined,
     turn: 1,
@@ -264,9 +330,10 @@ function snapshot(core: RoundCore, prev?: RoundState): RoundState {
     hand,
     drawn: core.drawn,
     turn: core.turn,
-    doraIndicator: core.doraIndicator,
+    doraIndicators: [...core.doraIndicators],
     rivers: core.rivers.map((r) => [...r]),
     nuki: [...core.nuki],
+    kans: core.kans.map((k) => [...k]),
     seatIndex: core.seatIndex,
     liveWall: [...core.liveWall],
     wallRemaining: core.liveWall.length,
@@ -328,14 +395,31 @@ export function useEfficiencyRound(
     // since options are sorted shanten-first); a worse shanten forfeits the whole ukeire gap
     const lost =
       yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
-    const lastResult: TurnResult = { turn: r.turn, yours, best, kind: 'discard' }
+    const isBest = isBestDiscard(yours, best)
+
+    // isBest doesn't mean nothing was left on the table: a kan/kita tied for best too, and
+    // was passed up for a plain discard — no ukeire lost, so it's a warning, not an error.
+    let missed: TurnResult['missed']
+    if (isBest) {
+      const northOption = options.sanma ? ranked.find((o) => o.discard === NORTH) : undefined
+      if (northOption && isBestDiscard(northOption, best)) {
+        missed = { kind: 'kita', tile: NORTH }
+      } else {
+        const kanOption = evaluateKan(r.hand, seen, options.sanma).find((o) =>
+          isBestDiscard(o, best),
+        )
+        if (kanOption) missed = { kind: 'kan', tile: kanOption.discard }
+      }
+    }
+    const grade: TurnResult['grade'] = !isBest ? 'error' : missed ? 'warning' : 'ok'
+    const lastResult: TurnResult = { turn: r.turn, yours, best, kind: 'discard', grade, missed }
 
     // one entry per turn, logged here (not from a page effect) so entries stay in play order.
     // Keys carry raw params (tile notation is locale-invariant) rather than formatted text, so
     // a later language switch re-translates the whole log instead of leaving stale fragments.
     const drewCode = state.drawn ? tileCode(state.drawn.id, state.drawn.red) : undefined
     const drewTiles = state.drawn ? [state.drawn] : []
-    if (isBestDiscard(yours, best)) {
+    if (isBest) {
       log(
         drewCode ? 'log.efficiency.discardBestDrew' : 'log.efficiency.discardBest',
         {
@@ -358,6 +442,13 @@ export function useEfficiencyRound(
           bestUkeire: best.ukeireCount,
         },
         [...drewTiles, tile, { id: best.discard, red: false }],
+      )
+    }
+    if (missed) {
+      log(
+        missed.kind === 'kita' ? 'log.efficiency.missedKita' : 'log.efficiency.missedKan',
+        { turn: r.turn, tile: tileCode(missed.tile) },
+        [{ id: missed.tile, red: false }],
       )
     }
     if (yours.shanten <= 0) {
@@ -392,8 +483,14 @@ export function useEfficiencyRound(
     const best = ranked[0]
     const lost =
       yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
-    const lastResult: TurnResult = { turn: r.turn, yours, best, kind: 'kita' }
     const isBest = isBestDiscard(yours, best)
+    const lastResult: TurnResult = {
+      turn: r.turn,
+      yours,
+      best,
+      kind: 'kita',
+      grade: isBest ? 'ok' : 'error',
+    }
 
     const northTile: ParsedTile = { id: NORTH, red: false }
     const drawn = pullNorth(r)
@@ -406,6 +503,61 @@ export function useEfficiencyRound(
         'log.efficiency.kitaMistake',
         {
           turn: r.turn,
+          yours: yours.ukeireCount,
+          best: tileCode(best.discard),
+          bestUkeire: best.ukeireCount,
+        },
+        tiles,
+      )
+    }
+
+    setState((s) => ({
+      ...snapshot(r, s),
+      lastResult,
+      cumulativeLost: s.cumulativeLost + lost,
+    }))
+  }
+
+  /** Calls a closed kan on a held quad. Graded by comparing `evaluateKan`'s entry for `id`
+   *  (the hand shape with that quad locked as a meld) against the same best discard `discard`
+   *  uses — shapes that only decompose losslessly by keeping the quad flexible (e.g. `788889s`,
+   *  where kanning the 8s stray the 7s/9s into a dead kanchan) come out worse there and are
+   *  correctly graded an error rather than a free call. */
+  function kan(id: TileId) {
+    const r = core.current
+    if (!r || state.finished || r.hand.counts[id] !== 4) return
+
+    const seen = new Uint8Array(NUM_TILE_TYPES)
+    for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = r.hand.counts[i] + r.visible[i]
+    const best = evaluateDiscards(r.hand, seen, options.sanma)[0]
+    const yours = evaluateKan(r.hand, seen, options.sanma).find((o) => o.discard === id)!
+    const lost =
+      yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
+    const isBest = isBestDiscard(yours, best)
+    const lastResult: TurnResult = {
+      turn: r.turn,
+      yours,
+      best,
+      kind: 'kan',
+      grade: isBest ? 'ok' : 'error',
+    }
+
+    const kanTile: ParsedTile = { id, red: r.reds.has(id) }
+    const drawn = pullKan(r, id)
+    const tiles = drawn ? [kanTile, drawn] : [kanTile]
+
+    if (isBest) {
+      log(
+        'log.efficiency.kanBest',
+        { turn: r.turn, tile: tileCode(id), ukeire: yours.ukeireCount },
+        tiles,
+      )
+    } else {
+      log(
+        'log.efficiency.kanMistake',
+        {
+          turn: r.turn,
+          tile: tileCode(id),
           yours: yours.ukeireCount,
           best: tileCode(best.discard),
           bestUkeire: best.ukeireCount,
@@ -437,6 +589,7 @@ export function useEfficiencyRound(
     ...state,
     discard,
     kita,
+    kan,
     situationQuery,
     togglePause: () => setState((s) => ({ ...s, paused: !s.paused })),
     restart: () => setRestartCount((n) => n + 1),

@@ -69,17 +69,22 @@
     "wallDetails_other": "牌山(剩余{{count}}张,摸牌顺序)",
     "copySituationLink": "复制局面链接",
     "kitaButton": "拔北",
-    "nukiPile": "已拔北"
+    "kanButton": "杠",
+    "nukiPile": "已拔北",
+    "kanPile": "已杠"
   },
   "discardFeedback": {
     "yourDiscard": "你的出牌",
     "yourKita": "你的拔北",
+    "yourKan": "你的杠",
     "bestDiscard": "最佳出牌",
     "bestKita": "拔北",
     "shantenLine": "上听数 {{count}}",
     "tilesSuffix_other": "· {{count}}种",
     "shantenWorse": "这张出牌会让上听数变差{{count}}。",
-    "fewerTiles_other": "这样出牌会少{{count}}种进张。"
+    "fewerTiles_other": "这样出牌会少{{count}}种进张。",
+    "missedKita": "这里拔北本可以是免费的 —",
+    "missedKan": "这里开杠本可以是免费的 —"
   },
   "shanten": {
     "settings": { "timer": "计时器" },
@@ -106,7 +111,11 @@
       "discardMistakeDrew": "第{{turn}}巡: 摸到{{drawn}},打出{{tile}} (进张{{yours}}); 最佳为{{best}} (进张{{bestUkeire}})",
       "tenpai": "第{{turn}}巡听牌 — 等待",
       "kitaBest": "第{{turn}}巡: 拔出北 — 最佳选择 (进张{{ukeire}})",
-      "kitaMistake": "第{{turn}}巡: 拔出北 (进张{{yours}}); 最佳为{{best}} (进张{{bestUkeire}})"
+      "kitaMistake": "第{{turn}}巡: 拔出北 (进张{{yours}}); 最佳为{{best}} (进张{{bestUkeire}})",
+      "kanBest": "第{{turn}}巡: 开杠{{tile}} — 免费 (进张{{ukeire}})",
+      "kanMistake": "第{{turn}}巡: 开杠{{tile}} (进张{{yours}}); 最佳为{{best}} (进张{{bestUkeire}})",
+      "missedKita": "第{{turn}}巡: 错过了{{tile}}的免费拔北",
+      "missedKan": "第{{turn}}巡: 错过了{{tile}}的免费开杠"
     },
     "shanten": {
       "result": "第{{hand}}题: 回答{{guess}},正确{{actual}}{{via}} — {{result}}{{time}}"

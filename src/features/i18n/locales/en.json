@@ -72,11 +72,14 @@
     "wallDetails_other": "Wall ({{count}} tiles, draw order)",
     "copySituationLink": "Copy situation link",
     "kitaButton": "Kita",
-    "nukiPile": "Nuki"
+    "kanButton": "Kan",
+    "nukiPile": "Nuki",
+    "kanPile": "Kan"
   },
   "discardFeedback": {
     "yourDiscard": "Your discard",
     "yourKita": "Your kita",
+    "yourKan": "Your kan",
     "bestDiscard": "Best discard",
     "bestKita": "Kita",
     "shantenLine": "shanten {{count}}",
@@ -84,7 +87,9 @@
     "tilesSuffix_other": "· {{count}} tiles",
     "shantenWorse": "This discard is {{count}} shanten worse.",
     "fewerTiles_one": "{{count}} fewer tile improves your hand this way.",
-    "fewerTiles_other": "{{count}} fewer tiles improve your hand this way."
+    "fewerTiles_other": "{{count}} fewer tiles improve your hand this way.",
+    "missedKita": "Kita here would have been free —",
+    "missedKan": "Kan here would have been free —"
   },
   "shanten": {
     "settings": { "timer": "Timer" },
@@ -111,7 +116,11 @@
       "discardMistakeDrew": "Turn {{turn}}: drew {{drawn}}, discarded {{tile}} (ukeire {{yours}}); best was {{best}} (ukeire {{bestUkeire}})",
       "tenpai": "Tenpai on turn {{turn}} — waiting on",
       "kitaBest": "Turn {{turn}}: pulled north (nuki) — best choice (ukeire {{ukeire}})",
-      "kitaMistake": "Turn {{turn}}: pulled north (nuki) (ukeire {{yours}}); best was {{best}} (ukeire {{bestUkeire}})"
+      "kitaMistake": "Turn {{turn}}: pulled north (nuki) (ukeire {{yours}}); best was {{best}} (ukeire {{bestUkeire}})",
+      "kanBest": "Turn {{turn}}: kanned {{tile}} — free (ukeire {{ukeire}})",
+      "kanMistake": "Turn {{turn}}: kanned {{tile}} (ukeire {{yours}}); best was {{best}} (ukeire {{bestUkeire}})",
+      "missedKita": "Turn {{turn}}: a free kita on {{tile}} was passed up",
+      "missedKan": "Turn {{turn}}: a free kan on {{tile}} was passed up"
     },
     "shanten": {
       "result": "Hand {{hand}}: guessed {{guess}}, actual {{actual}}{{via}} — {{result}}{{time}}"

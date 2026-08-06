@@ -69,17 +69,22 @@
     "wallDetails_other": "山(残り{{count}}枚、ツモ順)",
     "copySituationLink": "局面リンクをコピー",
     "kitaButton": "北抜き",
-    "nukiPile": "抜き北"
+    "kanButton": "カン",
+    "nukiPile": "抜き北",
+    "kanPile": "カン"
   },
   "discardFeedback": {
     "yourDiscard": "あなたの打牌",
     "yourKita": "あなたの北抜き",
+    "yourKan": "あなたのカン",
     "bestDiscard": "最善の打牌",
     "bestKita": "北抜き",
     "shantenLine": "シャンテン {{count}}",
     "tilesSuffix_other": "・{{count}}種",
     "shantenWorse": "この打牌はシャンテン数が{{count}}悪化します。",
-    "fewerTiles_other": "この打牌では受け入れが{{count}}種少なくなります。"
+    "fewerTiles_other": "この打牌では受け入れが{{count}}種少なくなります。",
+    "missedKita": "ここで北抜きすれば無料でした —",
+    "missedKan": "ここでカンすれば無料でした —"
   },
   "shanten": {
     "settings": { "timer": "タイマー" },
@@ -106,7 +111,11 @@
       "discardMistakeDrew": "{{turn}}巡目: {{drawn}}をツモり、{{tile}}を切った (受け入れ{{yours}}); 最善は{{best}} (受け入れ{{bestUkeire}})",
       "tenpai": "{{turn}}巡目でテンパイ — 待ち",
       "kitaBest": "{{turn}}巡目: 北を抜いた — 最善の選択 (受け入れ{{ukeire}})",
-      "kitaMistake": "{{turn}}巡目: 北を抜いた (受け入れ{{yours}}); 最善は{{best}} (受け入れ{{bestUkeire}})"
+      "kitaMistake": "{{turn}}巡目: 北を抜いた (受け入れ{{yours}}); 最善は{{best}} (受け入れ{{bestUkeire}})",
+      "kanBest": "{{turn}}巡目: {{tile}}をカンした — 無料 (受け入れ{{ukeire}})",
+      "kanMistake": "{{turn}}巡目: {{tile}}をカンした (受け入れ{{yours}}); 最善は{{best}} (受け入れ{{bestUkeire}})",
+      "missedKita": "{{turn}}巡目: {{tile}}の無料の北抜きを見送った",
+      "missedKan": "{{turn}}巡目: {{tile}}の無料のカンを見送った"
     },
     "shanten": {
       "result": "{{hand}}問目: 回答{{guess}}、正解{{actual}}{{via}} — {{result}}{{time}}"

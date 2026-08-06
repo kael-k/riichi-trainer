@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { parseTenhou } from '../../core/tiles'
+import { HONOR, parseTenhou, SOU } from '../../core/tiles'
 import { decodeSituation, emptySituation } from '../situation/urlCodec'
 import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
 
@@ -115,7 +115,7 @@ describe('useEfficiencyRound', () => {
     const { result } = renderHook(() =>
       useEfficiencyRound(situation, { ...BARE, deadWall: true }, true),
     )
-    expect(result.current.doraIndicator).not.toBeNull()
+    expect(result.current.doraIndicators).toHaveLength(1)
     expect(result.current.wallRemaining).toBe(136 - 14 - 14) // deal 14, dead wall 14
   })
 
@@ -192,7 +192,7 @@ describe('useEfficiencyRound', () => {
     expect(b.result.current.turn).toBe(a.result.current.turn)
     expect(b.result.current.rivers).toEqual(a.result.current.rivers)
     expect(b.result.current.wallRemaining).toBe(a.result.current.wallRemaining)
-    expect(b.result.current.doraIndicator).toEqual(a.result.current.doraIndicator)
+    expect(b.result.current.doraIndicators).toEqual(a.result.current.doraIndicators)
   })
 
   it('sanma: never deals 2m-8m, and aka seeds only two red fives (no 5m)', () => {
@@ -303,5 +303,67 @@ describe('useEfficiencyRound', () => {
     expect(result.current.lastResult!.yours.shanten).toBeGreaterThan(
       result.current.lastResult!.best.shanten,
     )
+  })
+
+  it('kan locks a held quad as a meld, keeps the hand at 14 tiles, and flips a second dora indicator', () => {
+    const situation = emptySituation()
+    situation.seed = 'kan-mech-seed'
+    situation.hand = parseTenhou('123456m78s22p3333z') // all 14 tiles pinned, includes quad 3z
+    const { result } = renderHook(() =>
+      useEfficiencyRound(situation, { ...BARE, deadWall: true }, true),
+    )
+    expect(result.current.doraIndicators).toHaveLength(1)
+    expect(result.current.drawn).toBeUndefined() // situation already supplies all 14
+    expect(result.current.hand).toHaveLength(14)
+
+    act(() => result.current.kan(HONOR + 2)) // 3z
+
+    expect(result.current.kans).toHaveLength(1)
+    expect(result.current.kans[0]).toHaveLength(4)
+    expect(result.current.kans[0].every((t) => t.id === HONOR + 2)).toBe(true)
+    expect(result.current.hand.some((t) => t.id === HONOR + 2)).toBe(false)
+    expect(result.current.doraIndicators).toHaveLength(2)
+    expect(result.current.drawn).toBeDefined() // replacement draw
+    expect(result.current.hand).toHaveLength(10) // 11 concealed - 1 separated drawn tile
+    expect(result.current.finished).toBe(false) // still 14 tiles logically (10 + drawn + meld)
+    expect(result.current.turn).toBe(1) // kan doesn't advance the turn
+    expect(result.current.lastResult?.kind).toBe('kan')
+    expect(result.current.lastResult?.grade).toBe('ok')
+  })
+
+  it('kan is a no-op when the tile is not held four times', () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456789p11224z')
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    act(() => result.current.kan(HONOR + 3)) // only one North held
+    expect(result.current.kans).toHaveLength(0)
+  })
+
+  it('kan on a quad that was pulling double duty in a run and a triplet is graded an error', () => {
+    // 788889s decomposes losslessly as 789s + 888s; kanning the four 8s strands the 7s/9s
+    // as a dead kanchan since all four 8s just left the game in their own meld.
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456m788889s19p')
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+
+    act(() => result.current.kan(SOU + 7)) // 8s
+    expect(result.current.lastResult?.kind).toBe('kan')
+    expect(result.current.lastResult?.grade).toBe('error')
+    expect(result.current.lastResult!.yours.shanten).toBeGreaterThan(
+      result.current.lastResult!.best.shanten,
+    )
+  })
+
+  it('discarding a tile that ties best while a same-value kan was available is a warning, not an error', () => {
+    // the spare 3z ties for best whether it's discarded outright or kanned — passing up
+    // the kan costs no ukeire, so this should read softer than a genuine mistake.
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456m78s22p3333z')
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const index = result.current.hand.findIndex((t) => t.id === HONOR + 2)
+
+    act(() => result.current.discard(index))
+    expect(result.current.lastResult?.grade).toBe('warning')
+    expect(result.current.lastResult?.missed).toEqual({ kind: 'kan', tile: HONOR + 2 })
   })
 })

@@ -72,11 +72,14 @@
     "wallDetails_other": "Muro ({{count}} tessere, ordine di pescata)",
     "copySituationLink": "Copia link della situazione",
     "kitaButton": "Kita",
-    "nukiPile": "Nuki"
+    "kanButton": "Kan",
+    "nukiPile": "Nuki",
+    "kanPile": "Kan"
   },
   "discardFeedback": {
     "yourDiscard": "Il tuo scarto",
     "yourKita": "Il tuo kita",
+    "yourKan": "Il tuo kan",
     "bestDiscard": "Scarto migliore",
     "bestKita": "Kita",
     "shantenLine": "shanten {{count}}",
@@ -84,7 +87,9 @@
     "tilesSuffix_other": "· {{count}} tessere",
     "shantenWorse": "Questo scarto è peggiore di {{count}} shanten.",
     "fewerTiles_one": "Con questo scarto hai {{count}} tessera di ukeire in meno.",
-    "fewerTiles_other": "Con questo scarto hai {{count}} tessere di ukeire in meno."
+    "fewerTiles_other": "Con questo scarto hai {{count}} tessere di ukeire in meno.",
+    "missedKita": "Un kita qui sarebbe stato gratuito —",
+    "missedKan": "Un kan qui sarebbe stato gratuito —"
   },
   "shanten": {
     "settings": { "timer": "Timer" },
@@ -111,7 +116,11 @@
       "discardMistakeDrew": "Turno {{turn}}: pescato {{drawn}}, scartato {{tile}} (ukeire {{yours}}); il migliore era {{best}} (ukeire {{bestUkeire}})",
       "tenpai": "Tenpai al turno {{turn}} — in attesa di",
       "kitaBest": "Turno {{turn}}: tirato fuori il nord (nuki) — scelta migliore (ukeire {{ukeire}})",
-      "kitaMistake": "Turno {{turn}}: tirato fuori il nord (nuki) (ukeire {{yours}}); il migliore era {{best}} (ukeire {{bestUkeire}})"
+      "kitaMistake": "Turno {{turn}}: tirato fuori il nord (nuki) (ukeire {{yours}}); il migliore era {{best}} (ukeire {{bestUkeire}})",
+      "kanBest": "Turno {{turn}}: kan su {{tile}} — gratuito (ukeire {{ukeire}})",
+      "kanMistake": "Turno {{turn}}: kan su {{tile}} (ukeire {{yours}}); il migliore era {{best}} (ukeire {{bestUkeire}})",
+      "missedKita": "Turno {{turn}}: un kita gratuito su {{tile}} non è stato colto",
+      "missedKan": "Turno {{turn}}: un kan gratuito su {{tile}} non è stato colto"
     },
     "shanten": {
       "result": "Mano {{hand}}: risposto {{guess}}, reale {{actual}}{{via}} — {{result}}{{time}}"
