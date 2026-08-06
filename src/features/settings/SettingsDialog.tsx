@@ -164,6 +164,11 @@ export function SettingsButton({ title, children }: SettingsButtonProps) {
       </button>
       <dialog
         ref={dialogRef}
+        onClick={(e) => {
+          // click landed on the ::backdrop (dispatched with the dialog itself as target),
+          // not on the form content, so it's an "outside" click
+          if (e.target === dialogRef.current) dialogRef.current?.close()
+        }}
         className="m-auto w-[min(90vw,24rem)] rounded-xl p-0 backdrop:bg-black/40 md:fixed md:inset-y-0 md:right-0 md:left-auto md:m-0 md:h-svh md:w-96 md:max-w-[90vw] md:rounded-none md:rounded-l-2xl dark:bg-neutral-900 dark:text-neutral-100"
       >
         <form method="dialog" className="flex h-full flex-col">
