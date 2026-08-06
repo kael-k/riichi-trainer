@@ -1,9 +1,4 @@
-import { serializeTenhou, tileName, type ParsedTile, type TileId } from '../../core/tiles'
-
-/** Tenhou code for one tile, e.g. "3m", "7z", "0p" for a red five. */
-export function tileCode(id: TileId, red = false): string {
-  return serializeTenhou([{ id, red }])
-}
+import { tileCode, tileName, type ParsedTile, type TileId } from '../../core/tiles'
 
 interface TileProps {
   /** Omit for a face-down tile. */

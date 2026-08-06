@@ -26,7 +26,7 @@ Three layers: pure engine (`src/core/`), URL situation codec (`src/features/situ
 ### Engine (`src/core/`) — pure TypeScript, zero dependencies, no React
 
 - Tiles are `TileId` numbers 0–33 (9 man, 9 pin, 9 sou, 7 honors; offsets `MAN`/`PIN`/`SOU`/`HONOR` in `tiles.ts`).
-- `Hand` (`hand.ts`) is a `Uint8Array(34)` of counts plus a fixed-meld count. It deliberately does **not** track red fives — `ParsedTile { id, red }` carries redness only at parse/display level, which is why reds currently vanish inside the trainers (known gap).
+- `Hand` (`hand.ts`) is a `Uint8Array(34)` of counts plus a fixed-meld count. It deliberately does **not** track red fives — `ParsedTile { id, red }` carries redness at parse/display level, and the efficiency hook tracks which red copies are held in a separate `reds` set alongside the `Hand`.
 - `shanten.ts`: backtracking 5-block decomposition for standard shanten; closed-form chiitoitsu and kokushi; `shanten()` takes the minimum (skipping chiitoi/kokushi when melds exist).
 - `ukeire.ts` / `efficiency.ts` probe by add-tile/remove-tile around `shanten()`. `ukeire(hand, visible)` computes remaining copies against a caller-supplied 34-length visibility array. `evaluateDiscards` ranks every discard (shanten asc, then ukeire desc); ties must be compared with `isBestDiscard` (shanten + ukeire count), never by tile id.
 - Determinism: `rng.ts` (`mulberry32` seeded by string hash) + Fisher-Yates `shuffle`; `wall.ts` builds the 136-tile wall. Same seed string ⇒ same wall, which is what makes situations shareable. Note `wall.ts#deal` models a 14-tile dead wall + dora indicator, but the efficiency trainer's `buildRoundWall` does not (yet) — two wall-building paths exist.
@@ -41,7 +41,7 @@ Tenhou strings (`123m406p11z`, `0` = red five) are the interchange format everyw
 
 Each trainer is a page component plus a `use*Round` hook (`useEfficiencyRound`, `useShantenRound`). The hooks keep mutable engine state (`Hand`, wall array) in a `useRef` and mirror render-ready snapshots into `useState`; per-round seeds are `` `${situation.seed || randomSeed}:${counter}` `` so restart/next-hand advances deterministically while an unspecified seed stays random per mount.
 
-State stores are zustand: `settingsStore.ts` (persisted; has a custom section-wise `merge` so adding fields to `efficiency`/`shanten` survives old persisted schemas — extend that merge when adding a new section) and `store/log.ts` (session-only action log; entries can carry inline tiles and a `copyText` for a tenhou copy button). Pages currently write logs from `useEffect`s watching round state — a known-poor pattern (ordering/StrictMode duplicates) slated to move into the hooks.
+State stores are zustand: `settingsStore.ts` (persisted; has a custom section-wise `merge` so adding fields to `efficiency`/`shanten` survives old persisted schemas — extend that merge when adding a new section) and `store/log.ts` (session-only action log; entries can carry inline tiles and a `copyText` for a tenhou copy button). Log entries are written imperatively from user-triggered actions (e.g. inside `discard()`), not from `useEffect`s watching round state — effect-based logging inverts entry order and duplicates under StrictMode (the shanten page's result effect is the one tolerated exception: its dep starts null on mount, so it fires once).
 
 ### UI
 

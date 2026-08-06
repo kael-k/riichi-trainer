@@ -83,6 +83,11 @@ export function serializeTenhou(tiles: ParsedTile[]): string {
   return out
 }
 
+/** Tenhou code for one tile, e.g. "3m", "7z", "0p" for a red five. */
+export function tileCode(id: TileId, red = false): string {
+  return serializeTenhou([{ id, red }])
+}
+
 /**
  * Serializes tiles to tenhou notation preserving the given order (adjacent
  * same-suit tiles share one suit letter). Use for walls/rivers where draw or

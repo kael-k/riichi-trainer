@@ -58,13 +58,15 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean) {
 
   function nextHand(): State {
     const seed = `${situation.seed || randomSeed}:${handIndex}`
-    let hand: Hand
     if (situation.hand.length === INITIAL_HAND_SIZE) {
-      hand = createHand()
+      const hand = createHand()
       for (const t of situation.hand) addTile(hand, t.id)
-    } else {
-      hand = deal(seed, INITIAL_HAND_SIZE).hand
+      handRef.current = hand
+      // keep the situation's tiles (not counts) so red-five flags survive to display
+      const tiles = [...situation.hand].sort((a, b) => a.id - b.id)
+      return { hand: tiles, running: false, elapsed: 0, result: null }
     }
+    const hand = deal(seed, INITIAL_HAND_SIZE).hand
     handRef.current = hand
     return { hand: handToTiles(hand), running: false, elapsed: 0, result: null }
   }

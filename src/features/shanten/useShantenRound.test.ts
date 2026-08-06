@@ -41,6 +41,13 @@ describe('useShantenRound', () => {
     expect(result.current.totalCount).toBe(1)
   })
 
+  it('preserves a red five pinned in the situation hand', () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456789m0p112z') // 13 tiles incl. red 5p
+    const { result } = renderHook(() => useShantenRound(situation, true))
+    expect(result.current.hand).toContainEqual({ id: 13, red: true })
+  })
+
   it('newHand deals a fresh concealed hand and clears the result', () => {
     const situation = emptySituation()
     const { result } = renderHook(() => useShantenRound(situation, true))

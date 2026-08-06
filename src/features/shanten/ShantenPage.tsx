@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { SettingRow, TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay } from '../../components/tiles/Tile'
+import { serializeTenhou } from '../../core/tiles'
+import { formatElapsed } from '../../lib/formatElapsed'
 import { useLog } from '../../store/log'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
@@ -30,8 +32,11 @@ export function ShantenPage() {
     if (!round.result) return
     const { guess, actual, correct } = round.result
     const label = pathsLabel(actual)
+    const time = settings.timerEnabled ? ` in ${formatElapsed(round.elapsed)}` : ''
     log(
-      `Hand ${round.totalCount}: guessed ${guess}, actual ${actual.value}${label ? ` (${label})` : ''} — ${correct ? 'correct' : 'wrong'}`,
+      `Hand ${round.totalCount}: guessed ${guess}, actual ${actual.value}${label ? ` (${label})` : ''} — ${correct ? 'correct' : 'wrong'}${time}`,
+      round.hand,
+      serializeTenhou(round.hand),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.result])

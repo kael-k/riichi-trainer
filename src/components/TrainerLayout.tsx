@@ -1,7 +1,7 @@
-import { ArrowLeft, Settings, X } from 'lucide-react'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { ArrowLeft, Check, Copy, Settings, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { useLog } from '../store/log'
+import { useLog, type LogEntry } from '../store/log'
 import { ThemeToggle } from './ThemeToggle'
 import { Tile } from './tiles/Tile'
 
@@ -82,15 +82,36 @@ function LogPanel() {
       <ol className="max-h-48 overflow-y-auto px-3 pb-2 text-sm [--tile-w:calc(var(--tile-w-base)*0.55)]">
         {entries.length === 0 && <li className="py-1 text-neutral-400">No actions yet.</li>}
         {[...entries].reverse().map((entry) => (
-          <li key={entry.id} className="flex items-center gap-1 py-0.5">
-            <span>{entry.text}</span>
-            {entry.tiles?.map((t, i) => (
-              <Tile key={i} id={t.id} red={t.red} />
-            ))}
-          </li>
+          <LogRow key={entry.id} entry={entry} />
         ))}
       </ol>
     </details>
+  )
+}
+
+function LogRow({ entry }: { entry: LogEntry }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <li className="flex flex-wrap items-center gap-1 py-0.5">
+      <span>{entry.text}</span>
+      {entry.tiles?.map((t, i) => (
+        <Tile key={i} id={t.id} red={t.red} />
+      ))}
+      {entry.copyText && (
+        <button
+          type="button"
+          aria-label="Copy hand in tenhou format"
+          onClick={async () => {
+            await navigator.clipboard.writeText(entry.copyText!)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1200)
+          }}
+          className="ml-auto flex size-6 shrink-0 items-center justify-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+        >
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+        </button>
+      )}
+    </li>
   )
 }
 
