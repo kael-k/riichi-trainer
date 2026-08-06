@@ -31,9 +31,7 @@
   "wind": { "E": "東", "S": "南", "W": "西", "N": "北" },
   "home": {
     "title": "リーチトレーナー",
-    "releaseVersion": "リリースバージョン: {{sha}}",
-    "scoringTitle": "点数計算トレーナー",
-    "scoringDesc": "符・翻の計算練習 — 近日公開。"
+    "releaseVersion": "リリースバージョン: {{sha}}"
   },
   "trainer": {
     "efficiency": {
@@ -43,6 +41,10 @@
     "shanten": {
       "title": "シャンテン数トレーナー",
       "desc": "時間内に手牌のシャンテン数を当てよう。"
+    },
+    "scoring": {
+      "title": "点数計算トレーナー(アルファ版)",
+      "desc": "和了手の翻・符・点数を当てよう。アルファ版: 役判定は検証中です。"
     }
   },
   "efficiency": {
@@ -103,6 +105,123 @@
     "revealHand": "手牌を表示",
     "path": { "standard": "通常形", "chiitoitsu": "七対子", "kokushi": "国士無双" }
   },
+  "scoring": {
+    "settings": {
+      "testHan": "翻をテスト",
+      "testFu": "符をテスト",
+      "testPoints": "点数をテスト",
+      "timer": "タイマー",
+      "exactFu": "正確な符(切り上げなし)",
+      "showYaku": "役の内訳を表示",
+      "showFu": "符の内訳を表示",
+      "kiriageMangan": "切り上げ満貫",
+      "honba": "本場",
+      "ignoreFuOnLimit": "満貫以上は符を採点しない",
+      "openHands": "副露あり",
+      "aka": "赤ドラ"
+    },
+    "handNumber": "{{count}}問目",
+    "correctScore": "正解数: {{correct}} / {{total}}",
+    "avgTime": "・平均 {{time}}",
+    "roundWind": "場",
+    "seatWind": "自風",
+    "dealer": "親",
+    "doraIndicator": "ドラ表示牌",
+    "uraIndicator": "裏ドラ",
+    "honbaCount_other": "{{count}}本場",
+    "kitaCount_other": "北抜き{{count}}枚",
+    "tsumo": "ツモ",
+    "ron": "ロン",
+    "flags": {
+      "riichi": "リーチ",
+      "doubleRiichi": "ダブルリーチ",
+      "ippatsu": "一発",
+      "haitei": "海底",
+      "houtei": "河底",
+      "rinshan": "嶺上開花",
+      "chankan": "槍槓"
+    },
+    "hanLabel": "翻",
+    "fuLabel": "符",
+    "pointsLabel": "点数",
+    "pointsMainLabel": "点数(一般)",
+    "pointsFromDealerLabel": "点数(親)",
+    "checkAnswer": "採点する",
+    "newHand": "次の問題へ",
+    "correct": "正解",
+    "wrong": "不正解",
+    "inTime": "{{time}}",
+    "correctWas": " — 正解: {{value}}",
+    "copySituationLink": "局面リンクをコピー",
+    "yakuListLabel": "役",
+    "fuListLabel": "符の内訳",
+    "yakumanLabel": "役満",
+    "hanCount_other": "{{count}}翻",
+    "doraLabel": "ドラ",
+    "akaLabel": "赤ドラ",
+    "uraLabel": "裏ドラ",
+    "kitaLabel": "北抜き",
+    "limit": {
+      "mangan": "満貫",
+      "haneman": "跳満",
+      "baiman": "倍満",
+      "sanbaiman": "三倍満",
+      "kazoe": "数え役満",
+      "yakuman": "役満"
+    },
+    "yaku": {
+      "riichi": "リーチ",
+      "doubleRiichi": "ダブルリーチ",
+      "ippatsu": "一発",
+      "menzenTsumo": "門前清自摸和",
+      "tanyao": "タンヤオ",
+      "pinfu": "平和",
+      "iipeikou": "一盃口",
+      "yakuhaiHaku": "役牌(白)",
+      "yakuhaiHatsu": "役牌(發)",
+      "yakuhaiChun": "役牌(中)",
+      "yakuhaiSeatWind": "役牌(自風)",
+      "yakuhaiRoundWind": "役牌(場風)",
+      "haitei": "海底摸月",
+      "houtei": "河底撈魚",
+      "rinshan": "嶺上開花",
+      "chankan": "槍槓",
+      "chiitoitsu": "七対子",
+      "sanshokuDoujun": "三色同順",
+      "ittsuu": "一気通貫",
+      "chanta": "混全帯幺九",
+      "toitoi": "対々和",
+      "sanankou": "三暗刻",
+      "sankantsu": "三槓子",
+      "sanshokuDoukou": "三色同刻",
+      "honroutou": "混老頭",
+      "shousangen": "小三元",
+      "ryanpeikou": "二盃口",
+      "honitsu": "混一色",
+      "junchan": "純全帯幺九",
+      "chinitsu": "清一色"
+    },
+    "yakuman": {
+      "kokushi": "国士無双",
+      "suuankou": "四暗刻",
+      "daisangen": "大三元",
+      "shousuushii": "小四喜",
+      "daisuushii": "大四喜",
+      "tsuuiisou": "字一色",
+      "chinroutou": "清老頭",
+      "ryuuiisou": "緑一色",
+      "chuuren": "九蓮宝燈",
+      "suukantsu": "四槓子"
+    },
+    "fu": {
+      "base": "基本",
+      "tsumo": "ツモ",
+      "closedRon": "門前ロン",
+      "meld": "面子",
+      "pair": "雀頭",
+      "wait": "待ち"
+    }
+  },
   "log": {
     "efficiency": {
       "discardBest": "{{turn}}巡目: {{tile}}を切った — 最善の選択 (受け入れ{{ukeire}})",
@@ -119,6 +238,9 @@
     },
     "shanten": {
       "result": "{{hand}}問目: 回答{{guess}}、正解{{actual}}{{via}} — {{result}}{{time}}"
+    },
+    "scoring": {
+      "result": "{{hand}}問目: {{han}}翻 — {{result}}{{time}}"
     }
   }
 }

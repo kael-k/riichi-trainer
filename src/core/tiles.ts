@@ -22,6 +22,30 @@ export function isTerminalOrHonor(id: TileId): boolean {
   return id >= HONOR || id % 9 === 0 || id % 9 === 8
 }
 
+export function isHonor(id: TileId): boolean {
+  return id >= HONOR
+}
+
+export function isWind(id: TileId): boolean {
+  return id >= HONOR && id < HONOR + 4
+}
+
+export function isDragon(id: TileId): boolean {
+  return id >= HONOR + 4
+}
+
+/** The tile one after `id` in dora order: rank wraps within its suit (9→1), winds cycle
+ *  E→S→W→N→E, dragons cycle haku→hatsu→chun→haku. */
+export function doraFromIndicator(id: TileId): TileId {
+  if (id < HONOR) {
+    const base = id - (id % 9)
+    return base + ((id % 9) + 1) % 9
+  }
+  const rank = id - HONOR
+  if (rank < 4) return HONOR + ((rank + 1) % 4)
+  return HONOR + 4 + ((rank - 4 + 1) % 3)
+}
+
 /** Sanma (three-player) drops 2m-8m from the tile set; everything else is unchanged. */
 export function inTileSet(id: TileId, sanma: boolean): boolean {
   return !sanma || id < MAN + 1 || id > MAN + 7

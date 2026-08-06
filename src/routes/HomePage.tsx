@@ -7,6 +7,7 @@ import { SettingsButton } from '../features/settings/SettingsDialog'
 const MODES = [
   { to: '/efficiency', titleKey: 'trainer.efficiency.title', descKey: 'trainer.efficiency.desc' },
   { to: '/shanten', titleKey: 'trainer.shanten.title', descKey: 'trainer.shanten.desc' },
+  { to: '/scoring', titleKey: 'trainer.scoring.title', descKey: 'trainer.scoring.desc' },
 ] as const
 
 export function HomePage() {
@@ -35,10 +36,6 @@ export function HomePage() {
             <div className="text-sm text-neutral-500">{t(mode.descKey)}</div>
           </Link>
         ))}
-        <div className="rounded-xl border border-dashed border-neutral-200 p-4 opacity-60 dark:border-neutral-800">
-          <div className="font-semibold">{t('home.scoringTitle')}</div>
-          <div className="text-sm text-neutral-500">{t('home.scoringDesc')}</div>
-        </div>
       </nav>
       <p className="mt-auto text-center text-xs text-neutral-400">
         {t('home.releaseVersion', { sha: __COMMIT_SHA__ })}

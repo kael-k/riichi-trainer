@@ -31,9 +31,7 @@
   "wind": { "E": "E", "S": "S", "W": "O", "N": "N" },
   "home": {
     "title": "Riichi Trainer",
-    "releaseVersion": "versione: {{sha}}",
-    "scoringTitle": "Allenamento punteggio",
-    "scoringDesc": "Esercizi su han e fu — in arrivo."
+    "releaseVersion": "versione: {{sha}}"
   },
   "trainer": {
     "efficiency": {
@@ -43,6 +41,10 @@
     "shanten": {
       "title": "Allenamento shanten",
       "desc": "Indovina a quanto shanten sei dal tenpai, contro il tempo."
+    },
+    "scoring": {
+      "title": "Allenamento punteggio (alpha)",
+      "desc": "Indovina han, fu e punti di una mano vincente. Alpha: il riconoscimento degli yaku è ancora in fase di verifica."
     }
   },
   "efficiency": {
@@ -108,6 +110,126 @@
     "revealHand": "Rivela la mano",
     "path": { "standard": "standard", "chiitoitsu": "chiitoitsu", "kokushi": "kokushi" }
   },
+  "scoring": {
+    "settings": {
+      "testHan": "Testa han",
+      "testFu": "Testa fu",
+      "testPoints": "Testa punti",
+      "timer": "Timer",
+      "exactFu": "Fu esatto (non arrotondato)",
+      "showYaku": "Mostra dettaglio yaku",
+      "showFu": "Mostra dettaglio fu",
+      "kiriageMangan": "Kiriage mangan",
+      "honba": "Bastoncini honba",
+      "ignoreFuOnLimit": "Ignora il fu nelle mani limite",
+      "openHands": "Mani aperte",
+      "aka": "Cinque rossi"
+    },
+    "handNumber": "Mano {{count}}",
+    "correctScore": "Corrette: {{correct}} / {{total}}",
+    "avgTime": "· media {{time}}",
+    "roundWind": "Vento di mano",
+    "seatWind": "Vento personale",
+    "dealer": "mazziere",
+    "doraIndicator": "Dora",
+    "uraIndicator": "Ura dora",
+    "honbaCount_one": "{{count}} honba",
+    "honbaCount_other": "{{count}} honba",
+    "kitaCount_one": "{{count}} kita",
+    "kitaCount_other": "{{count}} kita",
+    "tsumo": "Tsumo",
+    "ron": "Ron",
+    "flags": {
+      "riichi": "Riichi",
+      "doubleRiichi": "Doppio riichi",
+      "ippatsu": "Ippatsu",
+      "haitei": "Haitei",
+      "houtei": "Houtei",
+      "rinshan": "Rinshan",
+      "chankan": "Chankan"
+    },
+    "hanLabel": "Han",
+    "fuLabel": "Fu",
+    "pointsLabel": "Punti",
+    "pointsMainLabel": "Punti (ciascuno)",
+    "pointsFromDealerLabel": "Punti (mazziere)",
+    "checkAnswer": "Verifica risposta",
+    "newHand": "Nuova mano",
+    "correct": "corretto",
+    "wrong": "sbagliato",
+    "inTime": "in {{time}}",
+    "correctWas": " — corretto: {{value}}",
+    "copySituationLink": "Copia link della situazione",
+    "yakuListLabel": "Yaku",
+    "fuListLabel": "Dettaglio fu",
+    "yakumanLabel": "Yakuman",
+    "hanCount_one": "{{count}} han",
+    "hanCount_other": "{{count}} han",
+    "doraLabel": "Dora",
+    "akaLabel": "Aka dora",
+    "uraLabel": "Ura dora",
+    "kitaLabel": "Kita",
+    "limit": {
+      "mangan": "Mangan",
+      "haneman": "Haneman",
+      "baiman": "Baiman",
+      "sanbaiman": "Sanbaiman",
+      "kazoe": "Kazoe yakuman",
+      "yakuman": "Yakuman"
+    },
+    "yaku": {
+      "riichi": "Riichi",
+      "doubleRiichi": "Double riichi",
+      "ippatsu": "Ippatsu",
+      "menzenTsumo": "Menzen tsumo",
+      "tanyao": "Tanyao",
+      "pinfu": "Pinfu",
+      "iipeikou": "Iipeikou",
+      "yakuhaiHaku": "Yakuhai (haku)",
+      "yakuhaiHatsu": "Yakuhai (hatsu)",
+      "yakuhaiChun": "Yakuhai (chun)",
+      "yakuhaiSeatWind": "Yakuhai (vento personale)",
+      "yakuhaiRoundWind": "Yakuhai (vento di mano)",
+      "haitei": "Haitei raoyue",
+      "houtei": "Houtei raoyui",
+      "rinshan": "Rinshan kaihou",
+      "chankan": "Chankan",
+      "chiitoitsu": "Chiitoitsu",
+      "sanshokuDoujun": "Sanshoku doujun",
+      "ittsuu": "Ittsuu",
+      "chanta": "Chanta",
+      "toitoi": "Toitoi",
+      "sanankou": "Sanankou",
+      "sankantsu": "Sankantsu",
+      "sanshokuDoukou": "Sanshoku doukou",
+      "honroutou": "Honroutou",
+      "shousangen": "Shousangen",
+      "ryanpeikou": "Ryanpeikou",
+      "honitsu": "Honitsu",
+      "junchan": "Junchan",
+      "chinitsu": "Chinitsu"
+    },
+    "yakuman": {
+      "kokushi": "Kokushi musou",
+      "suuankou": "Suuankou",
+      "daisangen": "Daisangen",
+      "shousuushii": "Shousuushii",
+      "daisuushii": "Daisuushii",
+      "tsuuiisou": "Tsuuiisou",
+      "chinroutou": "Chinroutou",
+      "ryuuiisou": "Ryuuiisou",
+      "chuuren": "Chuurenpoutou",
+      "suukantsu": "Suukantsu"
+    },
+    "fu": {
+      "base": "Base",
+      "tsumo": "Tsumo",
+      "closedRon": "Ron chiuso",
+      "meld": "Set",
+      "pair": "Coppia",
+      "wait": "Attesa"
+    }
+  },
   "log": {
     "efficiency": {
       "discardBest": "Turno {{turn}}: scartato {{tile}} — scelta migliore (ukeire {{ukeire}})",
@@ -124,6 +246,9 @@
     },
     "shanten": {
       "result": "Mano {{hand}}: risposto {{guess}}, reale {{actual}}{{via}} — {{result}}{{time}}"
+    },
+    "scoring": {
+      "result": "Mano {{hand}}: {{han}} han — {{result}}{{time}}"
     }
   }
 }

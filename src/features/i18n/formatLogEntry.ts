@@ -12,6 +12,14 @@ interface ShantenResultParams {
   elapsedMs: number
 }
 
+interface ScoringResultParams {
+  hand: number
+  han: number
+  correct: boolean
+  timerEnabled: boolean
+  elapsedMs: number
+}
+
 /** Most log entries are a direct t(key, params). The shanten result entry composes two
  *  optional trailing clauses (path names, elapsed time) from raw data at render time, so
  *  switching language re-translates the whole line instead of leaving stale fragments
@@ -31,6 +39,16 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
       actual,
       via,
       result: t(correct ? 'shanten.correct' : 'shanten.wrong'),
+      time,
+    })
+  }
+  if (entry.key === 'log.scoring.result') {
+    const { hand, han, correct, timerEnabled, elapsedMs } = entry.params as unknown as ScoringResultParams
+    const time = timerEnabled ? ` ${t('scoring.inTime', { time: formatElapsedMs(elapsedMs) })}` : ''
+    return t('log.scoring.result', {
+      hand,
+      han,
+      result: t(correct ? 'scoring.correct' : 'scoring.wrong'),
       time,
     })
   }

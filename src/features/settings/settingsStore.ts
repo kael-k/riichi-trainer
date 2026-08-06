@@ -23,6 +23,26 @@ export interface Settings {
     showWall: boolean
   }
   shanten: { timerEnabled: boolean }
+  scoring: {
+    timerEnabled: boolean
+    /** At least one of these three must stay true; the UI disables unchecking the last one. */
+    testHan: boolean
+    testFu: boolean
+    testPoints: boolean
+    /** Grade the exact pre-rounding fu instead of the rounded-up-to-10 value. */
+    exactFu: boolean
+    /** Show the itemized yaku list on reveal, instead of just the han total. */
+    showYaku: boolean
+    /** Show the fu itemization on reveal, instead of just the fu total. */
+    showFu: boolean
+    kiriageMangan: boolean
+    /** Add random honba sticks to generated hands and require them in the points total. */
+    honba: boolean
+    ignoreFuOnLimit: boolean
+    /** Generate hands with called melds, not just closed ones. */
+    openHands: boolean
+    aka: boolean
+  }
 }
 
 /** Trainer tile size presets; multiplies the base tile width. */
@@ -58,6 +78,20 @@ export const useSettings = create<SettingsState>()(
         showWall: false,
       },
       shanten: { timerEnabled: true },
+      scoring: {
+        timerEnabled: true,
+        testHan: true,
+        testFu: true,
+        testPoints: true,
+        exactFu: false,
+        showYaku: false,
+        showFu: false,
+        kiriageMangan: false,
+        honba: false,
+        ignoreFuOnLimit: false,
+        openHands: true,
+        aka: true,
+      },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       showTileNumbers: false,
@@ -82,6 +116,7 @@ export const useSettings = create<SettingsState>()(
           ...p,
           efficiency: { ...current.efficiency, ...p.efficiency },
           shanten: { ...current.shanten, ...p.shanten },
+          scoring: { ...current.scoring, ...p.scoring },
         }
       },
     },

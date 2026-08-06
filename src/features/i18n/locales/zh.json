@@ -31,9 +31,7 @@
   "wind": { "E": "东", "S": "南", "W": "西", "N": "北" },
   "home": {
     "title": "立直训练器",
-    "releaseVersion": "版本: {{sha}}",
-    "scoringTitle": "算番训练",
-    "scoringDesc": "符数与番数计算练习 — 即将推出。"
+    "releaseVersion": "版本: {{sha}}"
   },
   "trainer": {
     "efficiency": {
@@ -43,6 +41,10 @@
     "shanten": {
       "title": "上听数训练",
       "desc": "限时猜出手牌距离听牌还差几步。"
+    },
+    "scoring": {
+      "title": "算番训练(测试版)",
+      "desc": "猜出和了手的番数、符数与点数。测试版: 役种判定仍在验证中。"
     }
   },
   "efficiency": {
@@ -103,6 +105,123 @@
     "revealHand": "显示手牌",
     "path": { "standard": "标准型", "chiitoitsu": "七对子", "kokushi": "国士无双" }
   },
+  "scoring": {
+    "settings": {
+      "testHan": "测试番数",
+      "testFu": "测试符数",
+      "testPoints": "测试点数",
+      "timer": "计时器",
+      "exactFu": "精确符数(不四舍五入)",
+      "showYaku": "显示役种明细",
+      "showFu": "显示符数明细",
+      "kiriageMangan": "切上满贯",
+      "honba": "本场",
+      "ignoreFuOnLimit": "满贯以上不计符数",
+      "openHands": "允许副露",
+      "aka": "赤宝牌"
+    },
+    "handNumber": "第{{count}}题",
+    "correctScore": "正确: {{correct}} / {{total}}",
+    "avgTime": "· 平均 {{time}}",
+    "roundWind": "场风",
+    "seatWind": "自风",
+    "dealer": "庄家",
+    "doraIndicator": "宝牌指示牌",
+    "uraIndicator": "里宝牌",
+    "honbaCount_other": "{{count}}本场",
+    "kitaCount_other": "拔北{{count}}张",
+    "tsumo": "自摸",
+    "ron": "荣和",
+    "flags": {
+      "riichi": "立直",
+      "doubleRiichi": "双立直",
+      "ippatsu": "一发",
+      "haitei": "海底",
+      "houtei": "河底",
+      "rinshan": "岭上开花",
+      "chankan": "抢杠"
+    },
+    "hanLabel": "番数",
+    "fuLabel": "符数",
+    "pointsLabel": "点数",
+    "pointsMainLabel": "点数(一般家)",
+    "pointsFromDealerLabel": "点数(庄家)",
+    "checkAnswer": "提交答案",
+    "newHand": "下一题",
+    "correct": "正确",
+    "wrong": "错误",
+    "inTime": "{{time}}",
+    "correctWas": " — 正确答案: {{value}}",
+    "copySituationLink": "复制局面链接",
+    "yakuListLabel": "役种",
+    "fuListLabel": "符数明细",
+    "yakumanLabel": "役满",
+    "hanCount_other": "{{count}}番",
+    "doraLabel": "宝牌",
+    "akaLabel": "赤宝牌",
+    "uraLabel": "里宝牌",
+    "kitaLabel": "拔北",
+    "limit": {
+      "mangan": "满贯",
+      "haneman": "跳满",
+      "baiman": "倍满",
+      "sanbaiman": "三倍满",
+      "kazoe": "累计役满",
+      "yakuman": "役满"
+    },
+    "yaku": {
+      "riichi": "立直",
+      "doubleRiichi": "双立直",
+      "ippatsu": "一发",
+      "menzenTsumo": "门前清自摸和",
+      "tanyao": "断幺九",
+      "pinfu": "平和",
+      "iipeikou": "一杯口",
+      "yakuhaiHaku": "役牌(白)",
+      "yakuhaiHatsu": "役牌(发)",
+      "yakuhaiChun": "役牌(中)",
+      "yakuhaiSeatWind": "役牌(自风)",
+      "yakuhaiRoundWind": "役牌(场风)",
+      "haitei": "海底捞月",
+      "houtei": "河底捞鱼",
+      "rinshan": "岭上开花",
+      "chankan": "抢杠",
+      "chiitoitsu": "七对子",
+      "sanshokuDoujun": "三色同顺",
+      "ittsuu": "一气通贯",
+      "chanta": "混全带幺九",
+      "toitoi": "对对和",
+      "sanankou": "三暗刻",
+      "sankantsu": "三杠子",
+      "sanshokuDoukou": "三色同刻",
+      "honroutou": "混老头",
+      "shousangen": "小三元",
+      "ryanpeikou": "二杯口",
+      "honitsu": "混一色",
+      "junchan": "纯全带幺九",
+      "chinitsu": "清一色"
+    },
+    "yakuman": {
+      "kokushi": "国士无双",
+      "suuankou": "四暗刻",
+      "daisangen": "大三元",
+      "shousuushii": "小四喜",
+      "daisuushii": "大四喜",
+      "tsuuiisou": "字一色",
+      "chinroutou": "清老头",
+      "ryuuiisou": "绿一色",
+      "chuuren": "九莲宝灯",
+      "suukantsu": "四杠子"
+    },
+    "fu": {
+      "base": "基本符",
+      "tsumo": "自摸",
+      "closedRon": "门前荣和",
+      "meld": "面子",
+      "pair": "雀头",
+      "wait": "听牌方式"
+    }
+  },
   "log": {
     "efficiency": {
       "discardBest": "第{{turn}}巡: 打出{{tile}} — 最佳选择 (进张{{ukeire}})",
@@ -119,6 +238,9 @@
     },
     "shanten": {
       "result": "第{{hand}}题: 回答{{guess}},正确{{actual}}{{via}} — {{result}}{{time}}"
+    },
+    "scoring": {
+      "result": "第{{hand}}题: {{han}}番 — {{result}}{{time}}"
     }
   }
 }
