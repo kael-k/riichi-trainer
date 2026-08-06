@@ -3,9 +3,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { SettingRow, TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay } from '../../components/tiles/Tile'
-import { serializeTenhou } from '../../core/tiles'
-import { formatElapsed } from '../../lib/formatElapsed'
-import { useLog } from '../../store/log'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
 import { RevealTimer } from './RevealTimer'
@@ -25,30 +22,15 @@ export function ShantenPage() {
   const update = useSettings((s) => s.update)
   const showTileNumbers = useSettings((s) => s.showTileNumbers)
   const setShowTileNumbers = useSettings((s) => s.setShowTileNumbers)
-  const log = useLog((s) => s.log)
   const [guessInput, setGuessInput] = useState('')
 
   const round = useShantenRound(situation, settings.timerEnabled)
-
-  useEffect(() => {
-    if (!round.result) return
-    const { guess, actual, correct } = round.result
-    const label = pathsLabel(actual)
-    const time = settings.timerEnabled ? ` in ${formatElapsed(round.elapsed)}` : ''
-    log(
-      `Hand ${round.totalCount}: guessed ${guess}, actual ${actual.value}${label ? ` (${label})` : ''} — ${correct ? 'correct' : 'wrong'}${time}`,
-      round.hand,
-      serializeTenhou(round.hand),
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round.result])
 
   useEffect(() => setGuessInput(''), [round.hand])
 
   // Space toggles reveal/pause — the number input auto-focuses on reveal, so typing a
   // digit + Enter already submits without any extra wiring
   useEffect(() => {
-    if (round.result) return
     function onKeyDown(e: KeyboardEvent) {
       if (e.code !== 'Space') return
       const tag = (e.target as HTMLElement | null)?.tagName
@@ -60,7 +42,7 @@ export function ShantenPage() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round.running, round.result, round.pause, round.reveal])
+  }, [round.running, round.pause, round.reveal])
 
   const submitGuess = (value: number) => {
     if (Number.isNaN(value) || value < 0) return
@@ -93,7 +75,7 @@ export function ShantenPage() {
     >
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between text-sm text-neutral-500">
-          <span>Hand {round.totalCount + (round.result ? 0 : 1)}</span>
+          <span>Hand {round.totalCount + 1}</span>
           <span>
             Correct: {round.correctCount} / {round.totalCount}
           </span>
@@ -103,14 +85,13 @@ export function ShantenPage() {
           running={round.running}
           elapsed={round.elapsed}
           timerEnabled={settings.timerEnabled}
-          disabled={!!round.result}
           onPlay={round.reveal}
           onPause={round.pause}
         />
 
         <HandDisplay tiles={round.hand} concealed={round.concealed} />
 
-        {!round.concealed && !round.result && (
+        {!round.concealed && (
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -150,32 +131,28 @@ export function ShantenPage() {
           </form>
         )}
 
-        {round.result && (
+        {round.lastResult && (
           <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
             <p
-              className={`flex items-center gap-1.5 font-semibold ${round.result.correct ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
+              className={`flex items-center gap-1.5 font-semibold ${round.lastResult.correct ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
             >
-              {round.result.correct ? (
+              {round.lastResult.correct ? (
                 <>
                   <CheckCircle2 className="size-4" /> Correct
                 </>
               ) : (
                 <>
-                  <XCircle className="size-4" /> You said {round.result.guess}
+                  <XCircle className="size-4" /> You said {round.lastResult.guess}
                 </>
               )}
             </p>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Actual shanten: {round.result.actual.value}
-              {pathsLabel(round.result.actual) && ` (${pathsLabel(round.result.actual)})`}
+              Previous hand — actual shanten: {round.lastResult.actual.value}
+              {pathsLabel(round.lastResult.actual) && ` (${pathsLabel(round.lastResult.actual)})`}
             </p>
-            <button
-              type="button"
-              onClick={round.newHand}
-              className="mt-1 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-            >
-              Next hand
-            </button>
+            <div className="[--tile-w:calc(var(--tile-w-base)*0.55)]">
+              <HandDisplay tiles={round.lastResult.hand} />
+            </div>
           </div>
         )}
       </div>

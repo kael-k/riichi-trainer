@@ -5,28 +5,19 @@ interface RevealTimerProps {
   running: boolean
   elapsed: number
   timerEnabled: boolean
-  disabled: boolean
   onPlay: () => void
   onPause: () => void
 }
 
 /** Play/pause control; pausing re-conceals the hand. Timer readout only shown when enabled. */
-export function RevealTimer({
-  running,
-  elapsed,
-  timerEnabled,
-  disabled,
-  onPlay,
-  onPause,
-}: RevealTimerProps) {
+export function RevealTimer({ running, elapsed, timerEnabled, onPlay, onPause }: RevealTimerProps) {
   return (
     <div className="flex items-center gap-3">
       <button
         type="button"
-        disabled={disabled}
         onClick={running ? onPause : onPlay}
         aria-label={running ? 'Pause and conceal' : 'Reveal hand'}
-        className="flex size-11 items-center justify-center rounded-full bg-neutral-900 text-white disabled:opacity-30 dark:bg-neutral-100 dark:text-neutral-900"
+        className="flex size-11 items-center justify-center rounded-full bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
       >
         {running ? (
           <Pause className="size-5 fill-current" />

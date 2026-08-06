@@ -34,9 +34,10 @@ describe('useShantenRound', () => {
     act(() => result.current.reveal())
     act(() => result.current.submit(0))
 
-    expect(result.current.result?.correct).toBe(true)
-    expect(result.current.result?.actual.value).toBe(0)
-    expect(result.current.result?.actual.paths).toContain('chiitoitsu')
+    expect(result.current.lastResult?.correct).toBe(true)
+    expect(result.current.lastResult?.actual.value).toBe(0)
+    expect(result.current.lastResult?.actual.paths).toContain('chiitoitsu')
+    expect(result.current.lastResult?.hand).toEqual(situation.hand)
     expect(result.current.correctCount).toBe(1)
     expect(result.current.totalCount).toBe(1)
   })
@@ -48,13 +49,21 @@ describe('useShantenRound', () => {
     expect(result.current.hand).toContainEqual({ id: 13, red: true })
   })
 
-  it('newHand deals a fresh concealed hand and clears the result', () => {
+  it('rolls straight into the next hand, still revealed and timing', () => {
     const situation = emptySituation()
+    situation.seed = 'stream-seed'
     const { result } = renderHook(() => useShantenRound(situation, true))
     act(() => result.current.reveal())
+    const first = result.current.hand
+
     act(() => result.current.submit(0))
-    act(() => result.current.newHand())
-    expect(result.current.result).toBeNull()
-    expect(result.current.concealed).toBe(true)
+    expect(result.current.hand).not.toEqual(first)
+    expect(result.current.lastResult?.hand).toEqual(first) // feedback keeps the graded hand
+    expect(result.current.running).toBe(true)
+    expect(result.current.concealed).toBe(false)
+    expect(result.current.elapsed).toBe(0) // per-hand timer restarts
+
+    act(() => result.current.submit(1))
+    expect(result.current.totalCount).toBe(2) // no button press in between
   })
 })

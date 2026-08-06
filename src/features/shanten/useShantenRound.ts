@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { addTile, createHand, type Hand } from '../../core/hand'
 import { chiitoiShanten, kokushiShanten, standardShanten } from '../../core/shanten'
-import { NUM_TILE_TYPES, type ParsedTile } from '../../core/tiles'
+import { NUM_TILE_TYPES, serializeTenhou, type ParsedTile } from '../../core/tiles'
 import { deal, INITIAL_HAND_SIZE } from '../../core/wall'
+import { formatElapsed } from '../../lib/formatElapsed'
+import { useLog } from '../../store/log'
 import type { Situation } from '../situation/urlCodec'
 
 export type ShantenPath = 'standard' | 'chiitoitsu' | 'kokushi'
@@ -17,13 +19,16 @@ export interface RoundResult {
   guess: number
   actual: ShantenBreakdown
   correct: boolean
+  /** The hand that was graded — the next one is already on screen by then. */
+  hand: ParsedTile[]
 }
 
 interface State {
   hand: ParsedTile[]
   running: boolean
   elapsed: number
-  result: RoundResult | null
+  /** Feedback for the previous guess; never blocks the current hand. */
+  lastResult: RoundResult | null
 }
 
 function handToTiles(hand: Hand): ParsedTile[] {
@@ -46,7 +51,8 @@ function computeBreakdown(hand: Hand): ShantenBreakdown {
   return { value, paths }
 }
 
-/** Drives one shanten guess at a time: concealed hand, reveal/pause, answer, next hand. */
+/** Drives a continuous stream of hands: reveal once, then guess after guess with
+ *  the feedback for the last one alongside the hand already dealt. */
 export function useShantenRound(situation: Situation, timerEnabled: boolean) {
   const [handIndex, setHandIndex] = useState(0)
   // stable per mount, so an unspecified seed still gets a fresh hand each page load
@@ -55,24 +61,31 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean) {
   const [totalCount, setTotalCount] = useState(0)
   const handRef = useRef<Hand>(undefined)
   const [state, setState] = useState<State>(() => nextHand())
+  const log = useLog((s) => s.log)
 
-  function nextHand(): State {
+  /** Deals the hand for the current `handIndex`, carrying over whether the stream is
+   *  running and the pending feedback so an answered hand rolls straight into the next. */
+  function nextHand(prev?: State): State {
+    const carry = {
+      running: prev?.running ?? false,
+      elapsed: 0,
+      lastResult: prev?.lastResult ?? null,
+    }
     const seed = `${situation.seed || randomSeed}:${handIndex}`
     if (situation.hand.length === INITIAL_HAND_SIZE) {
       const hand = createHand()
       for (const t of situation.hand) addTile(hand, t.id)
       handRef.current = hand
       // keep the situation's tiles (not counts) so red-five flags survive to display
-      const tiles = [...situation.hand].sort((a, b) => a.id - b.id)
-      return { hand: tiles, running: false, elapsed: 0, result: null }
+      return { hand: [...situation.hand].sort((a, b) => a.id - b.id), ...carry }
     }
     const hand = deal(seed, INITIAL_HAND_SIZE).hand
     handRef.current = hand
-    return { hand: handToTiles(hand), running: false, elapsed: 0, result: null }
+    return { hand: handToTiles(hand), ...carry }
   }
 
   useEffect(() => {
-    setState(nextHand())
+    setState((s) => nextHand(s))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [situation, handIndex])
 
@@ -84,19 +97,29 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean) {
 
   return {
     ...state,
-    concealed: !state.running && !state.result,
+    concealed: !state.running,
     correctCount,
     totalCount,
-    reveal: () => setState((s) => (s.result ? s : { ...s, running: true })),
-    pause: () => setState((s) => (s.result ? s : { ...s, running: false })),
+    reveal: () => setState((s) => ({ ...s, running: true })),
+    pause: () => setState((s) => ({ ...s, running: false })),
     submit: (guess: number) => {
-      if (state.result || !state.running || !handRef.current) return
+      if (!state.running || !handRef.current) return
       const actual = computeBreakdown(handRef.current)
       const correct = guess === actual.value
+      // logged here rather than from a page effect, so entries stay in play order
+      const paths = actual.paths.join(' / ')
+      const via = paths === 'standard' ? '' : ` (via ${paths})`
+      const time = timerEnabled ? ` in ${formatElapsed(state.elapsed)}` : ''
+      log(
+        `Hand ${totalCount + 1}: guessed ${guess}, actual ${actual.value}${via} — ${correct ? 'correct' : 'wrong'}${time}`,
+        state.hand,
+        serializeTenhou(state.hand),
+      )
       setTotalCount((n) => n + 1)
       if (correct) setCorrectCount((n) => n + 1)
-      setState((s) => ({ ...s, running: false, result: { guess, actual, correct } }))
+      // keep running: the feedback rides along with the hand dealt by the index bump
+      setState((s) => ({ ...s, lastResult: { guess, actual, correct, hand: s.hand } }))
+      setHandIndex((n) => n + 1)
     },
-    newHand: () => setHandIndex((n) => n + 1),
   }
 }
