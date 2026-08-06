@@ -90,11 +90,17 @@ function LogPanel() {
 function LogRow({ entry }: { entry: LogEntry }) {
   const [copied, setCopied] = useState(false)
   return (
-    <li className="flex flex-wrap items-center gap-1 py-0.5">
-      <span>{entry.text}</span>
-      {entry.tiles?.map((t, i) => (
-        <Tile key={i} id={t.id} red={t.red} />
-      ))}
+    <li className="flex items-center gap-2 py-0.5">
+      <div className="min-w-0 flex-1">
+        <p>{entry.text}</p>
+        {entry.tiles && entry.tiles.length > 0 && (
+          <div className="flex flex-wrap">
+            {entry.tiles.map((t, i) => (
+              <Tile key={i} id={t.id} red={t.red} />
+            ))}
+          </div>
+        )}
+      </div>
       {entry.copyText && (
         <button
           type="button"
@@ -104,7 +110,7 @@ function LogRow({ entry }: { entry: LogEntry }) {
             setCopied(true)
             setTimeout(() => setCopied(false), 1200)
           }}
-          className="ml-auto flex size-6 shrink-0 items-center justify-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+          className="flex size-6 shrink-0 items-center justify-center self-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
         >
           {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
         </button>

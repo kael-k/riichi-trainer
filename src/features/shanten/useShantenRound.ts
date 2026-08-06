@@ -3,7 +3,7 @@ import { addTile, createHand, type Hand } from '../../core/hand'
 import { chiitoiShanten, kokushiShanten, standardShanten } from '../../core/shanten'
 import { NUM_TILE_TYPES, serializeTenhou, type ParsedTile } from '../../core/tiles'
 import { deal, INITIAL_HAND_SIZE } from '../../core/wall'
-import { formatElapsed } from '../../lib/formatElapsed'
+import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLog } from '../../store/log'
 import type { Situation } from '../situation/urlCodec'
 
@@ -26,10 +26,15 @@ export interface RoundResult {
 interface State {
   hand: ParsedTile[]
   running: boolean
+  /** Time on the current hand, in milliseconds. */
   elapsed: number
   /** Feedback for the previous guess; never blocks the current hand. */
   lastResult: RoundResult | null
 }
+
+/** Display refresh of the live timer; the graded time itself is read from the
+ *  clock at submit, so it never inherits this granularity. */
+const TICK_MS = 50
 
 function handToTiles(hand: Hand): ParsedTile[] {
   const tiles: ParsedTile[] = []
@@ -59,13 +64,23 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean) {
   const [randomSeed] = useState(() => Math.random().toString(36).slice(2))
   const [correctCount, setCorrectCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
+  const [totalTime, setTotalTime] = useState(0)
   const handRef = useRef<Hand>(undefined)
+  // clock reading the current hand was revealed at; there is no pause, so one
+  // reading is the whole timer
+  const startedAt = useRef(0)
   const [state, setState] = useState<State>(() => nextHand())
   const log = useLog((s) => s.log)
+  const entryCount = useLog((s) => s.entries.length)
+
+  function elapsedNow(): number {
+    return performance.now() - startedAt.current
+  }
 
   /** Deals the hand for the current `handIndex`, carrying over whether the stream is
    *  running and the pending feedback so an answered hand rolls straight into the next. */
   function nextHand(prev?: State): State {
+    startedAt.current = performance.now()
     const carry = {
       running: prev?.running ?? false,
       elapsed: 0,
@@ -91,31 +106,54 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean) {
 
   useEffect(() => {
     if (!state.running || !timerEnabled) return
-    const id = setInterval(() => setState((s) => ({ ...s, elapsed: s.elapsed + 1 })), 1000)
+    const id = setInterval(() => setState((s) => ({ ...s, elapsed: elapsedNow() })), TICK_MS)
     return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.running, timerEnabled])
+
+  // clearing the log clears the session it recorded: score and average go with it
+  useEffect(() => {
+    if (entryCount > 0) return
+    setCorrectCount(0)
+    setTotalCount(0)
+    setTotalTime(0)
+  }, [entryCount])
 
   return {
     ...state,
     concealed: !state.running,
     correctCount,
     totalCount,
-    reveal: () => setState((s) => ({ ...s, running: true })),
-    pause: () => setState((s) => ({ ...s, running: false })),
+    /** Mean time per graded hand, in milliseconds. */
+    averageTime: totalCount > 0 ? totalTime / totalCount : 0,
+    reveal: () =>
+      setState((s) => {
+        if (s.running) return s
+        startedAt.current = performance.now()
+        return { ...s, running: true }
+      }),
+    /** Abandons the current hand: re-conceals, drops the timer, deals a fresh one —
+     *  a peeked hand can't be timed again, so there is nothing to resume. */
+    stop: () => {
+      setState((s) => ({ ...s, running: false, elapsed: 0 }))
+      setHandIndex((n) => n + 1)
+    },
     submit: (guess: number) => {
       if (!state.running || !handRef.current) return
       const actual = computeBreakdown(handRef.current)
       const correct = guess === actual.value
+      const elapsed = elapsedNow()
       // logged here rather than from a page effect, so entries stay in play order
       const paths = actual.paths.join(' / ')
       const via = paths === 'standard' ? '' : ` (via ${paths})`
-      const time = timerEnabled ? ` in ${formatElapsed(state.elapsed)}` : ''
+      const time = timerEnabled ? ` in ${formatElapsedMs(elapsed)}` : ''
       log(
         `Hand ${totalCount + 1}: guessed ${guess}, actual ${actual.value}${via} — ${correct ? 'correct' : 'wrong'}${time}`,
         state.hand,
         serializeTenhou(state.hand),
       )
       setTotalCount((n) => n + 1)
+      setTotalTime((t) => t + elapsed)
       if (correct) setCorrectCount((n) => n + 1)
       // keep running: the feedback rides along with the hand dealt by the index bump
       setState((s) => ({ ...s, lastResult: { guess, actual, correct, hand: s.hand } }))

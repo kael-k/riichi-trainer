@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { parseTenhou } from '../../core/tiles'
+import { useLog } from '../../store/log'
 import { emptySituation } from '../situation/urlCodec'
 import { useShantenRound } from './useShantenRound'
 
@@ -14,15 +15,21 @@ describe('useShantenRound', () => {
     expect(result.current.running).toBe(false)
   })
 
-  it('reveal starts the timer; pause re-conceals', () => {
+  it('reveal shows the hand; stop re-conceals, resets the timer and deals a new hand', () => {
     const situation = emptySituation()
+    situation.seed = 'stop-seed'
     const { result } = renderHook(() => useShantenRound(situation, true))
     act(() => result.current.reveal())
     expect(result.current.running).toBe(true)
     expect(result.current.concealed).toBe(false)
-    act(() => result.current.pause())
+    const revealed = result.current.hand
+
+    act(() => result.current.stop())
     expect(result.current.running).toBe(false)
     expect(result.current.concealed).toBe(true)
+    expect(result.current.elapsed).toBe(0)
+    expect(result.current.hand).not.toEqual(revealed) // a peeked hand is never re-served
+    expect(result.current.totalCount).toBe(0) // abandoned, not graded
   })
 
   it('grades a submitted guess and names non-standard paths', () => {
@@ -65,5 +72,20 @@ describe('useShantenRound', () => {
 
     act(() => result.current.submit(1))
     expect(result.current.totalCount).toBe(2) // no button press in between
+  })
+
+  it('clearing the log resets the score and the average', () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('1122334455667m')
+    const { result } = renderHook(() => useShantenRound(situation, true))
+    act(() => result.current.reveal())
+    act(() => result.current.submit(0))
+    expect(result.current.correctCount).toBe(1)
+    expect(result.current.averageTime).toBeGreaterThanOrEqual(0)
+
+    act(() => useLog.getState().clear())
+    expect(result.current.correctCount).toBe(0)
+    expect(result.current.totalCount).toBe(0)
+    expect(result.current.averageTime).toBe(0)
   })
 })

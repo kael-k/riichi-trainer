@@ -11,13 +11,13 @@ Mobile-first riichi mahjong trainer: efficiency (discard/ukeire) and shanten dri
 3. Efficiency trainer can load a hand but not the wall/river, so specific situations aren't reproducible — _addressed: situation URLs pin hand, wall and rivers (see below)_
 4. Ukeire is shown as a number, not as the actual improving tiles — _addressed: improving tiles shown with remaining counts_
 5. Shanten trainer's number input doesn't submit on Enter — _addressed_
-6. Shanten trainer timer starts on first guess instead of on reveal, with no pause — _addressed: starts on reveal, pausable_
+6. Shanten trainer timer starts on first guess instead of on reveal — _addressed: starts on reveal, millisecond precision, with a running average_
 7. No integrated scoring trainer (cf. [scoringtrainer.konbamwa.net](https://scoringtrainer.konbamwa.net/)) — _planned_
 
 ## Modes
 
 - **Efficiency trainer** (`/efficiency`) — 14-tile hand; tap a discard, get feedback: your shanten/ukeire vs. the best discard, with the actual improving tiles and their remaining counts. Draw, discard, repeat until the wall runs dry; cumulative "ukeire lost" scores the round. Optional (all on by default except the wall view): simulated opponents that tsumogiri every turn, a dead wall with visible dora indicator, red fives in the deal, and a face-up wall view. "Copy situation link" exports the current round mid-game as a URL.
-- **Shanten trainer** (`/shanten`) — hand is dealt face-down; revealing starts a pausable timer. Guess the shanten count (Enter or quick buttons); standard, chiitoitsu and kokushi are all considered.
+- **Shanten trainer** (`/shanten`) — hand is dealt face-down; revealing starts the timer. Guess the shanten count (Enter or quick buttons); standard, chiitoitsu and kokushi are all considered. Guessing deals the next hand immediately, keeping the previous hand's feedback alongside; stop abandons the current hand for a fresh one. Score and average time reset when the log is cleared.
 - **Scoring trainer** — han/fu scoring drills. _TODO, not implemented yet._
 - **Folding trainer** — defend against riichi. _TODO, not implemented yet._
 

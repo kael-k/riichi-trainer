@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { SettingRow, TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay } from '../../components/tiles/Tile'
+import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
 import { RevealTimer } from './RevealTimer'
@@ -28,7 +29,7 @@ export function ShantenPage() {
 
   useEffect(() => setGuessInput(''), [round.hand])
 
-  // Space toggles reveal/pause — the number input auto-focuses on reveal, so typing a
+  // Space toggles reveal/stop — the number input auto-focuses on reveal, so typing a
   // digit + Enter already submits without any extra wiring
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -36,13 +37,13 @@ export function ShantenPage() {
       const tag = (e.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return
       e.preventDefault()
-      if (round.running) round.pause()
+      if (round.running) round.stop()
       else round.reveal()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round.running, round.pause, round.reveal])
+  }, [round.running, round.stop, round.reveal])
 
   const submitGuess = (value: number) => {
     if (Number.isNaN(value) || value < 0) return
@@ -78,6 +79,7 @@ export function ShantenPage() {
           <span>Hand {round.totalCount + 1}</span>
           <span>
             Correct: {round.correctCount} / {round.totalCount}
+            {settings.timerEnabled && <> · avg {formatElapsedMs(round.averageTime)}</>}
           </span>
         </div>
 
@@ -86,7 +88,7 @@ export function ShantenPage() {
           elapsed={round.elapsed}
           timerEnabled={settings.timerEnabled}
           onPlay={round.reveal}
-          onPause={round.pause}
+          onStop={round.stop}
         />
 
         <HandDisplay tiles={round.hand} concealed={round.concealed} />
