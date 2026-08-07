@@ -45,17 +45,23 @@ export interface Settings {
   }
 }
 
-/** Trainer tile size presets; multiplies the base tile width. */
-export const TILE_SCALES = [0.8, 1, 1.25, 1.5] as const
+/** Trainer tile size presets (XS-XL); multiplies the base tile width. */
+export const TILE_SCALES = [0.8, 1, 1.25, 1.5, 1.8] as const
+
+/** Size used until the reader picks one: M, big enough to read a hand on a phone. */
+export const DEFAULT_TILE_SCALE = 1.25
 
 interface SettingsState extends Settings {
   theme: Theme
   setTheme: (theme: Theme) => void
-  /** Overlay the tenhou code (e.g. "3m") on each tile face, for players still learning to read pips. */
-  showTileNumbers: boolean
+  /** Overlay the tenhou code (e.g. "3m") on each tile face, for players still learning to read
+   *  pips. `null` means "never chosen", which resolves per language — see `useShowTileNumbers`. */
+  showTileNumbers: boolean | null
   setShowTileNumbers: (show: boolean) => void
-  /** Trainer tile size multiplier; one of TILE_SCALES. Does not affect the log panel. */
-  tileScale: number
+  /** Trainer tile size multiplier; one of TILE_SCALES, or `null` for "never chosen" — read it
+   *  as `tileScale ?? DEFAULT_TILE_SCALE` so the default can move without overriding a choice.
+   *  Does not affect the log panel. */
+  tileScale: number | null
   setTileScale: (scale: number) => void
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats, nukidora. Applies to both trainers. */
   sanma: boolean
@@ -99,9 +105,9 @@ export const useSettings = create<SettingsState>()(
       },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
-      showTileNumbers: false,
+      showTileNumbers: null,
       setShowTileNumbers: (showTileNumbers) => set({ showTileNumbers }),
-      tileScale: 1,
+      tileScale: null,
       setTileScale: (tileScale) => set({ tileScale }),
       sanma: false,
       setSanma: (sanma) => set({ sanma }),
@@ -113,6 +119,20 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'riichi-trainer-settings',
+      version: 1,
+      // v0 stored `showTileNumbers` and `tileScale` as plain values, so an install that never
+      // touched either is indistinguishable from one that deliberately picked the old default.
+      // Both old defaults are read as "never chosen" and fall back to the current default; a
+      // non-default value is a real choice and survives.
+      migrate: (persisted, version) => {
+        const p = (persisted ?? {}) as Partial<SettingsState>
+        if (version >= 1) return p
+        return {
+          ...p,
+          showTileNumbers: p.showTileNumbers === false ? null : p.showTileNumbers,
+          tileScale: p.tileScale === 1 ? null : p.tileScale,
+        }
+      },
       // zustand's default merge is shallow at the top level, so a persisted `efficiency`/
       // `shanten` object from an older schema would wholesale overwrite (not fill in
       // defaults for) new fields added to those sections later — merge each section too

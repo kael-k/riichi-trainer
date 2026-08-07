@@ -3,7 +3,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { formatLogEntry } from '../features/i18n/formatLogEntry'
-import { useSettings } from '../features/settings/settingsStore'
+import { DEFAULT_TILE_SCALE, useSettings } from '../features/settings/settingsStore'
 import { SettingsButton } from '../features/settings/SettingsDialog'
 import { useLog, type LogEntry } from '../store/log'
 import { Tile } from './tiles/Tile'
@@ -18,7 +18,7 @@ interface TrainerLayoutProps {
 
 export function TrainerLayout({ title, settings, children }: TrainerLayoutProps) {
   const { t } = useTranslation()
-  const tileScale = useSettings((s) => s.tileScale)
+  const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
   const clearLog = useLog((s) => s.clear)
   // the log store is a single global instance; each trainer page starts its own log
   useEffect(() => clearLog(), [clearLog])

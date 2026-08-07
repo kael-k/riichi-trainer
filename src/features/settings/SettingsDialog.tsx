@@ -2,7 +2,15 @@ import { Moon, Settings, Sun, SunMoon, X } from 'lucide-react'
 import { useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveLocale } from '../i18n'
-import { LOCALES, TILE_SCALES, useSettings, type Locale, type Theme } from './settingsStore'
+import {
+  DEFAULT_TILE_SCALE,
+  LOCALES,
+  TILE_SCALES,
+  useSettings,
+  type Locale,
+  type Theme,
+} from './settingsStore'
+import { useShowTileNumbers } from './useShowTileNumbers'
 
 /** Labeled toggle row for settings dialogs. */
 export function SettingRow({ label, children }: { label: string; children: ReactNode }) {
@@ -48,7 +56,13 @@ const THEMES: { value: Theme; icon: typeof SunMoon; labelKey: string }[] = [
   { value: 'dark', icon: Moon, labelKey: 'settings.themeDark' },
 ]
 
-const TILE_SCALE_LABELS: Record<number, string> = { 0.8: 'S', 1: 'M', 1.25: 'L', 1.5: 'XL' }
+const TILE_SCALE_LABELS: Record<number, string> = {
+  0.8: 'XS',
+  1: 'S',
+  1.25: 'M',
+  1.5: 'L',
+  1.8: 'XL',
+}
 
 // language names are shown in themselves, not translated — the standard convention for a picker
 const LANGUAGE_NAMES: Record<(typeof LOCALES)[number], string> = {
@@ -64,13 +78,13 @@ export function GlobalSettings() {
   const { t } = useTranslation()
   const theme = useSettings((s) => s.theme)
   const setTheme = useSettings((s) => s.setTheme)
-  const tileScale = useSettings((s) => s.tileScale)
+  const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
   const setTileScale = useSettings((s) => s.setTileScale)
   const sanma = useSettings((s) => s.sanma)
   const setSanma = useSettings((s) => s.setSanma)
   const locale = useSettings((s) => s.locale)
   const setLocale = useSettings((s) => s.setLocale)
-  const showTileNumbers = useSettings((s) => s.showTileNumbers)
+  const showTileNumbers = useShowTileNumbers()
   const setShowTileNumbers = useSettings((s) => s.setShowTileNumbers)
   const translatedTerms = useSettings((s) => s.translatedTerms)
   const setTranslatedTerms = useSettings((s) => s.setTranslatedTerms)

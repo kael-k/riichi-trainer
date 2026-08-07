@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { tileCode, tileLabel, tileName, type ParsedTile, type TileId } from '../../core/tiles'
-import { useSettings } from '../../features/settings/settingsStore'
+import { useShowTileNumbers } from '../../features/settings/useShowTileNumbers'
 
 interface TileProps {
   /** Omit for a face-down tile. */
@@ -12,7 +12,7 @@ interface TileProps {
 /** One tile face rendered from the SVG sprite. Width comes from `--tile-w`. */
 export function Tile({ id, red = false, className = '' }: TileProps) {
   const { t } = useTranslation()
-  const showNumbers = useSettings((s) => s.showTileNumbers)
+  const showNumbers = useShowTileNumbers()
   return (
     <svg
       viewBox="0 0 300 400"
