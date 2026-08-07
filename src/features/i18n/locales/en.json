@@ -10,7 +10,10 @@
     "faceDownTile": "face-down tile",
     "log": "Log ({{count}})",
     "newRound": "New round",
-    "submit": "Submit"
+    "submit": "Submit",
+    "wallDetails_one": "Wall ({{count}} tile)",
+    "wallDetails_other": "Wall ({{count}} tiles)",
+    "deadWallMarker": "Dead wall"
   },
   "settings": {
     "button": "Settings",
@@ -95,8 +98,6 @@
     "totalLost_other": "Total ukeire lost across {{turns}} turns: {{lost}} / {{total}} ({{accuracy}}% accuracy)",
     "you": "(you)",
     "emptyRiver": "—",
-    "wallDetails_one": "Wall ({{count}} tile, draw order)",
-    "wallDetails_other": "Wall ({{count}} tiles, draw order)",
     "kitaButton": "Kita",
     "kanButton": "Kan",
     "nukiPile": "Nuki",
@@ -154,7 +155,8 @@
       "honba": "Honba sticks",
       "ignoreFuOnLimit": "Ignore fu on limit hands",
       "openHands": "Open hands",
-      "aka": "Red fives"
+      "aka": "Red fives",
+      "showWall": "Show wall"
     },
     "handNumber": "Hand {{count}}",
     "dealing": "Dealing…",
@@ -363,7 +365,8 @@
     "newSituation": "New situation",
     "settings": {
       "timer": "Timer",
-      "threats": "Riichi to fold against"
+      "threats": "Riichi to fold against",
+      "showWall": "Show wall"
     }
   },
   "log": {

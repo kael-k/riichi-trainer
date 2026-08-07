@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { Table, type SeatView } from '../../components/tiles/Table'
-import { HandDisplay, Tile } from '../../components/tiles/Tile'
+import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -99,6 +99,14 @@ export function FoldingPage() {
           ))}
         </select>
       </SettingRow>
+      <SettingRow label={t('folding.settings.showWall')}>
+        <input
+          type="checkbox"
+          checked={settings.showWall}
+          onChange={(e) => update('folding', { showWall: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
     </>
   )
 
@@ -162,7 +170,7 @@ export function FoldingPage() {
             seatIndex={round.seatIndex}
             round={WINDS[round.round - HONOR]}
             doraIndicators={round.doraIndicators}
-            wallCount={round.wallCount}
+            wallCount={round.liveWall.length}
           />
 
           <div className="flex min-w-0 flex-1 flex-col gap-4">
@@ -208,6 +216,10 @@ export function FoldingPage() {
                   {t('folding.newSituation')}
                 </button>
               </div>
+            )}
+
+            {settings.showWall && (
+              <WallDetails liveWall={round.liveWall} deadWall={round.deadWall} />
             )}
 
             <CopyLinkButton query={round.situationQuery} />

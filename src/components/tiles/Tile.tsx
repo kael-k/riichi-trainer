@@ -189,6 +189,38 @@ export function River({ tiles }: { tiles: RiverTile[] }) {
   )
 }
 
+/** The wall, live tiles then dead, with a marker at the seam. Collapsed behind a `<details>` —
+ *  seeing the wall in draw order is a deliberate peek, not something to show by default. */
+export function WallDetails({
+  liveWall,
+  deadWall,
+}: {
+  liveWall: ParsedTile[]
+  deadWall: ParsedTile[]
+}) {
+  const { t } = useTranslation()
+  return (
+    <details className="text-sm text-neutral-500">
+      <summary className="cursor-pointer">
+        {t('common.wallDetails', { count: liveWall.length + deadWall.length })}
+      </summary>
+      <div className="mt-2 flex flex-wrap items-center [--tile-w:calc(var(--tile-w-base)*0.55)]">
+        {liveWall.map((tile, i) => (
+          <Tile key={`live-${i}`} id={tile.id} red={tile.red} />
+        ))}
+        {deadWall.length > 0 && (
+          <span className="mx-1 self-stretch border-l border-dashed border-neutral-400 pl-1 text-xs whitespace-nowrap text-neutral-400 dark:border-neutral-600">
+            {t('common.deadWallMarker')}
+          </span>
+        )}
+        {deadWall.map((tile, i) => (
+          <Tile key={`dead-${i}`} id={tile.id} red={tile.red} />
+        ))}
+      </div>
+    </details>
+  )
+}
+
 /** Improving tiles with remaining counts; exhausted ones dimmed. */
 export function UkeireTiles({ tiles }: { tiles: { tile: TileId; remaining: number }[] }) {
   return (

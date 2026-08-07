@@ -75,6 +75,7 @@ interface RoundState {
   kans: ParsedTile[][]
   seatIndex: number
   liveWall: ParsedTile[]
+  deadWall: ParsedTile[]
   lastResult: TurnResult | null
   cumulativeLost: number
   /** Sum of best.ukeireCount across every graded choice — the ceiling cumulativeLost is measured against. */
@@ -214,6 +215,7 @@ function snapshot(core: RoundCore, prev?: RoundState): RoundState {
     kans: player.melds.filter((m) => m.kind === 'ankan').map((m) => [...m.tiles]),
     seatIndex,
     liveWall: [...match.liveWall],
+    deadWall: [...match.deadWall],
     finished,
     tenpai: finished && shanten(player.hand) <= 0,
     lastResult: prev?.lastResult ?? null,

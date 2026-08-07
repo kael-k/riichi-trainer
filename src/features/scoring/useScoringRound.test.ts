@@ -20,6 +20,7 @@ const FULL: RoundOptions = {
   testHan: true,
   testFu: true,
   testPoints: true,
+  showWall: false,
 }
 
 function generated(seed: string): ScoringUrl {

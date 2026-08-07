@@ -10,7 +10,10 @@
     "faceDownTile": "tessera coperta",
     "log": "Registro ({{count}})",
     "newRound": "Nuova mano",
-    "submit": "Conferma"
+    "submit": "Conferma",
+    "wallDetails_one": "Muro ({{count}} tessera)",
+    "wallDetails_other": "Muro ({{count}} tessere)",
+    "deadWallMarker": "Muro morto"
   },
   "settings": {
     "button": "Impostazioni",
@@ -95,8 +98,6 @@
     "totalLost_other": "Ukeire perso in {{turns}} turni: {{lost}} / {{total}} (precisione {{accuracy}}%)",
     "you": "(tu)",
     "emptyRiver": "—",
-    "wallDetails_one": "Muro ({{count}} tessera, ordine di pescata)",
-    "wallDetails_other": "Muro ({{count}} tessere, ordine di pescata)",
     "kitaButton": "Kita",
     "kanButton": "Kan",
     "nukiPile": "Nuki",
@@ -154,7 +155,8 @@
       "honba": "Bastoncini honba",
       "ignoreFuOnLimit": "Ignora il fu nelle mani limite",
       "openHands": "Mani aperte",
-      "aka": "Cinque rossi"
+      "aka": "Cinque rossi",
+      "showWall": "Mostra il muro"
     },
     "handNumber": "Mano {{count}}",
     "dealing": "Distribuzione…",
@@ -363,7 +365,8 @@
     "newSituation": "Nuova situazione",
     "settings": {
       "timer": "Timer",
-      "threats": "Riichi contro cui difendersi"
+      "threats": "Riichi contro cui difendersi",
+      "showWall": "Mostra il muro"
     }
   },
   "log": {

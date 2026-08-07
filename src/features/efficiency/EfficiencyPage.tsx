@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
-import { HandDisplay, River, Tile } from '../../components/tiles/Tile'
+import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsed, formatElapsedMs } from '../../lib/formatElapsed'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
@@ -237,16 +237,7 @@ export function EfficiencyPage() {
             )}
 
             {settings.showWall && (
-              <details className="text-sm text-neutral-500">
-                <summary className="cursor-pointer">
-                  {t('efficiency.wallDetails', { count: round.liveWall.length })}
-                </summary>
-                <div className="mt-2 flex flex-wrap [--tile-w:calc(var(--tile-w-base)*0.55)]">
-                  {round.liveWall.map((tile, i) => (
-                    <Tile key={i} id={tile.id} red={tile.red} />
-                  ))}
-                </div>
-              </details>
+              <WallDetails liveWall={round.liveWall} deadWall={round.deadWall} />
             )}
 
             <CopyLinkButton query={round.situationQuery} />

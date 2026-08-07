@@ -80,7 +80,8 @@ interface RoundState {
   melds: Meld[][]
   nuki: ParsedTile[][]
   doraIndicators: ParsedTile[]
-  wallCount: number
+  liveWall: ParsedTile[]
+  deadWall: ParsedTile[]
   seatIndex: number
   round: TileId
   /** Seats currently threatening — everyone in riichi. Grows if someone else declares. */
@@ -260,7 +261,8 @@ function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundStat
     melds: match.players.map((p) => [...p.melds]),
     nuki: match.players.map((p) => [...p.nuki]),
     doraIndicators: [...match.doraIndicators],
-    wallCount: match.liveWall.length,
+    liveWall: [...match.liveWall],
+    deadWall: [...match.deadWall],
     seatIndex,
     round: core.options.round,
     threatSeats: riichiSeats(match),
@@ -401,7 +403,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       melds: [],
       nuki: [],
       doraIndicators: [],
-      wallCount: 0,
+      liveWall: [],
+      deadWall: [],
       seatIndex: 0,
       round: HONOR,
       threatSeats: [],

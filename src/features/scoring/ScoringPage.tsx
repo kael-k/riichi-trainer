@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
-import { HandDisplay, MeldDisplay, Tile } from '../../components/tiles/Tile'
+import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { HONOR, serializeTenhou } from '../../core/tiles'
 import { WINDS } from '../situation/urlCodec'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -227,6 +227,7 @@ export function ScoringPage() {
           {toggle('ignoreFuOnLimit', 'scoring.settings.ignoreFuOnLimit')}
           {toggle('openHands', 'scoring.settings.openHands')}
           {toggle('aka', 'scoring.settings.aka')}
+          {toggle('showWall', 'scoring.settings.showWall')}
         </>
       }
     >
@@ -430,6 +431,10 @@ export function ScoringPage() {
                   {t('scoring.newHand')}
                 </button>
               </div>
+            )}
+
+            {settings.showWall && round.match && (
+              <WallDetails liveWall={round.match.liveWall} deadWall={round.match.deadWall} />
             )}
 
             <CopyLinkButton query={round.situationQuery} />

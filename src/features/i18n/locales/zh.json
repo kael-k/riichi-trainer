@@ -10,7 +10,9 @@
     "faceDownTile": "扣牌",
     "log": "记录 ({{count}})",
     "newRound": "下一局",
-    "submit": "提交"
+    "submit": "提交",
+    "wallDetails_other": "牌山({{count}}张)",
+    "deadWallMarker": "死墙"
   },
   "settings": {
     "button": "设置",
@@ -93,7 +95,6 @@
     "totalLost_other": "{{turns}}巡内损失的进张合计: {{lost}} / {{total}}(正确率{{accuracy}}%)",
     "you": "(你)",
     "emptyRiver": "—",
-    "wallDetails_other": "牌山(剩余{{count}}张,摸牌顺序)",
     "kitaButton": "拔北",
     "kanButton": "杠",
     "nukiPile": "已拔北",
@@ -149,7 +150,8 @@
       "honba": "本场",
       "ignoreFuOnLimit": "满贯以上不计符数",
       "openHands": "允许副露",
-      "aka": "赤宝牌"
+      "aka": "赤宝牌",
+      "showWall": "显示牌山"
     },
     "handNumber": "第{{count}}题",
     "dealing": "发牌中…",
@@ -307,7 +309,8 @@
     "newSituation": "新牌局",
     "settings": {
       "timer": "计时器",
-      "threats": "要防守的立直数"
+      "threats": "要防守的立直数",
+      "showWall": "显示牌山"
     }
   },
   "log": {

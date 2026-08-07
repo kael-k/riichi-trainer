@@ -45,6 +45,9 @@ export interface Settings {
     /** Generate hands with called melds, not just closed ones. */
     openHands: boolean
     aka: boolean
+    /** Reveal the live and dead wall. Only has tiles to show once the hand actually played out
+     *  through a real match — a link-pinned or constructed hand has no wall behind it. */
+    showWall: boolean
   }
   folding: {
     timerEnabled: boolean
@@ -52,6 +55,8 @@ export interface Settings {
      *  player count; generation falls back to fewer rather than failing when a seed search cannot
      *  find that many. */
     threats: number
+    /** Reveal the live and dead wall. */
+    showWall: boolean
   }
 }
 
@@ -122,8 +127,9 @@ export const useSettings = create<SettingsState>()(
         ignoreFuOnLimit: false,
         openHands: true,
         aka: true,
+        showWall: false,
       },
-      folding: { timerEnabled: true, threats: 1 },
+      folding: { timerEnabled: true, threats: 1, showWall: false },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       showTileNumbers: null,
