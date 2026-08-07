@@ -94,9 +94,16 @@ function computeFu(
   winningBlockIndex: number,
   pinfu: boolean,
 ): { fu: number; fuExact: number; items: FuItem[] } {
-  // pinfu overrides the whole calculation: flat 20 on tsumo (no self-draw fu), and the
-  // generic formula would give exactly 30 on ron anyway (20 base + 10 closed ron), but it's
-  // spelled out for clarity since pinfu forbids every other fu source.
+  // Pinfu's two fixed values, stated as the rule rather than left to emerge from the sum below.
+  // Tsumo (20) has to be special-cased: the generic path would add the 2 self-draw fu and round
+  // 22 up to 30. Ron (30) is what the generic path already computes today — 20 base + 10 closed
+  // ron, with pinfu's own conditions zeroing every other source (all sets runs ⇒ no meld fu;
+  // pair never dragon/seat/round ⇒ no pair fu; ryanmen ⇒ no wait fu) — so this arm is
+  // deliberately redundant, NOT dead code: it pins 30 fu if that arithmetic ever stops holding
+  // (a looser pinfu reading, an open-pinfu variant, a ruleset with different wait fu). Drifting
+  // silently would be worse than most bugs here, since `isBetter` ranks readings by fu and would
+  // pick the inflated one. The "exactly 30 fu" test in score.test.ts pins the value; it passes
+  // through either path, so it guards the number, not this branch's existence.
   if (pinfu) {
     return ctx.tsumo
       ? { fu: 20, fuExact: 20, items: [{ reason: 'base', fu: 20 }] }

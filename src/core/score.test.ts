@@ -41,6 +41,28 @@ describe('scoreHand', () => {
     expect(result.payments).toEqual({ main: 5800, total: 5800 })
   })
 
+  it('pinfu ron is exactly 30 fu: base + closed ron, and no other fu source may apply', () => {
+    const input: ScoreInput = {
+      // 234m 567m 456p 678p 33s, ron on 8p: every set a run, ryanmen wait, plain-simple pair —
+      // so nothing but the 20 base and the 10 closed-ron bonus is allowed to count
+      concealed: parseTenhou('234567m456678p33s'),
+      melds: [],
+      ctx: ctx(),
+      doraIndicators: [],
+      uraIndicators: [],
+      kita: 0,
+      rules: NO_RULES,
+    }
+    const result = scoreHand(input)!
+    expect(result.yaku.map((y) => y.name)).toContain('pinfu')
+    expect(result.fuExact).toBe(30) // exact, not merely rounding up to 30
+    expect(result.fu).toBe(30)
+    expect(result.fuItems).toEqual([
+      { reason: 'base', fu: 20 },
+      { reason: 'closedRon', fu: 10 },
+    ])
+  })
+
   it('pinfu tsumo is always exactly 20 fu, never rounded', () => {
     const input: ScoreInput = {
       concealed: parseTenhou('234567m456678p33s'),
