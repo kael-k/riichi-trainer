@@ -62,6 +62,11 @@ interface SettingsState extends Settings {
   setSanma: (sanma: boolean) => void
   locale: Locale
   setLocale: (locale: Locale) => void
+  /** Name yaku and win conditions in the reader's language ("Pure straight") instead of the
+   *  Japanese terms ("Ittsuu"). Meaningless under ja/zh, where those *are* the local names, so
+   *  the settings row hides there. */
+  translatedTerms: boolean
+  setTranslatedTerms: (translated: boolean) => void
   update: <K extends keyof Settings>(section: K, patch: Partial<Settings[K]>) => void
 }
 
@@ -102,6 +107,8 @@ export const useSettings = create<SettingsState>()(
       setSanma: (sanma) => set({ sanma }),
       locale: 'auto',
       setLocale: (locale) => set({ locale }),
+      translatedTerms: true,
+      setTranslatedTerms: (translatedTerms) => set({ translatedTerms }),
       update: (section, patch) => set((s) => ({ ...s, [section]: { ...s[section], ...patch } })),
     }),
     {

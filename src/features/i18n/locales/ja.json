@@ -26,7 +26,8 @@
     "sanma": "三人麻雀",
     "numbersOnTiles": "牌に数字を表示",
     "language": "言語",
-    "languageAuto": "自動(ブラウザ設定)"
+    "languageAuto": "自動(ブラウザ設定)",
+    "translatedTerms": "役名を翻訳して表示"
   },
   "wind": {
     "E": "東",

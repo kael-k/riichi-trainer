@@ -7,6 +7,7 @@ import { HandDisplay, Tile } from '../../components/tiles/Tile'
 import type { Meld } from '../../core/agari'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { useTermName } from '../i18n/useTermName'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { ScoreBreakdown } from './ScoreBreakdown'
@@ -89,6 +90,7 @@ export function ScoringPage() {
   const { t } = useTranslation()
   const [params] = useSearchParams()
   const urlData = useMemo(() => decodeScoringUrl(params), [params])
+  const termName = useTermName()
   const settings = useSettings((s) => s.scoring)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
@@ -268,7 +270,7 @@ export function ScoringPage() {
               key={key}
               className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-medium dark:bg-neutral-800"
             >
-              {t(`scoring.flags.${key}`)}
+              {termName('flags', key)}
             </span>
           ))}
         </div>

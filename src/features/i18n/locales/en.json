@@ -26,7 +26,8 @@
     "sanma": "Sanma",
     "numbersOnTiles": "Numbers on tiles",
     "language": "Language",
-    "languageAuto": "Auto (browser)"
+    "languageAuto": "Auto (browser)",
+    "translatedTerms": "Translated yaku names"
   },
   "wind": {
     "E": "E",
@@ -157,6 +158,15 @@
       "rinshan": "Rinshan",
       "chankan": "Chankan"
     },
+    "flagsTranslated": {
+      "riichi": "Ready hand",
+      "doubleRiichi": "Double ready",
+      "ippatsu": "One-shot",
+      "haitei": "Last draw",
+      "houtei": "Last discard",
+      "rinshan": "Kan replacement",
+      "chankan": "Robbing a kan"
+    },
     "hanLabel": "Han",
     "fuLabel": "Fu",
     "pointsLabel": "Points",
@@ -219,6 +229,38 @@
       "junchan": "Junchan",
       "chinitsu": "Chinitsu"
     },
+    "yakuTranslated": {
+      "riichi": "Ready hand",
+      "doubleRiichi": "Double ready",
+      "ippatsu": "One-shot",
+      "menzenTsumo": "Concealed self-draw",
+      "tanyao": "All simples",
+      "pinfu": "All sequences",
+      "iipeikou": "Pure double sequence",
+      "yakuhaiHaku": "Dragon triplet (white)",
+      "yakuhaiHatsu": "Dragon triplet (green)",
+      "yakuhaiChun": "Dragon triplet (red)",
+      "yakuhaiSeatWind": "Seat wind triplet",
+      "yakuhaiRoundWind": "Round wind triplet",
+      "haitei": "Win on the last draw",
+      "houtei": "Win on the last discard",
+      "rinshan": "Win on a kan replacement",
+      "chankan": "Robbing a kan",
+      "chiitoitsu": "Seven pairs",
+      "sanshokuDoujun": "Three colour straight",
+      "ittsuu": "Pure straight",
+      "chanta": "Half outside hand",
+      "toitoi": "All triplets",
+      "sanankou": "Three concealed triplets",
+      "sankantsu": "Three kans",
+      "sanshokuDoukou": "Three colour triplets",
+      "honroutou": "All terminals and honours",
+      "shousangen": "Little three dragons",
+      "ryanpeikou": "Twice pure double sequence",
+      "honitsu": "Half flush",
+      "junchan": "Fully outside hand",
+      "chinitsu": "Full flush"
+    },
     "yakuman": {
       "kokushi": "Kokushi musou",
       "suuankou": "Suuankou",
@@ -230,6 +272,18 @@
       "ryuuiisou": "Ryuuiisou",
       "chuuren": "Chuurenpoutou",
       "suukantsu": "Suukantsu"
+    },
+    "yakumanTranslated": {
+      "kokushi": "Thirteen orphans",
+      "suuankou": "Four concealed triplets",
+      "daisangen": "Big three dragons",
+      "shousuushii": "Little four winds",
+      "daisuushii": "Big four winds",
+      "tsuuiisou": "All honours",
+      "chinroutou": "All terminals",
+      "ryuuiisou": "All green",
+      "chuuren": "Nine gates",
+      "suukantsu": "Four kans"
     },
     "fu": {
       "base": "Base",

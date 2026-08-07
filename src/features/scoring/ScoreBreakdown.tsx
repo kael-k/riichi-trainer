@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tile } from '../../components/tiles/Tile'
 import type { ScoreResult } from '../../core/score'
+import { useTermName } from '../i18n/useTermName'
 
 function Row({ label, value }: { label: ReactNode; value: ReactNode }) {
   return (
@@ -24,6 +25,7 @@ export function ScoreBreakdown({
   showFu: boolean
 }) {
   const { t } = useTranslation()
+  const termName = useTermName()
   const bonusHan: { key: string; count: number }[] = [
     { key: 'dora', count: result.dora.dora },
     { key: 'aka', count: result.dora.aka },
@@ -41,14 +43,14 @@ export function ScoreBreakdown({
               ? result.yakuman.map((name) => (
                   <Row
                     key={name}
-                    label={t(`scoring.yakuman.${name}`)}
+                    label={termName('yakuman', name)}
                     value={t('scoring.yakumanLabel')}
                   />
                 ))
               : result.yaku.map((y, i) => (
                   <Row
                     key={i}
-                    label={t(`scoring.yaku.${y.name}`)}
+                    label={termName('yaku', y.name)}
                     value={t('scoring.hanCount', { count: y.han })}
                   />
                 ))}

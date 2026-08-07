@@ -26,7 +26,8 @@
     "sanma": "Sanma",
     "numbersOnTiles": "Numeri sulle tessere",
     "language": "Lingua",
-    "languageAuto": "Automatica (browser)"
+    "languageAuto": "Automatica (browser)",
+    "translatedTerms": "Nomi degli yaku tradotti"
   },
   "wind": {
     "E": "E",
@@ -157,6 +158,15 @@
       "rinshan": "Rinshan",
       "chankan": "Chankan"
     },
+    "flagsTranslated": {
+      "riichi": "Mano pronta",
+      "doubleRiichi": "Doppia mano pronta",
+      "ippatsu": "Colpo immediato",
+      "haitei": "Ultima pescata",
+      "houtei": "Ultimo scarto",
+      "rinshan": "Pescata del kan",
+      "chankan": "Furto del kan"
+    },
     "hanLabel": "Han",
     "fuLabel": "Fu",
     "pointsLabel": "Punti",
@@ -219,6 +229,38 @@
       "junchan": "Junchan",
       "chinitsu": "Chinitsu"
     },
+    "yakuTranslated": {
+      "riichi": "Mano pronta",
+      "doubleRiichi": "Doppia mano pronta",
+      "ippatsu": "Colpo immediato",
+      "menzenTsumo": "Autopescata a mano chiusa",
+      "tanyao": "Tutti semplici",
+      "pinfu": "Tutte scale",
+      "iipeikou": "Doppia scala identica",
+      "yakuhaiHaku": "Tris di draghi (bianco)",
+      "yakuhaiHatsu": "Tris di draghi (verde)",
+      "yakuhaiChun": "Tris di draghi (rosso)",
+      "yakuhaiSeatWind": "Tris del vento di posto",
+      "yakuhaiRoundWind": "Tris del vento di mano",
+      "haitei": "Vittoria sull'ultima pescata",
+      "houtei": "Vittoria sull'ultimo scarto",
+      "rinshan": "Vittoria sulla pescata del kan",
+      "chankan": "Furto del kan",
+      "chiitoitsu": "Sette coppie",
+      "sanshokuDoujun": "Stessa scala nei tre semi",
+      "ittsuu": "Scala pura",
+      "chanta": "Terminali o onori ovunque",
+      "toitoi": "Tutti tris",
+      "sanankou": "Tre tris chiusi",
+      "sankantsu": "Tre kan",
+      "sanshokuDoukou": "Stesso tris nei tre semi",
+      "honroutou": "Solo terminali e onori",
+      "shousangen": "Piccoli tre draghi",
+      "ryanpeikou": "Due doppie scale identiche",
+      "honitsu": "Mezzo colore",
+      "junchan": "Terminali ovunque",
+      "chinitsu": "Colore pieno"
+    },
     "yakuman": {
       "kokushi": "Kokushi musou",
       "suuankou": "Suuankou",
@@ -230,6 +272,18 @@
       "ryuuiisou": "Ryuuiisou",
       "chuuren": "Chuurenpoutou",
       "suukantsu": "Suukantsu"
+    },
+    "yakumanTranslated": {
+      "kokushi": "Tredici orfani",
+      "suuankou": "Quattro tris chiusi",
+      "daisangen": "Grandi tre draghi",
+      "shousuushii": "Piccoli quattro venti",
+      "daisuushii": "Grandi quattro venti",
+      "tsuuiisou": "Solo onori",
+      "chinroutou": "Solo terminali",
+      "ryuuiisou": "Tutto verde",
+      "chuuren": "Nove cancelli",
+      "suukantsu": "Quattro kan"
     },
     "fu": {
       "base": "Base",

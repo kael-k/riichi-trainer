@@ -1,6 +1,7 @@
 import { Moon, Settings, Sun, SunMoon, X } from 'lucide-react'
 import { useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { resolveLocale } from '../i18n'
 import { LOCALES, TILE_SCALES, useSettings, type Locale, type Theme } from './settingsStore'
 
 /** Labeled toggle row for settings dialogs. */
@@ -71,6 +72,8 @@ export function GlobalSettings() {
   const setLocale = useSettings((s) => s.setLocale)
   const showTileNumbers = useSettings((s) => s.showTileNumbers)
   const setShowTileNumbers = useSettings((s) => s.setShowTileNumbers)
+  const translatedTerms = useSettings((s) => s.translatedTerms)
+  const setTranslatedTerms = useSettings((s) => s.setTranslatedTerms)
 
   return (
     <div className="flex flex-col gap-4">
@@ -128,6 +131,17 @@ export function GlobalSettings() {
           ))}
         </select>
       </SettingRow>
+      {/* ja/zh already read these terms as their own words, so there is nothing to translate */}
+      {resolveLocale(locale) !== 'ja' && resolveLocale(locale) !== 'zh' && (
+        <SettingRow label={t('settings.translatedTerms')}>
+          <input
+            type="checkbox"
+            checked={translatedTerms}
+            onChange={(e) => setTranslatedTerms(e.target.checked)}
+            className="size-5"
+          />
+        </SettingRow>
+      )}
       <SettingRow label={t('settings.numbersOnTiles')}>
         <input
           type="checkbox"

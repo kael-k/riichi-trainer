@@ -26,7 +26,8 @@
     "sanma": "三人麻将",
     "numbersOnTiles": "牌面显示数字",
     "language": "语言",
-    "languageAuto": "自动(跟随浏览器)"
+    "languageAuto": "自动(跟随浏览器)",
+    "translatedTerms": "使用翻译役名"
   },
   "wind": {
     "E": "东",
