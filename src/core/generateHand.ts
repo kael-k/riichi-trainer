@@ -334,12 +334,7 @@ export function generateHand(seed: string, options: GenOptions): ScoringSituatio
     }
 
     const scored = scoreHand({
-      concealed: situation.concealed,
-      melds: situation.melds,
-      ctx: situation.ctx,
-      doraIndicators: situation.doraIndicators,
-      uraIndicators: situation.uraIndicators,
-      kita: situation.kita,
+      ...situation,
       rules: { kiriageMangan: false, honba: situation.honba, sanma: options.sanma },
     })
     if (scored) return situation

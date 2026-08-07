@@ -1,7 +1,8 @@
-import { Check, Link as LinkIcon, Pause, Play } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Pause, Play } from 'lucide-react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
+import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, River, Tile } from '../../components/tiles/Tile'
 import { formatElapsed } from '../../lib/formatElapsed'
@@ -18,7 +19,6 @@ export function EfficiencyPage() {
   const settings = useSettings((s) => s.efficiency)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const [copied, setCopied] = useState(false)
 
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<RoundOptions>(
@@ -38,15 +38,6 @@ export function EfficiencyPage() {
   for (const t of round.hand) counts.set(t.id, (counts.get(t.id) ?? 0) + 1)
   if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
   const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
-
-  const copySituation = async () => {
-    const query = round.situationQuery()
-    await navigator.clipboard.writeText(
-      `${location.origin}${location.pathname}${query ? `?${query}` : ''}`,
-    )
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   const toggle = (key: keyof typeof settings, labelKey: string) => (
     <SettingRow label={t(labelKey)}>
@@ -92,7 +83,7 @@ export function EfficiencyPage() {
               </button>
             </span>
           )}
-          <span>{t('efficiency.wallStatus', { count: round.wallRemaining })}</span>
+          <span>{t('efficiency.wallStatus', { count: round.liveWall.length })}</span>
           {round.doraIndicators.length > 0 && (
             <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
               {t('efficiency.doraIndicator')}{' '}
@@ -203,7 +194,7 @@ export function EfficiencyPage() {
         {settings.showWall && (
           <details className="text-sm text-neutral-500">
             <summary className="cursor-pointer">
-              {t('efficiency.wallDetails', { count: round.wallRemaining })}
+              {t('efficiency.wallDetails', { count: round.liveWall.length })}
             </summary>
             <div className="mt-2 flex flex-wrap [--tile-w:calc(var(--tile-w-base)*0.55)]">
               {round.liveWall.map((tile, i) => (
@@ -213,14 +204,7 @@ export function EfficiencyPage() {
           </details>
         )}
 
-        <button
-          type="button"
-          onClick={copySituation}
-          className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-        >
-          {copied ? <Check className="size-4" /> : <LinkIcon className="size-4" />}
-          {copied ? t('common.copied') : t('efficiency.copySituationLink')}
-        </button>
+        <CopyLinkButton query={round.situationQuery} />
       </div>
     </TrainerLayout>
   )

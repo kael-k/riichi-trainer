@@ -17,25 +17,11 @@ export function buildWall(seed: string, sanma = false): TileId[] {
   return shuffle(tiles, mulberry32(seed))
 }
 
-export interface Deal {
-  hand: Hand
-  liveWall: TileId[]
-  deadWall: TileId[]
-  doraIndicators: TileId[]
-}
-
-/** Deals a fresh hand from a seed, splitting off the dead wall and first dora indicator. */
-export function deal(seed: string, handSize = INITIAL_HAND_SIZE, sanma = false): Deal {
+/** Deals a hand off the front of a seeded wall — the shanten trainer's whole round. Rounds that
+ *  keep drawing (the efficiency trainer) build their own wall split from `buildWall`. */
+export function deal(seed: string, handSize = INITIAL_HAND_SIZE, sanma = false): Hand {
   const wall = buildWall(seed, sanma)
   const hand = createHand()
   for (let i = 0; i < handSize; i++) addTile(hand, wall[i])
-
-  const deadWall = wall.slice(wall.length - DEAD_WALL_SIZE)
-  const liveWall = wall.slice(handSize, wall.length - DEAD_WALL_SIZE)
-  return { hand, liveWall, deadWall, doraIndicators: [deadWall[0]] }
-}
-
-export function draw(liveWall: TileId[]): { tile: TileId; rest: TileId[] } {
-  if (liveWall.length === 0) throw new Error('wall is empty')
-  return { tile: liveWall[0], rest: liveWall.slice(1) }
+  return hand
 }

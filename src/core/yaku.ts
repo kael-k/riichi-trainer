@@ -6,8 +6,11 @@ import {
   isTerminal,
   isTerminalOrHonor,
   isWind,
+  suitOf,
   type TileId,
 } from './tiles'
+
+type Suit = ReturnType<typeof suitOf>
 
 export type YakuName =
   | 'riichi'
@@ -75,7 +78,7 @@ export interface WinContext {
 
 /** True when the hand has no calls at all — the strict pinfu/iipeikou requirement (stricter
  *  than "closed", which still allows a closed kan). */
-export function isFullyConcealed(melds: Meld[]): boolean {
+function isFullyConcealed(melds: Meld[]): boolean {
   return melds.length === 0
 }
 
@@ -113,10 +116,8 @@ export function waitShape(block: Block, winTile: TileId): WaitShape {
   return 'ryanmen'
 }
 
-function suitsUsed(tileIds: TileId[]): Set<'m' | 'p' | 's' | 'z'> {
-  const suits = new Set<'m' | 'p' | 's' | 'z'>()
-  for (const id of tileIds) suits.add(id >= HONOR ? 'z' : id < 9 ? 'm' : id < 18 ? 'p' : 's')
-  return suits
+function suitsUsed(tileIds: TileId[]): Set<Suit> {
+  return new Set(tileIds.map(suitOf))
 }
 
 /** Every physical tile id in a block (kans repeat the tile 4 times, others 2-3). */
@@ -222,10 +223,9 @@ export function detectYaku(
   }
 
   const runs = blocks.filter((b) => b.kind === 'run' && !b.meld)
-  const runKey = (b: Block) => `${b.tile % 9}`
   const runsBySuitRank = new Map<string, number>()
   for (const r of runs) {
-    const key = `${r.tile < 9 ? 'm' : r.tile < 18 ? 'p' : 's'}${runKey(r)}`
+    const key = `${suitOf(r.tile)}${r.tile % 9}`
     runsBySuitRank.set(key, (runsBySuitRank.get(key) ?? 0) + 1)
   }
   const iipeikouPairs = [...runsBySuitRank.values()].filter((n) => n >= 2).length
@@ -242,13 +242,13 @@ export function detectYaku(
   }
 
   const allRuns = blocks.filter((b) => b.kind === 'run')
-  const ranksBySuit = new Map<'m' | 'p' | 's', Set<number>>()
+  const ranksBySuit = new Map<Suit, Set<number>>()
   for (const r of allRuns) {
-    const suit = r.tile < 9 ? 'm' : r.tile < 18 ? 'p' : 's'
+    const suit = suitOf(r.tile)
     if (!ranksBySuit.has(suit)) ranksBySuit.set(suit, new Set())
     ranksBySuit.get(suit)!.add(r.tile % 9)
   }
-  const rankSets = new Map<number, Set<'m' | 'p' | 's'>>()
+  const rankSets = new Map<number, Set<Suit>>()
   for (const [suit, ranks] of ranksBySuit) {
     for (const rank of ranks) {
       if (!rankSets.has(rank)) rankSets.set(rank, new Set())
@@ -270,10 +270,10 @@ export function detectYaku(
   if (closedTripletCount === 3) yaku.push({ name: 'sanankou', han: 2 })
   if (kanBlocks.length === 3) yaku.push({ name: 'sankantsu', han: 2 })
 
-  const suitedTripletsByRank = new Map<number, Set<'m' | 'p' | 's'>>()
+  const suitedTripletsByRank = new Map<number, Set<Suit>>()
   for (const b of tripletBlocks) {
     if (b.tile >= HONOR) continue
-    const suit = b.tile < 9 ? 'm' : b.tile < 18 ? 'p' : 's'
+    const suit = suitOf(b.tile)
     const rank = b.tile % 9
     if (!suitedTripletsByRank.has(rank)) suitedTripletsByRank.set(rank, new Set())
     suitedTripletsByRank.get(rank)!.add(suit)

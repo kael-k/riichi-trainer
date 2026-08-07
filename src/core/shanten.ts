@@ -1,3 +1,4 @@
+import { KOKUSHI_TILES } from './agari'
 import { HONOR, NUM_TILE_TYPES } from './tiles'
 import type { Hand } from './hand'
 
@@ -75,8 +76,6 @@ export function chiitoiShanten(hand: Hand): number {
   }
   return 6 - pairs + Math.max(0, 7 - kinds)
 }
-
-const KOKUSHI_TILES = [0, 8, 9, 17, 18, 26, 27, 28, 29, 30, 31, 32, 33]
 
 export function kokushiShanten(hand: Hand): number {
   let kinds = 0

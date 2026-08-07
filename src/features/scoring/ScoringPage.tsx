@@ -1,11 +1,12 @@
-import { Check, CheckCircle2, Link as LinkIcon, XCircle } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, XCircle } from 'lucide-react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
+import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, Tile } from '../../components/tiles/Tile'
 import type { Meld } from '../../core/agari'
-import { HONOR } from '../../core/tiles'
+import { HONOR, serializeTenhou } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useTermName } from '../i18n/useTermName'
 import { SettingRow } from '../settings/SettingsDialog'
@@ -48,6 +49,33 @@ function MeldDisplay({ meld }: { meld: Meld }) {
         )
       })}
     </div>
+  )
+}
+
+/** One numeric answer field; the value is read at submit from the form's `FormData`. */
+function NumberField({
+  name,
+  label,
+  step,
+  autoFocus,
+}: {
+  name: string
+  label: string
+  step?: number
+  autoFocus?: boolean
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3">
+      <span>{label}</span>
+      <input
+        type="number"
+        name={name}
+        min={0}
+        step={step}
+        autoFocus={autoFocus}
+        className="min-h-11 w-28 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+      />
+    </label>
   )
 }
 
@@ -94,38 +122,14 @@ export function ScoringPage() {
   const settings = useSettings((s) => s.scoring)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const [copied, setCopied] = useState(false)
 
+  // the whole scoring section is the round's options; only the ruleset can come from the URL
   const options = useMemo<RoundOptions>(
-    () => ({
-      sanma: urlData.sanma ?? sanma,
-      aka: settings.aka,
-      openHands: settings.openHands,
-      honba: settings.honba,
-      kiriageMangan: settings.kiriageMangan,
-      exactFu: settings.exactFu,
-      ignoreFuOnLimit: settings.ignoreFuOnLimit,
-      testHan: settings.testHan,
-      testFu: settings.testFu,
-      testPoints: settings.testPoints,
-    }),
+    () => ({ ...settings, sanma: urlData.sanma ?? sanma }),
     [urlData, sanma, settings],
   )
 
-  const round = useScoringRound(urlData, options, settings.timerEnabled)
-
-  const [hanInput, setHanInput] = useState('')
-  const [fuInput, setFuInput] = useState('')
-  const [pointsInput, setPointsInput] = useState('')
-  const [pointsMainInput, setPointsMainInput] = useState('')
-  const [pointsFromDealerInput, setPointsFromDealerInput] = useState('')
-  useEffect(() => {
-    setHanInput('')
-    setFuInput('')
-    setPointsInput('')
-    setPointsMainInput('')
-    setPointsFromDealerInput('')
-  }, [round.situation])
+  const round = useScoringRound(urlData, options)
 
   const split = round.actual.payments.fromDealer !== undefined
   const ctx = round.situation.ctx
@@ -135,13 +139,15 @@ export function ScoringPage() {
   const singlePointsLabel = t(ctx.tsumo ? 'scoring.pointsMainLabel' : 'scoring.pointsLabel')
   const limitName = round.actual.limit ? t(`scoring.limit.${round.actual.limit}`) : undefined
 
-  const submit = () => {
+  const submit = (form: HTMLFormElement) => {
+    const fields = new FormData(form)
+    const num = (name: string) => Number(fields.get(name))
     const answer: Answer = {
-      han: settings.testHan ? Number(hanInput) : undefined,
-      fu: settings.testFu ? Number(fuInput) : undefined,
-      points: settings.testPoints && !split ? Number(pointsInput) : undefined,
-      pointsMain: settings.testPoints && split ? Number(pointsMainInput) : undefined,
-      pointsFromDealer: settings.testPoints && split ? Number(pointsFromDealerInput) : undefined,
+      han: settings.testHan ? num('han') : undefined,
+      fu: settings.testFu ? num('fu') : undefined,
+      points: settings.testPoints && !split ? num('points') : undefined,
+      pointsMain: settings.testPoints && split ? num('pointsMain') : undefined,
+      pointsFromDealer: settings.testPoints && split ? num('pointsFromDealer') : undefined,
     }
     round.check(answer)
   }
@@ -174,15 +180,6 @@ export function ScoringPage() {
       />
     </SettingRow>
   )
-
-  const copySituation = async () => {
-    const query = round.situationQuery()
-    await navigator.clipboard.writeText(
-      `${location.origin}${location.pathname}${query ? `?${query}` : ''}`,
-    )
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   return (
     <TrainerLayout
@@ -287,75 +284,28 @@ export function ScoringPage() {
         </div>
 
         {!round.checked && (
+          // uncontrolled: the form is keyed to the hand, so a new hand remounts it empty
           <form
+            key={serializeTenhou(round.situation.concealed)}
             onSubmit={(e) => {
               e.preventDefault()
-              submit()
+              submit(e.currentTarget)
             }}
             className="flex flex-col gap-3"
           >
-            {settings.testHan && (
-              <label className="flex items-center justify-between gap-3">
-                <span>{t('scoring.hanLabel')}</span>
-                <input
-                  type="number"
-                  min={0}
-                  autoFocus
-                  value={hanInput}
-                  onChange={(e) => setHanInput(e.target.value)}
-                  className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
-                />
-              </label>
-            )}
-            {settings.testFu && (
-              <label className="flex items-center justify-between gap-3">
-                <span>{t('scoring.fuLabel')}</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={fuInput}
-                  onChange={(e) => setFuInput(e.target.value)}
-                  className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
-                />
-              </label>
-            )}
+            {settings.testHan && <NumberField name="han" label={t('scoring.hanLabel')} autoFocus />}
+            {settings.testFu && <NumberField name="fu" label={t('scoring.fuLabel')} />}
             {settings.testPoints && !split && (
-              <label className="flex items-center justify-between gap-3">
-                <span>{singlePointsLabel}</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={100}
-                  value={pointsInput}
-                  onChange={(e) => setPointsInput(e.target.value)}
-                  className="min-h-11 w-28 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
-                />
-              </label>
+              <NumberField name="points" label={singlePointsLabel} step={100} />
             )}
             {settings.testPoints && split && (
               <>
-                <label className="flex items-center justify-between gap-3">
-                  <span>{t('scoring.pointsMainLabel')}</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step={100}
-                    value={pointsMainInput}
-                    onChange={(e) => setPointsMainInput(e.target.value)}
-                    className="min-h-11 w-28 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
-                  />
-                </label>
-                <label className="flex items-center justify-between gap-3">
-                  <span>{t('scoring.pointsFromDealerLabel')}</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step={100}
-                    value={pointsFromDealerInput}
-                    onChange={(e) => setPointsFromDealerInput(e.target.value)}
-                    className="min-h-11 w-28 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
-                  />
-                </label>
+                <NumberField name="pointsMain" label={t('scoring.pointsMainLabel')} step={100} />
+                <NumberField
+                  name="pointsFromDealer"
+                  label={t('scoring.pointsFromDealerLabel')}
+                  step={100}
+                />
               </>
             )}
             <button
@@ -420,14 +370,7 @@ export function ScoringPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={copySituation}
-          className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-        >
-          {copied ? <Check className="size-4" /> : <LinkIcon className="size-4" />}
-          {copied ? t('common.copied') : t('scoring.copySituationLink')}
-        </button>
+        <CopyLinkButton query={round.situationQuery} />
       </div>
     </TrainerLayout>
   )

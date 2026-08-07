@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { NUM_TILE_TYPES } from './tiles'
-import { buildWall, deal, draw, DEAD_WALL_SIZE, INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
+import { buildWall, deal, INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
 import { tileCount } from './hand'
 
 describe('buildWall', () => {
@@ -29,44 +29,18 @@ describe('buildWall', () => {
 })
 
 describe('deal', () => {
-  it('produces a reproducible situation for the same seed', () => {
-    const a = deal('reproduce-me')
-    const b = deal('reproduce-me')
-    expect(a.hand.counts).toEqual(b.hand.counts)
-    expect(a.liveWall).toEqual(b.liveWall)
-    expect(a.doraIndicators).toEqual(b.doraIndicators)
+  it('produces a reproducible hand for the same seed', () => {
+    expect(deal('reproduce-me').counts).toEqual(deal('reproduce-me').counts)
   })
 
-  it('deals the requested hand size and reserves the dead wall', () => {
-    const { hand, liveWall, deadWall } = deal('sizes')
+  it('deals the requested hand size', () => {
+    expect(tileCount(deal('sizes'))).toBe(INITIAL_HAND_SIZE)
+    expect(tileCount(deal('sizes', 14))).toBe(14)
+  })
+
+  it('deals from the 108-tile sanma wall: no 2m-8m', () => {
+    const hand = deal('sanma-deal', INITIAL_HAND_SIZE, true)
     expect(tileCount(hand)).toBe(INITIAL_HAND_SIZE)
-    expect(deadWall).toHaveLength(DEAD_WALL_SIZE)
-    expect(liveWall).toHaveLength(
-      NUM_TILE_TYPES * TILES_PER_KIND - INITIAL_HAND_SIZE - DEAD_WALL_SIZE,
-    )
-  })
-
-  it('draws the dora indicator from the dead wall', () => {
-    const { deadWall, doraIndicators } = deal('dora')
-    expect(doraIndicators).toEqual([deadWall[0]])
-  })
-
-  it('deals from the 108-tile sanma wall', () => {
-    const { hand, liveWall } = deal('sanma-deal', INITIAL_HAND_SIZE, true)
-    expect(tileCount(hand)).toBe(INITIAL_HAND_SIZE)
-    expect(liveWall).toHaveLength(27 * TILES_PER_KIND - INITIAL_HAND_SIZE - DEAD_WALL_SIZE)
-  })
-})
-
-describe('draw', () => {
-  it('takes the next tile off the live wall', () => {
-    const { liveWall } = deal('draw-test')
-    const { tile, rest } = draw(liveWall)
-    expect(tile).toBe(liveWall[0])
-    expect(rest).toEqual(liveWall.slice(1))
-  })
-
-  it('throws when the wall is empty', () => {
-    expect(() => draw([])).toThrow()
+    expect(hand.counts.slice(1, 8).every((c) => c === 0)).toBe(true)
   })
 })

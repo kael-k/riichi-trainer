@@ -5,7 +5,7 @@ import {
   isBestDiscard,
   type DiscardOption,
 } from '../../core/efficiency'
-import { addTile, createHand, removeTile, tileCount, type Hand } from '../../core/hand'
+import { addTile, createHand, handToTiles, removeTile, tileCount, type Hand } from '../../core/hand'
 import { shanten } from '../../core/shanten'
 import {
   HONOR,
@@ -38,19 +38,16 @@ function redFiveIds(sanma: boolean): TileId[] {
 /** North — the nukidora (kita) tile in sanma. */
 export const NORTH: TileId = HONOR + 3
 
-/** Real dead walls hold 5 kan-dora indicators (the 5th only ever flips if all four other
- *  players' kans plus the user's are drawn); reserved up front so replacement draws (which
- *  keep pulling from the dead wall's other end) can never eat into them. */
+/** Kan-dora indicators a real dead wall holds; reserved up front so replacement draws (which
+ *  pull from the dead wall's other end) can never eat into them. */
 const MAX_DORA_INDICATORS = 5
 
 export interface TurnResult {
   turn: number
   yours: DiscardOption
   best: DiscardOption
-  /** 'kita' / 'kan' when this grades a nukidora pull or an ankan rather than an actual
-   *  discard — the DiscardFeedback labels differ since neither is a discard, even though
-   *  `yours`/`best` share the same DiscardOption shape (north's own evaluateDiscards entry
-   *  doubles as "what if I nuki"; `evaluateKan`'s entry as "what if I kan"). */
+  /** 'kita' / 'kan' when this grades a nukidora pull or an ankan rather than a discard; it only
+   *  changes the DiscardFeedback labels, since both reuse the `DiscardOption` shape. */
   kind: 'discard' | 'kita' | 'kan'
   /** 'error' when the chosen action itself loses shanten/ukeire vs. the true best.
    *  'warning' only applies to a plain discard that ties the best line while passing up a
@@ -81,7 +78,6 @@ interface RoundCore {
   visible: Uint8Array
   /** Discards per seat (0 = East); the user's is rivers[seatIndex]. */
   rivers: ParsedTile[][]
-  /** Norths pulled via kita, in pull order. */
   nuki: ParsedTile[]
   /** Closed kans called, each the four tiles (one possibly red) in call order. */
   kans: ParsedTile[][]
@@ -104,7 +100,6 @@ interface RoundState {
   kans: ParsedTile[][]
   seatIndex: number
   liveWall: ParsedTile[]
-  wallRemaining: number
   lastResult: TurnResult | null
   cumulativeLost: number
   finished: boolean
@@ -114,12 +109,18 @@ interface RoundState {
   paused: boolean
 }
 
-function handToTiles(hand: Hand, reds: ReadonlySet<TileId>): ParsedTile[] {
-  const tiles: ParsedTile[] = []
-  for (let id = 0; id < NUM_TILE_TYPES; id++) {
-    for (let k = 0; k < hand.counts[id]; k++) tiles.push({ id, red: k === 0 && reds.has(id) })
-  }
-  return tiles
+/** Ranked discards for the hand as it stands, counting the hand itself plus every face-up tile
+ *  as seen. `seen` comes back too, for the kan comparison that needs the same visibility. */
+function rankDiscards(core: RoundCore, sanma: boolean) {
+  const seen = new Uint8Array(NUM_TILE_TYPES)
+  for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = core.hand.counts[i] + core.visible[i]
+  return { seen, ranked: evaluateDiscards(core.hand, seen, sanma) }
+}
+
+/** Ukeire given up by playing `yours` instead of `best`. Counts only compare directly at the
+ *  same shanten (options are sorted shanten-first), so a worse shanten forfeits the whole gap. */
+function lostVs(yours: DiscardOption, best: DiscardOption): number {
+  return yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
 }
 
 function opponentTsumogiri(core: RoundCore, seat: number): void {
@@ -138,9 +139,8 @@ function userDraw(core: RoundCore): void {
   core.drawn = tile
 }
 
-/** Draws a kita/kan replacement tile — from the dead wall's far end (backfilled from the live
- *  wall tail so the dead wall stays the same size) when one exists, else straight from the live
- *  wall. Never touches `doraStack`, which is a disjoint reservation. */
+/** Draws a kita/kan replacement — off the dead wall's far end, backfilled from the live wall
+ *  tail so the dead wall keeps its size, else straight from the live wall. */
 function drawReplacement(core: RoundCore): ParsedTile | undefined {
   let drawn = core.deadWall.pop()
   if (drawn) {
@@ -152,9 +152,8 @@ function drawReplacement(core: RoundCore): ParsedTile | undefined {
   return drawn
 }
 
-/** Pulls the held north to the nuki pile and draws its replacement. Hand stays at 14, ready
- *  for the discard that follows; no turn/opponent advance, this is a sub-step of the current
- *  turn, not a turn of its own. */
+/** Pulls the held north to the nuki pile and draws its replacement. A sub-step of the current
+ *  turn, not a turn of its own: the hand stays at 14, ready for the discard that follows. */
 function pullNorth(core: RoundCore): ParsedTile | undefined {
   removeTile(core.hand, NORTH)
   core.nuki.push({ id: NORTH, red: false })
@@ -170,9 +169,7 @@ function pullNorth(core: RoundCore): ParsedTile | undefined {
 }
 
 /** Locks a held quad as a closed kan meld, flips the next kan-dora indicator (dead wall
- *  permitting), and draws the replacement — the kan/kita counterpart of `pullNorth`. Hand
- *  stays at 14 (10 concealed + 1 meld + the replacement draw), ready for the discard that
- *  follows. */
+ *  permitting), and draws the replacement. Same sub-step shape as `pullNorth`. */
 function pullKan(core: RoundCore, id: TileId): ParsedTile | undefined {
   const red = core.reds.has(id)
   for (let k = 0; k < 4; k++) removeTile(core.hand, id)
@@ -341,7 +338,6 @@ function snapshot(core: RoundCore, prev?: RoundState): RoundState {
     kans: core.kans.map((k) => [...k]),
     seatIndex: core.seatIndex,
     liveWall: [...core.liveWall],
-    wallRemaining: core.liveWall.length,
     finished,
     tenpai: finished && shanten(core.hand) <= 0,
     lastResult: prev?.lastResult ?? null,
@@ -391,15 +387,10 @@ export function useEfficiencyRound(
     const tile = index === state.hand.length ? state.drawn : state.hand[index]
     if (!tile) return
 
-    const seen = new Uint8Array(NUM_TILE_TYPES)
-    for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = r.hand.counts[i] + r.visible[i]
-    const ranked = evaluateDiscards(r.hand, seen, options.sanma)
+    const { seen, ranked } = rankDiscards(r, options.sanma)
     const yours = ranked.find((o) => o.discard === tile.id)!
     const best = ranked[0]
-    // ukeire counts only compare directly at the same shanten (best is always <= yours,
-    // since options are sorted shanten-first); a worse shanten forfeits the whole ukeire gap
-    const lost =
-      yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
+    const lost = lostVs(yours, best)
     const isBest = isBestDiscard(yours, best)
 
     // isBest doesn't mean nothing was left on the table: a kan/kita tied for best too, and
@@ -481,13 +472,10 @@ export function useEfficiencyRound(
     const r = core.current
     if (!r || state.finished || !options.sanma || r.hand.counts[NORTH] === 0) return
 
-    const seen = new Uint8Array(NUM_TILE_TYPES)
-    for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = r.hand.counts[i] + r.visible[i]
-    const ranked = evaluateDiscards(r.hand, seen, options.sanma)
+    const { ranked } = rankDiscards(r, options.sanma)
     const yours = ranked.find((o) => o.discard === NORTH)!
     const best = ranked[0]
-    const lost =
-      yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
+    const lost = lostVs(yours, best)
     const isBest = isBestDiscard(yours, best)
     const lastResult: TurnResult = {
       turn: r.turn,
@@ -532,12 +520,10 @@ export function useEfficiencyRound(
     const r = core.current
     if (!r || state.finished || r.hand.counts[id] !== 4) return
 
-    const seen = new Uint8Array(NUM_TILE_TYPES)
-    for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = r.hand.counts[i] + r.visible[i]
-    const best = evaluateDiscards(r.hand, seen, options.sanma)[0]
+    const { seen, ranked } = rankDiscards(r, options.sanma)
+    const best = ranked[0]
     const yours = evaluateKan(r.hand, seen, options.sanma).find((o) => o.discard === id)!
-    const lost =
-      yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
+    const lost = lostVs(yours, best)
     const isBest = isBestDiscard(yours, best)
     const lastResult: TurnResult = {
       turn: r.turn,

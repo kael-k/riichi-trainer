@@ -58,7 +58,7 @@ describe('useEfficiencyRound', () => {
     expect(result.current.tenpai).toBe(true)
     expect(result.current.hand).toHaveLength(13)
     expect(result.current.drawn).toBeUndefined()
-    expect(result.current.wallRemaining).toBeGreaterThan(0) // stopped early, wall untouched
+    expect(result.current.liveWall.length).toBeGreaterThan(0) // stopped early, wall untouched
   })
 
   it('restart deals a fresh hand', () => {
@@ -116,7 +116,7 @@ describe('useEfficiencyRound', () => {
       useEfficiencyRound(situation, { ...BARE, deadWall: true }, true),
     )
     expect(result.current.doraIndicators).toHaveLength(1)
-    expect(result.current.wallRemaining).toBe(136 - 14 - 14) // deal 14, dead wall 14
+    expect(result.current.liveWall.length).toBe(136 - 14 - 14) // deal 14, dead wall 14
   })
 
   it('lets opponents tsumogiri around the table, draining the wall 4 tiles per turn', () => {
@@ -127,11 +127,11 @@ describe('useEfficiencyRound', () => {
       useEfficiencyRound(situation, { ...BARE, opponents: true }, true),
     )
     // 123 unpinned - 39 hidden opponent hands - 1 user draw
-    expect(result.current.wallRemaining).toBe(83)
+    expect(result.current.liveWall.length).toBe(83)
     expect(result.current.rivers.every((r) => r.length === 0)).toBe(true)
 
     act(() => result.current.discard(0))
-    expect(result.current.wallRemaining).toBe(79)
+    expect(result.current.liveWall.length).toBe(79)
     expect(result.current.rivers.map((r) => r.length)).toEqual([1, 1, 1, 1])
   })
 
@@ -191,7 +191,7 @@ describe('useEfficiencyRound', () => {
     expect(b.result.current.drawn).toEqual(a.result.current.drawn)
     expect(b.result.current.turn).toBe(a.result.current.turn)
     expect(b.result.current.rivers).toEqual(a.result.current.rivers)
-    expect(b.result.current.wallRemaining).toBe(a.result.current.wallRemaining)
+    expect(b.result.current.liveWall.length).toBe(a.result.current.liveWall.length)
     expect(b.result.current.doraIndicators).toEqual(a.result.current.doraIndicators)
   })
 
@@ -221,10 +221,10 @@ describe('useEfficiencyRound', () => {
     )
     expect(result.current.rivers).toHaveLength(3)
     // 108 - 13 pinned - 26 hidden (2 opponents * 13) - 1 user draw
-    expect(result.current.wallRemaining).toBe(108 - 13 - 26 - 1)
+    expect(result.current.liveWall.length).toBe(108 - 13 - 26 - 1)
 
     act(() => result.current.discard(0))
-    expect(result.current.wallRemaining).toBe(108 - 13 - 26 - 1 - 3)
+    expect(result.current.liveWall.length).toBe(108 - 13 - 26 - 1 - 3)
     expect(result.current.rivers.map((r) => r.length)).toEqual([1, 1, 1])
   })
 

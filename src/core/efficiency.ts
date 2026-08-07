@@ -33,14 +33,11 @@ export function evaluateDiscards(hand: Hand, visible?: Uint8Array, sanma = false
 }
 
 /**
- * Evaluates every closed kan (ankan) available from a 14-tile hand — any tile held
- * four times. Locking the quad as a fixed meld leaves a 10-tile concealed hand plus
- * one meld, the same "13-tile-equivalent, about to draw" shape a discard produces
- * (`Hand.melds` feeds `shanten()`/`ukeire()` exactly like a called meld would), so the
- * resulting `DiscardOption`s (`discard` here means "the kanned tile") rank on identical
- * footing against `evaluateDiscards`'s output. A kan never beats the pure discard
- * optimum — it only removes decompositions a live quad could still take part in — so
- * callers keep comparing against `evaluateDiscards(...)[0]`, not this list's own head.
+ * Evaluates every closed kan (ankan) available from a 14-tile hand — any tile held four times.
+ * `discard` names the kanned tile; options rank on the same footing as `evaluateDiscards`'s,
+ * since a locked quad leaves the same 13-tile-equivalent shape a discard does. A kan never beats
+ * the pure discard optimum (it only removes decompositions a live quad could join), so callers
+ * keep comparing against `evaluateDiscards(...)[0]`, not this list's own head.
  */
 export function evaluateKan(hand: Hand, visible?: Uint8Array, sanma = false): DiscardOption[] {
   const seen = visible ?? hand.counts.slice()
@@ -62,12 +59,8 @@ export function evaluateKan(hand: Hand, visible?: Uint8Array, sanma = false): Di
   return options
 }
 
-/**
- * True when `option` ties the top of a ranked `evaluateDiscards` list — same shanten and
- * same ukeire count as `best`. `best` (e.g. `options[0]`) is just whichever tied discard
- * sorted first, so comparing by tile id instead of by these two fields would wrongly mark
- * every other equally-good discard as a mistake.
- */
+/** True when `option` ties `best` on shanten and ukeire count. `best` (`options[0]`) is just
+ *  whichever tied discard sorted first, so never compare by tile id. */
 export function isBestDiscard(option: DiscardOption, best: DiscardOption): boolean {
   return option.shanten === best.shanten && option.ukeireCount === best.ukeireCount
 }

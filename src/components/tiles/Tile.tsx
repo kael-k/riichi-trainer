@@ -53,7 +53,7 @@ interface TileButtonProps extends TileProps {
 }
 
 /** Tappable tile with a ≥44px hit area. */
-export function TileButton({ id, red, onClick, className = '' }: TileButtonProps) {
+function TileButton({ id, red, onClick, className = '' }: TileButtonProps) {
   return (
     <button
       type="button"
@@ -95,22 +95,12 @@ export function HandDisplay({ tiles, drawn, onTileClick, concealed }: HandDispla
 
 /** Discard pile, 6 tiles per row like a real river. */
 // ponytail: no riichi sideways-tile rotation yet; add when riichi state exists (M3+)
-export function River({
-  tiles,
-  onTileClick,
-}: {
-  tiles: ParsedTile[]
-  onTileClick?: (index: number) => void
-}) {
+export function River({ tiles }: { tiles: ParsedTile[] }) {
   return (
     <div className="grid w-fit grid-cols-6 [--tile-w:calc(var(--tile-w-base)*0.8)]">
-      {tiles.map((tile, i) =>
-        onTileClick ? (
-          <TileButton key={i} id={tile.id} red={tile.red} onClick={() => onTileClick(i)} />
-        ) : (
-          <Tile key={i} id={tile.id} red={tile.red} />
-        ),
-      )}
+      {tiles.map((tile, i) => (
+        <Tile key={i} id={tile.id} red={tile.red} />
+      ))}
     </div>
   )
 }

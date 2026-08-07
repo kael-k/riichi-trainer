@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { addTile, createHand, type Hand } from '../../core/hand'
+import { addTile, createHand, handToTiles, type Hand } from '../../core/hand'
 import { chiitoiShanten, kokushiShanten, standardShanten } from '../../core/shanten'
-import { NUM_TILE_TYPES, serializeTenhou, type ParsedTile } from '../../core/tiles'
+import { serializeTenhou, type ParsedTile } from '../../core/tiles'
 import { deal, INITIAL_HAND_SIZE } from '../../core/wall'
+import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
 import type { Situation } from '../situation/urlCodec'
 
@@ -35,14 +36,6 @@ interface State {
  *  clock at submit, so it never inherits this granularity. */
 const TICK_MS = 50
 
-function handToTiles(hand: Hand): ParsedTile[] {
-  const tiles: ParsedTile[] = []
-  for (let id = 0; id < NUM_TILE_TYPES; id++) {
-    for (let k = 0; k < hand.counts[id]; k++) tiles.push({ id, red: false })
-  }
-  return tiles
-}
-
 function computeBreakdown(hand: Hand): ShantenBreakdown {
   const standard = standardShanten(hand)
   const chiitoitsu = chiitoiShanten(hand)
@@ -59,33 +52,22 @@ function computeBreakdown(hand: Hand): ShantenBreakdown {
  *  the feedback for the last one alongside the hand already dealt. */
 export function useShantenRound(situation: Situation, timerEnabled: boolean, sanma: boolean) {
   const [handIndex, setHandIndex] = useState(0)
-  // stable per mount, so an unspecified seed still gets a fresh hand each page load
-  const [randomSeed] = useState(() => Math.random().toString(36).slice(2))
-  const [correctCount, setCorrectCount] = useState(0)
-  const [totalCount, setTotalCount] = useState(0)
-  const [totalTime, setTotalTime] = useState(0)
+  const stats = useSessionStats()
   const handRef = useRef<Hand>(undefined)
-  // clock reading the current hand was revealed at; there is no pause, so one
-  // reading is the whole timer
-  const startedAt = useRef(0)
   const [state, setState] = useState<State>(() => nextHand())
   const log = useLog((s) => s.log)
-  const entryCount = useLog((s) => s.entries.length)
-
-  function elapsedNow(): number {
-    return performance.now() - startedAt.current
-  }
 
   /** Deals the hand for the current `handIndex`, carrying over whether the stream is
    *  running and the pending feedback so an answered hand rolls straight into the next. */
   function nextHand(prev?: State): State {
-    startedAt.current = performance.now()
+    // there is no pause, so one clock reading is the whole timer
+    stats.startClock()
     const carry = {
       running: prev?.running ?? false,
       elapsed: 0,
       lastResult: prev?.lastResult ?? null,
     }
-    const seed = `${situation.seed || randomSeed}:${handIndex}`
+    const seed = `${situation.seed || stats.randomSeed}:${handIndex}`
     if (situation.hand.length === INITIAL_HAND_SIZE) {
       const hand = createHand()
       for (const t of situation.hand) addTile(hand, t.id)
@@ -93,7 +75,7 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
       // keep the situation's tiles (not counts) so red-five flags survive to display
       return { hand: [...situation.hand].sort((a, b) => a.id - b.id), ...carry }
     }
-    const hand = deal(seed, INITIAL_HAND_SIZE, sanma).hand
+    const hand = deal(seed, INITIAL_HAND_SIZE, sanma)
     handRef.current = hand
     return { hand: handToTiles(hand), ...carry }
   }
@@ -105,30 +87,21 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
 
   useEffect(() => {
     if (!state.running || !timerEnabled) return
-    const id = setInterval(() => setState((s) => ({ ...s, elapsed: elapsedNow() })), TICK_MS)
+    const id = setInterval(() => setState((s) => ({ ...s, elapsed: stats.elapsedNow() })), TICK_MS)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.running, timerEnabled])
 
-  // clearing the log clears the session it recorded: score and average go with it
-  useEffect(() => {
-    if (entryCount > 0) return
-    setCorrectCount(0)
-    setTotalCount(0)
-    setTotalTime(0)
-  }, [entryCount])
-
   return {
     ...state,
     concealed: !state.running,
-    correctCount,
-    totalCount,
-    /** Mean time per graded hand, in milliseconds. */
-    averageTime: totalCount > 0 ? totalTime / totalCount : 0,
+    correctCount: stats.correctCount,
+    totalCount: stats.totalCount,
+    averageTime: stats.averageTime,
     reveal: () =>
       setState((s) => {
         if (s.running) return s
-        startedAt.current = performance.now()
+        stats.startClock()
         return { ...s, running: true }
       }),
     /** Abandons the current hand: re-conceals, drops the timer, deals a fresh one —
@@ -141,7 +114,7 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
       if (!state.running || !handRef.current) return
       const actual = computeBreakdown(handRef.current)
       const correct = guess === actual.value
-      const elapsed = elapsedNow()
+      const elapsed = stats.elapsedNow()
       // logged here rather than from a page effect, so entries stay in play order. Raw paths/
       // correct/timerEnabled/elapsed go through as params (not formatted text) so a later
       // language switch re-translates the line instead of leaving stale fragments — see
@@ -149,7 +122,7 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
       log(
         'log.shanten.result',
         {
-          hand: totalCount + 1,
+          hand: stats.totalCount + 1,
           guess,
           actual: actual.value,
           paths: actual.paths,
@@ -160,9 +133,7 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
         state.hand,
         serializeTenhou(state.hand),
       )
-      setTotalCount((n) => n + 1)
-      setTotalTime((t) => t + elapsed)
-      if (correct) setCorrectCount((n) => n + 1)
+      stats.record(correct, elapsed)
       // keep running: the feedback rides along with the hand dealt by the index bump
       setState((s) => ({ ...s, lastResult: { guess, actual, correct, hand: s.hand } }))
       setHandIndex((n) => n + 1)

@@ -7,6 +7,9 @@ import { useScoringRound, type RoundOptions } from './useScoringRound'
 
 const FULL: RoundOptions = {
   sanma: false,
+  timerEnabled: true,
+  showYaku: false,
+  showFu: false,
   aka: true,
   openHands: true,
   honba: true,
@@ -25,7 +28,7 @@ function generated(seed: string): ScoringUrl {
 describe('useScoringRound', () => {
   it('deals a hand with a precomputed score, visible immediately', () => {
     const urlData = generated('round-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL, true))
+    const { result } = renderHook(() => useScoringRound(urlData, FULL))
     expect(result.current.situation.concealed.length).toBeGreaterThan(0)
     expect(result.current.actual.payments.total).toBeGreaterThan(0)
     expect(result.current.checked).toBe(false)
@@ -33,7 +36,7 @@ describe('useScoringRound', () => {
 
   it('grades a fully correct answer', () => {
     const urlData = generated('grade-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL, true))
+    const { result } = renderHook(() => useScoringRound(urlData, FULL))
     const { actual } = result.current
     const split = actual.payments.fromDealer !== undefined
     act(() =>
@@ -56,7 +59,7 @@ describe('useScoringRound', () => {
 
   it('grades a wrong han as incorrect overall, even with fu/points right', () => {
     const urlData = generated('wrong-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL, true))
+    const { result } = renderHook(() => useScoringRound(urlData, FULL))
     const { actual } = result.current
     act(() =>
       result.current.check({ han: actual.han + 1, fu: actual.fu, points: actual.payments.main }),
@@ -68,7 +71,7 @@ describe('useScoringRound', () => {
   it('skips a disabled test entirely: wrong fu still grades correct when testFu is off', () => {
     const urlData = generated('skip-seed')
     const options: RoundOptions = { ...FULL, testFu: false }
-    const { result } = renderHook(() => useScoringRound(urlData, options, true))
+    const { result } = renderHook(() => useScoringRound(urlData, options))
     const { actual } = result.current
     act(() => result.current.check({ han: actual.han, fu: -1, points: actual.payments.main }))
     expect(result.current.lastResult?.correctFu).toBe(true)
@@ -78,7 +81,7 @@ describe('useScoringRound', () => {
   it('grades the exact (pre-rounding) fu when exactFu is on', () => {
     const urlData = generated('exact-seed')
     const options: RoundOptions = { ...FULL, exactFu: true }
-    const { result } = renderHook(() => useScoringRound(urlData, options, true))
+    const { result } = renderHook(() => useScoringRound(urlData, options))
     const { actual } = result.current
     act(() =>
       result.current.check({ han: actual.han, fu: actual.fu, points: actual.payments.main }),
@@ -89,7 +92,7 @@ describe('useScoringRound', () => {
 
   it('next() deals a fresh hand and resets checked/elapsed', () => {
     const urlData = generated('next-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL, true))
+    const { result } = renderHook(() => useScoringRound(urlData, FULL))
     const first = result.current.situation
     act(() => result.current.check({ han: 0, fu: 0, points: 0 }))
     expect(result.current.checked).toBe(true)
@@ -102,7 +105,7 @@ describe('useScoringRound', () => {
 
   it('clearing the log resets the score and the average', () => {
     const urlData = generated('log-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL, true))
+    const { result } = renderHook(() => useScoringRound(urlData, FULL))
     const { actual } = result.current
     act(() =>
       result.current.check({ han: actual.han, fu: actual.fu, points: actual.payments.main }),
@@ -118,7 +121,7 @@ describe('useScoringRound', () => {
   it('deals sanma hands without 2m-8m', () => {
     const urlData = generated('sanma-seed')
     const options: RoundOptions = { ...FULL, sanma: true }
-    const { result } = renderHook(() => useScoringRound(urlData, options, true))
+    const { result } = renderHook(() => useScoringRound(urlData, options))
     const hasBanned = result.current.situation.concealed.some((t) => t.id >= 1 && t.id <= 7)
     expect(hasBanned).toBe(false)
   })
@@ -148,7 +151,7 @@ describe('useScoringRound', () => {
         honba: 0,
       },
     }
-    const { result } = renderHook(() => useScoringRound(pinned, FULL, true))
+    const { result } = renderHook(() => useScoringRound(pinned, FULL))
     expect(result.current.situation.concealed).toEqual(pinned.situation!.concealed)
     expect(result.current.actual.payments.total).toBe(5800) // dealer riichi-pinfu-tanyao ron
     expect(result.current.invalidLink).toBe(false)
@@ -181,7 +184,7 @@ describe('useScoringRound', () => {
         honba: 0,
       },
     }
-    const { result } = renderHook(() => useScoringRound(yakuless, FULL, true))
+    const { result } = renderHook(() => useScoringRound(yakuless, FULL))
     expect(result.current.invalidLink).toBe(true)
     expect(result.current.situation.concealed).not.toEqual(yakuless.situation!.concealed)
     expect(result.current.actual.payments.total).toBeGreaterThan(0)
