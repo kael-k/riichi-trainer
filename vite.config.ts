@@ -5,10 +5,9 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// GITHUB_SHA is set by Actions; fall back to the local checkout for dev builds
-const commitSha = (process.env.GITHUB_SHA ?? execSync('git rev-parse HEAD').toString())
-  .trim()
-  .slice(0, 7)
+// GITHUB_SHA is set by Actions; fall back to the local checkout for dev builds. Full sha, not
+// abbreviated: the footer is what a bug report quotes back, and a full sha is unambiguous.
+const commitSha = (process.env.GITHUB_SHA ?? execSync('git rev-parse HEAD').toString()).trim()
 
 export default defineConfig({
   define: {

@@ -37,7 +37,9 @@
   },
   "home": {
     "title": "リーチトレーナー",
-    "releaseVersion": "リリースバージョン: {{sha}}"
+    "license": "GPLv3 で公開されているフリー・オープンソースソフトウェアです。",
+    "sourceLink": "GitHub のソースコード",
+    "buildCommit": "ビルドコミット: {{sha}}"
   },
   "trainer": {
     "efficiency": {

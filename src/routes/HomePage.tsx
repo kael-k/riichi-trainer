@@ -4,6 +4,8 @@ import { Tile } from '../components/tiles/Tile'
 import { parseTenhou } from '../core/tiles'
 import { SettingsButton } from '../features/settings/SettingsDialog'
 
+const REPO_URL = 'https://github.com/kael-k/riichi-trainer'
+
 const MODES = [
   { to: '/efficiency', titleKey: 'trainer.efficiency.title', descKey: 'trainer.efficiency.desc' },
   { to: '/shanten', titleKey: 'trainer.shanten.title', descKey: 'trainer.shanten.desc' },
@@ -37,9 +39,20 @@ export function HomePage() {
           </Link>
         ))}
       </nav>
-      <p className="mt-auto text-center text-xs text-neutral-400">
-        {t('home.releaseVersion', { sha: __COMMIT_SHA__ })}
-      </p>
+      <footer className="mt-auto flex flex-col items-center gap-1 text-center text-xs text-neutral-400">
+        <p>
+          {t('home.license')}{' '}
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2 hover:text-neutral-600 dark:hover:text-neutral-200"
+          >
+            {t('home.sourceLink')}
+          </a>
+        </p>
+        <p className="font-mono break-all">{t('home.buildCommit', { sha: __COMMIT_SHA__ })}</p>
+      </footer>
     </div>
   )
 }

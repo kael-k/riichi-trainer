@@ -37,7 +37,9 @@
   },
   "home": {
     "title": "立直训练器",
-    "releaseVersion": "版本: {{sha}}"
+    "license": "自由开源软件，以 GPLv3 许可证发布。",
+    "sourceLink": "GitHub 源代码",
+    "buildCommit": "构建提交: {{sha}}"
   },
   "trainer": {
     "efficiency": {

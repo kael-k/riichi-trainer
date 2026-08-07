@@ -37,7 +37,9 @@
   },
   "home": {
     "title": "Riichi Trainer",
-    "releaseVersion": "release version: {{sha}}"
+    "license": "Free and open-source software, released under the GPLv3.",
+    "sourceLink": "Source on GitHub",
+    "buildCommit": "build commit: {{sha}}"
   },
   "trainer": {
     "efficiency": {
