@@ -3,10 +3,11 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
+import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
-import { HandDisplay, Tile } from '../../components/tiles/Tile'
-import type { Meld } from '../../core/agari'
+import { HandDisplay, MeldDisplay, Tile } from '../../components/tiles/Tile'
 import { HONOR, serializeTenhou } from '../../core/tiles'
+import { WINDS } from '../situation/urlCodec'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useTermName } from '../i18n/useTermName'
 import { SettingRow } from '../settings/SettingsDialog'
@@ -24,33 +25,6 @@ const FLAG_KEYS = [
   'rinshan',
   'chankan',
 ] as const
-
-/** One called set. Ankan is drawn with its two outer tiles face-down, same convention as a
- *  concealed tile elsewhere in the app. Open calls lay their leftmost tile sideways, the usual
- *  "this one was claimed" marker — `Meld` doesn't record which seat it came from, so the
- *  rotated tile is always the first one rather than encoding the caller's direction. */
-function MeldDisplay({ meld }: { meld: Meld }) {
-  const last = meld.tiles.length - 1
-  return (
-    <div className="flex items-end">
-      {meld.tiles.map((t, i) => {
-        const hidden = meld.kind === 'ankan' && (i === 0 || i === last)
-        const tile = <Tile id={hidden ? undefined : t.id} red={t.red} />
-        if (meld.kind === 'ankan' || i > 0) return <span key={i}>{tile}</span>
-        // the rotated tile's box is its own height wide and its width tall, so the wrapper
-        // swaps the two and centres the (overflowing) upright tile inside it
-        return (
-          <span
-            key={i}
-            className="grid h-(--tile-w) w-[calc(var(--tile-w)*4/3)] place-items-center [&>svg]:rotate-90"
-          >
-            {tile}
-          </span>
-        )
-      })}
-    </div>
-  )
-}
 
 /** One numeric answer field; the value is read at submit from the form's `FormData`. */
 function NumberField({
@@ -166,6 +140,36 @@ export function ScoringPage() {
   const winTile =
     winIndex >= 0 ? round.situation.concealed[winIndex] : { id: ctx.winTile, red: false }
 
+  const badge = (text: string) => (
+    <span className="rounded bg-neutral-100 px-2 py-0.5 font-medium dark:bg-neutral-800">
+      {text}
+    </span>
+  )
+  // the win conditions read the same in either presentation, so they are built once and handed
+  // either to the table's centre panel or to the flat bar. The ron/tsumo badge is separate
+  // because the table does not need it: the winning tile is ringed wherever it lies, so a ron
+  // rings it in the discarder's river as well as in the hand, and a tsumo only in the hand
+  const flagBadges = FLAG_KEYS.filter((key) => ctx[key]).map((key) => (
+    <span key={key}>{badge(termName('flags', key))}</span>
+  ))
+  const winBadge = badge(t(ctx.tsumo ? 'scoring.tsumo' : 'scoring.ron'))
+
+  // the hand is dealt to one seat of a real table: your seat wind is a position on the board,
+  // and the melds sit on your side of it. The other seats stay empty — a scoring drill has no
+  // discard history to show, but the board still places the winds
+  const players = options.sanma ? 3 : 4
+  const tableSeatIndex = Math.min(ctx.seat - HONOR, players - 1)
+  // nothing records who dealt in, so the ronned tile goes to the seat that discards immediately
+  // before your turn — the one whose discard you would most often be claiming
+  const discarder = (tableSeatIndex - 1 + players) % players
+  const seats: SeatView[] = Array.from({ length: players }, (_, seat) => ({
+    ...(seat === tableSeatIndex && {
+      melds: round.situation.melds,
+      nuki: Array.from({ length: round.situation.kita }, () => ({ id: HONOR + 3, red: false })),
+    }),
+    ...(!ctx.tsumo && seat === discarder && { river: [{ ...winTile, win: true }] }),
+  }))
+
   const testsEnabled = [settings.testHan, settings.testFu, settings.testPoints].filter(
     Boolean,
   ).length
@@ -190,6 +194,7 @@ export function ScoringPage() {
           {toggle('testFu', 'scoring.settings.testFu', true)}
           {toggle('testPoints', 'scoring.settings.testPoints', true)}
           {toggle('timerEnabled', 'scoring.settings.timer')}
+          {toggle('table', 'scoring.settings.table')}
           {toggle('exactFu', 'scoring.settings.exactFu')}
           {toggle('showYaku', 'scoring.settings.showYaku')}
           {toggle('showFu', 'scoring.settings.showFu')}
@@ -226,153 +231,183 @@ export function ScoringPage() {
           </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
-          <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-            {t('scoring.roundWind')} <Tile id={ctx.round} />
-          </span>
-          <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-            {t('scoring.seatWind')} <Tile id={ctx.seat} />
-            {dealer && <span className="text-neutral-500">({t('scoring.dealer')})</span>}
-          </span>
-          {round.situation.doraIndicators.length > 0 && (
-            <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-              {t('scoring.doraIndicator')}
-              {round.situation.doraIndicators.map((id, i) => (
-                <Tile key={i} id={id} />
-              ))}
-            </span>
-          )}
-          {round.checked && round.situation.uraIndicators.length > 0 && (
-            <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-              {t('scoring.uraIndicator')}
-              {round.situation.uraIndicators.map((id, i) => (
-                <Tile key={i} id={id} />
-              ))}
-            </span>
-          )}
-          {round.situation.honba > 0 && (
-            <span>{t('scoring.honbaCount', { count: round.situation.honba })}</span>
-          )}
-          {round.situation.kita > 0 && (
-            <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-              {t('scoring.kitaLabel')}
-              {Array.from({ length: round.situation.kita }, (_, i) => (
-                <Tile key={i} id={HONOR + 3} />
-              ))}
-            </span>
-          )}
-          <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-medium dark:bg-neutral-800">
-            {t(ctx.tsumo ? 'scoring.tsumo' : 'scoring.ron')}
-          </span>
-          {FLAG_KEYS.filter((key) => ctx[key]).map((key) => (
-            <span
-              key={key}
-              className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-medium dark:bg-neutral-800"
+        {/* stacked normally; beside the board when the viewport is too short to stack, which is
+            what makes turning the phone sideways actually pay off */}
+        <div className="flex flex-col gap-4 short:flex-row short:items-start">
+          {settings.table ? (
+            <Table
+              seats={seats}
+              seatIndex={tableSeatIndex}
+              round={WINDS[ctx.round - HONOR]}
+              doraIndicators={round.situation.doraIndicators.map((id) => ({ id, red: false }))}
+              uraIndicators={
+                round.checked
+                  ? round.situation.uraIndicators.map((id) => ({ id, red: false }))
+                  : undefined
+              }
+              honba={round.situation.honba}
             >
-              {termName('flags', key)}
-            </span>
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <HandDisplay tiles={restConcealed} drawn={winTile} />
-          {round.situation.melds.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {round.situation.melds.map((meld, i) => (
-                <MeldDisplay key={i} meld={meld} />
-              ))}
+              <span className="flex flex-wrap items-center justify-center gap-[1cqw]">
+                {flagBadges}
+              </span>
+            </Table>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
+              <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                {t('scoring.roundWind')} <Tile id={ctx.round} />
+              </span>
+              <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                {t('scoring.seatWind')} <Tile id={ctx.seat} />
+                {dealer && <span className="text-neutral-500">({t('scoring.dealer')})</span>}
+              </span>
+              {round.situation.doraIndicators.length > 0 && (
+                <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                  {t('scoring.doraIndicator')}
+                  {round.situation.doraIndicators.map((id, i) => (
+                    <Tile key={i} id={id} />
+                  ))}
+                </span>
+              )}
+              {round.checked && round.situation.uraIndicators.length > 0 && (
+                <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                  {t('scoring.uraIndicator')}
+                  {round.situation.uraIndicators.map((id, i) => (
+                    <Tile key={i} id={id} />
+                  ))}
+                </span>
+              )}
+              {round.situation.honba > 0 && (
+                <span>{t('scoring.honbaCount', { count: round.situation.honba })}</span>
+              )}
+              {round.situation.kita > 0 && (
+                <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                  {t('scoring.kitaLabel')}
+                  {Array.from({ length: round.situation.kita }, (_, i) => (
+                    <Tile key={i} id={HONOR + 3} />
+                  ))}
+                </span>
+              )}
+              <span className="flex flex-wrap items-center gap-2 text-xs">
+                {winBadge}
+                {flagBadges}
+              </span>
             </div>
           )}
-        </div>
 
-        {!round.checked && (
-          // uncontrolled: the form is keyed to the hand, so a new hand remounts it empty
-          <form
-            key={serializeTenhou(round.situation.concealed)}
-            onSubmit={(e) => {
-              e.preventDefault()
-              submit(e.currentTarget)
-            }}
-            className="flex flex-col gap-3"
-          >
-            {settings.testHan && <NumberField name="han" label={t('scoring.hanLabel')} autoFocus />}
-            {settings.testFu && <NumberField name="fu" label={t('scoring.fuLabel')} />}
-            {settings.testPoints && !split && (
-              <NumberField name="points" label={singlePointsLabel} step={100} />
-            )}
-            {settings.testPoints && split && (
-              <>
-                <NumberField name="pointsMain" label={t('scoring.pointsMainLabel')} step={100} />
-                <NumberField
-                  name="pointsFromDealer"
-                  label={t('scoring.pointsFromDealerLabel')}
-                  step={100}
-                />
-              </>
-            )}
-            <button
-              type="submit"
-              className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-            >
-              {t('scoring.checkAnswer')}
-            </button>
-          </form>
-        )}
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              {/* which tile completed the hand decides the wait fu and menzen ron, so it is part of
+              the question, not part of the answer — always ringed, never gated on the reveal */}
+              <HandDisplay
+                tiles={restConcealed}
+                drawn={winTile}
+                drawnClassName="rounded-sm outline-2 outline-red-500"
+              />
+              {!settings.table && round.situation.melds.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {round.situation.melds.map((meld, i) => (
+                    <MeldDisplay key={i} meld={meld} />
+                  ))}
+                </div>
+              )}
+            </div>
 
-        {round.checked && round.lastResult && (
-          <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-            {settings.testHan && (
-              <FieldFeedback
-                correct={round.lastResult.correctHan}
-                label={t('scoring.hanLabel')}
-                expected={String(round.actual.han)}
-              />
+            {!round.checked && (
+              // uncontrolled: the form is keyed to the hand, so a new hand remounts it empty
+              <form
+                key={serializeTenhou(round.situation.concealed)}
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  submit(e.currentTarget)
+                }}
+                className="flex flex-col gap-3"
+              >
+                {settings.testHan && (
+                  <NumberField name="han" label={t('scoring.hanLabel')} autoFocus />
+                )}
+                {settings.testFu && <NumberField name="fu" label={t('scoring.fuLabel')} />}
+                {settings.testPoints && !split && (
+                  <NumberField name="points" label={singlePointsLabel} step={100} />
+                )}
+                {settings.testPoints && split && (
+                  <>
+                    <NumberField
+                      name="pointsMain"
+                      label={t('scoring.pointsMainLabel')}
+                      step={100}
+                    />
+                    <NumberField
+                      name="pointsFromDealer"
+                      label={t('scoring.pointsFromDealerLabel')}
+                      step={100}
+                    />
+                  </>
+                )}
+                <button
+                  type="submit"
+                  className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  {t('scoring.checkAnswer')}
+                </button>
+              </form>
             )}
-            {settings.testFu && (
-              <FieldFeedback
-                correct={round.lastResult.correctFu}
-                label={t('scoring.fuLabel')}
-                expected={String(settings.exactFu ? round.actual.fuExact : round.actual.fu)}
-              />
+
+            {round.checked && round.lastResult && (
+              <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+                {settings.testHan && (
+                  <FieldFeedback
+                    correct={round.lastResult.correctHan}
+                    label={t('scoring.hanLabel')}
+                    expected={String(round.actual.han)}
+                  />
+                )}
+                {settings.testFu && (
+                  <FieldFeedback
+                    correct={round.lastResult.correctFu}
+                    label={t('scoring.fuLabel')}
+                    expected={String(settings.exactFu ? round.actual.fuExact : round.actual.fu)}
+                  />
+                )}
+                {settings.testPoints && !split && (
+                  <FieldFeedback
+                    correct={round.lastResult.correctPoints}
+                    label={singlePointsLabel}
+                    expected={String(round.actual.payments.main)}
+                    note={limitName}
+                  />
+                )}
+                {settings.testPoints && split && (
+                  <FieldFeedback
+                    correct={round.lastResult.correctPoints}
+                    label={`${t('scoring.pointsMainLabel')} / ${t('scoring.pointsFromDealerLabel')}`}
+                    expected={`${round.actual.payments.main} / ${round.actual.payments.fromDealer}`}
+                    note={limitName}
+                  />
+                )}
+                {/* the limit name rides along with the points row; without one it needs its own line */}
+                {!settings.testPoints && limitName && (
+                  <p className="text-sm text-neutral-500">{limitName}</p>
+                )}
+                {(settings.showYaku || settings.showFu) && (
+                  <ScoreBreakdown
+                    result={round.actual}
+                    showYaku={settings.showYaku}
+                    showFu={settings.showFu}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={round.next}
+                  className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  {t('scoring.newHand')}
+                </button>
+              </div>
             )}
-            {settings.testPoints && !split && (
-              <FieldFeedback
-                correct={round.lastResult.correctPoints}
-                label={singlePointsLabel}
-                expected={String(round.actual.payments.main)}
-                note={limitName}
-              />
-            )}
-            {settings.testPoints && split && (
-              <FieldFeedback
-                correct={round.lastResult.correctPoints}
-                label={`${t('scoring.pointsMainLabel')} / ${t('scoring.pointsFromDealerLabel')}`}
-                expected={`${round.actual.payments.main} / ${round.actual.payments.fromDealer}`}
-                note={limitName}
-              />
-            )}
-            {/* the limit name rides along with the points row; without one it needs its own line */}
-            {!settings.testPoints && limitName && (
-              <p className="text-sm text-neutral-500">{limitName}</p>
-            )}
-            {(settings.showYaku || settings.showFu) && (
-              <ScoreBreakdown
-                result={round.actual}
-                showYaku={settings.showYaku}
-                showFu={settings.showFu}
-              />
-            )}
-            <button
-              type="button"
-              onClick={round.next}
-              className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-            >
-              {t('scoring.newHand')}
-            </button>
+
+            <CopyLinkButton query={round.situationQuery} />
           </div>
-        )}
-
-        <CopyLinkButton query={round.situationQuery} />
+        </div>
       </div>
     </TrainerLayout>
   )

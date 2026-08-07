@@ -15,6 +15,7 @@ import {
   SOU,
   tileCode,
   type ParsedTile,
+  type RiverTile,
   type TileId,
 } from '../../core/tiles'
 import { buildWall, DEAD_WALL_SIZE, INITIAL_HAND_SIZE } from '../../core/wall'
@@ -77,8 +78,9 @@ interface RoundCore {
   /** Count of every face-up tile: all rivers plus every flipped dora indicator plus every
    *  kanned/nuki'd tile still tracked separately from the (now-empty) hand slot it left. */
   visible: Uint8Array
-  /** Discards per seat (0 = East); the user's is rivers[seatIndex]. */
-  rivers: ParsedTile[][]
+  /** Discards per seat (0 = East); the user's is rivers[seatIndex]. Each carries whether it
+   *  was a tsumogiri, which the table draws — the opponents' always are. */
+  rivers: RiverTile[][]
   nuki: ParsedTile[]
   /** Closed kans called, each the four tiles (one possibly red) in call order. */
   kans: ParsedTile[][]
@@ -96,7 +98,7 @@ interface RoundState {
   drawn: ParsedTile | undefined
   turn: number
   doraIndicators: ParsedTile[]
-  rivers: ParsedTile[][]
+  rivers: RiverTile[][]
   nuki: ParsedTile[]
   kans: ParsedTile[][]
   seatIndex: number
@@ -129,7 +131,7 @@ function lostVs(yours: DiscardOption, best: DiscardOption): number {
 function opponentTsumogiri(core: RoundCore, seat: number): void {
   const tile = core.liveWall.shift()
   if (!tile) return
-  core.rivers[seat].push(tile)
+  core.rivers[seat].push({ ...tile, tsumogiri: true })
   core.visible[tile.id]++
 }
 
@@ -203,11 +205,21 @@ function pullKan(core: RoundCore, id: TileId): ParsedTile | undefined {
 
 /** Discards `tile` for the user, lets the opponents tsumogiri around the table,
  *  and draws the user's next tile. Returns false when the drill is over instead —
- *  either the discard reached tenpai or the wall ran dry. */
-function advanceAfterDiscard(core: RoundCore, tile: ParsedTile, options: RoundOptions): boolean {
+ *  either the discard reached tenpai or the wall ran dry.
+ *
+ *  `tsumogiri` records that the discard was the tile just drawn rather than one from the hand;
+ *  a replayed river (from a shared link) has no way to know, so those read as tedashi. */
+function advanceAfterDiscard(
+  core: RoundCore,
+  tile: ParsedTile,
+  options: RoundOptions,
+  tsumogiri = false,
+): boolean {
   removeTile(core.hand, tile.id)
   if (tile.red) core.reds.delete(tile.id)
-  core.rivers[core.seatIndex].push(tile)
+  // the flag is only ever set, never set to false: a tedashi is its absence, which keeps a
+  // river structurally a plain ParsedTile[]
+  core.rivers[core.seatIndex].push(tsumogiri ? { ...tile, tsumogiri } : { ...tile })
   core.visible[tile.id]++
   // tenpai is the goal, so stop here: the hand stays at 13 tiles, which is what
   // "finished" is derived from, and the opponents/wall are left untouched
@@ -471,7 +483,7 @@ export function useEfficiencyRound(
     }
 
     recordChoice(isBest)
-    advanceAfterDiscard(r, tile, options)
+    advanceAfterDiscard(r, tile, options, index === state.hand.length)
     setState((s) => ({
       ...snapshot(r, s),
       lastResult,

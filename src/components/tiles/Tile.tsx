@@ -1,5 +1,15 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { tileCode, tileLabel, tileName, type ParsedTile, type TileId } from '../../core/tiles'
+import type { Meld } from '../../core/agari'
+import {
+  tileCode,
+  tileLabel,
+  tileName,
+  type ParsedTile,
+  type RiverTile,
+  type TileId,
+} from '../../core/tiles'
+import { useSettings } from '../../features/settings/settingsStore'
 import { useShowTileNumbers } from '../../features/settings/useShowTileNumbers'
 
 interface TileProps {
@@ -65,15 +75,62 @@ function TileButton({ id, red, onClick, className = '' }: TileButtonProps) {
   )
 }
 
+/** A tile turned on its side — the "this one was claimed" marker on an open meld, and the
+ *  riichi declaration tile in a river. The rotated tile's box is its own height wide and its
+ *  width tall, so the wrapper swaps the two and centres the (overflowing) upright tile.
+ *  Takes the tile as children, not as an id, so a river can hand it an already-shaded one. */
+function SidewaysTile({ children }: { children: ReactNode }) {
+  return (
+    <span className="grid h-(--tile-w) w-[calc(var(--tile-w)*4/3)] place-items-center [&>*]:rotate-90">
+      {children}
+    </span>
+  )
+}
+
+/** One called set. Ankan is drawn with its two outer tiles face-down, same convention as a
+ *  concealed tile elsewhere in the app. Open calls lay their leftmost tile sideways — `Meld`
+ *  doesn't record which seat it came from, so the rotated tile is always the first one rather
+ *  than encoding the caller's direction. */
+export function MeldDisplay({ meld }: { meld: Meld }) {
+  const last = meld.tiles.length - 1
+  return (
+    <div className="flex items-end">
+      {meld.tiles.map((t, i) => {
+        const hidden = meld.kind === 'ankan' && (i === 0 || i === last)
+        if (meld.kind === 'ankan' || i > 0) {
+          return (
+            <span key={i}>
+              <Tile id={hidden ? undefined : t.id} red={t.red} />
+            </span>
+          )
+        }
+        return (
+          <SidewaysTile key={i}>
+            <Tile id={t.id} red={t.red} />
+          </SidewaysTile>
+        )
+      })}
+    </div>
+  )
+}
+
 interface HandDisplayProps {
   tiles: ParsedTile[]
   /** Drawn tile shown rightmost, separated from the hand; clicks report index `tiles.length`. */
   drawn?: ParsedTile
+  /** Extra classes on the drawn tile's wrapper — how the scoring trainer rings the winning tile. */
+  drawnClassName?: string
   onTileClick?: (index: number) => void
   concealed?: boolean
 }
 
-export function HandDisplay({ tiles, drawn, onTileClick, concealed }: HandDisplayProps) {
+export function HandDisplay({
+  tiles,
+  drawn,
+  drawnClassName = '',
+  onTileClick,
+  concealed,
+}: HandDisplayProps) {
   const render = (tile: ParsedTile, i: number) =>
     onTileClick ? (
       <TileButton
@@ -88,18 +145,45 @@ export function HandDisplay({ tiles, drawn, onTileClick, concealed }: HandDispla
   return (
     <div className="flex flex-wrap items-start">
       {tiles.map(render)}
-      {drawn && <div className="ml-2">{render(drawn, tiles.length)}</div>}
+      {drawn && <div className={`ml-2 ${drawnClassName}`}>{render(drawn, tiles.length)}</div>}
     </div>
   )
 }
 
-/** Discard pile, 6 tiles per row like a real river. */
-// ponytail: no riichi sideways-tile rotation yet; add when riichi state exists (M3+)
-export function River({ tiles }: { tiles: ParsedTile[] }) {
+/** One discard. A tsumogiri (straight off the draw, never in the hand) is greyed, the usual
+ *  convention; a ronned tile is ringed where it lies, which is what says "this hand was won off
+ *  a discard" without a label. Both overlays go on the tile itself rather than the sideways
+ *  wrapper, so a riichi declared on that tile rotates them along with the face. */
+function Discard({ tile }: { tile: RiverTile }) {
+  const showTsumogiri = useSettings((s) => s.showTsumogiri)
+  const face = (
+    <span className="relative flex">
+      <Tile id={tile.id} red={tile.red} />
+      {tile.tsumogiri && showTsumogiri && (
+        <span className="pointer-events-none absolute inset-0 rounded-[10%] bg-neutral-500/50" />
+      )}
+      {tile.win && (
+        <span className="pointer-events-none absolute inset-0 rounded-[10%] outline-2 outline-red-500" />
+      )}
+    </span>
+  )
+  return tile.riichi ? <SidewaysTile>{face}</SidewaysTile> : face
+}
+
+/** Discard pile, 6 tiles per row like a real river. Rows are flex, not grid columns, so a
+ *  sideways riichi tile can widen its own row the way it does on a real table. Tile size is
+ *  the caller's `--tile-w` — the table sets its own, the flat trainer layout scales it down. */
+export function River({ tiles }: { tiles: RiverTile[] }) {
+  const rows: RiverTile[][] = []
+  for (let i = 0; i < tiles.length; i += 6) rows.push(tiles.slice(i, i + 6))
   return (
-    <div className="grid w-fit grid-cols-6 [--tile-w:calc(var(--tile-w-base)*0.8)]">
-      {tiles.map((tile, i) => (
-        <Tile key={i} id={tile.id} red={tile.red} />
+    <div className="flex w-fit flex-col">
+      {rows.map((row, i) => (
+        <div key={i} className="flex items-end">
+          {row.map((tile, j) => (
+            <Discard key={j} tile={tile} />
+          ))}
+        </div>
       ))}
     </div>
   )

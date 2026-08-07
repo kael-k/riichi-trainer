@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 /* class-based dark mode (driven by the theme store), instead of prefers-color-scheme only */
 @custom-variant dark (&:where(.dark, .dark *));
+/* a viewport too short to stack a square table above the hand — a phone held sideways.
+   Height, not orientation: it is the height that decides whether stacking still fits. */
+@custom-variant short (@media (max-height: 520px));
 
 :root {
   /* unscaled tile width; --tile-w-base applies the tile-size setting (trainer <main> only —

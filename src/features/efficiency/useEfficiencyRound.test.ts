@@ -144,12 +144,24 @@ describe('useEfficiencyRound', () => {
       useEfficiencyRound(situation, { ...BARE, opponents: true }, true),
     )
 
-    expect(result.current.rivers[0]).toEqual(parseTenhou('1z')) // East ate the wall prefix
+    // East ate the wall prefix; a bot only ever tsumogiris, and the river says so
+    expect(result.current.rivers[0]).toEqual([{ id: 27, red: false, tsumogiri: true }])
     expect(result.current.drawn).toEqual(parseTenhou('7z')[0])
 
     act(() => result.current.discard(13)) // tsumogiri the 7z
+    expect(result.current.rivers[1]).toEqual([{ id: 33, red: false, tsumogiri: true }])
     const east = result.current.lastResult!.yours.ukeireTiles.find((t) => t.tile === 27)
     expect(east?.remaining).toBe(1) // 2 in hand + 1 in East's river = 3 of 4 accounted for
+  })
+
+  it('marks a discard from the hand as tedashi, not tsumogiri', () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('123456789m1122z')
+    situation.wall = parseTenhou('7z')
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+
+    act(() => result.current.discard(0)) // 1m, out of the hand rather than off the draw
+    expect(result.current.rivers[0]).toEqual([{ id: 0, red: false }])
   })
 
   it('replays the situation river to reach the saved decision point', () => {

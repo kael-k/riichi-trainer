@@ -12,6 +12,17 @@ export interface ParsedTile {
   red: boolean
 }
 
+/** A tile sitting in a discard pile. The flags are what a river tells a reader beyond the
+ *  tile itself: `tsumogiri` means it was discarded straight off the draw (a tedashi — from
+ *  the hand — is the absence of it), `riichi` marks the declaration tile, laid sideways, and
+ *  `win` the discard that was ronned, ringed where it lies. All optional, so a plain
+ *  `ParsedTile[]` is still a valid river. */
+export interface RiverTile extends ParsedTile {
+  tsumogiri?: boolean
+  riichi?: boolean
+  win?: boolean
+}
+
 const SUIT_OFFSET: Record<string, number> = { m: MAN, p: PIN, s: SOU }
 
 export function isTerminal(id: TileId): boolean {

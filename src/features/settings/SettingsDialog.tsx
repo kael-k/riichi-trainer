@@ -83,6 +83,8 @@ export function GlobalSettings() {
   const setShowTileNumbers = useSettings((s) => s.setShowTileNumbers)
   const translatedTerms = useSettings((s) => s.translatedTerms)
   const setTranslatedTerms = useSettings((s) => s.setTranslatedTerms)
+  const showTsumogiri = useSettings((s) => s.showTsumogiri)
+  const setShowTsumogiri = useSettings((s) => s.setShowTsumogiri)
 
   return (
     <div className="flex flex-col gap-4">
@@ -151,6 +153,14 @@ export function GlobalSettings() {
           />
         </SettingRow>
       )}
+      <SettingRow label={t('settings.tsumogiriMarks')}>
+        <input
+          type="checkbox"
+          checked={showTsumogiri}
+          onChange={(e) => setShowTsumogiri(e.target.checked)}
+          className="size-5"
+        />
+      </SettingRow>
       <SettingRow label={t('settings.numbersOnTiles')}>
         <input
           type="checkbox"

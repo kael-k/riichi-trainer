@@ -26,6 +26,7 @@
     "yonma": "四人麻将",
     "sanma": "三人麻将",
     "numbersOnTiles": "牌面显示数字",
+    "tsumogiriMarks": "标记摸切牌",
     "language": "语言",
     "languageAuto": "自动(跟随浏览器)",
     "translatedTerms": "使用翻译役名"
@@ -35,6 +36,16 @@
     "S": "南",
     "W": "西",
     "N": "北"
+  },
+  "table": {
+    "round": "场",
+    "you": "(你)",
+    "wall": "剩余{{count}}",
+    "dora": "宝牌",
+    "ura": "里宝",
+    "honba": "{{count}}本场",
+    "rotateHint": "横屏可同时显示牌桌和手牌。",
+    "rotateHintDismiss": "不再显示"
   },
   "home": {
     "title": "立直训练器",
@@ -126,6 +137,7 @@
       "testFu": "测试符数",
       "testPoints": "测试点数",
       "timer": "计时器",
+      "table": "显示牌桌",
       "exactFu": "精确符数(不四舍五入)",
       "showYaku": "显示役种明细",
       "showFu": "显示符数明细",

@@ -25,6 +25,9 @@ export interface Settings {
   shanten: { timerEnabled: boolean }
   scoring: {
     timerEnabled: boolean
+    /** Show the round context as a table (winds in position, melds on your side) instead of
+     *  a flat text bar. */
+    table: boolean
     /** At least one of these three must stay true; the UI disables unchecking the last one. */
     testHan: boolean
     testFu: boolean
@@ -67,6 +70,14 @@ interface SettingsState extends Settings {
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats, nukidora. Applies to both trainers. */
   sanma: boolean
   setSanma: (sanma: boolean) => void
+  /** Dismissal of the "turn your phone" tip shown over the table on a narrow portrait screen. */
+  hideRotateHint: boolean
+  setHideRotateHint: (hide: boolean) => void
+  /** Shade discards that were tsumogiri (taken straight off the draw), leaving tedashi plain.
+   *  Off by default: it is a reading cue for players already tracking opponents' hands, and it
+   *  puts a mark on most of the table until you know what it means. */
+  showTsumogiri: boolean
+  setShowTsumogiri: (show: boolean) => void
   locale: Locale
   setLocale: (locale: Locale) => void
   /** Name yaku and win conditions in the reader's language ("Pure straight") instead of the
@@ -92,6 +103,7 @@ export const useSettings = create<SettingsState>()(
       shanten: { timerEnabled: true },
       scoring: {
         timerEnabled: true,
+        table: true,
         testHan: true,
         testFu: true,
         testPoints: true,
@@ -112,6 +124,10 @@ export const useSettings = create<SettingsState>()(
       setTileScale: (tileScale) => set({ tileScale }),
       sanma: false,
       setSanma: (sanma) => set({ sanma }),
+      hideRotateHint: false,
+      setHideRotateHint: (hideRotateHint) => set({ hideRotateHint }),
+      showTsumogiri: false,
+      setShowTsumogiri: (showTsumogiri) => set({ showTsumogiri }),
       locale: 'auto',
       setLocale: (locale) => set({ locale }),
       translatedTerms: true,

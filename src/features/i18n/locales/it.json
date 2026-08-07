@@ -26,6 +26,7 @@
     "yonma": "4 giocatori",
     "sanma": "3 giocatori",
     "numbersOnTiles": "Numeri sulle tessere",
+    "tsumogiriMarks": "Ombreggia gli scarti pescati e scartati subito",
     "language": "Lingua",
     "languageAuto": "Automatica (browser)",
     "translatedTerms": "Nomi degli yaku tradotti"
@@ -35,6 +36,16 @@
     "S": "S",
     "W": "O",
     "N": "N"
+  },
+  "table": {
+    "round": "Mano",
+    "you": "(tu)",
+    "wall": "Muro {{count}}",
+    "dora": "Dora",
+    "ura": "Ura",
+    "honba": "{{count}} honba",
+    "rotateHint": "Ruota il telefono in orizzontale per vedere tavolo e mano insieme.",
+    "rotateHintDismiss": "Non mostrare più"
   },
   "home": {
     "title": "Riichi Trainer",
@@ -131,6 +142,7 @@
       "testFu": "Testa fu",
       "testPoints": "Testa punti",
       "timer": "Timer",
+      "table": "Mostra tavolo",
       "exactFu": "Fu esatto (non arrotondato)",
       "showYaku": "Mostra dettaglio yaku",
       "showFu": "Mostra dettaglio fu",
@@ -162,9 +174,6 @@
       "chankan": "Chankan"
     },
     "flagsTranslated": {
-      "riichi": "Mano pronta",
-      "doubleRiichi": "Doppia mano pronta",
-      "ippatsu": "Colpo immediato",
       "haitei": "Ultima pescata",
       "houtei": "Ultimo scarto",
       "rinshan": "Pescata del kan",
@@ -201,7 +210,7 @@
     },
     "yaku": {
       "riichi": "Riichi",
-      "doubleRiichi": "Double riichi",
+      "doubleRiichi": "Doppio riichi",
       "ippatsu": "Ippatsu",
       "menzenTsumo": "Menzen tsumo",
       "tanyao": "Tanyao",
@@ -232,9 +241,6 @@
       "chinitsu": "Chinitsu"
     },
     "yakuTranslated": {
-      "riichi": "Mano pronta",
-      "doubleRiichi": "Doppia mano pronta",
-      "ippatsu": "Colpo immediato",
       "menzenTsumo": "Autopescata a mano chiusa",
       "tanyao": "Tutti semplici",
       "pinfu": "Tutte scale",

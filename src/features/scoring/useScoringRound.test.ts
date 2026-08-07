@@ -8,6 +8,7 @@ import { useScoringRound, type RoundOptions } from './useScoringRound'
 const FULL: RoundOptions = {
   sanma: false,
   timerEnabled: true,
+  table: true,
   showYaku: false,
   showFu: false,
   aka: true,

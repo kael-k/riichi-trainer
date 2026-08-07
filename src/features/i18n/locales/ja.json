@@ -26,6 +26,7 @@
     "yonma": "四人麻雀",
     "sanma": "三人麻雀",
     "numbersOnTiles": "牌に数字を表示",
+    "tsumogiriMarks": "ツモ切りに色を付ける",
     "language": "言語",
     "languageAuto": "自動(ブラウザ設定)",
     "translatedTerms": "役名を翻訳して表示"
@@ -35,6 +36,16 @@
     "S": "南",
     "W": "西",
     "N": "北"
+  },
+  "table": {
+    "round": "場",
+    "you": "(自分)",
+    "wall": "残り{{count}}",
+    "dora": "ドラ",
+    "ura": "裏",
+    "honba": "{{count}}本場",
+    "rotateHint": "画面を横向きにすると、卓と手牌を一度に表示できます。",
+    "rotateHintDismiss": "今後表示しない"
   },
   "home": {
     "title": "リーチトレーナー",
@@ -126,6 +137,7 @@
       "testFu": "符をテスト",
       "testPoints": "点数をテスト",
       "timer": "タイマー",
+      "table": "卓を表示",
       "exactFu": "正確な符(切り上げなし)",
       "showYaku": "役の内訳を表示",
       "showFu": "符の内訳を表示",

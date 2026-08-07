@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
+import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, River, Tile } from '../../components/tiles/Tile'
 import { formatElapsed, formatElapsedMs } from '../../lib/formatElapsed'
@@ -43,6 +44,19 @@ export function EfficiencyPage() {
   for (const t of round.hand) counts.set(t.id, (counts.get(t.id) ?? 0) + 1)
   if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
   const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
+
+  // the table only earns its space once there are other rivers to read; without opponents the
+  // round is a solo drill and the flat layout says the same thing in a fraction of the height
+  const showTable = options.opponents
+  const seats: SeatView[] = round.rivers.map((river, seat) =>
+    seat === round.seatIndex
+      ? {
+          river,
+          melds: round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles })),
+          nuki: round.nuki,
+        }
+      : { river },
+  )
 
   const toggle = (key: keyof typeof settings, labelKey: string) => (
     <SettingRow label={t(labelKey)}>
@@ -88,8 +102,11 @@ export function EfficiencyPage() {
               </button>
             </span>
           )}
-          <span>{t('efficiency.wallStatus', { count: round.liveWall.length })}</span>
-          {round.doraIndicators.length > 0 && (
+          {/* both live in the table's centre panel when it is up */}
+          {!showTable && (
+            <span>{t('efficiency.wallStatus', { count: round.liveWall.length })}</span>
+          )}
+          {!showTable && round.doraIndicators.length > 0 && (
             <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
               {t('efficiency.doraIndicator')}{' '}
               {round.doraIndicators.map((indicator, i) => (
@@ -111,116 +128,130 @@ export function EfficiencyPage() {
           </span>
         </div>
 
-        <HandDisplay
-          tiles={round.hand}
-          drawn={round.drawn}
-          onTileClick={round.finished ? undefined : (i) => round.discard(i)}
-        />
+        {/* stacked normally; beside the board when the viewport is too short to stack, which is
+            what makes turning the phone sideways actually pay off */}
+        <div className="flex flex-col gap-4 short:flex-row short:items-start">
+          {showTable && (
+            <Table
+              seats={seats}
+              seatIndex={round.seatIndex}
+              round={situation.round}
+              doraIndicators={round.doraIndicators}
+              wallCount={round.liveWall.length}
+            />
+          )}
 
-        {(options.sanma || kanEligible.length > 0) && !round.finished && (
-          <div className="flex flex-wrap gap-2">
-            {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
-              <button
-                type="button"
-                onClick={round.kita}
-                className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-              >
-                {t('efficiency.kitaButton')}
-              </button>
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <HandDisplay
+              tiles={round.hand}
+              drawn={round.drawn}
+              onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+            />
+
+            {(options.sanma || kanEligible.length > 0) && !round.finished && (
+              <div className="flex flex-wrap gap-2">
+                {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
+                  <button
+                    type="button"
+                    onClick={round.kita}
+                    className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                  >
+                    {t('efficiency.kitaButton')}
+                  </button>
+                )}
+                {kanEligible.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => round.kan(id)}
+                    className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                  >
+                    <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
+                      <Tile id={id} />
+                    </span>
+                    {t('efficiency.kanButton')}
+                  </button>
+                ))}
+              </div>
             )}
-            {kanEligible.map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => round.kan(id)}
-                className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-              >
-                <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
-                  <Tile id={id} />
-                </span>
-                {t('efficiency.kanButton')}
-              </button>
-            ))}
-          </div>
-        )}
 
-        {round.lastResult && (
-          <DiscardFeedback
-            result={round.lastResult}
-            showShanten={settings.showShanten}
-            showUkeire={settings.showUkeire}
-            sanma={options.sanma}
-          />
-        )}
+            {round.lastResult && (
+              <DiscardFeedback
+                result={round.lastResult}
+                showShanten={settings.showShanten}
+                showUkeire={settings.showUkeire}
+                sanma={options.sanma}
+              />
+            )}
 
-        {round.finished && (
-          <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
-            <p className="font-semibold">
-              {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
-            </p>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              {t('efficiency.totalLost', {
-                count: round.turn,
-                turns: round.turn,
-                lost: round.cumulativeLost,
-                total: round.cumulativeTotal,
-                accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
-              })}
-            </p>
-            <button
-              type="button"
-              onClick={round.restart}
-              className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-            >
-              {t('common.newRound')}
-            </button>
-          </div>
-        )}
+            {round.finished && (
+              <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
+                <p className="font-semibold">
+                  {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
+                </p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {t('efficiency.totalLost', {
+                    count: round.turn,
+                    turns: round.turn,
+                    lost: round.cumulativeLost,
+                    total: round.cumulativeTotal,
+                    accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+                  })}
+                </p>
+                <button
+                  type="button"
+                  onClick={round.restart}
+                  className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  {t('common.newRound')}
+                </button>
+              </div>
+            )}
 
-        <div className="flex flex-wrap gap-4">
-          {round.rivers.map((river, seat) =>
-            seat === round.seatIndex || options.opponents ? (
-              <div key={seat} className="flex flex-col gap-1">
-                <span className="text-xs text-neutral-500">
-                  {t(`wind.${WINDS[seat]}`)}
-                  {seat === round.seatIndex && ` ${t('efficiency.you')}`}
-                </span>
-                {river.length > 0 ? (
-                  <River tiles={river} />
-                ) : (
-                  <span className="text-xs text-neutral-400">{t('efficiency.emptyRiver')}</span>
+            {/* no opponents means every other river is empty, so only yours is worth the space */}
+            {!showTable && (
+              <div className="flex flex-wrap gap-4 [--tile-w:calc(var(--tile-w-base)*0.8)]">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-neutral-500">
+                    {t(`wind.${WINDS[round.seatIndex]}`)} {t('efficiency.you')}
+                  </span>
+                  {round.rivers[round.seatIndex].length > 0 ? (
+                    <River tiles={round.rivers[round.seatIndex]} />
+                  ) : (
+                    <span className="text-xs text-neutral-400">{t('efficiency.emptyRiver')}</span>
+                  )}
+                </div>
+                {options.sanma && round.nuki.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-neutral-500">{t('efficiency.nukiPile')}</span>
+                    <River tiles={round.nuki} />
+                  </div>
+                )}
+                {round.kans.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-neutral-500">{t('efficiency.kanPile')}</span>
+                    <River tiles={round.kans.flat()} />
+                  </div>
                 )}
               </div>
-            ) : null,
-          )}
-          {options.sanma && round.nuki.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-neutral-500">{t('efficiency.nukiPile')}</span>
-              <River tiles={round.nuki} />
-            </div>
-          )}
-          {round.kans.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-neutral-500">{t('efficiency.kanPile')}</span>
-              <River tiles={round.kans.flat()} />
-            </div>
-          )}
+            )}
+
+            {settings.showWall && (
+              <details className="text-sm text-neutral-500">
+                <summary className="cursor-pointer">
+                  {t('efficiency.wallDetails', { count: round.liveWall.length })}
+                </summary>
+                <div className="mt-2 flex flex-wrap [--tile-w:calc(var(--tile-w-base)*0.55)]">
+                  {round.liveWall.map((tile, i) => (
+                    <Tile key={i} id={tile.id} red={tile.red} />
+                  ))}
+                </div>
+              </details>
+            )}
+
+            <CopyLinkButton query={round.situationQuery} />
+          </div>
         </div>
-
-        {settings.showWall && (
-          <details className="text-sm text-neutral-500">
-            <summary className="cursor-pointer">
-              {t('efficiency.wallDetails', { count: round.liveWall.length })}
-            </summary>
-            <div className="mt-2 flex flex-wrap [--tile-w:calc(var(--tile-w-base)*0.55)]">
-              {round.liveWall.map((tile, i) => (
-                <Tile key={i} id={tile.id} red={tile.red} />
-              ))}
-            </div>
-          </details>
-        )}
-
-        <CopyLinkButton query={round.situationQuery} />
       </div>
     </TrainerLayout>
   )

@@ -26,6 +26,7 @@
     "yonma": "4 players",
     "sanma": "3 players",
     "numbersOnTiles": "Numbers on tiles",
+    "tsumogiriMarks": "Shade discards taken straight off the draw",
     "language": "Language",
     "languageAuto": "Auto (browser)",
     "translatedTerms": "Translated yaku names"
@@ -35,6 +36,16 @@
     "S": "S",
     "W": "W",
     "N": "N"
+  },
+  "table": {
+    "round": "Round",
+    "you": "(you)",
+    "wall": "Wall {{count}}",
+    "dora": "Dora",
+    "ura": "Ura",
+    "honba": "{{count}} honba",
+    "rotateHint": "Turn your phone sideways to see the table and your hand at once.",
+    "rotateHintDismiss": "Do not show this again"
   },
   "home": {
     "title": "Riichi Trainer",
@@ -131,6 +142,7 @@
       "testFu": "Test fu",
       "testPoints": "Test points",
       "timer": "Timer",
+      "table": "Show table",
       "exactFu": "Exact fu (not rounded)",
       "showYaku": "Show yaku breakdown",
       "showFu": "Show fu breakdown",
@@ -162,9 +174,6 @@
       "chankan": "Chankan"
     },
     "flagsTranslated": {
-      "riichi": "Ready hand",
-      "doubleRiichi": "Double ready",
-      "ippatsu": "One-shot",
       "haitei": "Last draw",
       "houtei": "Last discard",
       "rinshan": "Kan replacement",
@@ -232,9 +241,6 @@
       "chinitsu": "Chinitsu"
     },
     "yakuTranslated": {
-      "riichi": "Ready hand",
-      "doubleRiichi": "Double ready",
-      "ippatsu": "One-shot",
       "menzenTsumo": "Concealed self-draw",
       "tanyao": "All simples",
       "pinfu": "All sequences",
