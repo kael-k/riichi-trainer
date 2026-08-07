@@ -44,19 +44,19 @@ The shanten trainer uses `hand` only when it is exactly 13 tiles; otherwise it d
 
 The scoring trainer uses its own, unrelated param set — a graded hand has no wall/river/opponents, so extending `Situation` doesn't fit:
 
-| param           | meaning                                                                                     |
-| --------------- | --------------------------------------------------------------------------------------------- |
-| `seed`          | generates the hand; ignored when `hand` is present                                            |
-| `hand`          | concealed tiles, **including** the winning tile                                               |
+| param           | meaning                                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `seed`          | generates the hand; ignored when `hand` is present                                                                      |
+| `hand`          | concealed tiles, **including** the winning tile                                                                         |
 | `melds`         | `-`-separated called sets: `<kind><tenhou>` — `c` chi, `p` pon, `k` open kan, `a` closed kan, e.g. `melds=p555p-a2222s` |
-| `win`           | the winning tile, e.g. `win=3m`                                                               |
-| `dora`, `ura`   | dora/ura indicator tiles                                                                      |
-| `round`, `seat` | round and seat winds                                                                          |
-| `honba`, `nuki` | integers                                                                                       |
-| `flags`         | `-`-separated: any of `tsumo`, `riichi`, `doubleRiichi`, `ippatsu`, `haitei`, `houtei`, `rinshan`, `chankan` |
-| `sanma`         | `1`/`0`, pins the ruleset into the link                                                       |
+| `win`           | the winning tile, e.g. `win=3m`                                                                                         |
+| `dora`, `ura`   | dora/ura indicator tiles                                                                                                |
+| `round`, `seat` | round and seat winds                                                                                                    |
+| `honba`, `nuki` | integers                                                                                                                |
+| `flags`         | `-`-separated: any of `tsumo`, `riichi`, `doubleRiichi`, `ippatsu`, `haitei`, `houtei`, `rinshan`, `chankan`            |
+| `sanma`         | `1`/`0`, pins the ruleset into the link                                                                                 |
 
-"Copy situation link" always emits the explicit hand rather than a seed, so the link keeps reproducing the same round even if the generator changes later.
+"Copy situation link" always emits the explicit hand rather than a seed, so the link keeps reproducing the same round even if the generator changes later. A hand-crafted link whose hand has no legal win (incomplete, or complete but yakuless) falls back to a generated hand, with a notice on the page.
 
 ## Stack
 

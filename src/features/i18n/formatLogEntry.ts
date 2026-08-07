@@ -43,7 +43,8 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
     })
   }
   if (entry.key === 'log.scoring.result') {
-    const { hand, han, correct, timerEnabled, elapsedMs } = entry.params as unknown as ScoringResultParams
+    const { hand, han, correct, timerEnabled, elapsedMs } =
+      entry.params as unknown as ScoringResultParams
     const time = timerEnabled ? ` ${t('scoring.inTime', { time: formatElapsedMs(elapsedMs) })}` : ''
     return t('log.scoring.result', {
       hand,

@@ -24,7 +24,12 @@ function ctx(overrides: Partial<WinContext> = {}): WinContext {
 /** Runs decompose() + detectYaku() over every (arrangement, winning-block) reading and
  *  returns the union of every yaku/yakuman name that appears anywhere — enough to assert
  *  "this yaku is reachable for this hand" without hand-picking a specific reading. */
-function allYakuNames(hand: string, melds: Parameters<typeof decompose>[1], winTile: number, extra: Partial<WinContext> = {}) {
+function allYakuNames(
+  hand: string,
+  melds: Parameters<typeof decompose>[1],
+  winTile: number,
+  extra: Partial<WinContext> = {},
+) {
   const h = handFromTenhou(hand, melds.length)
   const arrangements = decompose(h.counts, melds)
   const names = new Set<string>()

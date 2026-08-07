@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { generateHand, type GenOptions } from './generateHand'
 import { scoreHand } from './score'
-import { MAN } from './tiles'
+import { HONOR, MAN } from './tiles'
 
 const FULL: GenOptions = { sanma: false, aka: true, openHands: true, honba: true }
 const SANMA: GenOptions = { sanma: true, aka: true, openHands: true, honba: true }
@@ -56,6 +56,15 @@ describe('generateHand', () => {
       const counts = tileCounts(situation)
       for (let id = MAN + 1; id <= MAN + 7; id++) expect(counts.get(id) ?? 0).toBe(0)
       for (const id of situation.doraIndicators) expect(id < MAN + 1 || id > MAN + 7).toBe(true)
+    }
+  })
+
+  it('pulled norths fit in the 4-copy budget alongside the hand', () => {
+    for (let i = 0; i < 200; i++) {
+      const situation = generateHand(`kita-${i}`, SANMA)
+      const inHand = tileCounts(situation).get(HONOR + 3) ?? 0
+      const indicators = situation.doraIndicators.filter((id) => id === HONOR + 3).length
+      expect(inHand + indicators + situation.kita).toBeLessThanOrEqual(4)
     }
   })
 

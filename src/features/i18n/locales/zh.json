@@ -28,7 +28,12 @@
     "language": "语言",
     "languageAuto": "自动(跟随浏览器)"
   },
-  "wind": { "E": "东", "S": "南", "W": "西", "N": "北" },
+  "wind": {
+    "E": "东",
+    "S": "南",
+    "W": "西",
+    "N": "北"
+  },
   "home": {
     "title": "立直训练器",
     "releaseVersion": "版本: {{sha}}"
@@ -89,7 +94,9 @@
     "missedKan": "这里开杠本可以是免费的 —"
   },
   "shanten": {
-    "settings": { "timer": "计时器" },
+    "settings": {
+      "timer": "计时器"
+    },
     "handNumber": "第{{count}}题",
     "correctScore": "正确: {{correct}} / {{total}}",
     "avgTime": "· 平均 {{time}}",
@@ -103,7 +110,11 @@
     "inTime": "{{time}}",
     "stopHand": "中断并换下一手牌",
     "revealHand": "显示手牌",
-    "path": { "standard": "标准型", "chiitoitsu": "七对子", "kokushi": "国士无双" }
+    "path": {
+      "standard": "标准型",
+      "chiitoitsu": "七对子",
+      "kokushi": "国士无双"
+    }
   },
   "scoring": {
     "settings": {
@@ -129,7 +140,6 @@
     "doraIndicator": "宝牌指示牌",
     "uraIndicator": "里宝牌",
     "honbaCount_other": "{{count}}本场",
-    "kitaCount_other": "拔北{{count}}张",
     "tsumo": "自摸",
     "ron": "荣和",
     "flags": {
@@ -161,6 +171,7 @@
     "akaLabel": "赤宝牌",
     "uraLabel": "里宝牌",
     "kitaLabel": "拔北",
+    "invalidLink": "此链接的牌型不是有役的和牌，因此改为显示生成的手牌。",
     "limit": {
       "mangan": "满贯",
       "haneman": "跳满",
@@ -217,7 +228,7 @@
       "base": "基本符",
       "tsumo": "自摸",
       "closedRon": "门前荣和",
-      "meld": "面子",
+      "meld": "刻子/杠子",
       "pair": "雀头",
       "wait": "听牌方式"
     }

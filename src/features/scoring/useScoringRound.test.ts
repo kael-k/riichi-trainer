@@ -58,7 +58,9 @@ describe('useScoringRound', () => {
     const urlData = generated('wrong-seed')
     const { result } = renderHook(() => useScoringRound(urlData, FULL, true))
     const { actual } = result.current
-    act(() => result.current.check({ han: actual.han + 1, fu: actual.fu, points: actual.payments.main }))
+    act(() =>
+      result.current.check({ han: actual.han + 1, fu: actual.fu, points: actual.payments.main }),
+    )
     expect(result.current.lastResult?.correctHan).toBe(false)
     expect(result.current.lastResult?.correct).toBe(false)
   })
@@ -78,7 +80,9 @@ describe('useScoringRound', () => {
     const options: RoundOptions = { ...FULL, exactFu: true }
     const { result } = renderHook(() => useScoringRound(urlData, options, true))
     const { actual } = result.current
-    act(() => result.current.check({ han: actual.han, fu: actual.fu, points: actual.payments.main }))
+    act(() =>
+      result.current.check({ han: actual.han, fu: actual.fu, points: actual.payments.main }),
+    )
     // if the rounded and exact fu differ, only the exact one should have graded as correct
     if (actual.fu !== actual.fuExact) expect(result.current.lastResult?.correctFu).toBe(false)
   })
@@ -100,7 +104,9 @@ describe('useScoringRound', () => {
     const urlData = generated('log-seed')
     const { result } = renderHook(() => useScoringRound(urlData, FULL, true))
     const { actual } = result.current
-    act(() => result.current.check({ han: actual.han, fu: actual.fu, points: actual.payments.main }))
+    act(() =>
+      result.current.check({ han: actual.han, fu: actual.fu, points: actual.payments.main }),
+    )
     expect(result.current.totalCount).toBe(1)
 
     act(() => useLog.getState().clear())
@@ -145,5 +151,39 @@ describe('useScoringRound', () => {
     const { result } = renderHook(() => useScoringRound(pinned, FULL, true))
     expect(result.current.situation.concealed).toEqual(pinned.situation!.concealed)
     expect(result.current.actual.payments.total).toBe(5800) // dealer riichi-pinfu-tanyao ron
+    expect(result.current.invalidLink).toBe(false)
+  })
+
+  it('falls back to a generated hand when the pinned situation has no legal win', () => {
+    const yakuless: ScoringUrl = {
+      seed: 'fallback-seed',
+      situation: {
+        // 111m 456s 678p 888p 33p ron: complete, but two triplets kill pinfu and nothing else
+        // applies, so it isn't a win at all
+        concealed: parseTenhou('111m456s67888833p'),
+        melds: [],
+        ctx: {
+          round: HONOR + 2,
+          seat: HONOR + 2,
+          tsumo: false,
+          riichi: false,
+          doubleRiichi: false,
+          ippatsu: false,
+          haitei: false,
+          houtei: false,
+          rinshan: false,
+          chankan: false,
+          winTile: PIN + 7,
+        },
+        doraIndicators: [],
+        uraIndicators: [],
+        kita: 0,
+        honba: 0,
+      },
+    }
+    const { result } = renderHook(() => useScoringRound(yakuless, FULL, true))
+    expect(result.current.invalidLink).toBe(true)
+    expect(result.current.situation.concealed).not.toEqual(yakuless.situation!.concealed)
+    expect(result.current.actual.payments.total).toBeGreaterThan(0)
   })
 })

@@ -1,7 +1,17 @@
 import { KOKUSHI_TILES, type Meld, type MeldKind } from './agari'
 import { mulberry32, type Rng } from './rng'
 import { scoreHand } from './score'
-import { HONOR, inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, PIN, SOU, type ParsedTile, type TileId } from './tiles'
+import {
+  HONOR,
+  inTileSet,
+  MAN,
+  NUM_TILE_TYPES,
+  parseTenhou,
+  PIN,
+  SOU,
+  type ParsedTile,
+  type TileId,
+} from './tiles'
 import type { WinContext } from './yaku'
 
 export interface GenOptions {
@@ -190,7 +200,13 @@ function attemptKokushi(rng: Rng): Attempt {
   return { concealedIds, melds: [], winTile: pairTile, closed: true }
 }
 
-function buildContext(rng: Rng, closed: boolean, hasKan: boolean, winTile: TileId, sanma: boolean): WinContext {
+function buildContext(
+  rng: Rng,
+  closed: boolean,
+  hasKan: boolean,
+  winTile: TileId,
+  sanma: boolean,
+): WinContext {
   const round = HONOR + Math.floor(rng() * 4)
   const seat = HONOR + Math.floor(rng() * (sanma ? 3 : 4))
   const tsumo = rng() < 0.45
@@ -283,7 +299,8 @@ export function generateHand(seed: string, options: GenOptions): ScoringSituatio
     for (const id of attempt.concealedIds) used[id]++
     for (const m of attempt.melds) for (const t of m.tiles) used[t.id]++
 
-    const doraCount = 1 + attempt.melds.filter((m) => m.kind === 'ankan' || m.kind === 'minkan').length
+    const doraCount =
+      1 + attempt.melds.filter((m) => m.kind === 'ankan' || m.kind === 'minkan').length
     const doraIndicators: TileId[] = []
     for (let d = 0; d < doraCount; d++) {
       const id = pickAvailable(rng, options.sanma, used)
@@ -297,8 +314,13 @@ export function generateHand(seed: string, options: GenOptions): ScoringSituatio
       }
     }
 
-    const concealed = options.aka ? markAka(rng, attempt.concealedIds) : attempt.concealedIds.map((id) => ({ id, red: false }))
-    const kita = options.sanma && rng() < 0.25 ? Math.floor(rng() * 3) + 1 : 0
+    const concealed = options.aka
+      ? markAka(rng, attempt.concealedIds)
+      : attempt.concealedIds.map((id) => ({ id, red: false }))
+    // pulled norths are real tiles: they come out of the same 4-copy budget as the hand's own
+    // norths (and any north dora indicator), so a hand holding a north pair can pull at most 2
+    const northLeft = 4 - used[HONOR + 3]
+    const kita = options.sanma && rng() < 0.25 ? Math.min(Math.floor(rng() * 3) + 1, northLeft) : 0
     const honba = options.honba && rng() < 0.3 ? Math.floor(rng() * 3) + 1 : 0
 
     const situation: ScoringSituation = {

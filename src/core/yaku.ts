@@ -1,5 +1,13 @@
 import type { Arrangement, Block, Meld } from './agari'
-import { HONOR, isDragon, isHonor, isTerminal, isTerminalOrHonor, isWind, type TileId } from './tiles'
+import {
+  HONOR,
+  isDragon,
+  isHonor,
+  isTerminal,
+  isTerminalOrHonor,
+  isWind,
+  type TileId,
+} from './tiles'
 
 export type YakuName =
   | 'riichi'
@@ -80,7 +88,11 @@ export function isMenzen(melds: Meld[]): boolean {
 /** True when `block` counts as a closed triplet (ankou) for fu/sanankou purposes. A concealed
  *  triplet completed by RON on the winning block counts as open (minkou) instead — the tile
  *  came from a discard, same as if it had been called. */
-export function isClosedTripletBlock(block: Block, isWinningBlock: boolean, tsumo: boolean): boolean {
+export function isClosedTripletBlock(
+  block: Block,
+  isWinningBlock: boolean,
+  tsumo: boolean,
+): boolean {
   if (block.kind !== 'triplet') return false
   if (block.meld) return block.meld.kind === 'ankan'
   return !(isWinningBlock && !tsumo)
@@ -200,6 +212,7 @@ export function detectYaku(
   if (
     fullyConcealed &&
     winShape === 'ryanmen' &&
+    blocks.every((b) => b.kind !== 'triplet') && // every set must be a run, kans included
     pair &&
     !isDragon(pair.tile) &&
     pair.tile !== ctx.seat &&

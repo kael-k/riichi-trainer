@@ -13,31 +13,74 @@ import { ScoreBreakdown } from './ScoreBreakdown'
 import { decodeScoringUrl } from './scoringUrl'
 import { useScoringRound, type Answer, type RoundOptions } from './useScoringRound'
 
-const FLAG_KEYS = ['riichi', 'doubleRiichi', 'ippatsu', 'haitei', 'houtei', 'rinshan', 'chankan'] as const
+const FLAG_KEYS = [
+  'riichi',
+  'doubleRiichi',
+  'ippatsu',
+  'haitei',
+  'houtei',
+  'rinshan',
+  'chankan',
+] as const
 
 /** One called set. Ankan is drawn with its two outer tiles face-down, same convention as a
- *  concealed tile elsewhere in the app. */
+ *  concealed tile elsewhere in the app. Open calls lay their leftmost tile sideways, the usual
+ *  "this one was claimed" marker — `Meld` doesn't record which seat it came from, so the
+ *  rotated tile is always the first one rather than encoding the caller's direction. */
 function MeldDisplay({ meld }: { meld: Meld }) {
   const last = meld.tiles.length - 1
   return (
-    <div className="flex">
+    <div className="flex items-end">
       {meld.tiles.map((t, i) => {
         const hidden = meld.kind === 'ankan' && (i === 0 || i === last)
-        return <Tile key={i} id={hidden ? undefined : t.id} red={t.red} />
+        const tile = <Tile id={hidden ? undefined : t.id} red={t.red} />
+        if (meld.kind === 'ankan' || i > 0) return <span key={i}>{tile}</span>
+        // the rotated tile's box is its own height wide and its width tall, so the wrapper
+        // swaps the two and centres the (overflowing) upright tile inside it
+        return (
+          <span
+            key={i}
+            className="grid h-(--tile-w) w-[calc(var(--tile-w)*4/3)] place-items-center [&>svg]:rotate-90"
+          >
+            {tile}
+          </span>
+        )
       })}
     </div>
   )
 }
 
-function FieldFeedback({ correct, label, expected }: { correct: boolean; label: string; expected: string }) {
+function FieldFeedback({
+  correct,
+  label,
+  expected,
+  note,
+}: {
+  correct: boolean
+  label: string
+  expected: string
+  /** Extra context shown whether or not the answer was right — the limit name, on points. */
+  note?: string
+}) {
   const { t } = useTranslation()
   return (
     <p
-      className={`flex items-center gap-1.5 text-sm font-medium ${correct ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+      className={`flex flex-wrap items-center gap-1.5 text-sm font-medium ${correct ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
     >
-      {correct ? <CheckCircle2 className="size-4 shrink-0" /> : <XCircle className="size-4 shrink-0" />}
+      {correct ? (
+        <CheckCircle2 className="size-4 shrink-0" />
+      ) : (
+        <XCircle className="size-4 shrink-0" />
+      )}
       {label}
-      {!correct && <span className="font-normal">{t('scoring.correctWas', { value: expected })}</span>}
+      {!correct && (
+        <span className="font-normal">{t('scoring.correctWas', { value: expected })}</span>
+      )}
+      {note && (
+        <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+          {note}
+        </span>
+      )}
     </p>
   )
 }
@@ -85,6 +128,10 @@ export function ScoringPage() {
   const split = round.actual.payments.fromDealer !== undefined
   const ctx = round.situation.ctx
   const dealer = ctx.seat === HONOR
+  // a single points field is either a ron total or a dealer tsumo, where every other seat pays
+  // that same amount — the "(each)" label the split fields already use says exactly that
+  const singlePointsLabel = t(ctx.tsumo ? 'scoring.pointsMainLabel' : 'scoring.pointsLabel')
+  const limitName = round.actual.limit ? t(`scoring.limit.${round.actual.limit}`) : undefined
 
   const submit = () => {
     const answer: Answer = {
@@ -98,13 +145,22 @@ export function ScoringPage() {
   }
 
   const winIndex = round.situation.concealed.findIndex((tile) => tile.id === ctx.winTile)
-  const restConcealed =
+  // the hand reads as a hand, sorted, with the winning tile pulled out to the right; melds keep
+  // their called order
+  const restConcealed = (
     winIndex >= 0
-      ? [...round.situation.concealed.slice(0, winIndex), ...round.situation.concealed.slice(winIndex + 1)]
-      : round.situation.concealed
-  const winTile = winIndex >= 0 ? round.situation.concealed[winIndex] : { id: ctx.winTile, red: false }
+      ? [
+          ...round.situation.concealed.slice(0, winIndex),
+          ...round.situation.concealed.slice(winIndex + 1),
+        ]
+      : [...round.situation.concealed]
+  ).sort((a, b) => a.id - b.id)
+  const winTile =
+    winIndex >= 0 ? round.situation.concealed[winIndex] : { id: ctx.winTile, red: false }
 
-  const testsEnabled = [settings.testHan, settings.testFu, settings.testPoints].filter(Boolean).length
+  const testsEnabled = [settings.testHan, settings.testFu, settings.testPoints].filter(
+    Boolean,
+  ).length
   const toggle = (key: keyof typeof settings, labelKey: string, disableWhenLast = false) => (
     <SettingRow label={t(labelKey)}>
       <input
@@ -119,7 +175,9 @@ export function ScoringPage() {
 
   const copySituation = async () => {
     const query = round.situationQuery()
-    await navigator.clipboard.writeText(`${location.origin}${location.pathname}${query ? `?${query}` : ''}`)
+    await navigator.clipboard.writeText(
+      `${location.origin}${location.pathname}${query ? `?${query}` : ''}`,
+    )
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -161,6 +219,12 @@ export function ScoringPage() {
           </span>
         )}
 
+        {round.invalidLink && (
+          <p className="rounded-lg border border-amber-400 p-3 text-sm text-amber-700 dark:text-amber-400">
+            {t('scoring.invalidLink')}
+          </p>
+        )}
+
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
           <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
             {t('scoring.roundWind')} <Tile id={ctx.round} />
@@ -189,7 +253,12 @@ export function ScoringPage() {
             <span>{t('scoring.honbaCount', { count: round.situation.honba })}</span>
           )}
           {round.situation.kita > 0 && (
-            <span>{t('scoring.kitaCount', { count: round.situation.kita })}</span>
+            <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+              {t('scoring.kitaLabel')}
+              {Array.from({ length: round.situation.kita }, (_, i) => (
+                <Tile key={i} id={HONOR + 3} />
+              ))}
+            </span>
           )}
           <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-medium dark:bg-neutral-800">
             {t(ctx.tsumo ? 'scoring.tsumo' : 'scoring.ron')}
@@ -250,7 +319,7 @@ export function ScoringPage() {
             )}
             {settings.testPoints && !split && (
               <label className="flex items-center justify-between gap-3">
-                <span>{t('scoring.pointsLabel')}</span>
+                <span>{singlePointsLabel}</span>
                 <input
                   type="number"
                   min={0}
@@ -315,8 +384,9 @@ export function ScoringPage() {
             {settings.testPoints && !split && (
               <FieldFeedback
                 correct={round.lastResult.correctPoints}
-                label={t('scoring.pointsLabel')}
+                label={singlePointsLabel}
                 expected={String(round.actual.payments.main)}
+                note={limitName}
               />
             )}
             {settings.testPoints && split && (
@@ -324,13 +394,19 @@ export function ScoringPage() {
                 correct={round.lastResult.correctPoints}
                 label={`${t('scoring.pointsMainLabel')} / ${t('scoring.pointsFromDealerLabel')}`}
                 expected={`${round.actual.payments.main} / ${round.actual.payments.fromDealer}`}
+                note={limitName}
               />
             )}
-            {round.actual.limit && (
-              <p className="text-sm text-neutral-500">{t(`scoring.limit.${round.actual.limit}`)}</p>
+            {/* the limit name rides along with the points row; without one it needs its own line */}
+            {!settings.testPoints && limitName && (
+              <p className="text-sm text-neutral-500">{limitName}</p>
             )}
             {(settings.showYaku || settings.showFu) && (
-              <ScoreBreakdown result={round.actual} showYaku={settings.showYaku} showFu={settings.showFu} />
+              <ScoreBreakdown
+                result={round.actual}
+                showYaku={settings.showYaku}
+                showFu={settings.showFu}
+              />
             )}
             <button
               type="button"

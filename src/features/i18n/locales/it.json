@@ -28,7 +28,12 @@
     "language": "Lingua",
     "languageAuto": "Automatica (browser)"
   },
-  "wind": { "E": "E", "S": "S", "W": "O", "N": "N" },
+  "wind": {
+    "E": "E",
+    "S": "S",
+    "W": "O",
+    "N": "N"
+  },
   "home": {
     "title": "Riichi Trainer",
     "releaseVersion": "versione: {{sha}}"
@@ -94,7 +99,9 @@
     "missedKan": "Un kan qui sarebbe stato gratuito —"
   },
   "shanten": {
-    "settings": { "timer": "Timer" },
+    "settings": {
+      "timer": "Timer"
+    },
     "handNumber": "Mano {{count}}",
     "correctScore": "Corrette: {{correct}} / {{total}}",
     "avgTime": "· media {{time}}",
@@ -108,7 +115,11 @@
     "inTime": "in {{time}}",
     "stopHand": "Interrompi e passa a una nuova mano",
     "revealHand": "Rivela la mano",
-    "path": { "standard": "standard", "chiitoitsu": "chiitoitsu", "kokushi": "kokushi" }
+    "path": {
+      "standard": "standard",
+      "chiitoitsu": "chiitoitsu",
+      "kokushi": "kokushi"
+    }
   },
   "scoring": {
     "settings": {
@@ -135,8 +146,6 @@
     "uraIndicator": "Ura dora",
     "honbaCount_one": "{{count}} honba",
     "honbaCount_other": "{{count}} honba",
-    "kitaCount_one": "{{count}} kita",
-    "kitaCount_other": "{{count}} kita",
     "tsumo": "Tsumo",
     "ron": "Ron",
     "flags": {
@@ -169,6 +178,7 @@
     "akaLabel": "Aka dora",
     "uraLabel": "Ura dora",
     "kitaLabel": "Kita",
+    "invalidLink": "La mano di questo link non è una vittoria valida (nessuno yaku): viene mostrata una mano generata.",
     "limit": {
       "mangan": "Mangan",
       "haneman": "Haneman",
@@ -225,7 +235,7 @@
       "base": "Base",
       "tsumo": "Tsumo",
       "closedRon": "Ron chiuso",
-      "meld": "Set",
+      "meld": "Tripletta/kan",
       "pair": "Coppia",
       "wait": "Attesa"
     }

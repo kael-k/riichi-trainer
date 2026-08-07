@@ -44,13 +44,14 @@ interface State {
   elapsed: number
   checked: boolean
   lastResult: RoundResult | null
+  /** The URL pinned a hand that has no legal win (bad tiles, or no yaku) — a generated hand is
+   *  shown instead, and the page says so rather than silently swapping it. */
+  invalidLink: boolean
 }
 
 const TICK_MS = 50
 
-function scoreSituation(situation: ScoringSituation, options: RoundOptions): ScoreResult {
-  // generateHand only ever returns a scoreable situation, and a pinned URL situation is
-  // validated the same way before it's ever handed to this hook
+function scoreSituation(situation: ScoringSituation, options: RoundOptions): ScoreResult | null {
   return scoreHand({
     concealed: situation.concealed,
     melds: situation.melds,
@@ -59,7 +60,7 @@ function scoreSituation(situation: ScoringSituation, options: RoundOptions): Sco
     uraIndicators: situation.uraIndicators,
     kita: situation.kita,
     rules: { kiriageMangan: options.kiriageMangan, honba: situation.honba, sanma: options.sanma },
-  })!
+  })
 }
 
 /** Drives one hand of the scoring trainer: load, answer, check, repeat. Unlike the shanten
@@ -83,27 +84,40 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions, time
 
   function nextHand(prev?: State): State {
     startedAt.current = performance.now()
+    const pinned = urlData.situation
+    const pinnedScore = pinned ? scoreSituation(pinned, options) : null
     const situation =
-      urlData.situation ??
-      generateHand(`${urlData.seed || randomSeed}:${handIndex}`, {
-        sanma: options.sanma,
-        aka: options.aka,
-        openHands: options.openHands,
-        honba: options.honba,
-      })
+      pinnedScore !== null && pinned !== null
+        ? pinned
+        : generateHand(`${urlData.seed || randomSeed}:${handIndex}`, {
+            sanma: options.sanma,
+            aka: options.aka,
+            openHands: options.openHands,
+            honba: options.honba,
+          })
     return {
       situation,
-      actual: scoreSituation(situation, options),
+      // generateHand only ever returns a scoreable situation, so this is non-null either way
+      actual: pinnedScore ?? scoreSituation(situation, options)!,
       elapsed: 0,
       checked: false,
       lastResult: prev?.lastResult ?? null,
+      invalidLink: pinned !== null && pinnedScore === null,
     }
   }
 
   useEffect(() => {
     setState((s) => nextHand(s))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlData, handIndex, options.sanma, options.aka, options.openHands, options.honba, options.kiriageMangan])
+  }, [
+    urlData,
+    handIndex,
+    options.sanma,
+    options.aka,
+    options.openHands,
+    options.honba,
+    options.kiriageMangan,
+  ])
 
   useEffect(() => {
     if (state.checked || !timerEnabled) return

@@ -56,6 +56,21 @@ describe('scoreHand', () => {
     expect(result.fuExact).toBe(20)
   })
 
+  it('denies pinfu when a set is a triplet, even on a ryanmen wait', () => {
+    // 111m 456s 678p 888p 33p ron on 8p: the wait is ryanmen and the pair is worthless, but
+    // two triplets rule pinfu out — the hand has no yaku at all, so it isn't a legal win
+    const input: ScoreInput = {
+      concealed: parseTenhou('111m456s67888833p'),
+      melds: [],
+      ctx: ctx({ round: HONOR + 2, seat: HONOR + 2, winTile: PIN + 7 }),
+      doraIndicators: [],
+      uraIndicators: [],
+      kita: 0,
+      rules: NO_RULES,
+    }
+    expect(scoreHand(input)).toBeNull()
+  })
+
   it('chiitoitsu is always flat 25 fu', () => {
     // odd, non-adjacent ranks (1/3/5/7/9m) plus two honor pairs: no 3 consecutive ranks
     // share a suit and no count ever reaches 3, so no standard reading exists at all —
@@ -116,9 +131,7 @@ describe('scoreHand', () => {
     const basic = result.fu * 2 ** (2 + result.han)
     expect(result.payments.fromDealer).toBe(Math.ceil((2 * basic) / 100) * 100)
     expect(result.payments.main).toBe(Math.ceil(basic / 100) * 100)
-    expect(result.payments.total).toBe(
-      result.payments.fromDealer! + result.payments.main * 2,
-    )
+    expect(result.payments.total).toBe(result.payments.fromDealer! + result.payments.main * 2)
   })
 
   it('non-dealer tsumo in sanma only has one other non-dealer payer', () => {

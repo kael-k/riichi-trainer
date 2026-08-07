@@ -39,7 +39,7 @@ export function isDragon(id: TileId): boolean {
 export function doraFromIndicator(id: TileId): TileId {
   if (id < HONOR) {
     const base = id - (id % 9)
-    return base + ((id % 9) + 1) % 9
+    return base + (((id % 9) + 1) % 9)
   }
   const rank = id - HONOR
   if (rank < 4) return HONOR + ((rank + 1) % 4)

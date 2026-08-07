@@ -28,7 +28,12 @@
     "language": "言語",
     "languageAuto": "自動(ブラウザ設定)"
   },
-  "wind": { "E": "東", "S": "南", "W": "西", "N": "北" },
+  "wind": {
+    "E": "東",
+    "S": "南",
+    "W": "西",
+    "N": "北"
+  },
   "home": {
     "title": "リーチトレーナー",
     "releaseVersion": "リリースバージョン: {{sha}}"
@@ -89,7 +94,9 @@
     "missedKan": "ここでカンすれば無料でした —"
   },
   "shanten": {
-    "settings": { "timer": "タイマー" },
+    "settings": {
+      "timer": "タイマー"
+    },
     "handNumber": "{{count}}問目",
     "correctScore": "正解数: {{correct}} / {{total}}",
     "avgTime": "・平均 {{time}}",
@@ -103,7 +110,11 @@
     "inTime": "{{time}}",
     "stopHand": "中断して次の手牌へ",
     "revealHand": "手牌を表示",
-    "path": { "standard": "通常形", "chiitoitsu": "七対子", "kokushi": "国士無双" }
+    "path": {
+      "standard": "通常形",
+      "chiitoitsu": "七対子",
+      "kokushi": "国士無双"
+    }
   },
   "scoring": {
     "settings": {
@@ -129,7 +140,6 @@
     "doraIndicator": "ドラ表示牌",
     "uraIndicator": "裏ドラ",
     "honbaCount_other": "{{count}}本場",
-    "kitaCount_other": "北抜き{{count}}枚",
     "tsumo": "ツモ",
     "ron": "ロン",
     "flags": {
@@ -161,6 +171,7 @@
     "akaLabel": "赤ドラ",
     "uraLabel": "裏ドラ",
     "kitaLabel": "北抜き",
+    "invalidLink": "このリンクの手牌は和了形（役あり）ではないため、生成した手牌を表示しています。",
     "limit": {
       "mangan": "満貫",
       "haneman": "跳満",
@@ -217,7 +228,7 @@
       "base": "基本",
       "tsumo": "ツモ",
       "closedRon": "門前ロン",
-      "meld": "面子",
+      "meld": "刻子・槓子",
       "pair": "雀頭",
       "wait": "待ち"
     }

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { evaluateDiscards, evaluateKan, isBestDiscard, type DiscardOption } from '../../core/efficiency'
+import {
+  evaluateDiscards,
+  evaluateKan,
+  isBestDiscard,
+  type DiscardOption,
+} from '../../core/efficiency'
 import { addTile, createHand, removeTile, tileCount, type Hand } from '../../core/hand'
 import { shanten } from '../../core/shanten'
 import {

@@ -1,5 +1,13 @@
 import { decompose, type Block, type Meld } from './agari'
-import { doraFromIndicator, HONOR, isDragon, isTerminalOrHonor, NUM_TILE_TYPES, type ParsedTile, type TileId } from './tiles'
+import {
+  doraFromIndicator,
+  HONOR,
+  isDragon,
+  isTerminalOrHonor,
+  NUM_TILE_TYPES,
+  type ParsedTile,
+  type TileId,
+} from './tiles'
 import {
   detectYaku,
   isClosedTripletBlock,
@@ -137,7 +145,11 @@ const MANGAN_BASIC = 2000
  *  would exceed 2000 — which is also how 3han/70fu and 4han/40fu naturally land on mangan
  *  without special-casing. Kiriage mangan only has to cover the two combos that fall just
  *  short of that cap: 4han/30fu and 3han/60fu, both worth 1920 uncapped. */
-function basicPoints(han: number, fu: number, kiriageMangan: boolean): { basic: number; limit?: LimitName } {
+function basicPoints(
+  han: number,
+  fu: number,
+  kiriageMangan: boolean,
+): { basic: number; limit?: LimitName } {
   if (han >= 13) return { basic: 8000, limit: 'kazoe' }
   if (han >= 11) return { basic: 6000, limit: 'sanbaiman' }
   if (han >= 8) return { basic: 4000, limit: 'baiman' }
@@ -154,7 +166,12 @@ function roundUp100(n: number): number {
   return Math.ceil(n / 100) * 100
 }
 
-function computePayments(basic: number, dealer: boolean, ctx: WinContext, rules: ScoringRules): Payments {
+function computePayments(
+  basic: number,
+  dealer: boolean,
+  ctx: WinContext,
+  rules: ScoringRules,
+): Payments {
   const players = rules.sanma ? 3 : 4
   const honbaTotal = rules.honba * 300
   const honbaPerPayer = rules.honba * 100
@@ -176,7 +193,10 @@ function computePayments(basic: number, dealer: boolean, ctx: WinContext, rules:
 function isBetter(a: ScoreResult, b: ScoreResult): boolean {
   if (a.payments.total !== b.payments.total) return a.payments.total > b.payments.total
   if (a.han !== b.han) return a.han > b.han
-  return a.fu > b.fu
+  if (a.fu !== b.fu) return a.fu > b.fu
+  // two readings that pay the same can still differ before rounding (e.g. 26 vs 28 fu, both
+  // 30) — the exact-fu drill grades that number, so pick by rule instead of by enumeration order
+  return a.fuExact > b.fuExact
 }
 
 /**
@@ -225,13 +245,11 @@ export function scoreHand(input: ScoreInput): ScoreResult | null {
       let fuExact = 0
       let fuItems: FuItem[] = []
       if (arrangement.kind === 'standard' && winningBlockIndex !== undefined) {
-        ;({ fu, fuExact, items: fuItems } = computeFu(
-          arrangement.blocks,
-          melds,
-          ctx,
-          winningBlockIndex,
-          pinfu,
-        ))
+        ;({
+          fu,
+          fuExact,
+          items: fuItems,
+        } = computeFu(arrangement.blocks, melds, ctx, winningBlockIndex, pinfu))
       } else if (arrangement.kind === 'chiitoi') {
         fu = 25
         fuExact = 25
