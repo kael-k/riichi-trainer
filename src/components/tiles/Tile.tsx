@@ -179,7 +179,7 @@ export function River({ tiles }: { tiles: RiverTile[] }) {
   return (
     <div className="flex w-fit flex-col">
       {rows.map((row, i) => (
-        <div key={i} className="flex items-end">
+        <div key={i} className="flex items-center">
           {row.map((tile, j) => (
             <Discard key={j} tile={tile} />
           ))}

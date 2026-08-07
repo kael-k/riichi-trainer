@@ -37,6 +37,8 @@ One deterministic hand of mahjong drives every trainer. `createMatch` deals (the
 
 `policy.ts` is the AI, pure and total — deterministic means every ranking needs an explicit tie-break, never sort stability. Calls happen only when they lower shanten **and** `hasYakuRoute` still holds; without that guard a shanten-chaser opens itself into hands that cannot legally win. Furiten is `waits()` (which is `improvingTiles` at tenpai) checked against your own river.
 
+Each `PlayerState` carries a `policy: SeatPolicy` (`'efficiency' | 'defense'`), checked per seat and per discard rather than baked into `MatchOptions` — the folding trainer flips individual opponents mid-hand once its riichi target is reached, so it has to be a live field, not a match-wide setting. `'defense'` routes `finishTurn`'s discard through `chooseFold` (full betaori: `assessDiscards(...)[0].tile`, `policy.ts`) instead of `chooseDiscard`, and is also checked at the riichi gate and the call gate — a folding seat never declares and never calls. It still rons and tsumos normally; only its own choices change. A seat already in riichi is unaffected either way (`forcedTsumogiri` overrides both).
+
 Win legality is free from existing code: `decompose()` non-empty is the shape, `scoreHand()` returning null is "no yaku". Guard both behind a single `shanten()` call — that gate fails for almost every seat on almost every discard and everything past it is far more expensive.
 
 **Performance**: `standardShanten` decomposes each suit separately and merges (`groupTable`/`merge`), ~475x faster than searching all 34 kinds at once, because a draw probe only perturbs one suit and the other three come out of the cache. `referenceStandardShanten` is the old whole-hand search, kept solely as the specification the fast one is proved against over thousands of random hands in `shanten.test.ts` — change one, re-run that. Simulated players use `bestDiscards` (shanten only) and price ukeire just for the tiles already tied. A match is ~17ms; the census test in `match.test.ts` (every tile kind accounted for exactly four times) is what catches bookkeeping slips.
@@ -67,20 +69,25 @@ Several threats take the **worst** tier, with the per-threat verdicts kept in `a
 say "genbutsu vs South, non-suji vs West".
 
 Genbutsu has two sources and the second is the one people forget: the threat's own discards, and
-anything anyone discarded after they declared without being ronned. Both are derived from the match
-**event log**, not `player.river` — `finishTurn` pops a claimed discard out of the river, and it is
-still a tile that seat threw. `ThreatView` therefore takes `discards`/`passed`, not a river.
+anything anyone discarded after they declared without being ronned. Both are derived from
+`MatchState.discards` (`match.ts`), not `player.river` — `finishTurn` pops a claimed discard out of
+the river, and it is still a tile that seat threw, so `discards` is pushed alongside the river and
+never popped. `threatViews(state)` builds the `ThreatView[]` from it and is exported from
+`match.ts` itself, since `chooseFold` (the AI's own defensive discard, `policy.ts`) needs the exact
+same view the folding trainer grades against.
 
 `useFoldingRound.ts` drives `beginTurn`/`finishTurn` directly rather than going through
 `findMatch`: `playMatch`'s `stop` fires per event _after_ the whole turn has run, so stopping on the
-riichi event truncates that turn's own discard and call out of `outcome.events` while the state
-already reflects them — and the event log is where `passed` comes from. Generation searches
-`seed`, `seed#1`… for a hand that is worth drilling (not ended, the seat due to act is not itself in
-riichi, at least 1-shanten, enough wall left, and the ranking holds both a genbutsu and something
-bare), and **falls back to fewer threats** rather than failing, since three simultaneous riichi is
-too rare for any sane attempt budget. The attempt seed alone reproduces the board, round wind
-included — `matchOptions` seeds the wind off that same attempt seed, which is what makes the share
-link exact.
+riichi event would leave `match.discards` missing that turn's own discard and call while the rest of
+the state already reflects them. The moment its riichi target is reached, every seat that has not
+itself declared is switched to `policy: 'defense'` (`match.ts`'s `PlayerState.policy`) — otherwise
+the opponents keep pushing for the rest of the hand, declaring further riichi and flooding the table
+with genbutsu the drill never earned. Generation searches `seed`, `seed#1`… for a hand that is worth
+drilling (not ended, the seat due to act is not itself in riichi, at least 1-shanten, enough wall
+left, and the ranking holds both a genbutsu and something bare), and **falls back to fewer threats**
+rather than failing, since three simultaneous riichi is too rare for any sane attempt budget. The
+attempt seed alone reproduces the board, round wind included — `matchOptions` seeds the wind off
+that same attempt seed, which is what makes the share link exact.
 
 Two rules the UI must keep: the threat's hand is revealed **only once the hand is over** (showing it
 after turn one hands over every turn still to come), and no tier below `genbutsu` may ever read as

@@ -4,7 +4,7 @@ import { TILES_PER_KIND } from './wall'
 
 /**
  * How dangerous each tile in your hand is against the seats threatening to ron — the folding
- * trainer's grader, and (later) the defensive half of `policy.ts`.
+ * trainer's grader, and the defensive half of `policy.ts` (`chooseFold`).
  *
  * Ordinal, never probabilistic. Published betaori tables exist, but a number typed in from memory
  * becomes a number the reader learns, so tiles are ranked into tiers and graded on tier ordering.

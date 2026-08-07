@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { assessDiscards } from './danger'
 import { tileCount } from './hand'
 import {
+  beginTurn,
   createMatch,
   findMatch,
+  finishTurn,
   playMatch,
+  threatViews,
   type MatchEvent,
   type MatchOptions,
   type MatchState,
@@ -226,4 +230,104 @@ describe('findMatch', () => {
       expect(findMatch(`find-${i}`, 4, YONMA, acceptWin), `seed find-${i}`).not.toBeNull()
     }
   })
+})
+
+/** Visibility the way `finishTurn` sees it: every face-up tile plus this seat's own hand. */
+function seenBy(state: MatchState, seat: number): Uint8Array {
+  const seen = new Uint8Array(NUM_TILE_TYPES)
+  for (let i = 0; i < NUM_TILE_TYPES; i++) {
+    seen[i] = Math.min(TILES_PER_KIND, state.visible[i] + state.players[seat].hand.counts[i])
+  }
+  return seen
+}
+
+/** Plays a seed to its first riichi, switches every other seat to `'defense'` right there — the
+ *  same handoff the folding trainer performs — then plays the rest of the hand out, checking every
+ *  folding seat's discard against what `assessDiscards` would itself pick. */
+function playWithDefense(seed: string) {
+  const state = createMatch(seed, 4, YONMA)
+  let declarer = -1
+  let switched = false
+  let sawCall = false
+  let sawExtraRiichi = false
+  let foldingDiscards = 0
+  let mismatches = 0
+
+  for (let guard = 0; guard < 400 && !state.ended; guard++) {
+    const acting = state.seat
+    // the flip to defense happens after the declaring turn finishes, so a call reacting to that
+    // same discard is still made under efficiency play — only a call on a later turn, once every
+    // other seat has actually flipped, would mean a folding seat called
+    const switchedBefore = switched
+    beginTurn(state, YONMA)
+
+    // computed with exactly what `finishTurn` hands `chooseFold`: the post-draw hand, before it
+    // removes the chosen tile
+    let expected: number | undefined
+    if (switchedBefore && acting !== declarer) {
+      const ranked = assessDiscards(
+        state.players[acting].hand,
+        threatViews(state),
+        seenBy(state, acting),
+        false,
+      )
+      expected = ranked[0]?.tile
+    }
+
+    for (const event of finishTurn(state, YONMA)) {
+      if (event.kind === 'riichi') {
+        if (declarer < 0) declarer = event.seat
+        else sawExtraRiichi = true
+      }
+      if (event.kind === 'call' && switchedBefore) sawCall = true
+      if (event.kind === 'discard' && expected !== undefined) {
+        foldingDiscards++
+        if (event.tile.id !== expected) mismatches++
+      }
+    }
+
+    if (declarer >= 0 && !switched) {
+      for (const [seat, player] of state.players.entries()) {
+        if (seat !== declarer) player.policy = 'defense'
+      }
+      switched = true
+    }
+  }
+  return { state, declarer, sawCall, sawExtraRiichi, foldingDiscards, mismatches }
+}
+
+describe('defensive policy', () => {
+  it(
+    'folds every non-declaring seat once one riichis: no further riichi, no calls, every ' +
+      "discard is that seat's own safest tile, and no tile is lost or duplicated",
+    () => {
+      let declared = 0
+      let totalFoldingDiscards = 0
+      let totalMismatches = 0
+      let sawCall = false
+      let sawExtraRiichi = false
+
+      for (let i = 0; i < 30; i++) {
+        const result = playWithDefense(`defense-${i}`)
+        if (result.declarer < 0) continue
+        declared++
+        totalFoldingDiscards += result.foldingDiscards
+        totalMismatches += result.mismatches
+        sawCall = sawCall || result.sawCall
+        sawExtraRiichi = sawExtraRiichi || result.sawExtraRiichi
+
+        const counts = census(result.state)
+        for (let id = 0; id < NUM_TILE_TYPES; id++) {
+          expect(counts[id], `tile ${id} in seed defense-${i}`).toBe(TILES_PER_KIND)
+        }
+      }
+
+      // enough seeds reach a riichi that a zero here would mean the setup is broken, not the seeds
+      expect(declared).toBeGreaterThan(5)
+      expect(totalFoldingDiscards).toBeGreaterThan(0)
+      expect(totalMismatches).toBe(0)
+      expect(sawCall).toBe(false)
+      expect(sawExtraRiichi).toBe(false)
+    },
+  )
 })

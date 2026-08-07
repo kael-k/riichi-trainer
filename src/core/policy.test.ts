@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Meld } from './agari'
 import { handFromTenhou } from './hand'
-import { chooseCall, chooseDiscard, hasYakuRoute, isFuriten, waits } from './policy'
+import { chooseCall, chooseDiscard, chooseFold, hasYakuRoute, isFuriten, waits } from './policy'
 import { HONOR, MAN, NUM_TILE_TYPES, parseTenhou, PIN, type TileId } from './tiles'
 
 const NONE = new Uint8Array(NUM_TILE_TYPES)
@@ -68,6 +68,17 @@ describe('waits and furiten', () => {
     expect(isFuriten(w, [])).toBe(false)
     expect(isFuriten(w, parseTenhou('9s'))).toBe(false)
     expect(isFuriten(w, [{ id: w[0] as TileId, red: false }])).toBe(true)
+  })
+})
+
+describe('chooseFold', () => {
+  it('picks the genbutsu tile over an unprotected one, and is stable across calls', () => {
+    const hand = handFromTenhou('5m5p')
+    const threats = [{ seat: 1, discards: [MAN + 4], passed: [] }]
+    const a = chooseFold(hand, threats, NONE, false)
+    const b = chooseFold(hand, threats, NONE, false)
+    expect(a).toBe(MAN + 4)
+    expect(b).toBe(a)
   })
 })
 

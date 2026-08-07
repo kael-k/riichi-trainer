@@ -104,6 +104,18 @@ describe('useFoldingRound', () => {
     }
   })
 
+  it('never lets a folding opponent declare a second riichi', async () => {
+    const result = await deal({ seed: 'multi-seed' })
+    const initialThreats = result.current.threatSeats.length
+    for (let i = 0; i < 30 && !result.current.finished; i++) {
+      const safe = result.current.ranked()[0]
+      act(() =>
+        result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)),
+      )
+      expect(result.current.threatSeats.length).toBe(initialThreats)
+    }
+  })
+
   it('holds the reveal back until the hand is over', async () => {
     const result = await deal({ seed: 'reveal-seed' })
     expect(result.current.end).toBeNull()

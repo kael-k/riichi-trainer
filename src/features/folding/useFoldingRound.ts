@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Meld } from '../../core/agari'
-import { assessDiscards, type ThreatView, type TileDanger } from '../../core/danger'
+import { assessDiscards, type TileDanger } from '../../core/danger'
 import {
   beginTurn,
   concealedTiles,
   createMatch,
   finishTurn,
-  type MatchEvent,
+  threatViews,
   type MatchOptions,
   type MatchState,
 } from '../../core/match'
@@ -64,14 +64,12 @@ export interface RoundEnd {
   threats: ThreatReveal[]
 }
 
-/** A real hand of mahjong plus which seat is yours and the events it has produced. The event log
- *  is not a luxury: `passed` genbutsu is derived from it, and a claimed discard is popped out of
- *  `player.river` while it stays in the log. */
+/** A real hand of mahjong plus which seat is yours. `threatViews` (from `match.ts`) reads its
+ *  genbutsu straight off `match.discards`, so this hook carries no event log of its own. */
 interface RoundCore {
   match: MatchState
   options: MatchOptions
   seatIndex: number
-  events: MatchEvent[]
 }
 
 interface RoundState {
@@ -114,19 +112,25 @@ function riichiSeats(match: MatchState): number[] {
 
 /** Plays a seed until `threats` seats have declared riichi, stopping at the end of the turn the
  *  last one lands on. Turn granularity is deliberate: `playMatch`'s `stop` fires per event, after
- *  the whole turn has already run, which would leave the event log missing that turn's own
- *  discard and call while the state already reflects them. */
+ *  the whole turn has already run, which would leave `match.discards` missing that turn's own
+ *  discard and call while the rest of the state already reflects them. */
 function playToRiichi(seed: string, options: MatchOptions, players: number, threats: number) {
   const match = createMatch(seed, players, options)
-  const events: MatchEvent[] = []
   // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
   for (let guard = 0; guard < 400 && !match.ended; guard++) {
-    events.push(...beginTurn(match, options), ...finishTurn(match, options))
+    beginTurn(match, options)
+    finishTurn(match, options)
     if (riichiSeats(match).length >= threats) {
       // whoever is due to act next inherits the decision, so it is immediate rather than three
       // discards away; the engine only stops deciding for them from here on
       const seatIndex = match.seat
-      return { match, options: { ...options, human: seatIndex }, seatIndex, events }
+      // the target is met, so everyone still building a hand folds: an opponent left to chase
+      // tenpai keeps declaring and floods the table with fresh genbutsu, which is exactly the
+      // pressure this drill means to put on the player's own discards, not the AI's
+      for (const [seat, player] of match.players.entries()) {
+        if (seat !== seatIndex && player.riichiAt === undefined) player.policy = 'defense'
+      }
+      return { match, options: { ...options, human: seatIndex }, seatIndex }
     }
   }
   return null
@@ -142,30 +146,10 @@ function seenBy(core: RoundCore): Uint8Array {
   return seen
 }
 
-/**
- * What is publicly known about every seat in riichi, read off the event log. Both genbutsu
- * sources come from here: a threat's own discards (they are furiten on all of them) and every
- * tile anyone threw after they declared without being ronned (they passed, so they may not ron
- * it now either) — the second is what makes a long fold survivable.
- */
-export function threatViews(core: RoundCore): ThreatView[] {
-  return riichiSeats(core.match).map((seat) => {
-    const declaredAt = core.events.findIndex((e) => e.kind === 'riichi' && e.seat === seat)
-    const discards: TileId[] = []
-    const passed: TileId[] = []
-    core.events.forEach((event, i) => {
-      if (event.kind !== 'discard') return
-      if (event.seat === seat) discards.push(event.tile.id)
-      if (declaredAt >= 0 && i > declaredAt) passed.push(event.tile.id)
-    })
-    return { seat, discards, passed }
-  })
-}
-
 function rank(core: RoundCore, sanma: boolean): TileDanger[] {
   return assessDiscards(
     core.match.players[core.seatIndex].hand,
-    threatViews(core),
+    threatViews(core.match),
     seenBy(core),
     sanma,
   )
@@ -192,7 +176,7 @@ function buildRound(seed: string, sanma: boolean, threats: number): RoundCore | 
   const players = sanma ? 3 : 4
   const core = playToRiichi(seed, matchOptions(seed, sanma), players, threats)
   if (!core || !worthwhile(core, sanma)) return null
-  core.events.push(...beginTurn(core.match, core.options))
+  beginTurn(core.match, core.options)
   return core
 }
 
@@ -219,13 +203,14 @@ async function findRound(
 /** Your discard, then every other seat back round to you, then your next draw. */
 function advanceAfterDiscard(core: RoundCore, tile: ParsedTile): void {
   const { match, options, seatIndex } = core
-  core.events.push(...finishTurn(match, options, tile))
+  finishTurn(match, options, tile)
   // one full go-round is the bound; a call hands the turn sideways but never backwards
   for (let guard = 0; guard < 8 && match.seat !== seatIndex && !match.ended; guard++) {
-    core.events.push(...beginTurn(match, options), ...finishTurn(match, options))
+    beginTurn(match, options)
+    finishTurn(match, options)
   }
   if (!match.ended && match.liveWall.length > 0) {
-    core.events.push(...beginTurn(match, options))
+    beginTurn(match, options)
   }
 }
 

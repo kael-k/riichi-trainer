@@ -1,7 +1,8 @@
 import { decompose, type Meld } from './agari'
+import type { ThreatView } from './danger'
 import { evaluateDiscards, isBestDiscard } from './efficiency'
 import { addTile, createHand, removeTile, tileCount, type Hand } from './hand'
-import { chooseCall, chooseDiscard, isFuriten, waits } from './policy'
+import { chooseCall, chooseDiscard, chooseFold, isFuriten, waits, type SeatPolicy } from './policy'
 import { scoreHand, type ScoreResult } from './score'
 import { shanten } from './shanten'
 import {
@@ -68,6 +69,10 @@ export interface PlayerState {
   /** Passed on a discard that would have won: no ron until this player's next draw (and, under
    *  riichi, not for the rest of the hand). Own-river furiten is derived, not stored. */
   missedWin: boolean
+  /** How the engine plays this seat. Per seat and flippable mid-hand — ignored once `riichiAt`
+   *  is set (riichi locks every later discard to tsumogiri regardless) and for `options.human`,
+   *  which the engine never decides for. */
+  policy: SeatPolicy
 }
 
 export interface WinRecord {
@@ -100,6 +105,10 @@ export interface MatchState {
   doraIndicators: ParsedTile[]
   /** Every face-up tile: all rivers, all melds, every flipped indicator. Feeds ukeire. */
   visible: Uint8Array
+  /** Every discard in order, seat included. Not the same as the rivers: a claimed tile is popped
+   *  out of `river` (below) and it is still a tile that seat threw, which genbutsu depends on.
+   *  Never popped — anything counting tiles must read the rivers and melds, not this. */
+  discards: { seat: number; tile: RiverTile }[]
   seat: number
   turn: number
   /** Cleared right after a call — the caller already holds 14 tiles and does not draw. */
@@ -131,6 +140,7 @@ function createPlayer(): PlayerState {
     ippatsu: false,
     nuki: [],
     missedWin: false,
+    policy: 'efficiency',
   }
 }
 
@@ -198,6 +208,7 @@ export function createMatch(
     uraStack,
     doraIndicators,
     visible,
+    discards: [],
     seat: 0,
     turn: 1,
     pendingDraw: true,
@@ -245,6 +256,25 @@ function seenBy(state: MatchState, player: PlayerState): Uint8Array {
   const seen = new Uint8Array(NUM_TILE_TYPES)
   for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = state.visible[i] + player.hand.counts[i]
   return seen
+}
+
+/** What is publicly known about every seat currently in riichi, for `chooseFold` and the folding
+ *  trainer's grader alike. Both genbutsu sources come from `state.discards` rather than
+ *  `PlayerState.river`: a threat's own discards (furiten on all of them) and every tile anyone
+ *  threw after they declared without being ronned (passed, so they may not ron it now either) —
+ *  and a called discard is popped out of `river` while it stays in the log. */
+export function threatViews(state: MatchState): ThreatView[] {
+  return state.players.flatMap((declarer, seat) => {
+    if (declarer.riichiAt === undefined) return []
+    const declaredAt = state.discards.findIndex((d) => d.seat === seat && d.tile.riichi)
+    const discards: TileId[] = []
+    const passed: TileId[] = []
+    state.discards.forEach((d, i) => {
+      if (d.seat === seat) discards.push(d.tile.id)
+      if (declaredAt >= 0 && i > declaredAt) passed.push(d.tile.id)
+    })
+    return [{ seat, discards, passed }]
+  })
 }
 
 function buildContext(
@@ -423,9 +453,14 @@ export function finishTurn(
   const forcedTsumogiri = player.riichiAt !== undefined && state.drawn !== undefined
   let tile = discard
   if (!tile) {
-    tile = forcedTsumogiri
-      ? state.drawn
-      : pickTile(player, chooseDiscard(player.hand, seenBy(state, player), options.sanma).discard)
+    if (forcedTsumogiri) {
+      tile = state.drawn
+    } else if (player.policy === 'defense') {
+      const fold = chooseFold(player.hand, threatViews(state), seenBy(state, player), options.sanma)
+      tile = pickTile(player, fold)
+    } else {
+      tile = pickTile(player, chooseDiscard(player.hand, seenBy(state, player), options.sanma).discard)
+    }
   }
   if (!tile) return events
 
@@ -439,6 +474,8 @@ export function finishTurn(
     options.riichi &&
     // never for the human seat: riichi is a choice, and it locks every later discard to tsumogiri
     seat !== options.human &&
+    // a folding seat must not declare — it is trying to leave the hand, not win it
+    player.policy !== 'defense' &&
     player.riichiAt === undefined &&
     isMenzen(player.melds) &&
     shanten(player.hand) === 0 &&
@@ -457,6 +494,7 @@ export function finishTurn(
   if (tsumogiri) entry.tsumogiri = true
   if (declaring) entry.riichi = true
   player.river.push(entry)
+  state.discards.push({ seat, tile: entry })
   state.visible[tile.id]++
   state.drawn = undefined
   if (declaring) events.push({ kind: 'riichi', seat })
@@ -476,8 +514,10 @@ export function finishTurn(
     for (const other of seatsFrom(state, seat)) {
       const caller = state.players[other]
       // a call is a decision, and `human` is the seat the engine never decides for — calling on
-      // its behalf would open a hand its player never chose to open
-      if (other === options.human || caller.riichiAt !== undefined) continue
+      // its behalf would open a hand its player never chose to open. A folding seat does not
+      // call either: every meld it opened is one more shape it might have to defend a wait with.
+      if (other === options.human || caller.riichiAt !== undefined || caller.policy === 'defense')
+        continue
       const call = chooseCall(
         caller.hand,
         caller.melds,

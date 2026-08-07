@@ -1,9 +1,14 @@
 import type { Meld } from './agari'
+import { assessDiscards, type ThreatView } from './danger'
 import { bestDiscards, type DiscardOption } from './efficiency'
 import { addTile, removeTile, type Hand } from './hand'
 import { shanten } from './shanten'
 import { improvingTiles, totalRemaining, ukeire } from './ukeire'
 import { HONOR, isDragon, isTerminalOrHonor, suitOf, type RiverTile, type TileId } from './tiles'
+
+/** How the engine plays a seat. `'defense'` is full betaori — the folding trainer switches every
+ *  seat that missed its riichi target into this once the target is reached. */
+export type SeatPolicy = 'efficiency' | 'defense'
 
 /**
  * How a simulated player decides. Every function here is pure and total: the same inputs always
@@ -80,6 +85,18 @@ export function chooseDiscard(hand: Hand, seen: Uint8Array, sanma: boolean): Dis
     }
   }
   return choice!
+}
+
+/** Full betaori: the safest tile in hand against every seat in `threats`. `assessDiscards` is
+ *  already a total order (tier score, then tile id), so this needs no tie-break of its own, and
+ *  it stays total with no threats — the ranking falls back to wall and shape alone. */
+export function chooseFold(
+  hand: Hand,
+  threats: ThreatView[],
+  seen: Uint8Array,
+  sanma: boolean,
+): TileId {
+  return assessDiscards(hand, threats, seen, sanma)[0].tile
 }
 
 function preferDiscard(a: TileId, b: TileId, hand: Hand): boolean {
