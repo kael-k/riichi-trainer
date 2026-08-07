@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import type { LogEntry } from '../../store/log'
+import { WINDS } from '../situation/urlCodec'
 
 interface ShantenResultParams {
   hand: number
@@ -18,6 +19,15 @@ interface ScoringResultParams {
   correct: boolean
   timerEnabled: boolean
   elapsedMs: number
+}
+
+interface FoldingDiscardParams {
+  turn: number
+  tile: string
+  tier: string
+  best: string
+  bestTier: string
+  correct: boolean
 }
 
 /** Most log entries are a direct t(key, params). The shanten result entry composes two
@@ -52,6 +62,27 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
       result: t(correct ? 'scoring.correct' : 'scoring.wrong'),
       time,
     })
+  }
+  if (entry.key === 'log.folding.discard') {
+    const { turn, tile, tier, best, bestTier, correct } =
+      entry.params as unknown as FoldingDiscardParams
+    // the tier names are translated here rather than baked in at log time, so switching language
+    // re-reads the whole line — same reason the shanten entry composes its clauses at render
+    return t(correct ? 'log.folding.safe' : 'log.folding.risky', {
+      turn,
+      tile,
+      tier: t(`folding.tier.${tier}`),
+      best,
+      bestTier: t(`folding.tier.${bestTier}`),
+    })
+  }
+  if (entry.key === 'log.folding.dealIn') {
+    const { seat, points, tile } = entry.params as unknown as {
+      seat: number
+      points: number
+      tile: string
+    }
+    return t('log.folding.dealIn', { wind: t(`wind.${WINDS[seat]}`), points, tile })
   }
   return t(entry.key, entry.params)
 }

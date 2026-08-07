@@ -65,6 +65,10 @@
     "scoring": {
       "title": "Scoring trainer",
       "desc": "Guess han, fu and points for a winning hand."
+    },
+    "folding": {
+      "title": "Folding trainer",
+      "desc": "Someone declared riichi. Pick the safest tile to throw."
     }
   },
   "efficiency": {
@@ -303,7 +307,71 @@
       "wait": "Wait"
     }
   },
+  "folding": {
+    "dealing": "Looking for a hand…",
+    "noHand": "No hand came up that was worth drilling. Try another deal.",
+    "prompt_one": "{{winds}} is in riichi. Fold: throw the tile least likely to deal in. Whether folding is right is not graded — only which tile you fold with.",
+    "prompt_other": "{{winds}} are in riichi. Fold: throw the tile least likely to deal in. Whether folding is right is not graded — only which tile you fold with.",
+    "turnStatus": "Turn {{turn}}",
+    "score": "Safest: {{correct}} / {{total}}",
+    "avgTime": "avg {{time}}",
+    "yourDiscard": "You threw",
+    "safestDiscard": "Safest was",
+    "wasSafest": "Safest tile available.",
+    "saferWasAvailable": "A safer tile was available.",
+    "equallySafe": "Equally safe:",
+    "tier": {
+      "genbutsu": "Genbutsu",
+      "noChance": "No chance",
+      "oneChance": "One chance",
+      "doubleSuji": "Double suji",
+      "suji": "Suji",
+      "honour": "Honour",
+      "halfSuji": "Half suji",
+      "nonSuji": "Non-suji"
+    },
+    "reason": {
+      "genbutsu": "they threw it themselves, so they are furiten on it",
+      "noChance": "every tile a run to it would need is already accounted for",
+      "oneChance": "only one copy is left of what a run to it would need",
+      "doubleSuji": "both suji partners are in their discards",
+      "suji": "its suji partner is in their discards",
+      "honour_one": "{{count}} copy is accounted for",
+      "honour_other": "{{count}} copies are accounted for",
+      "halfSuji": "only one side is suji — the ryanmen on the other side is still live",
+      "nonSuji": "nothing on the table rules it out"
+    },
+    "caveat": {
+      "genbutsu": "Genbutsu is the only real safety: they discarded it, so they cannot ron it.",
+      "suji": "Suji only rules out a ryanmen. A tanki, shanpon, kanchan or penchan on this tile still wins.",
+      "kabe": "A wall only rules out runs. A tanki or shanpon on this tile still wins.",
+      "general": "Nothing below genbutsu is safe — it is only less likely."
+    },
+    "threatHand": "What they were holding",
+    "threatHandOf": "What {{wind}} was holding",
+    "waitingOn": "Waiting on",
+    "youThrew": "You threw this at them:",
+    "hindsight": "A tile from the safest tier still counts as correct even when it turns out to be in the wait — nothing on the table said otherwise.",
+    "end": {
+      "dealIn": "You dealt in to {{wind}} — {{points}} points.",
+      "won": "You won the hand.",
+      "lost": "{{wind}} won the hand — not off your discard.",
+      "exhaustive": "Exhaustive draw. You survived the hand.",
+      "wall": "The wall ran out. You survived the hand."
+    },
+    "sessionLine": "Safest tile chosen {{correct}} of {{total}} times.",
+    "newSituation": "New situation",
+    "settings": {
+      "timer": "Timer",
+      "threats": "Riichi to fold against"
+    }
+  },
   "log": {
+    "folding": {
+      "safe": "Turn {{turn}}: threw {{tile}} — {{tier}}, the safest available",
+      "risky": "Turn {{turn}}: threw {{tile}} ({{tier}}); {{best}} was safer ({{bestTier}})",
+      "dealIn": "Dealt in: {{tile}} to {{wind}} — {{points}} points"
+    },
     "efficiency": {
       "discardBest": "Turn {{turn}}: discarded {{tile}} — best choice (ukeire {{ukeire}})",
       "discardBestDrew": "Turn {{turn}}: drew {{drawn}}, discarded {{tile}} — best choice (ukeire {{ukeire}})",

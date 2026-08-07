@@ -65,6 +65,10 @@
     "scoring": {
       "title": "点数計算トレーナー",
       "desc": "和了手の翻・符・点数を当てよう。"
+    },
+    "folding": {
+      "title": "ベタオリトレーナー",
+      "desc": "リーチが入った局面で、最も放銃しにくい牌を選ぼう。"
     }
   },
   "efficiency": {
@@ -249,7 +253,69 @@
       "wait": "待ち"
     }
   },
+  "folding": {
+    "dealing": "局面を探しています…",
+    "noHand": "練習になる局面が見つかりませんでした。もう一度配牌してください。",
+    "prompt_other": "{{winds}}がリーチ。放銃しにくい牌を切ろう。オリるべきかどうかは採点しない——どの牌でオリるかだけを見る。",
+    "turnStatus": "{{turn}}巡目",
+    "score": "最安全: {{correct}} / {{total}}",
+    "avgTime": "平均 {{time}}",
+    "yourDiscard": "切った牌",
+    "safestDiscard": "最も安全なのは",
+    "wasSafest": "この局面で最も安全な牌。",
+    "saferWasAvailable": "もっと安全な牌があった。",
+    "equallySafe": "同じくらい安全:",
+    "tier": {
+      "genbutsu": "現物",
+      "noChance": "ノーチャンス",
+      "oneChance": "ワンチャンス",
+      "doubleSuji": "ダブル筋",
+      "suji": "筋",
+      "honour": "字牌",
+      "halfSuji": "片筋",
+      "nonSuji": "無筋"
+    },
+    "reason": {
+      "genbutsu": "自分で切っているのでフリテン",
+      "noChance": "そこへ伸びる順子に必要な牌がすべて見えている",
+      "oneChance": "そこへ伸びる順子に必要な牌が残り1枚",
+      "doubleSuji": "両側の筋が河にある",
+      "suji": "筋の相方が河にある",
+      "honour_other": "{{count}}枚見えている",
+      "halfSuji": "片側だけの筋——反対側の両面はまだ生きている",
+      "nonSuji": "場に否定する材料がない"
+    },
+    "caveat": {
+      "genbutsu": "本当に安全なのは現物だけ。相手が切っている牌なのでロンできない。",
+      "suji": "筋が否定するのは両面だけ。単騎・シャンポン・嵌張・辺張なら当たる。",
+      "kabe": "壁が否定するのは順子だけ。単騎やシャンポンなら当たる。",
+      "general": "現物以外に安全牌はない——確率が下がるだけ。"
+    },
+    "threatHand": "相手の手牌",
+    "threatHandOf": "{{wind}}の手牌",
+    "waitingOn": "待ち",
+    "youThrew": "ここに通した牌:",
+    "hindsight": "最安全の牌なら、結果的に当たり牌でも正解のまま——場の情報からは分からなかったのだから。",
+    "end": {
+      "dealIn": "{{wind}}に放銃——{{points}}点。",
+      "won": "自分の和了。",
+      "lost": "{{wind}}の和了（自分の放銃ではない）。",
+      "exhaustive": "流局。オリ切った。",
+      "wall": "牌山が尽きた。オリ切った。"
+    },
+    "sessionLine": "最安全の牌を{{total}}回中{{correct}}回選択。",
+    "newSituation": "次の局面",
+    "settings": {
+      "timer": "タイマー",
+      "threats": "オリる相手のリーチ数"
+    }
+  },
   "log": {
+    "folding": {
+      "safe": "{{turn}}巡目: {{tile}}を切った——{{tier}}、この局面で最も安全",
+      "risky": "{{turn}}巡目: {{tile}}を切った（{{tier}}）; {{best}}の方が安全（{{bestTier}}）",
+      "dealIn": "放銃: {{tile}}を{{wind}}に——{{points}}点"
+    },
     "efficiency": {
       "discardBest": "{{turn}}巡目: {{tile}}を切った — 最善の選択 (受け入れ{{ukeire}})",
       "discardBestDrew": "{{turn}}巡目: {{drawn}}をツモり、{{tile}}を切った — 最善の選択 (受け入れ{{ukeire}})",

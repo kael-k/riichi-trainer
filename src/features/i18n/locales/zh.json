@@ -65,6 +65,10 @@
     "scoring": {
       "title": "算番训练",
       "desc": "猜出和了手的番数、符数与点数。"
+    },
+    "folding": {
+      "title": "防守（betaori）训练",
+      "desc": "有人立直了。选出最不容易放铳的牌。"
     }
   },
   "efficiency": {
@@ -249,7 +253,69 @@
       "wait": "听牌方式"
     }
   },
+  "folding": {
+    "dealing": "正在寻找牌局…",
+    "noHand": "没有找到适合练习的牌局。请再发一局。",
+    "prompt_other": "{{winds}}已立直。打出最不容易放铳的牌。是否该防守不计分——只看你用哪张牌防守。",
+    "turnStatus": "第 {{turn}} 巡",
+    "score": "最安全: {{correct}} / {{total}}",
+    "avgTime": "平均 {{time}}",
+    "yourDiscard": "你打出",
+    "safestDiscard": "最安全的是",
+    "wasSafest": "当前最安全的牌。",
+    "saferWasAvailable": "还有更安全的牌。",
+    "equallySafe": "同样安全:",
+    "tier": {
+      "genbutsu": "现物",
+      "noChance": "壁（no chance）",
+      "oneChance": "半壁（one chance）",
+      "doubleSuji": "双筋",
+      "suji": "筋",
+      "honour": "字牌",
+      "halfSuji": "半筋",
+      "nonSuji": "无筋"
+    },
+    "reason": {
+      "genbutsu": "他们自己打过，因此对这张牌振听",
+      "noChance": "能连到这张牌的顺子所需的牌都已现身",
+      "oneChance": "能连到这张牌的顺子所需的牌只剩一张",
+      "doubleSuji": "两侧的筋牌都在他们的牌河里",
+      "suji": "它的筋牌在他们的牌河里",
+      "honour_other": "已现 {{count}} 张",
+      "halfSuji": "只有一侧成筋——另一侧的两面听仍然存在",
+      "nonSuji": "场上没有任何信息排除它"
+    },
+    "caveat": {
+      "genbutsu": "只有现物才是真正安全的：他们打过，所以不能荣和。",
+      "suji": "筋只排除两面听。单骑、双碰、嵌张、边张照样点炮。",
+      "kabe": "壁只排除顺子。单骑或双碰照样点炮。",
+      "general": "现物以外没有安全牌——只是概率更低。"
+    },
+    "threatHand": "他们的手牌",
+    "threatHandOf": "{{wind}}的手牌",
+    "waitingOn": "听牌",
+    "youThrew": "你打给了他们:",
+    "hindsight": "选了最安全一档的牌，即使正好在听牌里也仍算正确——场上没有任何信息能提示这一点。",
+    "end": {
+      "dealIn": "你向{{wind}}放铳——{{points}} 点。",
+      "won": "你和了这一局。",
+      "lost": "{{wind}}和了，不是你放铳。",
+      "exhaustive": "荒牌流局，你守住了。",
+      "wall": "牌山用尽，你守住了。"
+    },
+    "sessionLine": "{{total}} 次中有 {{correct}} 次选中最安全的牌。",
+    "newSituation": "新牌局",
+    "settings": {
+      "timer": "计时器",
+      "threats": "要防守的立直数"
+    }
+  },
   "log": {
+    "folding": {
+      "safe": "第 {{turn}} 巡: 打出 {{tile}}——{{tier}}，当前最安全",
+      "risky": "第 {{turn}} 巡: 打出 {{tile}}（{{tier}}）; {{best}} 更安全（{{bestTier}}）",
+      "dealIn": "放铳: {{tile}} 给{{wind}}——{{points}} 点"
+    },
     "efficiency": {
       "discardBest": "第{{turn}}巡: 打出{{tile}} — 最佳选择 (进张{{ukeire}})",
       "discardBestDrew": "第{{turn}}巡: 摸到{{drawn}},打出{{tile}} — 最佳选择 (进张{{ukeire}})",

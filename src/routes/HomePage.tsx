@@ -10,6 +10,7 @@ const MODES = [
   { to: '/efficiency', titleKey: 'trainer.efficiency.title', descKey: 'trainer.efficiency.desc' },
   { to: '/shanten', titleKey: 'trainer.shanten.title', descKey: 'trainer.shanten.desc' },
   { to: '/scoring', titleKey: 'trainer.scoring.title', descKey: 'trainer.scoring.desc' },
+  { to: '/folding', titleKey: 'trainer.folding.title', descKey: 'trainer.folding.desc' },
 ] as const
 
 export function HomePage() {

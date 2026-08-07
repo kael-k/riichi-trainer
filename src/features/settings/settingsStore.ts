@@ -46,6 +46,13 @@ export interface Settings {
     openHands: boolean
     aka: boolean
   }
+  folding: {
+    timerEnabled: boolean
+    /** Seats that must already be in riichi when the drill starts. Capped at one fewer than the
+     *  player count; generation falls back to fewer rather than failing when a seed search cannot
+     *  find that many. */
+    threats: number
+  }
 }
 
 /** Trainer tile size presets (S-XL); multiplies the base tile width. Four, not five: a fifth
@@ -116,6 +123,7 @@ export const useSettings = create<SettingsState>()(
         openHands: true,
         aka: true,
       },
+      folding: { timerEnabled: true, threats: 1 },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       showTileNumbers: null,
@@ -149,6 +157,7 @@ export const useSettings = create<SettingsState>()(
           efficiency: { ...current.efficiency, ...p.efficiency },
           shanten: { ...current.shanten, ...p.shanten },
           scoring: { ...current.scoring, ...p.scoring },
+          folding: { ...current.folding, ...p.folding },
         }
       },
     },

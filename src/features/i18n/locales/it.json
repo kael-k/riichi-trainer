@@ -65,6 +65,10 @@
     "scoring": {
       "title": "Allenamento punteggio",
       "desc": "Indovina han, fu e punti di una mano vincente."
+    },
+    "folding": {
+      "title": "Trainer difensivo",
+      "desc": "Qualcuno ha dichiarato riichi. Scegli il tile più sicuro da scartare."
     }
   },
   "efficiency": {
@@ -303,7 +307,71 @@
       "wait": "Attesa"
     }
   },
+  "folding": {
+    "dealing": "Cerco una mano…",
+    "noHand": "Nessuna mano adatta all’esercizio. Prova un altro giro.",
+    "prompt_one": "{{winds}} è in riichi. Scarta il tile con meno probabilità di dare ron. Non viene valutato *se* difendersi sia giusto: solo con quale tile lo fai.",
+    "prompt_other": "{{winds}} sono in riichi. Scarta il tile con meno probabilità di dare ron. Non viene valutato *se* difendersi sia giusto: solo con quale tile lo fai.",
+    "turnStatus": "Turno {{turn}}",
+    "score": "Più sicuro: {{correct}} / {{total}}",
+    "avgTime": "media {{time}}",
+    "yourDiscard": "Hai scartato",
+    "safestDiscard": "Il più sicuro era",
+    "wasSafest": "Il tile più sicuro disponibile.",
+    "saferWasAvailable": "C’era un tile più sicuro.",
+    "equallySafe": "Sicuri allo stesso modo:",
+    "tier": {
+      "genbutsu": "Genbutsu",
+      "noChance": "No chance",
+      "oneChance": "One chance",
+      "doubleSuji": "Doppio suji",
+      "suji": "Suji",
+      "honour": "Onore",
+      "halfSuji": "Mezzo suji",
+      "nonSuji": "Non-suji"
+    },
+    "reason": {
+      "genbutsu": "lo hanno scartato loro stessi, quindi sono furiten su quel tile",
+      "noChance": "tutti i tile che servirebbero a una scala per arrivarci sono già visibili",
+      "oneChance": "resta una sola copia di ciò che servirebbe a una scala per arrivarci",
+      "doubleSuji": "entrambi i partner suji sono nei loro scarti",
+      "suji": "il suo partner suji è nei loro scarti",
+      "honour_one": "{{count}} copia già visibile",
+      "honour_other": "{{count}} copie già visibili",
+      "halfSuji": "solo un lato è suji: il ryanmen dall’altro lato è ancora vivo",
+      "nonSuji": "niente sul tavolo lo esclude"
+    },
+    "caveat": {
+      "genbutsu": "Solo il genbutsu è davvero sicuro: lo hanno scartato, quindi non possono farci ron.",
+      "suji": "Il suji esclude solo il ryanmen. Tanki, shanpon, kanchan o penchan su questo tile vincono comunque.",
+      "kabe": "Il muro esclude solo le scale. Un tanki o uno shanpon su questo tile vince comunque.",
+      "general": "Sotto il genbutsu niente è sicuro: è solo meno probabile."
+    },
+    "threatHand": "Cosa avevano in mano",
+    "threatHandOf": "Cosa aveva {{wind}}",
+    "waitingOn": "In attesa di",
+    "youThrew": "Gli hai passato:",
+    "hindsight": "Un tile del gruppo più sicuro resta corretto anche se era nell’attesa: sul tavolo non c’era nulla che dicesse il contrario.",
+    "end": {
+      "dealIn": "Hai dato ron a {{wind}} — {{points}} punti.",
+      "won": "Hai vinto la mano.",
+      "lost": "{{wind}} ha vinto la mano, non sul tuo scarto.",
+      "exhaustive": "Muro esaurito. Sei arrivato in fondo.",
+      "wall": "Il muro è finito. Sei arrivato in fondo."
+    },
+    "sessionLine": "Tile più sicuro scelto {{correct}} volte su {{total}}.",
+    "newSituation": "Nuova situazione",
+    "settings": {
+      "timer": "Timer",
+      "threats": "Riichi contro cui difendersi"
+    }
+  },
   "log": {
+    "folding": {
+      "safe": "Turno {{turn}}: scartato {{tile}} — {{tier}}, il più sicuro disponibile",
+      "risky": "Turno {{turn}}: scartato {{tile}} ({{tier}}); {{best}} era più sicuro ({{bestTier}})",
+      "dealIn": "Ron subito: {{tile}} a {{wind}} — {{points}} punti"
+    },
     "efficiency": {
       "discardBest": "Turno {{turn}}: scartato {{tile}} — scelta migliore (ukeire {{ukeire}})",
       "discardBestDrew": "Turno {{turn}}: pescato {{drawn}}, scartato {{tile}} — scelta migliore (ukeire {{ukeire}})",

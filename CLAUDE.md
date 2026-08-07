@@ -33,13 +33,61 @@ Three layers: pure engine (`src/core/`), URL situation codec (`src/features/situ
 
 ### The match engine (`core/match.ts` + `core/policy.ts`)
 
-One deterministic hand of mahjong drives every trainer. `createMatch` deals (the pinned wall prefix goes in front _after_ the deal — it names what gets drawn next, not what lands in a starting hand), then `beginTurn` (draw) and `finishTurn` (discard, then everyone else's ron and calls) step it; `playMatch` loops both, and a `stop` predicate ends it early. That predicate is the only thing trainers differ by: `findMatch`/`findMatchAsync` replay `seed`, `seed#1`, `seed#2`… until an `accept` callback takes one, so scoring asks for "first win by any seat" and folding will ask for "an opponent riichi". `MatchOptions.human` marks the seat the engine draws for but never decides for — no auto-kita, no auto-riichi (riichi locks every later discard to tsumogiri, so it must stay the player's choice). `wins: false` lets opponents play without ending the drill.
+One deterministic hand of mahjong drives every trainer. `createMatch` deals (the pinned wall prefix goes in front _after_ the deal — it names what gets drawn next, not what lands in a starting hand), then `beginTurn` (draw) and `finishTurn` (discard, then everyone else's ron and calls) step it; `playMatch` loops both, and a `stop` predicate ends it early. That predicate is the only thing trainers differ by: `findMatch`/`findMatchAsync` replay `seed`, `seed#1`, `seed#2`… until an `accept` callback takes one, so scoring asks for "first win by any seat". (Folding needs a turn-boundary stop rather than an event one and drives `beginTurn`/`finishTurn` itself — see its section.) `MatchOptions.human` marks the seat the engine draws for but never decides for — no auto-kita, no auto-riichi (riichi locks every later discard to tsumogiri, so it must stay the player's choice), and no auto-pon/chi (a call opens a hand its player never chose to open). `wins: false` lets opponents play without ending the drill.
 
 `policy.ts` is the AI, pure and total — deterministic means every ranking needs an explicit tie-break, never sort stability. Calls happen only when they lower shanten **and** `hasYakuRoute` still holds; without that guard a shanten-chaser opens itself into hands that cannot legally win. Furiten is `waits()` (which is `improvingTiles` at tenpai) checked against your own river.
 
 Win legality is free from existing code: `decompose()` non-empty is the shape, `scoreHand()` returning null is "no yaku". Guard both behind a single `shanten()` call — that gate fails for almost every seat on almost every discard and everything past it is far more expensive.
 
 **Performance**: `standardShanten` decomposes each suit separately and merges (`groupTable`/`merge`), ~475x faster than searching all 34 kinds at once, because a draw probe only perturbs one suit and the other three come out of the cache. `referenceStandardShanten` is the old whole-hand search, kept solely as the specification the fast one is proved against over thousands of random hands in `shanten.test.ts` — change one, re-run that. Simulated players use `bestDiscards` (shanten only) and price ukeire just for the tiles already tied. A match is ~17ms; the census test in `match.test.ts` (every tile kind accounted for exactly four times) is what catches bookkeeping slips.
+
+### The danger model (`core/danger.ts`) + the folding trainer
+
+`assessDiscards(hand, threats, visible, sanma)` ranks every tile in hand by how dangerous it is
+against the seats in riichi. **Ordinal, never probabilistic** — published betaori tables exist, but a
+number typed in from memory becomes a number the user learns, so tiles land in tiers and grading is
+tier ordering. If real deal-in rates are ever wanted, measure them by simulation over the reachable
+hand space; do not type them in. Judged on **public information only**: what the threat actually
+holds is never consulted, which is what makes a correct-but-unlucky choice still correct.
+
+Tiers, safest first: `genbutsu`, `noChance`, `oneChance`, `doubleSuji`, `suji`, `honour`, `halfSuji`,
+`nonSuji`. Two placements that are decisions, not accidents: `halfSuji` (4/5/6 with only one side
+genbutsu) sits _inside_ the non-suji outer band rather than with real suji, because that tile is
+still wide open to the other ryanmen; and `TIER_SCORE` is one table, deliberately, because it is the
+calibration knob for the whole trainer — tune there, never scatter the numbers. Ranks are **dense**
+over the score (equal score ⇒ equal rank), and grading is `rank === 0`, never list position.
+
+The rules worth not re-deriving wrong: a shape `(a, a+1)` waits on `a-1` and `a+2`, so the ryanmen
+that wait on `n` are `(n+1, n+2)` and `(n-2, n-1)` — each is furiten-blocked when its **far end** is
+genbutsu, and a shape whose far end runs off the suit is a _penchan_, not a ryanmen (that is why 3p
+is suji off 6p but never off 1p). Kabe checks all three run shapes including the kanchan `(n-1, n+1)`;
+no surviving shape ⇒ `noChance`, every surviving shape down to one copy ⇒ `oneChance`. Sanma is free:
+tiles failing `inTileSet` count as four visible, so 2m-8m wall off everything that would need them.
+Several threats take the **worst** tier, with the per-threat verdicts kept in `against` so the UI can
+say "genbutsu vs South, non-suji vs West".
+
+Genbutsu has two sources and the second is the one people forget: the threat's own discards, and
+anything anyone discarded after they declared without being ronned. Both are derived from the match
+**event log**, not `player.river` — `finishTurn` pops a claimed discard out of the river, and it is
+still a tile that seat threw. `ThreatView` therefore takes `discards`/`passed`, not a river.
+
+`useFoldingRound.ts` drives `beginTurn`/`finishTurn` directly rather than going through
+`findMatch`: `playMatch`'s `stop` fires per event _after_ the whole turn has run, so stopping on the
+riichi event truncates that turn's own discard and call out of `outcome.events` while the state
+already reflects them — and the event log is where `passed` comes from. Generation searches
+`seed`, `seed#1`… for a hand that is worth drilling (not ended, the seat due to act is not itself in
+riichi, at least 1-shanten, enough wall left, and the ranking holds both a genbutsu and something
+bare), and **falls back to fewer threats** rather than failing, since three simultaneous riichi is
+too rare for any sane attempt budget. The attempt seed alone reproduces the board, round wind
+included — `matchOptions` seeds the wind off that same attempt seed, which is what makes the share
+link exact.
+
+Two rules the UI must keep: the threat's hand is revealed **only once the hand is over** (showing it
+after turn one hands over every turn still to come), and no tier below `genbutsu` may ever read as
+"safe" — suji only ever spoke about ryanmen, and a wall only about runs. Both are why
+`folding.caveat.*` exists. Per §8 decisions: fold-only (no push control — grading push/fold needs an
+EV model this codebase does not have), no danger markers before the answer, threats configurable up
+to `players - 1`.
 
 ### Tenhou notation + situation URLs (the shared DSL)
 
@@ -49,7 +97,7 @@ Tenhou strings (`123m406p11z`, `0` = red five) are the interchange format everyw
 
 ### Trainer pattern (`src/features/*`)
 
-Each trainer is a page component plus a `use*Round` hook (`useEfficiencyRound`, `useShantenRound`, `useScoringRound`). The hooks keep mutable round state in a `useRef` and mirror render-ready snapshots into `useState`; an unspecified seed stays random per mount, and restart/next-hand appends a counter suffix. The graded trainers (shanten, scoring) get their session score, per-hand clock and random seed from `lib/useSessionStats.ts` — it also owns "clearing the log resets the session".
+Each trainer is a page component plus a `use*Round` hook (`useEfficiencyRound`, `useShantenRound`, `useScoringRound`, `useFoldingRound`). The hooks keep mutable round state in a `useRef` and mirror render-ready snapshots into `useState`; an unspecified seed stays random per mount, and restart/next-hand appends a counter suffix. The graded trainers (shanten, scoring, folding) get their session score, per-decision clock and random seed from `lib/useSessionStats.ts` — it also owns "clearing the log resets the session".
 
 The shanten trainer is a continuous stream, not one graded hand at a time: `submit()` grades, then bumps `handIndex` while carrying `running` forward, so the next hand is dealt already revealed with the previous hand's feedback kept in `lastResult` (which holds its own tiles, since the on-screen hand has moved on). There is no next-hand button; the reveal/stop control is the only gate, and stop abandons the hand (fresh deal, timer back to zero) rather than pausing — a peeked hand can't be timed again. Clearing the log clears the session it recorded: score and average reset with it.
 
@@ -61,7 +109,7 @@ State stores are zustand: `settingsStore.ts` (persisted; has a custom section-wi
 
 ### UI
 
-`components/tiles/Table.tsx` is the shared board (efficiency with opponents on, scoring by default, folding later): a 3x3 grid measured in tile widths (4fr/6fr/4fr = 14 across), seats placed by `(seat - seatIndex + players) % players` and rotated `-90deg` per step so your seat is always at the bottom, melds/nuki in the corner cells. It sizes itself off container query units (`--tile-w: calc(100cqw/14)`), so the whole board scales from the one width on its outer div — put width there, never on the square, or a `w-full` child collapses when the board is a flex item. Tracks must stay `minmax(0,…)`: a seat block is measured before it rotates. Rivers carry `RiverTile` flags (`tsumogiri`, `riichi`) rather than parallel arrays; absence of `tsumogiri` means tedashi. The `short:` variant (`index.css`, max-height 520px) puts the hand beside the board instead of under it — that is what makes the portrait "turn your phone" hint true.
+`components/tiles/Table.tsx` is the shared board (efficiency with opponents on, scoring by default, folding always — reading the table _is_ the folding drill): a 3x3 grid measured in tile widths (4fr/6fr/4fr = 14 across), seats placed by `(seat - seatIndex + players) % players` and rotated `-90deg` per step so your seat is always at the bottom, melds/nuki in the corner cells. It sizes itself off container query units (`--tile-w: calc(100cqw/14)`), so the whole board scales from the one width on its outer div — put width there, never on the square, or a `w-full` child collapses when the board is a flex item. Tracks must stay `minmax(0,…)`: a seat block is measured before it rotates. Rivers carry `RiverTile` flags (`tsumogiri`, `riichi`) rather than parallel arrays; absence of `tsumogiri` means tedashi. The `short:` variant (`index.css`, max-height 520px) puts the hand beside the board instead of under it — that is what makes the portrait "turn your phone" hint true.
 
 Tiles render as `<use>` references into a build-time SVG sprite (`src/assets/tiles/sprite.svg`, generated by `scripts/build-tile-sprite.mjs` from FluffyStuff assets, injected raw in `AppShell`). Tile size flows through the CSS var `--tile-w`; components scale locally by overriding it (e.g. `[--tile-w:calc(var(--tile-w-base)*0.8)]`). Tailwind 4; dark mode is a `dark` class on `<html>` toggled by `AppShell` from the persisted theme setting. `TrainerLayout` provides the shared header, settings dialog, and log panel. Routing uses `basename: import.meta.env.BASE_URL` (GitHub Pages); pushes to `main` deploy via Actions, and the app is a PWA (`vite-plugin-pwa`, autoUpdate).
 

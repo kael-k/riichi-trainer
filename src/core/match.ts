@@ -475,7 +475,9 @@ export function finishTurn(
   if (options.calls) {
     for (const other of seatsFrom(state, seat)) {
       const caller = state.players[other]
-      if (caller.riichiAt !== undefined) continue
+      // a call is a decision, and `human` is the seat the engine never decides for — calling on
+      // its behalf would open a hand its player never chose to open
+      if (other === options.human || caller.riichiAt !== undefined) continue
       const call = chooseCall(
         caller.hand,
         caller.melds,

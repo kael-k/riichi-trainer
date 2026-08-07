@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLog } from '../store/log'
 
-/** Session score and per-hand clock shared by the graded trainers (shanten, scoring): how many
- *  hands were answered, how many right, mean time. Clearing the log clears the session it
+/** Session score and clock shared by the graded trainers (shanten, scoring, folding): how many
+ *  answers were given, how many right, mean time. The unit is whatever the trainer grades — a hand
+ *  for shanten and scoring, a single discard for folding. Clearing the log clears the session it
  *  recorded, so the counters reset with it. */
 export function useSessionStats() {
   // stable per mount, so an unspecified seed still gets a fresh hand each page load

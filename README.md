@@ -1,6 +1,6 @@
 # Riichi Trainer
 
-Mobile-first riichi mahjong trainer: efficiency (discard/ukeire) and shanten drills, with reproducible, shareable training situations.
+Mobile-first riichi mahjong trainer: efficiency (discard/ukeire), shanten, scoring and folding drills, with reproducible, shareable training situations.
 
 ## Why
 
@@ -19,7 +19,7 @@ Mobile-first riichi mahjong trainer: efficiency (discard/ukeire) and shanten dri
 - **Efficiency trainer** (`/efficiency`) — 14-tile hand; tap a discard, get feedback: your shanten/ukeire vs. the best discard, with the actual improving tiles and their remaining counts. Draw, discard, repeat until the wall runs dry; cumulative "ukeire lost" scores the round. Optional (all on by default except the wall view): simulated opponents that tsumogiri every turn, a dead wall with visible dora indicators, red fives in the deal, and a face-up wall view. A "Kan" button appears for any tile held four times: it locks the quad as a closed meld, flips the next kan-dora indicator (dead wall permitting), and draws a replacement — graded like a discard by comparing the hand shape with that quad locked away against the true best discard, so a quad that was pulling double duty (e.g. `788889s`, where kanning the 8s strands the 7s/9s as a dead kanchan) is flagged rather than auto-recommended. In sanma (three-player, a global setting), a "Kita" button similarly pulls a held north out for a replacement draw. Feedback comes in two severities: a genuine efficiency loss (a discard, kita, or kan that costs shanten or ukeire) is an **error** (red); passing up a kan/kita that was free — tied the best discard, no ukeire lost — is a softer **warning** (amber), since only the extra draw and dora were left on the table, not raw efficiency. "Copy situation link" exports the current round mid-game as a URL (calls made so far are not replayed by the link, only the discard river).
 - **Shanten trainer** (`/shanten`) — hand is dealt face-down; revealing starts the timer. Guess the shanten count (Enter or quick buttons); standard, chiitoitsu and kokushi are all considered. Guessing deals the next hand immediately, keeping the previous hand's feedback alongside; stop abandons the current hand for a fresh one. Score and average time reset when the log is cleared.
 - **Scoring trainer** (`/scoring`, **alpha** — yaku detection is still being verified) — a complete winning hand (closed or open, standard/chiitoitsu/kokushi/yakuman) is generated and shown immediately; guess han, fu and points, then "Check answer" grades each field you have enabled and "New hand" deals the next one. A timer runs per hand with a running average, matching the shanten trainer. Settings: independently toggle testing han/fu/points (at least one must stay on), an exact-fu mode that grades the pre-rounding value instead of rounded-to-10, opt-in itemized yaku and fu breakdowns on reveal (off by default, so reveal shows just the correct numbers like the original app), kiriage mangan, honba sticks, "ignore fu on limit hands", open hands, and red fives. Non-dealer tsumo grades as two separate payments (what each non-dealer pays vs. the dealer); every other case is a single points field. Supports sanma (nukidora scored as bonus han, 2-payer tsumo split). "Copy situation link" dumps the exact hand, melds, dora/ura, and win conditions as a URL for sharing a specific case.
-- **Folding trainer** — defend against riichi. _TODO, not implemented yet._
+- **Folding trainer** (`/folding`) — someone declares riichi and you are not tenpai: which tile do you throw? A real hand is simulated up to the declaration, handed to you at the seat due to act, and **every discard from there to the end of the hand is graded** — safe tiles run out as the hand goes on, which is the whole lesson. Grading is on public information only (their discards, what has passed since, the walls you can count), so a correct choice that happens to deal in still grades correct; the panel says so. Tiles are ranked into ordinal tiers — genbutsu, no chance, one chance, double suji, suji, honour, half suji, non-suji — never invented deal-in percentages. Half suji is its own tier: a 4p with only 1p discarded is still wide open to the 5p6p ryanmen, so it plays like a bare 2p, not like a protected 1p. Whether _folding_ was right is deliberately not graded (that needs an expected-value model this engine does not have); the prompt says so on screen. When the hand ends, each threat's real hand and wait is revealed, along with whatever you threw into it. Settings: timer, and how many riichi to fold against (1 up to one fewer than the player count — generation falls back to fewer rather than failing).
 
 Global settings (theme, tile size S-XL, yonma/sanma, language, tile numbers) also carry "translated yaku names": on by default, so yaku and win conditions read as "Pure straight" rather than "Ittsuu" — turn it off for the Japanese terms the scoring tables use. The row is hidden under Japanese and Chinese, where those already are the local names, and for the same reason tile-number overlays default on everywhere except those two languages. Tile size and tile numbers only take a default until you pick one; after that the choice sticks whatever the defaults become.
 
@@ -59,6 +59,16 @@ The scoring trainer uses its own, unrelated param set — a graded hand has no w
 | `sanma`         | `1`/`0`, pins the ruleset into the link                                                                                 |
 
 "Copy situation link" always emits the explicit hand rather than a seed, so the link keeps reproducing the same round even if the generator changes later. A hand-crafted link whose hand has no legal win (incomplete, or complete but yakuless) falls back to a generated hand, with a notice on the page.
+
+The folding trainer ships no tiles at all — a match replays from its seed, rivers and all:
+
+| param     | meaning                                                                                     |
+| --------- | ------------------------------------------------------------------------------------------- |
+| `seed`    | the accepted attempt seed; replayed verbatim, so the same board comes back                  |
+| `sanma`   | `1`/`0`, pins the ruleset into the link                                                     |
+| `threats` | how many seats were in riichi when the drill started — the search stops at that declaration |
+
+Red fives, calls, the dead wall and opponent riichi are always on for this trainer, so they need no params. The round wind is derived from the seed itself rather than shared separately.
 
 ## Stack
 
