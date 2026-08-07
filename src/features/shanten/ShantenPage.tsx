@@ -72,10 +72,12 @@ export function ShantenPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between text-sm text-neutral-500">
           <span>{t('shanten.handNumber', { count: round.totalCount + 1 })}</span>
-          <span>
-            {t('shanten.correctScore', { correct: round.correctCount, total: round.totalCount })}
+          <span className="flex flex-col items-end">
+            <span>
+              {t('shanten.correctScore', { correct: round.correctCount, total: round.totalCount })}
+            </span>
             {settings.timerEnabled && (
-              <> {t('shanten.avgTime', { time: formatElapsedMs(round.averageTime) })}</>
+              <span>{t('shanten.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
             )}
           </span>
         </div>

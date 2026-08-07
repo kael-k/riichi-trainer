@@ -204,10 +204,12 @@ export function ScoringPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between text-sm text-neutral-500">
           <span>{t('scoring.handNumber', { count: round.handNumber })}</span>
-          <span>
-            {t('scoring.correctScore', { correct: round.correctCount, total: round.totalCount })}
+          <span className="flex flex-col items-end">
+            <span>
+              {t('scoring.correctScore', { correct: round.correctCount, total: round.totalCount })}
+            </span>
             {settings.timerEnabled && (
-              <> {t('scoring.avgTime', { time: formatElapsedMs(round.averageTime) })}</>
+              <span>{t('scoring.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
             )}
           </span>
         </div>

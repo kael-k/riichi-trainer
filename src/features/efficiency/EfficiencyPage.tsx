@@ -97,14 +97,16 @@ export function EfficiencyPage() {
               ))}
             </span>
           )}
-          <span className="ml-auto">
-            {t('efficiency.ukeireLost', {
-              lost: round.cumulativeLost,
-              total: round.cumulativeTotal,
-              accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
-            })}
+          <span className="ml-auto flex flex-col items-end">
+            <span>
+              {t('efficiency.ukeireLost', {
+                lost: round.cumulativeLost,
+                total: round.cumulativeTotal,
+                accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+              })}
+            </span>
             {settings.timerEnabled && (
-              <> {t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</>
+              <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
             )}
           </span>
         </div>
