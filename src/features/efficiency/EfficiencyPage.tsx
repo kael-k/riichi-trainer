@@ -86,7 +86,6 @@ export function EfficiencyPage() {
               >
                 {round.paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
               </button>
-              {t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}
             </span>
           )}
           <span>{t('efficiency.wallStatus', { count: round.liveWall.length })}</span>
@@ -104,6 +103,9 @@ export function EfficiencyPage() {
               total: round.cumulativeTotal,
               accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
             })}
+            {settings.timerEnabled && (
+              <> {t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</>
+            )}
           </span>
         </div>
 
