@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><symbol id="tile-front" viewBox="0 0 300 400"><defs
      id="front-defs4"><linearGradient
        id="front-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="front-stop10057" /></linearGradient><marker
@@ -168,7 +168,7 @@
 <symbol id="tile-back" viewBox="0 0 300 400"><defs
      id="back-defs4"><linearGradient
        id="back-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="back-stop10057" /></linearGradient><marker
@@ -297,7 +297,7 @@
 <symbol id="tile-1z" viewBox="0 0 300 400"><defs
      id="1z-defs4"><linearGradient
        id="1z-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="1z-stop10057" /></linearGradient><marker
@@ -396,7 +396,7 @@
 <symbol id="tile-2z" viewBox="0 0 300 400"><defs
      id="2z-defs4"><linearGradient
        id="2z-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="2z-stop10057" /></linearGradient><marker
@@ -517,7 +517,7 @@
 <symbol id="tile-3z" viewBox="0 0 300 400"><defs
      id="3z-defs4"><linearGradient
        id="3z-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="3z-stop10057" /></linearGradient><marker
@@ -621,7 +621,7 @@
 <symbol id="tile-4z" viewBox="0 0 300 400"><defs
      id="4z-defs4"><linearGradient
        id="4z-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="4z-stop10057" /></linearGradient><marker
@@ -715,7 +715,7 @@
 <symbol id="tile-5z" viewBox="0 0 300 400"><defs
      id="5z-defs4"><linearGradient
        id="5z-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="5z-stop10057" /></linearGradient><marker
@@ -793,7 +793,7 @@
 <symbol id="tile-6z" viewBox="0 0 300 400"><defs
      id="6z-defs4"><linearGradient
        id="6z-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="6z-stop10057" /></linearGradient><marker
@@ -948,7 +948,7 @@
 <symbol id="tile-7z" viewBox="0 0 300 400"><defs
      id="7z-defs4"><linearGradient
        id="7z-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="7z-stop10057" /></linearGradient><marker
@@ -1039,7 +1039,7 @@
 <symbol id="tile-1m" viewBox="0 0 300 400"><defs
      id="1m-defs4"><linearGradient
        id="1m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="1m-stop10057" /></linearGradient><marker
@@ -1165,7 +1165,7 @@
 <symbol id="tile-2m" viewBox="0 0 300 400"><defs
      id="2m-defs4"><linearGradient
        id="2m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="2m-stop10057" /></linearGradient><marker
@@ -1298,7 +1298,7 @@
 <symbol id="tile-3m" viewBox="0 0 300 400"><defs
      id="3m-defs4"><linearGradient
        id="3m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="3m-stop10057" /></linearGradient><marker
@@ -1436,7 +1436,7 @@
 <symbol id="tile-4m" viewBox="0 0 300 400"><defs
      id="4m-defs4"><linearGradient
        id="4m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="4m-stop10057" /></linearGradient><marker
@@ -1574,7 +1574,7 @@
 <symbol id="tile-5m" viewBox="0 0 300 400"><defs
      id="5m-defs4"><linearGradient
        id="5m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="5m-stop10057" /></linearGradient><marker
@@ -1731,7 +1731,7 @@
 <symbol id="tile-6m" viewBox="0 0 300 400"><defs
      id="6m-defs4"><linearGradient
        id="6m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="6m-stop10057" /></linearGradient><marker
@@ -1873,7 +1873,7 @@
 <symbol id="tile-7m" viewBox="0 0 300 400"><defs
      id="7m-defs4"><linearGradient
        id="7m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="7m-stop10057" /></linearGradient><marker
@@ -2005,7 +2005,7 @@
 <symbol id="tile-8m" viewBox="0 0 300 400"><defs
      id="8m-defs4"><linearGradient
        id="8m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="8m-stop10057" /></linearGradient><marker
@@ -2138,7 +2138,7 @@
 <symbol id="tile-9m" viewBox="0 0 300 400"><defs
      id="9m-defs4"><linearGradient
        id="9m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="9m-stop10057" /></linearGradient><marker
@@ -2276,7 +2276,7 @@
 <symbol id="tile-0m" viewBox="0 0 300 400"><defs
      id="0m-defs4"><linearGradient
        id="0m-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="0m-stop10057" /></linearGradient><marker
@@ -2438,7 +2438,7 @@
 <symbol id="tile-1p" viewBox="0 0 300 400"><defs
      id="1p-defs4"><linearGradient
        id="1p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="1p-stop10057" /></linearGradient><marker
@@ -2803,7 +2803,7 @@
 <symbol id="tile-2p" viewBox="0 0 300 400"><defs
      id="2p-defs4"><linearGradient
        id="2p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="2p-stop10057" /></linearGradient><marker
@@ -3037,7 +3037,7 @@
 <symbol id="tile-3p" viewBox="0 0 300 400"><defs
      id="3p-defs4"><linearGradient
        id="3p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="3p-stop10057" /></linearGradient><marker
@@ -3236,7 +3236,7 @@
 <symbol id="tile-4p" viewBox="0 0 300 400"><defs
      id="4p-defs4"><linearGradient
        id="4p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="4p-stop10057" /></linearGradient><marker
@@ -3472,7 +3472,7 @@
 <symbol id="tile-5p" viewBox="0 0 300 400"><defs
      id="5p-defs4"><linearGradient
        id="5p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="5p-stop10057" /></linearGradient><marker
@@ -3747,7 +3747,7 @@
 <symbol id="tile-6p" viewBox="0 0 300 400"><defs
      id="6p-defs4"><linearGradient
        id="6p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="6p-stop10057" /></linearGradient><marker
@@ -4049,7 +4049,7 @@
 <symbol id="tile-7p" viewBox="0 0 300 400"><defs
      id="7p-defs4"><linearGradient
        id="7p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="7p-stop10057" /></linearGradient><marker
@@ -4427,7 +4427,7 @@
 <symbol id="tile-8p" viewBox="0 0 300 400"><defs
      id="8p-defs4"><linearGradient
        id="8p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="8p-stop10057" /></linearGradient><marker
@@ -4809,7 +4809,7 @@
 <symbol id="tile-9p" viewBox="0 0 300 400"><defs
      id="9p-defs4"><linearGradient
        id="9p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="9p-stop10057" /></linearGradient><marker
@@ -5232,7 +5232,7 @@
 <symbol id="tile-0p" viewBox="0 0 300 400"><defs
      id="0p-defs4"><linearGradient
        id="0p-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="0p-stop10057" /></linearGradient><marker
@@ -5512,7 +5512,7 @@
 <symbol id="tile-1s" viewBox="0 0 300 400"><defs
      id="1s-defs4"><linearGradient
        id="1s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="1s-stop10057" /></linearGradient><marker
@@ -6079,7 +6079,7 @@
 <symbol id="tile-2s" viewBox="0 0 300 400"><defs
      id="2s-defs4"><linearGradient
        id="2s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="2s-stop10057" /></linearGradient><marker
@@ -6284,7 +6284,7 @@
 <symbol id="tile-3s" viewBox="0 0 300 400"><defs
      id="3s-defs4"><linearGradient
        id="3s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="3s-stop10057" /></linearGradient><marker
@@ -6566,7 +6566,7 @@
 <symbol id="tile-4s" viewBox="0 0 300 400"><defs
      id="4s-defs4"><linearGradient
        id="4s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="4s-stop10057" /></linearGradient><marker
@@ -6939,7 +6939,7 @@
 <symbol id="tile-5s" viewBox="0 0 300 400"><defs
      id="5s-defs4"><linearGradient
        id="5s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="5s-stop10057" /></linearGradient><marker
@@ -7341,7 +7341,7 @@
 <symbol id="tile-6s" viewBox="0 0 300 400"><defs
      id="6s-defs4"><linearGradient
        id="6s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="6s-stop10057" /></linearGradient><marker
@@ -7809,7 +7809,7 @@
 <symbol id="tile-7s" viewBox="0 0 300 400"><defs
      id="7s-defs4"><linearGradient
        id="7s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="7s-stop10057" /></linearGradient><marker
@@ -8217,7 +8217,7 @@
 <symbol id="tile-8s" viewBox="0 0 300 400"><defs
      id="8s-defs4"><linearGradient
        id="8s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="8s-stop10057" /></linearGradient><marker
@@ -8710,7 +8710,7 @@
 <symbol id="tile-9s" viewBox="0 0 300 400"><defs
      id="9s-defs4"><linearGradient
        id="9s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="9s-stop10057" /></linearGradient><marker
@@ -9214,7 +9214,7 @@
 <symbol id="tile-0s" viewBox="0 0 300 400"><defs
      id="0s-defs4"><linearGradient
        id="0s-linearGradient10055"
-       osb:paint="solid"><stop
+      ><stop
          style="stop-color:#000000;stop-opacity:1;"
          offset="0"
          id="0s-stop10057" /></linearGradient><marker

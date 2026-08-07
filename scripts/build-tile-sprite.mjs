@@ -39,7 +39,10 @@ function toSymbol(svg, symbolId, prefix) {
     .replace(/<metadata[\s\S]*?<\/metadata>/g, '')
     .replace(/<(sodipodi|inkscape):[\w-]+\s[^>]*\/>/g, '')
     .replace(/<sodipodi:namedview[\s\S]*?(\/>|<\/sodipodi:namedview>)/g, '')
-    .replace(/\s(inkscape|sodipodi|xmlns:\w+):[\w.-]+="[^"]*"/g, '')
+    // editor leftovers, and osb: in particular has to go: its xmlns declaration lives on the
+    // <svg> root being replaced here, and an undeclared prefix makes the file invalid XML —
+    // harmless inside the HTML-parsed sprite, fatal for favicon.svg, which is parsed as XML
+    .replace(/\s(inkscape|sodipodi|osb|xmlns:\w+):[\w.-]+="[^"]*"/g, '')
     .replace(/\sxmlns="[^"]*"/g, '')
   const viewBox = s.match(/viewBox="([^"]+)"/)?.[1]
   if (!viewBox) throw new Error(`${symbolId}: no viewBox`)
