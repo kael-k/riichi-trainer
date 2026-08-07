@@ -84,7 +84,7 @@ export const useSettings = create<SettingsState>()(
         showShanten: true,
         timerEnabled: true,
         showUkeire: true,
-        opponents: true,
+        opponents: false,
         deadWall: true,
         aka: true,
         showWall: false,
