@@ -103,6 +103,8 @@ interface RoundState {
   liveWall: ParsedTile[]
   lastResult: TurnResult | null
   cumulativeLost: number
+  /** Sum of best.ukeireCount across every graded choice — the ceiling cumulativeLost is measured against. */
+  cumulativeTotal: number
   finished: boolean
   /** Finished because the hand reached tenpai (rather than the wall drying up). */
   tenpai: boolean
@@ -343,6 +345,7 @@ function snapshot(core: RoundCore, prev?: RoundState): RoundState {
     tenpai: finished && shanten(core.hand) <= 0,
     lastResult: prev?.lastResult ?? null,
     cumulativeLost: prev?.cumulativeLost ?? 0,
+    cumulativeTotal: prev?.cumulativeTotal ?? 0,
     elapsed: prev?.elapsed ?? 0,
     paused: prev?.paused ?? false,
   }
@@ -473,6 +476,7 @@ export function useEfficiencyRound(
       ...snapshot(r, s),
       lastResult,
       cumulativeLost: s.cumulativeLost + lost,
+      cumulativeTotal: s.cumulativeTotal + best.ukeireCount,
     }))
   }
 
@@ -522,6 +526,7 @@ export function useEfficiencyRound(
       ...snapshot(r, s),
       lastResult,
       cumulativeLost: s.cumulativeLost + lost,
+      cumulativeTotal: s.cumulativeTotal + best.ukeireCount,
     }))
   }
 
@@ -576,6 +581,7 @@ export function useEfficiencyRound(
       ...snapshot(r, s),
       lastResult,
       cumulativeLost: s.cumulativeLost + lost,
+      cumulativeTotal: s.cumulativeTotal + best.ukeireCount,
     }))
   }
 

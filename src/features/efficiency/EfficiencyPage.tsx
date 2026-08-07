@@ -12,6 +12,11 @@ import { decodeSituation, WINDS } from '../situation/urlCodec'
 import { DiscardFeedback } from './DiscardFeedback'
 import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
 
+/** 1 lost out of 100 available reads as 99% accuracy; no graded choices yet reads as 100%. */
+function accuracy(lost: number, total: number): number {
+  return total > 0 ? Math.round((1 - lost / total) * 100) : 100
+}
+
 export function EfficiencyPage() {
   const { t } = useTranslation()
   const [params] = useSearchParams()
@@ -94,7 +99,11 @@ export function EfficiencyPage() {
             </span>
           )}
           <span className="ml-auto">
-            {t('efficiency.ukeireLost', { count: round.cumulativeLost })}
+            {t('efficiency.ukeireLost', {
+              lost: round.cumulativeLost,
+              total: round.cumulativeTotal,
+              accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+            })}
           </span>
         </div>
 
@@ -150,6 +159,8 @@ export function EfficiencyPage() {
                 count: round.turn,
                 turns: round.turn,
                 lost: round.cumulativeLost,
+                total: round.cumulativeTotal,
+                accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
               })}
             </p>
             <button
