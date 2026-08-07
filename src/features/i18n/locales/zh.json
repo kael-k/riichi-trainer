@@ -67,6 +67,7 @@
       "showWall": "显示牌山"
     },
     "roundStatus": "{{round}}场 · 第{{turn}}巡",
+    "avgTime": "· 平均 {{time}}",
     "resumeTimer": "恢复计时",
     "pauseTimer": "暂停计时",
     "wallStatus_other": "牌山: 剩余{{count}}张",

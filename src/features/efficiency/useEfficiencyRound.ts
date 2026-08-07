@@ -18,6 +18,7 @@ import {
   type TileId,
 } from '../../core/tiles'
 import { buildWall, DEAD_WALL_SIZE, INITIAL_HAND_SIZE } from '../../core/wall'
+import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
 import { allTiles, encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
 
@@ -358,8 +359,12 @@ export function useEfficiencyRound(
   const [randomSeed] = useState(() => Math.random().toString(36).slice(2))
   const core = useRef<RoundCore>(undefined)
   const effectiveSeed = useRef('')
+  // round.elapsed at the last choice, so each choice's time is a delta of the same
+  // pause-aware clock rather than a second, unpaused one
+  const lastChoiceElapsed = useRef(0)
   const [state, setState] = useState<RoundState>(() => startRound())
   const log = useLog((s) => s.log)
+  const stats = useSessionStats()
 
   function startRound(): RoundState {
     // no suffix on first load, so a URL whose seed came from situationQuery() (already
@@ -367,7 +372,14 @@ export function useEfficiencyRound(
     const base = situation.seed || randomSeed
     effectiveSeed.current = restartCount === 0 ? base : `${base}:${restartCount}`
     core.current = createRound(situation, options, effectiveSeed.current)
+    lastChoiceElapsed.current = 0
     return snapshot(core.current)
+  }
+
+  /** Records one choice (discard/kita/kan) toward the session's average decision time. */
+  function recordChoice(isBest: boolean) {
+    stats.record(isBest, (state.elapsed - lastChoiceElapsed.current) * 1000)
+    lastChoiceElapsed.current = state.elapsed
   }
 
   useEffect(() => {
@@ -455,6 +467,7 @@ export function useEfficiencyRound(
       )
     }
 
+    recordChoice(isBest)
     advanceAfterDiscard(r, tile, options)
     setState((s) => ({
       ...snapshot(r, s),
@@ -504,6 +517,7 @@ export function useEfficiencyRound(
       )
     }
 
+    recordChoice(isBest)
     setState((s) => ({
       ...snapshot(r, s),
       lastResult,
@@ -557,6 +571,7 @@ export function useEfficiencyRound(
       )
     }
 
+    recordChoice(isBest)
     setState((s) => ({
       ...snapshot(r, s),
       lastResult,
@@ -578,6 +593,7 @@ export function useEfficiencyRound(
 
   return {
     ...state,
+    averageTime: stats.averageTime,
     discard,
     kita,
     kan,

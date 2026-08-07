@@ -67,6 +67,7 @@
       "showWall": "Mostra il muro"
     },
     "roundStatus": "vento {{round}} · turno {{turn}}",
+    "avgTime": "· media {{time}}",
     "resumeTimer": "Riprendi il timer",
     "pauseTimer": "Metti in pausa il timer",
     "wallStatus_one": "Muro: {{count}} tessera",

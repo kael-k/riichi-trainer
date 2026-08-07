@@ -67,6 +67,7 @@
       "showWall": "山を表示"
     },
     "roundStatus": "{{round}}場・{{turn}}巡目",
+    "avgTime": "・平均 {{time}}",
     "resumeTimer": "タイマーを再開",
     "pauseTimer": "タイマーを一時停止",
     "wallStatus_other": "山: 残り{{count}}枚",

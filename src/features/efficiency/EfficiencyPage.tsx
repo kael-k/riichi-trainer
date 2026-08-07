@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, River, Tile } from '../../components/tiles/Tile'
-import { formatElapsed } from '../../lib/formatElapsed'
+import { formatElapsed, formatElapsedMs } from '../../lib/formatElapsed'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation, WINDS } from '../situation/urlCodec'
@@ -81,6 +81,7 @@ export function EfficiencyPage() {
               >
                 {round.paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
               </button>
+              {t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}
             </span>
           )}
           <span>{t('efficiency.wallStatus', { count: round.liveWall.length })}</span>

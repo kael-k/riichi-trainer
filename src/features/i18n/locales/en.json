@@ -67,6 +67,7 @@
       "showWall": "Show wall"
     },
     "roundStatus": "{{round}} round · turn {{turn}}",
+    "avgTime": "· avg {{time}}",
     "resumeTimer": "Resume timer",
     "pauseTimer": "Pause timer",
     "wallStatus_one": "Wall: {{count}} tile",
