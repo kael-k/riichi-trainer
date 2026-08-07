@@ -45,8 +45,9 @@ export interface Settings {
   }
 }
 
-/** Trainer tile size presets (XS-XL); multiplies the base tile width. */
-export const TILE_SCALES = [0.8, 1, 1.25, 1.5, 1.8] as const
+/** Trainer tile size presets (S-XL); multiplies the base tile width. Four presets, not five:
+ *  a fifth button crowds the row on a phone, which is the width that matters here. */
+export const TILE_SCALES = [1, 1.25, 1.5, 1.8] as const
 
 /** Size used until the reader picks one: M, big enough to read a hand on a phone. */
 export const DEFAULT_TILE_SCALE = 1.25
@@ -119,18 +120,19 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'riichi-trainer-settings',
-      version: 1,
+      version: 2,
       // v0 stored `showTileNumbers` and `tileScale` as plain values, so an install that never
       // touched either is indistinguishable from one that deliberately picked the old default.
       // Both old defaults are read as "never chosen" and fall back to the current default; a
-      // non-default value is a real choice and survives.
+      // non-default value is a real choice and survives. v1 briefly offered a 0.8 preset —
+      // it no longer has a button, so anyone holding it goes back to the default.
       migrate: (persisted, version) => {
         const p = (persisted ?? {}) as Partial<SettingsState>
-        if (version >= 1) return p
+        const scale = version < 1 && p.tileScale === 1 ? null : p.tileScale
         return {
           ...p,
-          showTileNumbers: p.showTileNumbers === false ? null : p.showTileNumbers,
-          tileScale: p.tileScale === 1 ? null : p.tileScale,
+          showTileNumbers: version < 1 && p.showTileNumbers === false ? null : p.showTileNumbers,
+          tileScale: scale === 0.8 ? null : scale,
         }
       },
       // zustand's default merge is shallow at the top level, so a persisted `efficiency`/
