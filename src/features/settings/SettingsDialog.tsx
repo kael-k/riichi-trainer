@@ -1,5 +1,5 @@
 import { Moon, Settings, Sun, SunMoon, X } from 'lucide-react'
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { resolveLocale } from '../i18n'
@@ -174,51 +174,72 @@ interface SettingsButtonProps {
  *  underneath — the one settings surface shared by every screen, including home. */
 export function SettingsButton({ title, children }: SettingsButtonProps) {
   const { t } = useTranslation()
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [open, setOpen] = useState(false)
+
+  // the panel is a plain positioned overlay, not a <dialog>: iOS Safari kept losing it to
+  // top-layer/sizing quirks (a modal dialog whose own height is auto collapses there, so the
+  // backdrop dimmed over nothing), and nothing here actually needs the dialog element
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('keydown', onKey)
+    // the page behind must not scroll while the panel is up
+    const { overflow } = document.body.style
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = overflow
+    }
+  }, [open])
+
   return (
     <>
       <button
         type="button"
         aria-label={t('settings.button')}
-        onClick={() => dialogRef.current?.showModal()}
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
         className="flex size-11 items-center justify-center"
       >
         <Settings className="size-5" />
       </button>
-      {/* portalled to <body>: the trainer header this button sits in uses backdrop-blur, and
-          WebKit keeps a dialog inside a backdrop-filtered ancestor in that ancestor's clipped
-          box instead of the top layer — the panel opens but is invisible on iOS Safari */}
-      {createPortal(
-        <dialog
-          ref={dialogRef}
-          onClick={(e) => {
-            // click landed on the ::backdrop (dispatched with the dialog itself as target),
-            // not on the form content, so it's an "outside" click
-            if (e.target === dialogRef.current) dialogRef.current?.close()
-          }}
-          className="m-auto w-[min(90vw,24rem)] rounded-xl p-0 backdrop:bg-black/40 md:fixed md:inset-y-0 md:right-0 md:left-auto md:m-0 md:h-svh md:w-96 md:max-w-[90vw] md:rounded-none md:rounded-l-2xl dark:bg-neutral-900 dark:text-neutral-100"
-        >
-          <form method="dialog" className="flex h-full flex-col">
-            <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
-              <h2 className="font-semibold">
-                {title ? t('settings.title', { title }) : t('settings.titleFallback')}
-              </h2>
-              <button
-                className="flex size-11 items-center justify-center"
-                aria-label={t('common.close')}
-              >
-                <X className="size-5" />
-              </button>
+      {/* portalled to <body>: the trainer header this button sits in uses backdrop-blur, which
+          on WebKit becomes the containing block for anything fixed inside it */}
+      {open &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title ? t('settings.title', { title }) : t('settings.titleFallback')}
+            onClick={(e) => {
+              // only an "outside" click, i.e. one that landed on the scrim itself
+              if (e.target === e.currentTarget) setOpen(false)
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 md:items-stretch md:justify-end md:p-0"
+          >
+            <div className="flex max-h-full w-[min(90vw,24rem)] flex-col overflow-hidden rounded-xl bg-white text-neutral-900 md:h-full md:w-96 md:max-w-[90vw] md:rounded-none md:rounded-l-2xl dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
+                <h2 className="font-semibold">
+                  {title ? t('settings.title', { title }) : t('settings.titleFallback')}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="flex size-11 items-center justify-center"
+                  aria-label={t('common.close')}
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+                {children}
+                {children && <hr className="border-neutral-200 dark:border-neutral-800" />}
+                <GlobalSettings />
+              </div>
             </div>
-            <div className="flex flex-col gap-4 overflow-y-auto p-4">
-              {children}
-              {children && <hr className="border-neutral-200 dark:border-neutral-800" />}
-              <GlobalSettings />
-            </div>
-          </form>
-        </dialog>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   )
 }
