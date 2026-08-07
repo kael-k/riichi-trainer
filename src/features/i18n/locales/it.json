@@ -63,8 +63,8 @@
       "desc": "Indovina a quanto shanten sei dal tenpai, contro il tempo."
     },
     "scoring": {
-      "title": "Allenamento punteggio (alpha)",
-      "desc": "Indovina han, fu e punti di una mano vincente. Alpha: il riconoscimento degli yaku è ancora in fase di verifica."
+      "title": "Allenamento punteggio",
+      "desc": "Indovina han, fu e punti di una mano vincente."
     }
   },
   "efficiency": {
@@ -72,7 +72,7 @@
       "showShanten": "Mostra shanten",
       "timer": "Timer",
       "showUkeire": "Mostra tessere di ukeire",
-      "opponents": "Avversari (tsumogiri)",
+      "opponents": "Avversari",
       "deadWall": "Muro morto e dora",
       "redFives": "Cinque rossi",
       "showWall": "Mostra il muro"
@@ -153,6 +153,7 @@
       "aka": "Cinque rossi"
     },
     "handNumber": "Mano {{count}}",
+    "dealing": "Distribuzione…",
     "correctScore": "Corrette: {{correct}} / {{total}}",
     "avgTime": "media {{time}}",
     "roundWind": "Vento di mano",

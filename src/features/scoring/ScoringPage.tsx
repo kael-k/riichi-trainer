@@ -97,13 +97,28 @@ export function ScoringPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
 
-  // the whole scoring section is the round's options; only the ruleset can come from the URL
+  // the scoring section supplies the round's options, but a link can pin the rules the match was
+  // simulated under — without them the same seed would replay into a different hand
   const options = useMemo<RoundOptions>(
-    () => ({ ...settings, sanma: urlData.sanma ?? sanma }),
+    () => ({
+      ...settings,
+      sanma: urlData.sanma ?? sanma,
+      aka: urlData.aka ?? settings.aka,
+      openHands: urlData.calls ?? settings.openHands,
+      honba: urlData.honba ?? settings.honba,
+    }),
     [urlData, sanma, settings],
   )
 
   const round = useScoringRound(urlData, options)
+
+  if (round.loading || !round.situation || !round.actual) {
+    return (
+      <TrainerLayout title={t('trainer.scoring.title')}>
+        <p className="p-8 text-center text-neutral-500">{t('scoring.dealing')}</p>
+      </TrainerLayout>
+    )
+  }
 
   const split = round.actual.payments.fromDealer !== undefined
   const ctx = round.situation.ctx
@@ -139,6 +154,10 @@ export function ScoringPage() {
   ).sort((a, b) => a.id - b.id)
   const winTile =
     winIndex >= 0 ? round.situation.concealed[winIndex] : { id: ctx.winTile, red: false }
+  // a ron tile belongs to the discarder's river, where the board rings it; only a tsumo is
+  // genuinely a tile you drew. Without the board there is no river to read it from, so it has
+  // to sit beside the hand regardless.
+  const showWinTileInHand = ctx.tsumo || !settings.table || !round.match
 
   const badge = (text: string) => (
     <span className="rounded bg-neutral-100 px-2 py-0.5 font-medium dark:bg-neutral-800">
@@ -154,21 +173,26 @@ export function ScoringPage() {
   ))
   const winBadge = badge(t(ctx.tsumo ? 'scoring.tsumo' : 'scoring.ron'))
 
-  // the hand is dealt to one seat of a real table: your seat wind is a position on the board,
-  // and the melds sit on your side of it. The other seats stay empty — a scoring drill has no
-  // discard history to show, but the board still places the winds
+  // the hand was actually played, so the board shows the real thing: every seat's real river,
+  // the ronned tile ringed where it truly was discarded, real melds. A link-pinned or fallback
+  // hand has no match behind it and still shows only the winds and the winner's melds.
   const players = options.sanma ? 3 : 4
-  const tableSeatIndex = Math.min(ctx.seat - HONOR, players - 1)
-  // nothing records who dealt in, so the ronned tile goes to the seat that discards immediately
-  // before your turn — the one whose discard you would most often be claiming
-  const discarder = (tableSeatIndex - 1 + players) % players
-  const seats: SeatView[] = Array.from({ length: players }, (_, seat) => ({
-    ...(seat === tableSeatIndex && {
-      melds: round.situation.melds,
-      nuki: Array.from({ length: round.situation.kita }, () => ({ id: HONOR + 3, red: false })),
-    }),
-    ...(!ctx.tsumo && seat === discarder && { river: [{ ...winTile, win: true }] }),
-  }))
+  const tableSeatIndex = Math.min(round.seat, players - 1)
+  const seats: SeatView[] = round.match
+    ? round.match.players.map((player) => ({
+        river: player.river,
+        melds: player.melds,
+        nuki: player.nuki,
+      }))
+    : Array.from({ length: players }, (_, seat) => ({
+        ...(seat === tableSeatIndex && {
+          melds: round.situation!.melds,
+          nuki: Array.from({ length: round.situation!.kita }, () => ({
+            id: HONOR + 3,
+            red: false,
+          })),
+        }),
+      }))
 
   const testsEnabled = [settings.testHan, settings.testFu, settings.testPoints].filter(
     Boolean,
@@ -297,10 +321,13 @@ export function ScoringPage() {
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <div className="flex flex-col gap-2">
               {/* which tile completed the hand decides the wait fu and menzen ron, so it is part of
-              the question, not part of the answer — always ringed, never gated on the reveal */}
+              the question, not part of the answer — always ringed, never gated on the reveal.
+              The slot beside the hand means "you drew this", so it is only right for a tsumo: on
+              a ron the tile is a discard, and the board already rings it in the river it was
+              discarded into. With no board up there is nothing to point at, so it stays here. */}
               <HandDisplay
                 tiles={restConcealed}
-                drawn={winTile}
+                drawn={showWinTileInHand ? winTile : undefined}
                 drawnClassName="rounded-sm outline-2 outline-red-500"
               />
               {!settings.table && round.situation.melds.length > 0 && (

@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { HONOR, parseTenhou, PIN } from '../../core/tiles'
 import { useLog } from '../../store/log'
@@ -26,19 +26,41 @@ function generated(seed: string): ScoringUrl {
   return { seed, situation: null }
 }
 
+/** Hands come from a simulated match now, so they arrive a tick later than they used to. */
+async function deal(urlData: ScoringUrl, options: RoundOptions = FULL) {
+  const { result } = renderHook(() => useScoringRound(urlData, options))
+  await waitFor(() => expect(result.current.loading).toBe(false))
+  return result
+}
+
 describe('useScoringRound', () => {
-  it('deals a hand with a precomputed score, visible immediately', () => {
-    const urlData = generated('round-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL))
-    expect(result.current.situation.concealed.length).toBeGreaterThan(0)
-    expect(result.current.actual.payments.total).toBeGreaterThan(0)
+  it('deals a hand with a precomputed score', async () => {
+    const result = await deal(generated('round-seed'))
+    expect(result.current.situation!.concealed.length).toBeGreaterThan(0)
+    expect(result.current.actual!.payments.total).toBeGreaterThan(0)
     expect(result.current.checked).toBe(false)
   })
 
-  it('grades a fully correct answer', () => {
-    const urlData = generated('grade-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL))
-    const { actual } = result.current
+  it('deals it from a real match, with rivers behind it', async () => {
+    const result = await deal(generated('match-seed'))
+    expect(result.current.match).not.toBeNull()
+    // the winner is a seat at that table, and somebody has discarded by the time a hand is won
+    expect(result.current.match!.players.length).toBe(4)
+    expect(result.current.match!.players.some((p) => p.river.length > 0)).toBe(true)
+    expect(result.current.seat).toBeGreaterThanOrEqual(0)
+    expect(result.current.seat).toBeLessThan(4)
+  })
+
+  it('is reproducible from the same seed', async () => {
+    const a = await deal(generated('repeat-seed'))
+    const b = await deal(generated('repeat-seed'))
+    expect(a.current.situation!.concealed).toEqual(b.current.situation!.concealed)
+    expect(a.current.actual!.han).toBe(b.current.actual!.han)
+  })
+
+  it('grades a fully correct answer', async () => {
+    const result = await deal(generated('grade-seed'))
+    const actual = result.current.actual!
     const split = actual.payments.fromDealer !== undefined
     act(() =>
       result.current.check(
@@ -58,10 +80,9 @@ describe('useScoringRound', () => {
     expect(result.current.totalCount).toBe(1)
   })
 
-  it('grades a wrong han as incorrect overall, even with fu/points right', () => {
-    const urlData = generated('wrong-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL))
-    const { actual } = result.current
+  it('grades a wrong han as incorrect overall, even with fu/points right', async () => {
+    const result = await deal(generated('wrong-seed'))
+    const actual = result.current.actual!
     act(() =>
       result.current.check({ han: actual.han + 1, fu: actual.fu, points: actual.payments.main }),
     )
@@ -69,21 +90,17 @@ describe('useScoringRound', () => {
     expect(result.current.lastResult?.correct).toBe(false)
   })
 
-  it('skips a disabled test entirely: wrong fu still grades correct when testFu is off', () => {
-    const urlData = generated('skip-seed')
-    const options: RoundOptions = { ...FULL, testFu: false }
-    const { result } = renderHook(() => useScoringRound(urlData, options))
-    const { actual } = result.current
+  it('skips a disabled test entirely: wrong fu still grades correct when testFu is off', async () => {
+    const result = await deal(generated('skip-seed'), { ...FULL, testFu: false })
+    const actual = result.current.actual!
     act(() => result.current.check({ han: actual.han, fu: -1, points: actual.payments.main }))
     expect(result.current.lastResult?.correctFu).toBe(true)
     expect(result.current.lastResult?.correct).toBe(true)
   })
 
-  it('grades the exact (pre-rounding) fu when exactFu is on', () => {
-    const urlData = generated('exact-seed')
-    const options: RoundOptions = { ...FULL, exactFu: true }
-    const { result } = renderHook(() => useScoringRound(urlData, options))
-    const { actual } = result.current
+  it('grades the exact (pre-rounding) fu when exactFu is on', async () => {
+    const result = await deal(generated('exact-seed'), { ...FULL, exactFu: true })
+    const actual = result.current.actual!
     act(() =>
       result.current.check({ han: actual.han, fu: actual.fu, points: actual.payments.main }),
     )
@@ -91,23 +108,25 @@ describe('useScoringRound', () => {
     if (actual.fu !== actual.fuExact) expect(result.current.lastResult?.correctFu).toBe(false)
   })
 
-  it('next() deals a fresh hand and resets checked/elapsed', () => {
-    const urlData = generated('next-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL))
+  it('next() deals a fresh hand and resets checked/elapsed', async () => {
+    const result = await deal(generated('next-seed'))
     const first = result.current.situation
+    // let the clock run, so "reset" is something the next hand actually has to undo
+    await waitFor(() => expect(result.current.elapsed).toBeGreaterThan(80))
     act(() => result.current.check({ han: 0, fu: 0, points: 0 }))
     expect(result.current.checked).toBe(true)
+    const before = result.current.elapsed
 
     act(() => result.current.next())
+    await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.checked).toBe(false)
-    expect(result.current.elapsed).toBe(0)
+    expect(result.current.elapsed).toBeLessThan(before)
     expect(result.current.situation).not.toEqual(first)
   })
 
-  it('clearing the log resets the score and the average', () => {
-    const urlData = generated('log-seed')
-    const { result } = renderHook(() => useScoringRound(urlData, FULL))
-    const { actual } = result.current
+  it('clearing the log resets the score and the average', async () => {
+    const result = await deal(generated('log-seed'))
+    const actual = result.current.actual!
     act(() =>
       result.current.check({ han: actual.han, fu: actual.fu, points: actual.payments.main }),
     )
@@ -119,15 +138,13 @@ describe('useScoringRound', () => {
     expect(result.current.averageTime).toBe(0)
   })
 
-  it('deals sanma hands without 2m-8m', () => {
-    const urlData = generated('sanma-seed')
-    const options: RoundOptions = { ...FULL, sanma: true }
-    const { result } = renderHook(() => useScoringRound(urlData, options))
-    const hasBanned = result.current.situation.concealed.some((t) => t.id >= 1 && t.id <= 7)
-    expect(hasBanned).toBe(false)
+  it('deals sanma hands without 2m-8m', async () => {
+    const result = await deal(generated('sanma-seed'), { ...FULL, sanma: true })
+    expect(result.current.situation!.concealed.some((t) => t.id >= 1 && t.id <= 7)).toBe(false)
+    expect(result.current.match?.players.length).toBe(3)
   })
 
-  it('reuses a pinned URL situation instead of generating one', () => {
+  it('reuses a pinned URL situation instead of generating one', async () => {
     const pinned: ScoringUrl = {
       seed: '',
       situation: {
@@ -152,13 +169,15 @@ describe('useScoringRound', () => {
         honba: 0,
       },
     }
-    const { result } = renderHook(() => useScoringRound(pinned, FULL))
-    expect(result.current.situation.concealed).toEqual(pinned.situation!.concealed)
-    expect(result.current.actual.payments.total).toBe(5800) // dealer riichi-pinfu-tanyao ron
+    const result = await deal(pinned)
+    expect(result.current.situation!.concealed).toEqual(pinned.situation!.concealed)
+    expect(result.current.actual!.payments.total).toBe(5800) // dealer riichi-pinfu-tanyao ron
     expect(result.current.invalidLink).toBe(false)
+    // a pinned hand has no match behind it, so the board falls back to winds and melds only
+    expect(result.current.match).toBeNull()
   })
 
-  it('falls back to a generated hand when the pinned situation has no legal win', () => {
+  it('falls back to a generated hand when the pinned situation has no legal win', async () => {
     const yakuless: ScoringUrl = {
       seed: 'fallback-seed',
       situation: {
@@ -185,9 +204,9 @@ describe('useScoringRound', () => {
         honba: 0,
       },
     }
-    const { result } = renderHook(() => useScoringRound(yakuless, FULL))
+    const result = await deal(yakuless)
     expect(result.current.invalidLink).toBe(true)
-    expect(result.current.situation.concealed).not.toEqual(yakuless.situation!.concealed)
-    expect(result.current.actual.payments.total).toBeGreaterThan(0)
+    expect(result.current.situation!.concealed).not.toEqual(yakuless.situation!.concealed)
+    expect(result.current.actual!.payments.total).toBeGreaterThan(0)
   })
 })

@@ -33,6 +33,31 @@ export function evaluateDiscards(hand: Hand, visible?: Uint8Array, sanma = false
 }
 
 /**
+ * Lowest shanten reachable by discarding one tile, and every discard that reaches it.
+ *
+ * `evaluateDiscards` computes ukeire for all fourteen candidates, and ukeire costs 34 shanten
+ * probes each — but a ranking only ever needs ukeire for the discards already tied on shanten,
+ * which is usually two or three. Simulated players use this first and price only the survivors,
+ * which is roughly a 4x cut in the simulator's dominant cost.
+ */
+export function bestDiscards(hand: Hand): { shanten: number; discards: TileId[] } {
+  let best = Infinity
+  const discards: TileId[] = []
+  for (let id = 0; id < NUM_TILE_TYPES; id++) {
+    if (hand.counts[id] === 0) continue
+    removeTile(hand, id)
+    const value = shanten(hand)
+    addTile(hand, id)
+    if (value < best) {
+      best = value
+      discards.length = 0
+    }
+    if (value === best) discards.push(id)
+  }
+  return { shanten: best, discards }
+}
+
+/**
  * Evaluates every closed kan (ankan) available from a 14-tile hand — any tile held four times.
  * `discard` names the kanned tile; options rank on the same footing as `evaluateDiscards`'s,
  * since a locked quad leaves the same 13-tile-equivalent shape a discard does. A kan never beats

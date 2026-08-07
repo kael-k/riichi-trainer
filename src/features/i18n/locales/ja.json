@@ -63,8 +63,8 @@
       "desc": "時間内に手牌のシャンテン数を当てよう。"
     },
     "scoring": {
-      "title": "点数計算トレーナー(アルファ版)",
-      "desc": "和了手の翻・符・点数を当てよう。アルファ版: 役判定は検証中です。"
+      "title": "点数計算トレーナー",
+      "desc": "和了手の翻・符・点数を当てよう。"
     }
   },
   "efficiency": {
@@ -72,7 +72,7 @@
       "showShanten": "シャンテン数を表示",
       "timer": "タイマー",
       "showUkeire": "受け入れ牌を表示",
-      "opponents": "他家(ツモ切り)",
+      "opponents": "対戦相手",
       "deadWall": "王牌とドラ",
       "redFives": "赤ドラ",
       "showWall": "山を表示"
@@ -148,6 +148,7 @@
       "aka": "赤ドラ"
     },
     "handNumber": "{{count}}問目",
+    "dealing": "配牌中…",
     "correctScore": "正解数: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
     "roundWind": "場",

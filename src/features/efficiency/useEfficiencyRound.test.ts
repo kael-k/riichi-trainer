@@ -93,20 +93,18 @@ describe('useEfficiencyRound', () => {
     expect(result.current.hand).not.toContainEqual({ id: 22, red: true })
   })
 
-  it('seeds one red five per suit into random walls when aka is enabled', () => {
+  // the red-five count is asserted over a whole table in core/match.test.ts — from here the
+  // opponents' hands are hidden, so only "none at all when aka is off" is checkable
+  it('seeds no red fives at all when aka is disabled', () => {
     const situation = emptySituation()
     situation.seed = 'aka-seed'
-    const count = (opts: RoundOptions) => {
-      const { result } = renderHook(() => useEfficiencyRound(situation, opts, true))
-      const everywhere = [
-        ...result.current.hand,
-        ...(result.current.drawn ? [result.current.drawn] : []),
-        ...result.current.liveWall,
-      ]
-      return everywhere.filter((t) => t.red).length
-    }
-    expect(count({ ...BARE, aka: true })).toBe(3)
-    expect(count(BARE)).toBe(0)
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const visible = [
+      ...result.current.hand,
+      ...(result.current.drawn ? [result.current.drawn] : []),
+      ...result.current.liveWall,
+    ]
+    expect(visible.filter((t) => t.red)).toHaveLength(0)
   })
 
   it('reserves a dead wall and exposes its dora indicator', () => {
@@ -116,7 +114,9 @@ describe('useEfficiencyRound', () => {
       useEfficiencyRound(situation, { ...BARE, deadWall: true }, true),
     )
     expect(result.current.doraIndicators).toHaveLength(1)
-    expect(result.current.liveWall.length).toBe(136 - 14 - 14) // deal 14, dead wall 14
+    // every seat is dealt a real hand now, opponents or not: 4 x 13, a 14-tile dead wall, and
+    // the one tile drawn to start your turn
+    expect(result.current.liveWall.length).toBe(136 - 14 - 52 - 1)
   })
 
   it('lets opponents tsumogiri around the table, draining the wall 4 tiles per turn', () => {
@@ -144,14 +144,17 @@ describe('useEfficiencyRound', () => {
       useEfficiencyRound(situation, { ...BARE, opponents: true }, true),
     )
 
-    // East ate the wall prefix; a bot only ever tsumogiris, and the river says so
-    expect(result.current.rivers[0]).toEqual([{ id: 27, red: false, tsumogiri: true }])
+    // East drew the wall prefix's first tile and has already discarded by the time it is your
+    // turn; what it chose is its own business, but it acted, and you drew the tile after it
+    expect(result.current.rivers[0]).toHaveLength(1)
     expect(result.current.drawn).toEqual(parseTenhou('7z')[0])
 
     act(() => result.current.discard(13)) // tsumogiri the 7z
     expect(result.current.rivers[1]).toEqual([{ id: 33, red: false, tsumogiri: true }])
-    const east = result.current.lastResult!.yours.ukeireTiles.find((t) => t.tile === 27)
-    expect(east?.remaining).toBe(1) // 2 in hand + 1 in East's river = 3 of 4 accounted for
+    // East's discard is face up, so it is accounted for in your ukeire counts
+    const eastDiscard = result.current.rivers[0][0].id
+    const seen = result.current.lastResult!.yours.ukeireTiles.find((t) => t.tile === eastDiscard)
+    if (seen) expect(seen.remaining).toBeLessThan(4)
   })
 
   it('marks a discard from the hand as tedashi, not tsumogiri', () => {
@@ -219,9 +222,8 @@ describe('useEfficiencyRound', () => {
       ...result.current.liveWall,
     ]
     expect(everywhere.some((t) => t.id >= 1 && t.id <= 7)).toBe(false) // 2m-8m
-    const reds = everywhere.filter((t) => t.red)
-    expect(reds).toHaveLength(2)
-    expect(reds.some((t) => t.id === 4)).toBe(false) // no red 5m
+    // the other two reds may be sitting in a hidden hand; a red 5m cannot exist at all
+    expect(everywhere.some((t) => t.red && t.id === 4)).toBe(false)
   })
 
   it('sanma: 3 rivers, wall drains 3 tiles per turn, only 2 hidden opponent hands reserved', () => {
@@ -232,12 +234,14 @@ describe('useEfficiencyRound', () => {
       useEfficiencyRound(situation, { ...BARE, sanma: true, opponents: true }, true),
     )
     expect(result.current.rivers).toHaveLength(3)
-    // 108 - 13 pinned - 26 hidden (2 opponents * 13) - 1 user draw
+    // 108 - 13 pinned - 26 dealt to the other two seats - 1 user draw
     expect(result.current.liveWall.length).toBe(108 - 13 - 26 - 1)
 
+    const before = result.current.liveWall.length
     act(() => result.current.discard(0))
-    expect(result.current.liveWall.length).toBe(108 - 13 - 26 - 1 - 3)
     expect(result.current.rivers.map((r) => r.length)).toEqual([1, 1, 1])
+    // at least one tile per seat, and more when an opponent pulls a kita and takes a replacement
+    expect(result.current.liveWall.length).toBeLessThanOrEqual(before - 3)
   })
 
   it('sanma clamps an out-of-range seat (e.g. yonma North) instead of indexing past rivers', () => {

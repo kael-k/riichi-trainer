@@ -37,7 +37,29 @@ export interface ScoringUrl {
   seed: string
   /** Null means "generate from `seed`"; a pinned hand always carries its own full context. */
   situation: ScoringSituation | null
+  /** Rule overrides pinned by the link. A seed only reproduces the same match if the rules the
+   *  match was simulated under come with it, so these travel alongside it. */
   sanma?: boolean
+  aka?: boolean
+  calls?: boolean
+  honba?: boolean
+}
+
+/** A match reproduces from its seed, so a link to one needs the seed plus the rules it was
+ *  played under — no tiles at all, and the receiver replays the whole hand, rivers included. */
+export function encodeScoringSeedUrl(
+  seed: string,
+  options: { sanma: boolean; aka: boolean; openHands: boolean; honba: boolean },
+): string {
+  const params = new URLSearchParams()
+  params.set('seed', seed)
+  params.set('sanma', options.sanma ? '1' : '0')
+  params.set('aka', options.aka ? '1' : '0')
+  params.set('calls', options.openHands ? '1' : '0')
+  // not `honba`: on a pinned-hand link that param carries the actual honba count, and the two
+  // meanings must not share a name
+  params.set('honbaOn', options.honba ? '1' : '0')
+  return params.toString()
 }
 
 /** Decodes a scoring situation from the query string — the scoring trainer's analogue of
@@ -46,9 +68,21 @@ export interface ScoringUrl {
 export function decodeScoringUrl(params: URLSearchParams): ScoringUrl {
   const seed = params.get('seed') ?? ''
   const handParam = params.get('hand')
-  const sanmaParam = params.get('sanma')
-  const sanma = sanmaParam === null ? undefined : sanmaParam !== '0'
-  if (!handParam) return { seed, situation: null, sanma }
+  const flag = (name: string): boolean | undefined => {
+    const value = params.get(name)
+    return value === null ? undefined : value !== '0'
+  }
+  const sanma = flag('sanma')
+  if (!handParam) {
+    return {
+      seed,
+      situation: null,
+      sanma,
+      aka: flag('aka'),
+      calls: flag('calls'),
+      honba: flag('honbaOn'),
+    }
+  }
 
   const concealed = parseTenhou(handParam)
   const melds = (params.get('melds') ?? '')

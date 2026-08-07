@@ -1,27 +1,36 @@
 import { useEffect, useRef, useState } from 'react'
+import type { Meld } from '../../core/agari'
 import {
   evaluateDiscards,
   evaluateKan,
   isBestDiscard,
   type DiscardOption,
 } from '../../core/efficiency'
-import { addTile, createHand, handToTiles, removeTile, tileCount, type Hand } from '../../core/hand'
+import { removeTile, tileCount } from '../../core/hand'
+import {
+  beginTurn,
+  concealedTiles,
+  createMatch,
+  drawReplacement,
+  finishTurn,
+  NORTH,
+  type MatchOptions,
+  type MatchState,
+} from '../../core/match'
 import { shanten } from '../../core/shanten'
 import {
   HONOR,
-  MAN,
   NUM_TILE_TYPES,
-  PIN,
-  SOU,
   tileCode,
   type ParsedTile,
   type RiverTile,
   type TileId,
 } from '../../core/tiles'
-import { buildWall, DEAD_WALL_SIZE, INITIAL_HAND_SIZE } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
-import { allTiles, encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
+import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
+
+export { NORTH }
 
 /** Options that change how a round plays out; resolved from settings with
  *  per-situation overrides so shared links reproduce exactly. */
@@ -32,17 +41,6 @@ export interface RoundOptions {
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma: boolean
 }
-
-function redFiveIds(sanma: boolean): TileId[] {
-  return sanma ? [PIN + 4, SOU + 4] : [MAN + 4, PIN + 4, SOU + 4]
-}
-
-/** North — the nukidora (kita) tile in sanma. */
-export const NORTH: TileId = HONOR + 3
-
-/** Kan-dora indicators a real dead wall holds; reserved up front so replacement draws (which
- *  pull from the dead wall's other end) can never eat into them. */
-const MAX_DORA_INDICATORS = 5
 
 export interface TurnResult {
   turn: number
@@ -59,37 +57,11 @@ export interface TurnResult {
   missed?: { kind: 'kan' | 'kita'; tile: TileId }
 }
 
-/** Mutable state of one round. The engine `Hand` only keeps counts, so redness is
- *  carried separately: `reds` holds the tile ids whose red copy is currently held. */
+/** The round is a real hand of mahjong from `core/match`; this is just which seat is yours. */
 interface RoundCore {
-  hand: Hand
-  reds: Set<TileId>
-  /** Upcoming draws, consumed front-first by whoever draws next. */
-  liveWall: ParsedTile[]
-  /** Materialized (not just a reserved count) so a kita/kan pull can draw a replacement from
-   *  its far end and backfill from the live wall. Empty when the dead wall setting is off — a
-   *  replacement draw then falls back to the live wall directly. Disjoint from `doraStack` so
-   *  a replacement backfill can never disturb an indicator that hasn't flipped yet. */
-  deadWall: ParsedTile[]
-  /** Unflipped kan-dora indicators, front-first, reserved from the dead wall at deal time. */
-  doraStack: ParsedTile[]
-  /** Indicators flipped so far (the original dora indicator, then one per kan called). */
-  doraIndicators: ParsedTile[]
-  /** Count of every face-up tile: all rivers plus every flipped dora indicator plus every
-   *  kanned/nuki'd tile still tracked separately from the (now-empty) hand slot it left. */
-  visible: Uint8Array
-  /** Discards per seat (0 = East); the user's is rivers[seatIndex]. Each carries whether it
-   *  was a tsumogiri, which the table draws — the opponents' always are. */
-  rivers: RiverTile[][]
-  nuki: ParsedTile[]
-  /** Closed kans called, each the four tiles (one possibly red) in call order. */
-  kans: ParsedTile[][]
+  match: MatchState
+  options: MatchOptions
   seatIndex: number
-  /** Tile drawn to reach the current 14-tile hand; undefined when the situation
-   *  pinned all 14 (no draw happened) or the wall ran dry. */
-  drawn: ParsedTile | undefined
-  turn: number
-  players: number
 }
 
 interface RoundState {
@@ -114,12 +86,19 @@ interface RoundState {
   paused: boolean
 }
 
+function you(core: RoundCore) {
+  return core.match.players[core.seatIndex]
+}
+
 /** Ranked discards for the hand as it stands, counting the hand itself plus every face-up tile
  *  as seen. `seen` comes back too, for the kan comparison that needs the same visibility. */
 function rankDiscards(core: RoundCore, sanma: boolean) {
+  const player = you(core)
   const seen = new Uint8Array(NUM_TILE_TYPES)
-  for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = core.hand.counts[i] + core.visible[i]
-  return { seen, ranked: evaluateDiscards(core.hand, seen, sanma) }
+  for (let i = 0; i < NUM_TILE_TYPES; i++) {
+    seen[i] = player.hand.counts[i] + core.match.visible[i]
+  }
+  return { seen, ranked: evaluateDiscards(player.hand, seen, sanma) }
 }
 
 /** Ukeire given up by playing `yours` instead of `best`. Counts only compare directly at the
@@ -128,233 +107,115 @@ function lostVs(yours: DiscardOption, best: DiscardOption): number {
   return yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
 }
 
-function opponentTsumogiri(core: RoundCore, seat: number): void {
-  const tile = core.liveWall.shift()
-  if (!tile) return
-  core.rivers[seat].push({ ...tile, tsumogiri: true })
-  core.visible[tile.id]++
+/** Runs every seat between you and your next turn. With opponents off they are simply skipped:
+ *  their hands still exist and still hold tiles, they just never act. */
+function runOpponents(core: RoundCore, opponents: boolean): void {
+  const { match, options, seatIndex } = core
+  if (!opponents) {
+    match.seat = seatIndex
+    match.pendingDraw = true
+    return
+  }
+  // one full go-round is the bound; a call hands the turn sideways but never backwards
+  for (let guard = 0; guard < 8 && match.seat !== seatIndex && !match.ended; guard++) {
+    beginTurn(match, options)
+    finishTurn(match, options)
+  }
 }
 
-function userDraw(core: RoundCore): void {
-  const tile = core.liveWall.shift()
-  if (tile) {
-    addTile(core.hand, tile.id)
-    if (tile.red) core.reds.add(tile.id)
-  }
-  core.drawn = tile
-}
+/** Discards `tile` for you, lets the table play round to you, and draws your next tile. Returns
+ *  false when the drill is over instead — either the discard reached tenpai or the wall ran dry. */
+function advanceAfterDiscard(core: RoundCore, tile: ParsedTile, opponents: boolean): boolean {
+  const { match, options } = core
+  finishTurn(match, options, tile)
 
-/** Draws a kita/kan replacement — off the dead wall's far end, backfilled from the live wall
- *  tail so the dead wall keeps its size, else straight from the live wall. */
-function drawReplacement(core: RoundCore): ParsedTile | undefined {
-  let drawn = core.deadWall.pop()
-  if (drawn) {
-    const backfill = core.liveWall.pop()
-    if (backfill) core.deadWall.unshift(backfill)
-  } else {
-    drawn = core.liveWall.shift()
-  }
-  return drawn
-}
-
-/** Pulls the held north to the nuki pile and draws its replacement. A sub-step of the current
- *  turn, not a turn of its own: the hand stays at 14, ready for the discard that follows. */
-function pullNorth(core: RoundCore): ParsedTile | undefined {
-  removeTile(core.hand, NORTH)
-  core.nuki.push({ id: NORTH, red: false })
-  core.visible[NORTH]++
-
-  const drawn = drawReplacement(core)
-  if (drawn) {
-    addTile(core.hand, drawn.id)
-    if (drawn.red) core.reds.add(drawn.id)
-  }
-  core.drawn = drawn
-  return drawn
-}
-
-/** Locks a held quad as a closed kan meld, flips the next kan-dora indicator (dead wall
- *  permitting), and draws the replacement. Same sub-step shape as `pullNorth`. */
-function pullKan(core: RoundCore, id: TileId): ParsedTile | undefined {
-  const red = core.reds.has(id)
-  for (let k = 0; k < 4; k++) removeTile(core.hand, id)
-  core.hand.melds++
-  core.reds.delete(id)
-  core.visible[id] += 4
-  core.kans.push([
-    { id, red },
-    { id, red: false },
-    { id, red: false },
-    { id, red: false },
-  ])
-
-  const indicator = core.doraStack.shift()
-  if (indicator) {
-    core.doraIndicators.push(indicator)
-    core.visible[indicator.id]++
-  }
-
-  const drawn = drawReplacement(core)
-  if (drawn) {
-    addTile(core.hand, drawn.id)
-    if (drawn.red) core.reds.add(drawn.id)
-  }
-  core.drawn = drawn
-  return drawn
-}
-
-/** Discards `tile` for the user, lets the opponents tsumogiri around the table,
- *  and draws the user's next tile. Returns false when the drill is over instead —
- *  either the discard reached tenpai or the wall ran dry.
- *
- *  `tsumogiri` records that the discard was the tile just drawn rather than one from the hand;
- *  a replayed river (from a shared link) has no way to know, so those read as tedashi. */
-function advanceAfterDiscard(
-  core: RoundCore,
-  tile: ParsedTile,
-  options: RoundOptions,
-  tsumogiri = false,
-): boolean {
-  removeTile(core.hand, tile.id)
-  if (tile.red) core.reds.delete(tile.id)
-  // the flag is only ever set, never set to false: a tedashi is its absence, which keeps a
-  // river structurally a plain ParsedTile[]
-  core.rivers[core.seatIndex].push(tsumogiri ? { ...tile, tsumogiri } : { ...tile })
-  core.visible[tile.id]++
-  // tenpai is the goal, so stop here: the hand stays at 13 tiles, which is what
-  // "finished" is derived from, and the opponents/wall are left untouched
-  if (shanten(core.hand) <= 0) {
-    core.drawn = undefined
+  // tenpai is the goal, so stop here: the hand stays at 13 tiles, which is what "finished" is
+  // derived from, and the opponents and wall are left untouched
+  if (shanten(you(core).hand) <= 0) {
+    match.drawn = undefined
     return false
   }
-  if (options.opponents) {
-    for (let k = 1; k < core.players; k++) {
-      opponentTsumogiri(core, (core.seatIndex + k) % core.players)
-    }
-  }
-  if (core.liveWall.length === 0) {
-    core.drawn = undefined
+  runOpponents(core, opponents)
+  if (match.liveWall.length === 0 || match.ended) {
+    match.drawn = undefined
     return false
   }
-  core.turn++
-  userDraw(core)
+  if (match.seat === 0) match.turn++
+  beginTurn(match, options)
   return true
 }
 
-/** Builds the round: seeded pool minus pinned tiles, aka marking, dead wall and
- *  hidden opponent hands reserved from the pool tail (never the pinned prefix),
- *  deal, seat-ordered first draws, then replay of the situation's river. */
+function matchOptions(options: RoundOptions, round: TileId, seatIndex: number): MatchOptions {
+  return {
+    sanma: options.sanma,
+    aka: options.aka,
+    round,
+    deadWall: options.deadWall,
+    // opponents may open their hands, but nobody wins: a hand that ended on someone else's tsumo
+    // would cut this per-turn drill short on a result you did not cause
+    calls: options.opponents,
+    riichi: options.opponents,
+    wins: false,
+    human: seatIndex,
+  }
+}
+
+/** Builds the round: a real deal, the seats before yours acting first, then a replay of the
+ *  situation's river to fast-forward to its decision point. */
 function createRound(situation: Situation, options: RoundOptions, seed: string): RoundCore {
   const players = options.sanma ? 3 : 4
-  const used = new Uint8Array(NUM_TILE_TYPES)
-  const pinnedRedSuits = new Set<TileId>()
-  for (const t of allTiles(situation)) {
-    used[t.id]++
-    if (t.red) pinnedRedSuits.add(t.id)
-  }
-  let pool: ParsedTile[] = buildWall(seed, options.sanma)
-    .filter((id) => {
-      if (used[id] === 0) return true
-      used[id]--
-      return false
-    })
-    .map((id) => ({ id, red: false }))
-  if (options.aka) {
-    for (const redId of redFiveIds(options.sanma)) {
-      if (pinnedRedSuits.has(redId)) continue
-      const i = pool.findIndex((t) => t.id === redId)
-      if (i >= 0) pool[i] = { id: redId, red: true }
-    }
-  }
-
-  let reserved = 0
-  let deadWall: ParsedTile[] = []
-  let doraStack: ParsedTile[] = []
-  const doraIndicators: ParsedTile[] = []
-  if (options.deadWall) {
-    const dead = Math.min(DEAD_WALL_SIZE, pool.length)
-    const reservedChunk = pool.slice(pool.length - dead)
-    const doraCount = Math.min(MAX_DORA_INDICATORS, dead)
-    doraStack = reservedChunk.slice(0, doraCount)
-    deadWall = reservedChunk.slice(doraCount)
-    const first = doraStack.shift()
-    if (first) doraIndicators.push(first)
-    reserved += dead
-  }
-  if (options.opponents) {
-    reserved += Math.min((players - 1) * INITIAL_HAND_SIZE, pool.length - reserved)
-  }
-  const liveWall = [...situation.wall, ...pool.slice(0, pool.length - reserved)]
-
-  const hand = createHand()
-  const reds = new Set<TileId>()
-  for (const t of situation.hand) {
-    addTile(hand, t.id)
-    if (t.red) reds.add(t.id)
-  }
-  const visible = new Uint8Array(NUM_TILE_TYPES)
-  for (const indicator of doraIndicators) visible[indicator.id]++
-
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const seatIndex = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
-  const core: RoundCore = {
-    hand,
-    reds,
-    liveWall,
-    deadWall,
-    doraStack,
-    doraIndicators,
-    visible,
-    rivers: Array.from({ length: players }, () => []),
-    nuki: [],
-    kans: [],
-    seatIndex,
-    drawn: undefined,
-    turn: 1,
-    players,
+  const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
+  const opts = matchOptions(options, round, seatIndex)
+  const match = createMatch(seed, players, opts, {
+    seat: seatIndex,
+    hand: situation.hand,
+    wall: situation.wall,
+  })
+  const core: RoundCore = { match, options: opts, seatIndex }
+
+  // a situation that pins all fourteen tiles has already had its draw; anything else starts the
+  // hand normally, with the seats before yours acting first (East leads)
+  if (tileCount(match.players[seatIndex].hand) < 14) {
+    runOpponents(core, options.opponents)
+    beginTurn(match, opts)
+  } else {
+    match.seat = seatIndex
+    match.pendingDraw = false
   }
 
-  while (tileCount(hand) < INITIAL_HAND_SIZE && liveWall.length > 0) {
-    const t = liveWall.shift()!
-    addTile(hand, t.id)
-    if (t.red) reds.add(t.id)
-  }
-  if (tileCount(hand) === INITIAL_HAND_SIZE) {
-    // opponents seated before the user act first on turn 1 (East leads)
-    if (options.opponents) {
-      for (let s = 0; s < core.seatIndex; s++) opponentTsumogiri(core, s)
-    }
-    userDraw(core)
-  }
-
-  // fast-forward the user's recorded discards; stops quietly on an impossible one
+  // fast-forward the recorded discards; stops quietly on an impossible one
   for (const t of situation.river) {
-    if (hand.counts[t.id] === 0) break
-    const red = reds.has(t.id) && (t.red || hand.counts[t.id] === 1)
-    if (!advanceAfterDiscard(core, { id: t.id, red }, options)) break
+    const counts = you(core).hand.counts
+    if (counts[t.id] === 0) break
+    const red = you(core).reds.has(t.id) && (t.red || counts[t.id] === 1)
+    if (!advanceAfterDiscard(core, { id: t.id, red }, options.opponents)) break
   }
   return core
 }
 
 function snapshot(core: RoundCore, prev?: RoundState): RoundState {
-  const finished = tileCount(core.hand) < 14
-  let hand = handToTiles(core.hand, core.reds)
-  if (core.drawn) {
-    const i = hand.findIndex((t) => t.id === core.drawn!.id && t.red === core.drawn!.red)
+  const { match, seatIndex } = core
+  const player = you(core)
+  const finished = tileCount(player.hand) < 14
+  let hand = concealedTiles(player)
+  if (match.drawn) {
+    const i = hand.findIndex((t) => t.id === match.drawn!.id && t.red === match.drawn!.red)
     if (i >= 0) hand = [...hand.slice(0, i), ...hand.slice(i + 1)]
   }
   return {
     hand,
-    drawn: core.drawn,
-    turn: core.turn,
-    doraIndicators: [...core.doraIndicators],
-    rivers: core.rivers.map((r) => [...r]),
-    nuki: [...core.nuki],
-    kans: core.kans.map((k) => [...k]),
-    seatIndex: core.seatIndex,
-    liveWall: [...core.liveWall],
+    drawn: match.drawn,
+    turn: match.turn,
+    doraIndicators: [...match.doraIndicators],
+    rivers: match.players.map((p) => [...p.river]),
+    nuki: [...player.nuki],
+    kans: player.melds.filter((m) => m.kind === 'ankan').map((m) => [...m.tiles]),
+    seatIndex,
+    liveWall: [...match.liveWall],
     finished,
-    tenpai: finished && shanten(core.hand) <= 0,
+    tenpai: finished && shanten(player.hand) <= 0,
     lastResult: prev?.lastResult ?? null,
     cumulativeLost: prev?.cumulativeLost ?? 0,
     cumulativeTotal: prev?.cumulativeTotal ?? 0,
@@ -428,14 +289,21 @@ export function useEfficiencyRound(
       if (northOption && isBestDiscard(northOption, best)) {
         missed = { kind: 'kita', tile: NORTH }
       } else {
-        const kanOption = evaluateKan(r.hand, seen, options.sanma).find((o) =>
+        const kanOption = evaluateKan(you(r).hand, seen, options.sanma).find((o) =>
           isBestDiscard(o, best),
         )
         if (kanOption) missed = { kind: 'kan', tile: kanOption.discard }
       }
     }
     const grade: TurnResult['grade'] = !isBest ? 'error' : missed ? 'warning' : 'ok'
-    const lastResult: TurnResult = { turn: r.turn, yours, best, kind: 'discard', grade, missed }
+    const lastResult: TurnResult = {
+      turn: r.match.turn,
+      yours,
+      best,
+      kind: 'discard',
+      grade,
+      missed,
+    }
 
     // one entry per turn, logged here (not from a page effect) so entries stay in play order.
     // Keys carry raw params (tile notation is locale-invariant) rather than formatted text, so
@@ -446,7 +314,7 @@ export function useEfficiencyRound(
       log(
         drewCode ? 'log.efficiency.discardBestDrew' : 'log.efficiency.discardBest',
         {
-          turn: r.turn,
+          turn: r.match.turn,
           drawn: drewCode,
           tile: tileCode(tile.id, tile.red),
           ukeire: yours.ukeireCount,
@@ -457,7 +325,7 @@ export function useEfficiencyRound(
       log(
         drewCode ? 'log.efficiency.discardMistakeDrew' : 'log.efficiency.discardMistake',
         {
-          turn: r.turn,
+          turn: r.match.turn,
           drawn: drewCode,
           tile: tileCode(tile.id, tile.red),
           yours: yours.ukeireCount,
@@ -470,20 +338,20 @@ export function useEfficiencyRound(
     if (missed) {
       log(
         missed.kind === 'kita' ? 'log.efficiency.missedKita' : 'log.efficiency.missedKan',
-        { turn: r.turn, tile: tileCode(missed.tile) },
+        { turn: r.match.turn, tile: tileCode(missed.tile) },
         [{ id: missed.tile, red: false }],
       )
     }
     if (yours.shanten <= 0) {
       log(
         'log.efficiency.tenpai',
-        { turn: r.turn },
+        { turn: r.match.turn },
         yours.ukeireTiles.map((t) => ({ id: t.tile, red: false })),
       )
     }
 
     recordChoice(isBest)
-    advanceAfterDiscard(r, tile, options, index === state.hand.length)
+    advanceAfterDiscard(r, tile, options.opponents)
     setState((s) => ({
       ...snapshot(r, s),
       lastResult,
@@ -499,7 +367,7 @@ export function useEfficiencyRound(
    *  correctly graded a mistake rather than always recommending the pull. */
   function kita() {
     const r = core.current
-    if (!r || state.finished || !options.sanma || r.hand.counts[NORTH] === 0) return
+    if (!r || state.finished || !options.sanma || you(r).hand.counts[NORTH] === 0) return
 
     const { ranked } = rankDiscards(r, options.sanma)
     const yours = ranked.find((o) => o.discard === NORTH)!
@@ -507,24 +375,29 @@ export function useEfficiencyRound(
     const lost = lostVs(yours, best)
     const isBest = isBestDiscard(yours, best)
     const lastResult: TurnResult = {
-      turn: r.turn,
+      turn: r.match.turn,
       yours,
       best,
       kind: 'kita',
       grade: isBest ? 'ok' : 'error',
     }
 
+    const player = you(r)
     const northTile: ParsedTile = { id: NORTH, red: false }
-    const drawn = pullNorth(r)
+    removeTile(player.hand, NORTH)
+    player.nuki.push(northTile)
+    r.match.visible[NORTH]++
+    const drawn = drawReplacement(r.match, player)
+    r.match.drawn = drawn
     const tiles = drawn ? [northTile, drawn] : [northTile]
 
     if (isBest) {
-      log('log.efficiency.kitaBest', { turn: r.turn, ukeire: yours.ukeireCount }, tiles)
+      log('log.efficiency.kitaBest', { turn: r.match.turn, ukeire: yours.ukeireCount }, tiles)
     } else {
       log(
         'log.efficiency.kitaMistake',
         {
-          turn: r.turn,
+          turn: r.match.turn,
           yours: yours.ukeireCount,
           best: tileCode(best.discard),
           bestUkeire: best.ukeireCount,
@@ -549,36 +422,59 @@ export function useEfficiencyRound(
    *  correctly graded an error rather than a free call. */
   function kan(id: TileId) {
     const r = core.current
-    if (!r || state.finished || r.hand.counts[id] !== 4) return
+    if (!r || state.finished || you(r).hand.counts[id] !== 4) return
 
     const { seen, ranked } = rankDiscards(r, options.sanma)
     const best = ranked[0]
-    const yours = evaluateKan(r.hand, seen, options.sanma).find((o) => o.discard === id)!
+    const player = you(r)
+    const yours = evaluateKan(player.hand, seen, options.sanma).find((o) => o.discard === id)!
     const lost = lostVs(yours, best)
     const isBest = isBestDiscard(yours, best)
     const lastResult: TurnResult = {
-      turn: r.turn,
+      turn: r.match.turn,
       yours,
       best,
       kind: 'kan',
       grade: isBest ? 'ok' : 'error',
     }
 
-    const kanTile: ParsedTile = { id, red: r.reds.has(id) }
-    const drawn = pullKan(r, id)
+    const red = player.reds.has(id)
+    const kanTile: ParsedTile = { id, red }
+    for (let k = 0; k < 4; k++) removeTile(player.hand, id)
+    player.hand.melds++
+    player.reds.delete(id)
+    r.match.visible[id] += 4
+    const meld: Meld = {
+      kind: 'ankan',
+      tiles: [
+        { id, red },
+        { id, red: false },
+        { id, red: false },
+        { id, red: false },
+      ],
+    }
+    player.melds.push(meld)
+
+    const indicator = r.match.doraStack.shift()
+    if (indicator) {
+      r.match.doraIndicators.push(indicator)
+      r.match.visible[indicator.id]++
+    }
+    const drawn = drawReplacement(r.match, player)
+    r.match.drawn = drawn
     const tiles = drawn ? [kanTile, drawn] : [kanTile]
 
     if (isBest) {
       log(
         'log.efficiency.kanBest',
-        { turn: r.turn, tile: tileCode(id), ukeire: yours.ukeireCount },
+        { turn: r.match.turn, tile: tileCode(id), ukeire: yours.ukeireCount },
         tiles,
       )
     } else {
       log(
         'log.efficiency.kanMistake',
         {
-          turn: r.turn,
+          turn: r.match.turn,
           tile: tileCode(id),
           yours: yours.ukeireCount,
           best: tileCode(best.discard),
@@ -604,7 +500,7 @@ export function useEfficiencyRound(
     return encodeSituation({
       ...situation,
       seed: effectiveSeed.current,
-      river: r ? r.rivers[r.seatIndex].slice() : [],
+      river: r ? you(r).river.map((t) => ({ id: t.id, red: t.red })) : [],
       ...options,
     })
   }

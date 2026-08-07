@@ -63,8 +63,8 @@
       "desc": "限时猜出手牌距离听牌还差几步。"
     },
     "scoring": {
-      "title": "算番训练(测试版)",
-      "desc": "猜出和了手的番数、符数与点数。测试版: 役种判定仍在验证中。"
+      "title": "算番训练",
+      "desc": "猜出和了手的番数、符数与点数。"
     }
   },
   "efficiency": {
@@ -72,7 +72,7 @@
       "showShanten": "显示上听数",
       "timer": "计时器",
       "showUkeire": "显示进张",
-      "opponents": "其他玩家(摸切)",
+      "opponents": "对手",
       "deadWall": "死墙与宝牌",
       "redFives": "赤宝牌",
       "showWall": "显示牌山"
@@ -148,6 +148,7 @@
       "aka": "赤宝牌"
     },
     "handNumber": "第{{count}}题",
+    "dealing": "发牌中…",
     "correctScore": "正确: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
     "roundWind": "场风",

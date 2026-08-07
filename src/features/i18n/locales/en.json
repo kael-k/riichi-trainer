@@ -63,8 +63,8 @@
       "desc": "Guess how far a hand is from tenpai, against the clock."
     },
     "scoring": {
-      "title": "Scoring trainer (alpha)",
-      "desc": "Guess han, fu and points for a winning hand. Alpha: yaku detection is still being verified."
+      "title": "Scoring trainer",
+      "desc": "Guess han, fu and points for a winning hand."
     }
   },
   "efficiency": {
@@ -72,7 +72,7 @@
       "showShanten": "Show shanten",
       "timer": "Timer",
       "showUkeire": "Show ukeire tiles",
-      "opponents": "Opponents (tsumogiri)",
+      "opponents": "Opponents",
       "deadWall": "Dead wall & dora",
       "redFives": "Red fives",
       "showWall": "Show wall"
@@ -153,6 +153,7 @@
       "aka": "Red fives"
     },
     "handNumber": "Hand {{count}}",
+    "dealing": "Dealing…",
     "correctScore": "Correct: {{correct}} / {{total}}",
     "avgTime": "avg {{time}}",
     "roundWind": "Round",
