@@ -48,8 +48,9 @@
     "wall": "剩余{{count}}",
     "dora": "宝牌",
     "ura": "里宝",
-    "honba": "{{count}}本场",
     "riichiStick": "立直棒(1000点)",
+    "riichiSticks": "场上立直棒",
+    "honbaSticks": "本场",
     "rotateHint": "横屏可同时显示牌桌和手牌。",
     "rotateHintDismiss": "不再显示"
   },

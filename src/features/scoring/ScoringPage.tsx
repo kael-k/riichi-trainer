@@ -281,6 +281,7 @@ export function ScoringPage() {
                   ? round.situation.uraIndicators.map((id) => ({ id, red: false }))
                   : undefined
               }
+              wallCount={round.match?.liveWall.length}
               honba={round.situation.honba}
             >
               <span className="flex flex-wrap items-center justify-center gap-[1cqw]">

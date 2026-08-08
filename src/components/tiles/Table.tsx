@@ -58,6 +58,20 @@ const WIND_MARKS = [
  *  instead of silently growing. */
 const INDICATOR_SLOTS = 5
 
+/** A betting stick, sized off the board's tile width like everything else here: 1000 points
+ *  (one red dot) for a riichi bet, 100 points (plain) for an honba counter. */
+function Stick({ dot = false, label }: { dot?: boolean; label: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      className="flex h-[calc(var(--tile-w)*0.4)] w-[calc(var(--tile-w)*2.2)] shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/10"
+    >
+      {dot && <span className="size-[calc(var(--tile-w)*0.22)] rounded-full bg-red-600" />}
+    </span>
+  )
+}
+
 function IndicatorRow({ label, tiles }: { label: string; tiles: ParsedTile[] }) {
   return (
     <span className="flex items-center gap-[0.4cqw]">
@@ -155,12 +169,8 @@ export function Table({
                   className={`flex h-[calc(var(--tile-w)*4)] w-[calc(var(--tile-w)*6)] flex-col items-start place-self-center ${slot.river} ${slot.spin}`}
                 >
                   {seat.riichi && (
-                    <span
-                      role="img"
-                      aria-label={t('table.riichiStick')}
-                      className="mb-[0.4cqw] flex h-[calc(var(--tile-w)*0.4)] w-[calc(var(--tile-w)*2.2)] shrink-0 items-center justify-center self-center rounded-full bg-white shadow-sm ring-1 ring-black/10"
-                    >
-                      <span className="size-[calc(var(--tile-w)*0.4)] rounded-full bg-red-600" />
+                    <span className="mb-[0.4cqw] self-center">
+                      <Stick dot label={t('table.riichiStick')} />
                     </span>
                   )}
                   <River tiles={seat.river ?? []} />
@@ -208,11 +218,29 @@ export function Table({
               <span className="text-neutral-500 dark:text-neutral-400">{t('table.round')}</span>
               <Tile id={HONOR + WINDS.indexOf(round)} />
             </span>
-            <span className="flex flex-wrap items-center justify-center gap-x-[1.5cqw] text-neutral-500 dark:text-neutral-400">
-              {wallCount !== undefined && <span>{t('table.wall', { count: wallCount })}</span>}
-              {honba !== undefined && honba > 0 && (
-                <span>{t('table.honba', { count: honba })}</span>
+            {/* tenhou's centre readout: tiles left, riichi bets on the table, honba counters —
+                marked by their own object rather than a word, which is what makes the row read
+                the same in every language */}
+            <span className="flex flex-wrap items-center justify-center gap-x-[1.5cqw] gap-y-[0.5cqw] text-neutral-500 dark:text-neutral-400">
+              {wallCount !== undefined && (
+                <span
+                  aria-label={t('table.wall', { count: wallCount })}
+                  className="flex items-center gap-[0.5cqw]"
+                >
+                  <span className="flex [--tile-w:calc(100cqw/26)]">
+                    <Tile />
+                  </span>
+                  {wallCount}
+                </span>
               )}
+              <span className="flex items-center gap-[0.5cqw]">
+                <Stick dot label={t('table.riichiSticks')} />
+                {seats.filter((seat) => seat.riichi).length}
+              </span>
+              <span className="flex items-center gap-[0.5cqw]">
+                <Stick label={t('table.honbaSticks')} />
+                {honba ?? 0}
+              </span>
             </span>
             <span className="flex flex-col items-center gap-[0.4cqw] [--tile-w:calc(100cqw/24)]">
               {doraIndicators.length > 0 && (

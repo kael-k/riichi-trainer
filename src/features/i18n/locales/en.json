@@ -52,8 +52,9 @@
     "wall": "Wall {{count}}",
     "dora": "Dora",
     "ura": "Ura",
-    "honba": "{{count}} honba",
     "riichiStick": "1000-point riichi stick",
+    "riichiSticks": "Riichi bets on the table",
+    "honbaSticks": "Honba counters",
     "rotateHint": "Turn your phone sideways to see the table and your hand at once.",
     "rotateHintDismiss": "Do not show this again"
   },

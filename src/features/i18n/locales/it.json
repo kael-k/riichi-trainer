@@ -52,8 +52,9 @@
     "wall": "Muro {{count}}",
     "dora": "Dora",
     "ura": "Ura",
-    "honba": "{{count}} honba",
     "riichiStick": "Bastoncino riichi (1000 punti)",
+    "riichiSticks": "Bastoncini riichi sul tavolo",
+    "honbaSticks": "Contatori honba",
     "rotateHint": "Ruota il telefono in orizzontale per vedere tavolo e mano insieme.",
     "rotateHintDismiss": "Non mostrare più"
   },
