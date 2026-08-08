@@ -12,7 +12,7 @@ import {
   type RoundOptions,
 } from './useFoldingRound'
 
-const OPTIONS: RoundOptions = { sanma: false, timerEnabled: true, threats: 1 }
+const OPTIONS: RoundOptions = { sanma: false, timerEnabled: true, threats: 1, opponentWins: true }
 
 /** Generation is a seed search, so hands arrive a tick (or several) later. */
 async function deal(urlData: FoldingUrl, options: RoundOptions = OPTIONS) {
@@ -130,6 +130,23 @@ describe('useFoldingRound', () => {
     expect(result.current.correctCount).toBe(turns)
   })
 
+  it('with opponent wins off, the hand plays to the wall instead of ending on a win', async () => {
+    const result = await deal({ seed: 'nowin-seed' }, { ...OPTIONS, opponentWins: false })
+    // deliberately the most dangerous tile every turn: with wins off nobody can collect
+    for (let i = 0; i < 40 && !result.current.finished; i++) {
+      const ranked = result.current.ranked()
+      const risky = ranked[ranked.length - 1]
+      act(() =>
+        result.current.discard(indexOf(result.current.hand, result.current.drawn, risky.tile)),
+      )
+    }
+    expect(result.current.finished).toBe(true)
+    expect(result.current.end!.kind).not.toBe('dealIn')
+    expect(result.current.end!.seat).toBeUndefined()
+    // still a real fold: the ranking graded every one of those throws
+    expect(result.current.totalCount).toBeGreaterThan(1)
+  })
+
   it('never lets a folding opponent declare a second riichi', async () => {
     const result = await deal({ seed: 'multi-seed' })
     const initialThreats = result.current.threatSeats.length
@@ -201,10 +218,11 @@ describe('useFoldingRound', () => {
 
 describe('the folding link', () => {
   it('round-trips the seed and the rules the board was built under', () => {
-    const query = encodeFoldingUrl('abc#3', true, 2)
+    const query = encodeFoldingUrl('abc#3', { sanma: true, threats: 2, wins: true })
     expect(decodeFoldingUrl(new URLSearchParams(query))).toEqual({
       seed: 'abc#3',
       sanma: true,
+      wins: true,
       threats: 2,
       discards: undefined,
     })
@@ -212,7 +230,7 @@ describe('the folding link', () => {
 
   it('round-trips the discards played since the handover', () => {
     const discards = parseTenhou('1m9p7z')
-    const query = encodeFoldingUrl('abc', false, 1, discards)
+    const query = encodeFoldingUrl('abc', { sanma: false, threats: 1, wins: true }, discards)
     expect(decodeFoldingUrl(new URLSearchParams(query)).discards).toEqual(discards)
   })
 
@@ -220,6 +238,7 @@ describe('the folding link', () => {
     expect(decodeFoldingUrl(new URLSearchParams(''))).toEqual({
       seed: '',
       sanma: undefined,
+      wins: undefined,
       threats: undefined,
       discards: undefined,
     })

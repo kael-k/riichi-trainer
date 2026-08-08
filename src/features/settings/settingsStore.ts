@@ -49,6 +49,10 @@ export interface Settings {
      *  player count; generation falls back to fewer rather than failing when a seed search cannot
      *  find that many. */
     threats: number
+    /** Let the threats ron and tsumo. Off makes the drill a rehearsal — the same ranking and the
+     *  same grading, but the hand plays to the wall instead of ending on a deal-in. On by
+     *  default: a fold you can't lose teaches the tiles but not the stakes. */
+    opponentWins: boolean
   }
 }
 
@@ -134,7 +138,7 @@ export const useSettings = create<SettingsState>()(
         ignoreFuOnLimit: true,
         openHands: true,
       },
-      folding: { timerEnabled: true, threats: 1 },
+      folding: { timerEnabled: true, threats: 1, opponentWins: true },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       showTileNumbers: null,

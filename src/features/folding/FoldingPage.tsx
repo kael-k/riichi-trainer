@@ -70,6 +70,7 @@ export function FoldingPage() {
     return {
       ...settings,
       sanma: isSanma,
+      opponentWins: urlData.wins ?? settings.opponentWins,
       // one seat has to be left to fold; a link can pin a count this table cannot seat
       threats: Math.min(urlData.threats ?? settings.threats, (isSanma ? 3 : 4) - 1),
     }
@@ -85,6 +86,14 @@ export function FoldingPage() {
           type="checkbox"
           checked={settings.timerEnabled}
           onChange={(e) => update('folding', { timerEnabled: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
+      <SettingRow label={t('folding.settings.opponentWins')}>
+        <input
+          type="checkbox"
+          checked={settings.opponentWins}
+          onChange={(e) => update('folding', { opponentWins: e.target.checked })}
           className="size-5"
         />
       </SettingRow>

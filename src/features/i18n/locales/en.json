@@ -410,6 +410,7 @@
     "newSituation": "New situation",
     "settings": {
       "timer": "Timer",
+      "opponentWins": "Opponents can win",
       "threats": "Riichi to fold against"
     }
   },
