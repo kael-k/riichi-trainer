@@ -30,6 +30,9 @@ export interface Settings {
     testPoints: boolean
     /** Grade the exact pre-rounding fu instead of the rounded-up-to-10 value. */
     exactFu: boolean
+    /** Stop grading fu once the hand reaches a limit, where fu no longer moves the payment.
+     *  On by default: asking for a number that cannot change the answer teaches nothing. */
+    ignoreFuOnLimit: boolean
     /** Show the itemized yaku list on reveal, instead of just the han total. */
     showYaku: boolean
     /** Show the fu itemization on reveal, instead of just the fu total. */
@@ -37,7 +40,6 @@ export interface Settings {
     kiriageMangan: boolean
     /** Add random honba sticks to generated hands and require them in the points total. */
     honba: boolean
-    ignoreFuOnLimit: boolean
     /** Generate hands with called melds, not just closed ones. */
     openHands: boolean
   }
@@ -129,7 +131,7 @@ export const useSettings = create<SettingsState>()(
         showFu: false,
         kiriageMangan: false,
         honba: false,
-        ignoreFuOnLimit: false,
+        ignoreFuOnLimit: true,
         openHands: true,
       },
       folding: { timerEnabled: true, threats: 1 },
