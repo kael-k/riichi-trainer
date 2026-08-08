@@ -264,6 +264,7 @@
     "prompt_other": "{{winds}}已立直。打出最不容易放铳的牌。是否该防守不计分——只看你用哪张牌防守。",
     "turnStatus": "第 {{turn}} 巡",
     "score": "最安全: {{correct}} / {{total}}",
+    "accuracy": "准确率 {{percent}}%",
     "avgTime": "平均 {{time}}",
     "yourDiscard": "你打出",
     "safestDiscard": "最安全的是",
@@ -312,6 +313,9 @@
     "newSituation": "新牌局",
     "settings": {
       "timer": "计时器",
+      "opponentWins": "允许对手和牌",
+      "showEquallySafe": "显示同样安全的其他牌",
+      "feedbackAtEnd": "仅在牌局结束后显示答案",
       "threats": "要防守的立直数"
     }
   },

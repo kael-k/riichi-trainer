@@ -361,6 +361,7 @@
     "prompt_other": "{{winds}} sono in riichi. Scarta il tile con meno probabilità di dare ron. Non viene valutato *se* difendersi sia giusto: solo con quale tile lo fai.",
     "turnStatus": "Turno {{turn}}",
     "score": "Più sicuro: {{correct}} / {{total}}",
+    "accuracy": "precisione {{percent}}%",
     "avgTime": "media {{time}}",
     "yourDiscard": "Hai scartato",
     "safestDiscard": "Il più sicuro era",
@@ -410,6 +411,9 @@
     "newSituation": "Nuova situazione",
     "settings": {
       "timer": "Timer",
+      "opponentWins": "Gli avversari possono vincere",
+      "showEquallySafe": "Mostra gli altri scarti altrettanto sicuri",
+      "feedbackAtEnd": "Mostra le risposte solo a fine mano",
       "threats": "Riichi contro cui difendersi"
     }
   },

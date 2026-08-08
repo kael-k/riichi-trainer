@@ -264,6 +264,7 @@
     "prompt_other": "{{winds}}がリーチ。放銃しにくい牌を切ろう。オリるべきかどうかは採点しない——どの牌でオリるかだけを見る。",
     "turnStatus": "{{turn}}巡目",
     "score": "最安全: {{correct}} / {{total}}",
+    "accuracy": "精度 {{percent}}%",
     "avgTime": "平均 {{time}}",
     "yourDiscard": "切った牌",
     "safestDiscard": "最も安全なのは",
@@ -312,6 +313,9 @@
     "newSituation": "次の局面",
     "settings": {
       "timer": "タイマー",
+      "opponentWins": "相手の和了を有効にする",
+      "showEquallySafe": "同じ安全度の牌も表示",
+      "feedbackAtEnd": "答えは局の終わりにまとめて表示",
       "threats": "オリる相手のリーチ数"
     }
   },
