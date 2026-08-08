@@ -62,30 +62,55 @@ const WIND_MARKS = [
 const INDICATOR_SLOTS = 5
 
 /** A betting stick, sized off the board's tile width like everything else here: 1000 points
- *  (one red dot) for a riichi bet, 100 points (plain) for an honba counter. */
-function Stick({ dot = false, label }: { dot?: boolean; label: string }) {
+ *  (one red dot) for a riichi bet, 100 points (plain) for an honba counter. It reads as a
+ *  counter mark beside the tile icon, so it inherits whatever small `--tile-w` that row sets
+ *  rather than the centre panel's full one — at the panel's own width it came out four times
+ *  the icon and wrapped the row onto three lines. */
+function Stick({
+  dot = false,
+  label,
+  vertical = false,
+}: {
+  dot?: boolean
+  label: string
+  /** Stood on end. The centre readout's counters use it — upright they cost a fraction of the
+   *  width and stand exactly as tall as the tile icon beside them. A stick actually on the
+   *  table (a seat's riichi bet) stays lying flat, which is where it really lies. */
+  vertical?: boolean
+}) {
   return (
     <span
       role="img"
       aria-label={label}
-      className="flex h-[calc(var(--tile-w)*0.4)] w-[calc(var(--tile-w)*2.2)] shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/10"
+      className={`flex shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/10 ${
+        vertical
+          ? 'h-[calc(var(--tile-w)*1.33)] w-[calc(var(--tile-w)*0.3)]'
+          : 'h-[calc(var(--tile-w)*0.28)] w-[calc(var(--tile-w)*1.7)]'
+      }`}
     >
-      {dot && <span className="size-[calc(var(--tile-w)*0.22)] rounded-full bg-red-600" />}
+      {dot && <span className="size-[calc(var(--tile-w)*0.2)] rounded-full bg-red-600" />}
     </span>
   )
 }
 
+/** One indicator row, rendered as two grid cells rather than its own flex box: the dora and ura
+ *  rows then share a single label column and their tiles start at the same x. "Dora" and "Ura"
+ *  are not the same width in any language, so laid out separately they never line up. */
 function IndicatorRow({ label, tiles }: { label: string; tiles: ParsedTile[] }) {
   return (
-    <span className="flex items-center gap-[0.4cqw]">
-      <span className="text-neutral-500 dark:text-neutral-400">{label}</span>
-      {tiles.map((tile, i) => (
-        <Tile key={i} id={tile.id} red={tile.red} />
-      ))}
-      {Array.from({ length: Math.max(0, INDICATOR_SLOTS - tiles.length) }, (_, i) => (
-        <Tile key={`back-${i}`} />
-      ))}
-    </span>
+    <>
+      <span className="text-right text-neutral-500 dark:text-neutral-400">{label}</span>
+      <span className="flex items-center">
+        {tiles.map((tile, i) => (
+          <Tile key={i} id={tile.id} red={tile.red} />
+        ))}
+        {/* dimmed: at this size a tile back is a solid block of colour, and five of them at full
+            strength shout louder than the indicator that is actually showing */}
+        {Array.from({ length: Math.max(0, INDICATOR_SLOTS - tiles.length) }, (_, i) => (
+          <Tile key={`back-${i}`} className="opacity-40" />
+        ))}
+      </span>
+    </>
   )
 }
 
@@ -203,7 +228,9 @@ export function Table({
             )
           })}
 
-          <div className="relative col-start-2 row-start-2 flex flex-col items-center justify-center gap-[0.8cqw] rounded-lg border border-neutral-400/30 p-[3.5cqw] text-center text-[2.6cqw] leading-tight">
+          {/* the gap here separates the panel's three readouts (round, counters, indicators) and
+              nothing inside them — the dora/ura rows keep their own tighter grid spacing */}
+          <div className="relative col-start-2 row-start-2 flex flex-col items-center justify-center gap-[3cqw] rounded-lg border border-neutral-400/30 p-[3.5cqw] text-center text-[2.6cqw] leading-tight">
             {seats.map((_, index) => {
               const slot = slotOf[(index - seatIndex + players) % players]
               const you = index === seatIndex
@@ -222,35 +249,36 @@ export function Table({
 
             {/* the bare tile is the tenhou convention, but it only reads as "the round" to
                 someone who already knows that, so it keeps its label like the dora row */}
-            <span className="flex flex-col items-center [--tile-w:calc(100cqw/16)]">
+            <span className="flex items-center gap-[0.8cqw] [--tile-w:calc(100cqw/24)]">
               <span className="text-neutral-500 dark:text-neutral-400">{t('table.round')}</span>
               <Tile id={HONOR + WINDS.indexOf(round)} />
             </span>
             {/* tenhou's centre readout: tiles left, riichi bets on the table, honba counters —
                 marked by their own object rather than a word, which is what makes the row read
                 the same in every language */}
-            <span className="flex flex-wrap items-center justify-center gap-x-[1.5cqw] gap-y-[0.5cqw] text-neutral-500 dark:text-neutral-400">
+            {/* one line, never wrapped: the three marks are a single readout, and the small
+                `--tile-w` is set once here so the sticks measure against the same tile the icon
+                is drawn at */}
+            <span className="flex items-center justify-center gap-x-[1.2cqw] text-neutral-500 [--tile-w:calc(100cqw/24)] dark:text-neutral-400">
               {wallCount !== undefined && (
                 <span
                   aria-label={t('table.wall', { count: wallCount })}
-                  className="flex items-center gap-[0.5cqw]"
+                  className="flex items-center gap-[0.5cqw] whitespace-nowrap"
                 >
-                  <span className="flex [--tile-w:calc(100cqw/26)]">
-                    <Tile />
-                  </span>
+                  <Tile />
                   {wallCount}
                 </span>
               )}
-              <span className="flex items-center gap-[0.5cqw]">
-                <Stick dot label={t('table.riichiSticks')} />
+              <span className="flex items-center gap-[0.5cqw] whitespace-nowrap">
+                <Stick dot vertical label={t('table.riichiSticks')} />
                 {seats.filter((seat) => seat.riichi).length}
               </span>
-              <span className="flex items-center gap-[0.5cqw]">
-                <Stick label={t('table.honbaSticks')} />
+              <span className="flex items-center gap-[0.5cqw] whitespace-nowrap">
+                <Stick vertical label={t('table.honbaSticks')} />
                 {honba ?? 0}
               </span>
             </span>
-            <span className="flex flex-col items-center gap-[0.4cqw] [--tile-w:calc(100cqw/24)]">
+            <span className="grid grid-cols-[auto_auto] items-center justify-center gap-x-[0.6cqw] gap-y-[0.4cqw] [--tile-w:calc(100cqw/24)]">
               {doraIndicators.length > 0 && (
                 <IndicatorRow label={t('table.dora')} tiles={doraIndicators} />
               )}
