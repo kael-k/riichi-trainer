@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Meld } from '../../core/agari'
 import { HONOR, type ParsedTile, type RiverTile } from '../../core/tiles'
-import { useSettings } from '../../features/settings/settingsStore'
+import { DEFAULT_TILE_SCALE, useSettings } from '../../features/settings/settingsStore'
 import { WINDS, type Wind } from '../../features/situation/urlCodec'
 import { MeldDisplay, River, Tile } from './Tile'
 
@@ -104,14 +104,21 @@ export function Table({
   const { t } = useTranslation()
   const players = seats.length
   const slotOf = SEAT_SLOTS[players] ?? SEAT_SLOTS[4]
+  // the board draws its own tiles as a fraction of its width, so the tile-size setting can only
+  // reach them through the board's cap — 25.6rem is the old fixed 32rem read back out at the
+  // default scale, so an untouched setting leaves the board exactly where it was
+  const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
 
   return (
     // square, so its size is one number: the narrower of the column it sits in and the height
-    // left after the page chrome (~8rem of header, status line and padding), capped at 32rem so
-    // it does not balloon on a desktop. The width lives on this outer div, not on the square
+    // left after the page chrome (~8rem of header, status line and padding), capped so it does
+    // not balloon on a desktop. The width lives on this outer div, not on the square
     // itself: beside the hand the board is a flex item, where a `w-full` child would have
     // nothing to resolve against and collapse to nothing
-    <div className="mx-auto w-full max-w-[min(100%,calc(100svh-8rem),32rem)] shrink-0">
+    <div
+      className="mx-auto w-full max-w-[min(100%,calc(100svh-8rem),var(--table-max))] shrink-0"
+      style={{ '--table-max': `${25.6 * tileScale}rem` } as CSSProperties}
+    >
       <RotateHint />
       <div className="@container aspect-square w-full">
         {/* minmax(0,…): a seat block is measured before it rotates, so its 6-tile row is wider
