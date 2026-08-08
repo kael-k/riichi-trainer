@@ -8,6 +8,7 @@ import {
   finishTurn,
   playMatch,
   threatViews,
+  wallDrawnCount,
   type MatchEvent,
   type MatchOptions,
   type MatchState,
@@ -204,6 +205,16 @@ describe('createMatch', () => {
     expect(state.players[1].hand.counts[1]).toBeGreaterThan(0)
     const counts = census(state)
     for (let id = 0; id < NUM_TILE_TYPES; id++) expect(counts[id]).toBe(TILES_PER_KIND)
+  })
+
+  it('lets liveWallSnapshot plus wallDrawnCount reconstruct what is left', () => {
+    // played out (not just dealt), so some seeds exercise kan replacement draws too
+    for (let i = 0; i < 20; i++) {
+      const { state } = playMatch(`wall-snapshot-${i}`, 4, YONMA)
+      const drawn = wallDrawnCount(state)
+      const reconstructed = state.liveWallSnapshot.slice(drawn, drawn + state.liveWall.length)
+      expect(reconstructed).toEqual(state.liveWall)
+    }
   })
 })
 

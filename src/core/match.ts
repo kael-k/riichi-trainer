@@ -99,7 +99,16 @@ export type MatchEvent =
 export interface MatchState {
   players: PlayerState[]
   liveWall: ParsedTile[]
+  /** The live wall exactly as dealt — snapshotted once at the end of the deal, in `createMatch`,
+   *  and never touched again. `liveWall` above only holds what's left (`take()` shifts off its
+   *  front, `drawReplacement()` pops its tail); the wall-reveal display walks this instead so it
+   *  can show the whole wall, greying what's gone. See `wallDrawnCount`. */
+  liveWallSnapshot: ParsedTile[]
   deadWall: ParsedTile[]
+  /** All 14 dead-wall tiles in build order — the flipped dora indicator, the rest of the dora
+   *  stack, the whole ura stack, then the four rinshan tiles — captured once alongside `deadWall`
+   *  and never touched again. Empty when `options.deadWall` is off. */
+  deadWallSnapshot: ParsedTile[]
   doraStack: ParsedTile[]
   uraStack: ParsedTile[]
   doraIndicators: ParsedTile[]
@@ -113,6 +122,10 @@ export interface MatchState {
   turn: number
   /** Cleared right after a call — the caller already holds 14 tiles and does not draw. */
   pendingDraw: boolean
+  /** Replacement (rinshan) draws taken so far, counted in `drawReplacement`. Combined with the
+   *  two snapshots above it lets a display reconstruct "already drawn/taken" without a fourth
+   *  stored field — see `wallDrawnCount`. */
+  replacements: number
   /** Tile that brought the current seat to 14, if any. */
   drawn?: ParsedTile
   ended?: 'win' | 'exhaustive'
@@ -178,6 +191,7 @@ export function createMatch(
   }
 
   let deadWall: ParsedTile[] = []
+  let deadWallSnapshot: ParsedTile[] = []
   let doraStack: ParsedTile[] = []
   let uraStack: ParsedTile[] = []
   const doraIndicators: ParsedTile[] = []
@@ -185,6 +199,8 @@ export function createMatch(
   if (options.deadWall) {
     const dead = Math.min(DEAD_WALL_SIZE, pool.length)
     const chunk = pool.slice(pool.length - dead)
+    // build order, before doraStack.shift() below peels its first tile off into doraIndicators
+    deadWallSnapshot = chunk
     const indicators = Math.min(MAX_DORA_INDICATORS, Math.floor(dead / 2))
     doraStack = chunk.slice(0, indicators)
     uraStack = chunk.slice(indicators, indicators * 2)
@@ -203,7 +219,9 @@ export function createMatch(
   const state: MatchState = {
     players: Array.from({ length: players }, createPlayer),
     liveWall: dealable,
+    liveWallSnapshot: [],
     deadWall,
+    deadWallSnapshot,
     doraStack,
     uraStack,
     doraIndicators,
@@ -212,6 +230,7 @@ export function createMatch(
     seat: 0,
     turn: 1,
     pendingDraw: true,
+    replacements: 0,
   }
 
   if (pinned) {
@@ -229,6 +248,10 @@ export function createMatch(
   // the pinned prefix goes in front only now: it names what gets *drawn* next, so the deal must
   // come out of the seeded pool first or a pinned wall would end up in somebody's starting hand
   if (pinned?.wall.length) state.liveWall.unshift(...pinned.wall)
+  // captured after the prefix, not before: the snapshot is the wall play will actually draw
+  // from, and a snapshot missing the prefix would make `wallDrawnCount` go negative the moment
+  // a pinned tile is drawn
+  state.liveWallSnapshot = [...state.liveWall]
   return state
 }
 
@@ -426,6 +449,10 @@ export function beginTurn(state: MatchState, options: MatchOptions): MatchEvent[
 export function drawReplacement(state: MatchState, player: PlayerState): ParsedTile | undefined {
   let tile = state.deadWall.pop()
   if (tile) {
+    // counted only on this branch: it names tiles that left the live wall's *tail* as backfill.
+    // With no dead wall the replacement comes off the front like any other draw, and the
+    // front-draw derivation already accounts for it
+    state.replacements++
     const backfill = state.liveWall.pop()
     if (backfill) state.deadWall.unshift(backfill)
     addTile(player.hand, tile.id)
@@ -434,6 +461,14 @@ export function drawReplacement(state: MatchState, player: PlayerState): ParsedT
     tile = take(state, player)
   }
   return tile
+}
+
+/** How many tiles have left `liveWallSnapshot` from the front — real draws, as opposed to the
+ *  `replacements` more that left off the tail to backfill the dead wall after a kan. Derived
+ *  rather than stored: `liveWall.length` already nets both out, so front-only is what's left
+ *  once `replacements` is subtracted back out. What the wall-reveal display greys. */
+export function wallDrawnCount(state: MatchState): number {
+  return state.liveWallSnapshot.length - state.liveWall.length - state.replacements
 }
 
 /**

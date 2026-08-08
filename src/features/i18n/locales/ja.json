@@ -11,7 +11,7 @@
     "log": "ログ ({{count}})",
     "newRound": "次の局へ",
     "submit": "決定",
-    "wallDetails_other": "山({{count}}枚)",
+    "wallDetails_other": "山(残り{{count}}枚)",
     "deadWallMarker": "王牌"
   },
   "settings": {

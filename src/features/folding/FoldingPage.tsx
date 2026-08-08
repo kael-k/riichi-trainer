@@ -219,7 +219,14 @@ export function FoldingPage() {
               </div>
             )}
 
-            {showWall && <WallDetails liveWall={round.liveWall} deadWall={round.deadWall} />}
+            {showWall && (
+              <WallDetails
+                liveWall={round.liveWallSnapshot}
+                liveWallDrawn={round.liveWallDrawn}
+                deadWall={round.deadWallSnapshot}
+                replacements={round.replacements}
+              />
+            )}
 
             <CopyLinkButton query={round.situationQuery} />
           </div>

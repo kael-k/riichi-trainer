@@ -7,6 +7,7 @@ import {
   createMatch,
   finishTurn,
   threatViews,
+  wallDrawnCount,
   type MatchOptions,
   type MatchState,
 } from '../../core/match'
@@ -87,6 +88,15 @@ interface RoundState {
   doraIndicators: ParsedTile[]
   liveWall: ParsedTile[]
   deadWall: ParsedTile[]
+  /** Whole live wall as dealt, plus how much of it (front) is already drawn — the wall-reveal
+   *  display's data; `liveWall` above stays "what's left", since it also feeds the board's tile
+   *  count. See `wallDrawnCount`. */
+  liveWallSnapshot: ParsedTile[]
+  liveWallDrawn: number
+  /** All 14 dead-wall tiles in build order, for the same display; empty when the dead wall is off. */
+  deadWallSnapshot: ParsedTile[]
+  /** Replacement (rinshan) draws taken so far — greys the tail of both snapshots above. */
+  replacements: number
   seatIndex: number
   round: TileId
   /** Seats currently threatening — everyone in riichi. Grows if someone else declares. */
@@ -270,6 +280,10 @@ function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundStat
     doraIndicators: [...match.doraIndicators],
     liveWall: [...match.liveWall],
     deadWall: [...match.deadWall],
+    liveWallSnapshot: match.liveWallSnapshot,
+    liveWallDrawn: wallDrawnCount(match),
+    deadWallSnapshot: match.deadWallSnapshot,
+    replacements: match.replacements,
     seatIndex,
     round: core.options.round,
     threatSeats: riichiSeats(match),
@@ -414,6 +428,10 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       doraIndicators: [],
       liveWall: [],
       deadWall: [],
+      liveWallSnapshot: [],
+      liveWallDrawn: 0,
+      deadWallSnapshot: [],
+      replacements: 0,
       seatIndex: 0,
       round: HONOR,
       threatSeats: [],

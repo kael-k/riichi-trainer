@@ -189,24 +189,56 @@ export function River({ tiles }: { tiles: RiverTile[] }) {
   )
 }
 
-/** The wall, live tiles then dead, with a marker at the seam. Collapsed behind a `<details>` —
- *  seeing the wall in draw order is a deliberate peek, not something to show by default. */
+/** One wall tile, greyed exactly like a tsumogiri discard (`Discard` above) once it has left the
+ *  wall. Unconditional — not gated on `showTsumogiri`, which is about reading opponents' rivers,
+ *  not about showing the wall honestly. */
+function WallTile({ tile, drawn }: { tile: ParsedTile; drawn: boolean }) {
+  return (
+    <span className="relative flex">
+      <Tile id={tile.id} red={tile.red} />
+      {drawn && (
+        <span className="pointer-events-none absolute inset-0 rounded-[10%] bg-neutral-500/50" />
+      )}
+    </span>
+  )
+}
+
+/** The whole wall as dealt, live tiles then dead, with a marker at the seam. Collapsed behind a
+ *  `<details>` — seeing the wall in draw order is a deliberate peek, not something to show by
+ *  default. Every tile it was dealt with is shown, not just what's left: already-drawn live tiles
+ *  and already-taken dead-wall tiles are greyed rather than omitted, so the summary count (which
+ *  stays the *remaining* count) and the row don't have to agree on length. */
 export function WallDetails({
   liveWall,
+  liveWallDrawn,
   deadWall,
+  replacements,
 }: {
+  /** Whole live wall as dealt, draw order — not just what's left. */
   liveWall: ParsedTile[]
+  /** How many of `liveWall`, from the front, are genuine draws. `replacements` more, off the
+   *  tail, were pulled into the dead wall to backfill a kan (also greyed). */
+  liveWallDrawn: number
+  /** All 14 dead-wall tiles in build order: dora indicator(s), the rest of the dora/ura stacks,
+   *  then the four rinshan tiles. Empty when the dead wall is off. */
   deadWall: ParsedTile[]
+  /** Replacement (rinshan) draws taken so far — greys the last `replacements` tiles of `deadWall`
+   *  (taken as kan draws) and, in tandem, the last `replacements` tiles of `liveWall` (pulled in
+   *  to backfill them). */
+  replacements: number
 }) {
   const { t } = useTranslation()
+  const remaining = liveWall.length - liveWallDrawn - replacements
   return (
     <details className="text-sm text-neutral-500">
-      <summary className="cursor-pointer">
-        {t('common.wallDetails', { count: liveWall.length + deadWall.length })}
-      </summary>
+      <summary className="cursor-pointer">{t('common.wallDetails', { count: remaining })}</summary>
       <div className="mt-2 flex flex-wrap items-center [--tile-w:calc(var(--tile-w-base)*0.55)]">
         {liveWall.map((tile, i) => (
-          <Tile key={`live-${i}`} id={tile.id} red={tile.red} />
+          <WallTile
+            key={`live-${i}`}
+            tile={tile}
+            drawn={i < liveWallDrawn || i >= liveWall.length - replacements}
+          />
         ))}
         {deadWall.length > 0 && (
           <span className="mx-1 self-stretch border-l border-dashed border-neutral-400 pl-1 text-xs whitespace-nowrap text-neutral-400 dark:border-neutral-600">
@@ -214,7 +246,7 @@ export function WallDetails({
           </span>
         )}
         {deadWall.map((tile, i) => (
-          <Tile key={`dead-${i}`} id={tile.id} red={tile.red} />
+          <WallTile key={`dead-${i}`} tile={tile} drawn={i >= deadWall.length - replacements} />
         ))}
       </div>
     </details>

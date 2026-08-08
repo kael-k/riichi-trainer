@@ -14,6 +14,7 @@ import {
   drawReplacement,
   finishTurn,
   NORTH,
+  wallDrawnCount,
   type MatchOptions,
   type MatchState,
 } from '../../core/match'
@@ -81,6 +82,15 @@ interface RoundState {
   seatIndex: number
   liveWall: ParsedTile[]
   deadWall: ParsedTile[]
+  /** Whole live wall as dealt, plus how much of it (front) is already drawn — the wall-reveal
+   *  display's data; `liveWall` above stays "what's left", since it also feeds the board's tile
+   *  count. See `wallDrawnCount`. */
+  liveWallSnapshot: ParsedTile[]
+  liveWallDrawn: number
+  /** All 14 dead-wall tiles in build order, for the same display; empty when the dead wall is off. */
+  deadWallSnapshot: ParsedTile[]
+  /** Replacement (rinshan) draws taken so far — greys the tail of both snapshots above. */
+  replacements: number
   lastResult: TurnResult | null
   cumulativeLost: number
   /** Sum of best.ukeireCount across every graded choice — the ceiling cumulativeLost is measured against. */
@@ -223,6 +233,10 @@ function snapshot(core: RoundCore, prev?: RoundState): RoundState {
     seatIndex,
     liveWall: [...match.liveWall],
     deadWall: [...match.deadWall],
+    liveWallSnapshot: match.liveWallSnapshot,
+    liveWallDrawn: wallDrawnCount(match),
+    deadWallSnapshot: match.deadWallSnapshot,
+    replacements: match.replacements,
     finished,
     tenpai: finished && shanten(player.hand) <= 0,
     lastResult: prev?.lastResult ?? null,

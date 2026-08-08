@@ -7,7 +7,7 @@ import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
-import { concealedTiles } from '../../core/match'
+import { concealedTiles, wallDrawnCount } from '../../core/match'
 import { HONOR, serializeTenhou } from '../../core/tiles'
 import { WINDS } from '../situation/urlCodec'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -449,7 +449,12 @@ export function ScoringPage() {
             )}
 
             {showWall && round.match && (
-              <WallDetails liveWall={round.match.liveWall} deadWall={round.match.deadWall} />
+              <WallDetails
+                liveWall={round.match.liveWallSnapshot}
+                liveWallDrawn={wallDrawnCount(round.match)}
+                deadWall={round.match.deadWallSnapshot}
+                replacements={round.match.replacements}
+              />
             )}
 
             <CopyLinkButton query={round.situationQuery} />
