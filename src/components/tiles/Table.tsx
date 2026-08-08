@@ -170,7 +170,14 @@ export function Table({
     // nothing to resolve against and collapse to nothing
     <div
       className="mx-auto w-full max-w-[min(100%,calc(100svh-8rem),var(--table-max))] shrink-0"
-      style={{ '--table-max': `${25.6 * tileScale}rem` } as CSSProperties}
+      style={
+        {
+          // the revealed hands are paid for out of the board's own footprint (the 8% below), so
+          // the cap grows to match: at the same felt size the square needs 1/0.84 of the width.
+          // Without it, turning the setting on shrank the felt by a sixth
+          '--table-max': `${(25.6 * tileScale) / (showsHands ? 0.84 : 1)}rem`,
+        } as CSSProperties
+      }
     >
       <RotateHint />
       {/* the revealed hands sit outside the felt, so the square gives up a margin's worth of its
@@ -195,14 +202,17 @@ export function Table({
                     riichi stick sits above (flex-col, before River), which is the side nearest
                     the centre before rotation is applied — the box's own w/h stay untouched so
                     the fixed footprint keeps doing its job, the stick just overflows into the
-                    gap toward the centre panel like everything else here does */}
+                    gap toward the centre panel like everything else here does. It is positioned
+                    rather than stacked: in the flow it ate its own height off the top of a box
+                    three rows already fill exactly, pushing the third row out through the far
+                    edge of the felt */}
                 <div
                   aria-label={wind}
                   data-seat={index}
-                  className={`flex h-[calc(var(--tile-w)*4)] w-[calc(var(--tile-w)*6)] flex-col items-start place-self-center ${slot.river} ${slot.spin}`}
+                  className={`relative flex h-[calc(var(--tile-w)*4)] w-[calc(var(--tile-w)*6)] flex-col items-start place-self-center ${slot.river} ${slot.spin}`}
                 >
                   {seat.riichi && (
-                    <span className="mb-[0.4cqw] self-center">
+                    <span className="absolute bottom-full left-1/2 mb-[0.4cqw] -translate-x-1/2">
                       <Stick dot label={t('table.riichiStick')} />
                     </span>
                   )}
