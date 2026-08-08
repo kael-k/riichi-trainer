@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Copy, Info, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Check, Copy, Info, RotateCcw, Share2 } from 'lucide-react'
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
@@ -117,10 +117,29 @@ function LogPanel() {
   )
 }
 
+/** Copies `text` on click, showing a tick for a moment. A log row carries two: the hand in
+ *  tenhou notation, and a link back to the situation the entry was logged from. */
+function CopyButton({ label, text, icon }: { label: string; text: string; icon: ReactNode }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={async () => {
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1200)
+      }}
+      className="flex size-6 shrink-0 items-center justify-center self-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+    >
+      {copied ? <Check className="size-3.5" /> : icon}
+    </button>
+  )
+}
+
 function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
   const { t } = useTranslation()
   const showShanten = useSettings((s) => s.efficiency.showShanten)
-  const [copied, setCopied] = useState(false)
   const [, setSearchParams] = useSearchParams()
   const log = useLog((s) => s.log)
   return (
@@ -139,33 +158,36 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
         )}
       </div>
       {entry.situation !== undefined && (
-        <button
-          type="button"
-          aria-label={t('common.rewind')}
-          onClick={() => {
-            setSearchParams(entry.situation!)
-            // appended, not replacing the log: rewinding is itself an action worth a record,
-            // and clearing history on rewind would erase feedback the player hasn't seen yet
-            log('log.rewound', { number })
-          }}
-          className="flex size-6 shrink-0 items-center justify-center self-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-        >
-          <RotateCcw className="size-3.5" />
-        </button>
+        <>
+          <button
+            type="button"
+            aria-label={t('common.rewind')}
+            onClick={() => {
+              setSearchParams(entry.situation!)
+              // appended, not replacing the log: rewinding is itself an action worth a record,
+              // and clearing history on rewind would erase feedback the player hasn't seen yet
+              log('log.rewound', { number })
+            }}
+            className="flex size-6 shrink-0 items-center justify-center self-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+          >
+            <RotateCcw className="size-3.5" />
+          </button>
+          {/* the same situation the rewind restores, as a link someone else can open — built
+              the way `CopyLinkButton` builds the page's own, since it is the same address with
+              a different query */}
+          <CopyButton
+            label={t('common.copySituationLink')}
+            icon={<Share2 className="size-3.5" />}
+            text={`${location.origin}${location.pathname}${entry.situation ? `?${entry.situation}` : ''}`}
+          />
+        </>
       )}
       {entry.copyText && (
-        <button
-          type="button"
-          aria-label={t('common.copyHand')}
-          onClick={async () => {
-            await navigator.clipboard.writeText(entry.copyText!)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 1200)
-          }}
-          className="flex size-6 shrink-0 items-center justify-center self-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-        >
-          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-        </button>
+        <CopyButton
+          label={t('common.copyHand')}
+          icon={<Copy className="size-3.5" />}
+          text={entry.copyText}
+        />
       )}
     </li>
   )
