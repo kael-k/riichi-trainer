@@ -57,6 +57,11 @@ export interface Settings {
      *  answer was already right, and naming the alternatives hands over part of next turn's
      *  reading for free. */
     showEquallySafe: boolean
+    /** Hold every graded turn back until the hand is over — feedback, running score and the log
+     *  rows alike — and show them together at the end. Off by default, since immediate feedback
+     *  is how the trainer teaches; on, it stops the panel naming safe tiles that are still safe
+     *  next turn, so the whole fold is read from the board. */
+    feedbackAtEnd: boolean
   }
 }
 
@@ -142,7 +147,13 @@ export const useSettings = create<SettingsState>()(
         ignoreFuOnLimit: true,
         openHands: true,
       },
-      folding: { timerEnabled: true, threats: 1, opponentWins: true, showEquallySafe: false },
+      folding: {
+        timerEnabled: true,
+        threats: 1,
+        opponentWins: true,
+        showEquallySafe: false,
+        feedbackAtEnd: false,
+      },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       showTileNumbers: null,

@@ -18,6 +18,7 @@ const OPTIONS: RoundOptions = {
   threats: 1,
   opponentWins: true,
   showEquallySafe: false,
+  feedbackAtEnd: false,
 }
 
 /** Generation is a seed search, so hands arrive a tick (or several) later. */
@@ -152,6 +153,28 @@ describe('useFoldingRound', () => {
     expect(turns).toBeGreaterThan(1)
     expect(result.current.totalCount).toBe(turns)
     expect(result.current.correctCount).toBe(turns)
+  })
+
+  it('holds every graded turn back to the end of the hand when asked', async () => {
+    const result = await deal({ seed: 'held-seed' }, { ...OPTIONS, feedbackAtEnd: true })
+    act(() => useLog.getState().clear())
+    let turns = 0
+    for (let i = 0; i < 40 && !result.current.finished; i++) {
+      const safe = result.current.ranked()[0]
+      act(() =>
+        result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)),
+      )
+      turns++
+      // the log names the safest tile of each turn, so mid-hand it would answer the next one
+      if (!result.current.finished) {
+        expect(useLog.getState().entries).toHaveLength(0)
+      }
+    }
+    expect(result.current.finished).toBe(true)
+    expect(result.current.results).toHaveLength(turns)
+    expect(useLog.getState().entries.filter((e) => e.key === 'log.folding.discard')).toHaveLength(
+      turns,
+    )
   })
 
   it('with opponent wins off, the hand plays to the wall instead of ending on a win', async () => {

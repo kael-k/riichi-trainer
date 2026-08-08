@@ -113,6 +113,9 @@ interface RoundState {
   /** Seats currently threatening — everyone in riichi. Grows if someone else declares. */
   threatSeats: number[]
   lastResult: TurnResult | null
+  /** Every graded turn of this hand, oldest first — what the end-of-hand review reads when
+   *  feedback is held back until then. */
+  results: TurnResult[]
   finished: boolean
   end: RoundEnd | null
   elapsed: number
@@ -353,6 +356,7 @@ function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundStat
     round: core.options.round,
     threatSeats: riichiSeats(match),
     lastResult: prev?.lastResult ?? null,
+    results: prev?.results ?? [],
     finished: end !== null,
     end,
     elapsed: 0,
@@ -422,10 +426,15 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   const request = useRef(0)
   // the link whose replayed discards are already on the log; see `logReplay`
   const loggedReplay = useRef<FoldingUrl>(undefined)
+  // rows waiting for the hand to end, under `feedbackAtEnd`; see `writeLog`
+  const held = useRef<[string, Record<string, unknown>, ParsedTile[], string][]>([])
 
   useEffect(() => {
     const id = ++request.current
     setFailed(false)
+    // a hand left behind (rewind, new deal) takes its held rows with it: they belong to a board
+    // nobody is looking at any more
+    held.current = []
     setState((prev) => (prev ? { ...prev, loading: true } : prev))
     const base = urlData.seed || stats.randomSeed
     const seed = urlData.seed && handIndex === 0 ? base : `${base}:${handIndex}`
@@ -514,7 +523,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
 
     // logged here, not from an effect watching round state: effect-based logging inverts entry
     // order and duplicates under StrictMode. Raw params, so a language switch re-translates.
-    log(
+    writeLog(
       'log.folding.discard',
       {
         turn: r.match.turn,
@@ -525,7 +534,6 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
         correct,
       },
       correct ? [tile] : [tile, { id: safest[0].tile, red: false }],
-      undefined,
       situationBefore,
     )
     stats.record(correct, elapsed, quality)
@@ -533,16 +541,36 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     advanceAfterDiscard(r, tile)
     const next = snapshot(r, options.sanma, state)
     if (next.end?.kind === 'dealIn') {
-      log(
+      writeLog(
         'log.folding.dealIn',
         { seat: next.end.seat, points: next.end.points, tile: tileCode(tile.id, tile.red) },
         [tile],
-        undefined,
         situationBefore,
       )
     }
+    // the log names the safest tile of every turn, so under `feedbackAtEnd` it is one more place
+    // the answer leaks; the rows wait with the panel and land in play order once the hand is over
+    if (next.end) flushLog()
     stats.startClock()
-    setState({ ...next, lastResult: result })
+    setState({ ...next, lastResult: result, results: [...state.results, result] })
+  }
+
+  /** One log row, held back until the hand ends when the drill is running answers-at-the-end. */
+  function writeLog(
+    key: string,
+    params: Record<string, unknown>,
+    tiles: ParsedTile[],
+    situation: string,
+  ) {
+    if (!options.feedbackAtEnd) log(key, params, tiles, undefined, situation)
+    else held.current.push([key, params, tiles, situation])
+  }
+
+  function flushLog() {
+    for (const [key, params, tiles, situation] of held.current) {
+      log(key, params, tiles, undefined, situation)
+    }
+    held.current = []
   }
 
   return {
@@ -566,6 +594,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       round: HONOR,
       threatSeats: [],
       lastResult: null,
+      results: [],
       finished: false,
       end: null,
       elapsed: 0,

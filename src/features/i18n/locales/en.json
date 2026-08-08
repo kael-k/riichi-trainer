@@ -413,6 +413,7 @@
       "timer": "Timer",
       "opponentWins": "Opponents can win",
       "showEquallySafe": "Show other equally safe tiles",
+      "feedbackAtEnd": "Show answers only at the end of the hand",
       "threats": "Riichi to fold against"
     }
   },

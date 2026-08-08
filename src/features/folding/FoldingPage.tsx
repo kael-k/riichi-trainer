@@ -89,6 +89,14 @@ export function FoldingPage() {
           className="size-5"
         />
       </SettingRow>
+      <SettingRow label={t('folding.settings.feedbackAtEnd')}>
+        <input
+          type="checkbox"
+          checked={settings.feedbackAtEnd}
+          onChange={(e) => update('folding', { feedbackAtEnd: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
       <SettingRow label={t('folding.settings.showEquallySafe')}>
         <input
           type="checkbox"
@@ -150,6 +158,8 @@ export function FoldingPage() {
     hand: showOpponentHands && seat !== round.seatIndex ? round.hands[seat] : undefined,
   }))
   const threatWinds = round.threatSeats.map((seat) => t(`wind.${WINDS[seat]}`)).join(' · ')
+  // everything that would tell you how the fold is going so far, held back mid-hand when asked
+  const answersHeld = settings.feedbackAtEnd && !round.finished
 
   return (
     <TrainerLayout
@@ -164,13 +174,21 @@ export function FoldingPage() {
             <span className="font-mono tabular-nums">{formatElapsedMs(round.elapsed)}</span>
           )}
           <span className="ml-auto flex flex-col items-end">
-            <span>
-              {t('folding.score', { correct: round.correctCount, total: round.totalCount })}
-            </span>
-            {/* safest-or-not is pass/fail; this says how close the rest were, measured against the
-                most dangerous tile each hand actually held */}
-            {round.totalCount > 0 && (
-              <span>{t('folding.accuracy', { percent: Math.round(round.accuracy * 100) })}</span>
+            {/* the running score says "that last one was wrong" as loudly as the panel does, so it
+                waits with it — the clock is not an answer and keeps running either way */}
+            {!answersHeld && (
+              <>
+                <span>
+                  {t('folding.score', { correct: round.correctCount, total: round.totalCount })}
+                </span>
+                {/* safest-or-not is pass/fail; this says how close the rest were, measured against
+                    the most dangerous tile each hand actually held */}
+                {round.totalCount > 0 && (
+                  <span>
+                    {t('folding.accuracy', { percent: Math.round(round.accuracy * 100) })}
+                  </span>
+                )}
+              </>
             )}
             {settings.timerEnabled && (
               <span>{t('folding.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
@@ -202,9 +220,16 @@ export function FoldingPage() {
               onTileClick={round.finished ? undefined : (i) => round.discard(i)}
             />
 
-            {round.lastResult && (
-              <FoldFeedback result={round.lastResult} seats={round.threatSeats} />
-            )}
+            {/* normally the last turn, graded as it happens; under `feedbackAtEnd` nothing until
+                the hand is over and then every turn of it, in play order */}
+            {settings.feedbackAtEnd
+              ? round.finished &&
+                round.results.map((result, i) => (
+                  <FoldFeedback key={i} result={result} seats={round.threatSeats} />
+                ))
+              : round.lastResult && (
+                  <FoldFeedback result={round.lastResult} seats={round.threatSeats} />
+                )}
 
             {round.end && (
               <div className="flex flex-col gap-3">
