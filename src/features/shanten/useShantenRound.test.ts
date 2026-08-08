@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { parseTenhou } from '../../core/tiles'
 import { useLog } from '../../store/log'
-import { emptySituation } from '../situation/urlCodec'
+import { decodeSituation, emptySituation } from '../situation/urlCodec'
 import { useShantenRound } from './useShantenRound'
 
 describe('useShantenRound', () => {
@@ -87,6 +87,19 @@ describe('useShantenRound', () => {
     expect(result.current.correctCount).toBe(0)
     expect(result.current.totalCount).toBe(0)
     expect(result.current.averageTime).toBe(0)
+  })
+
+  it('logs the graded hand as a situation the row can rewind to, then moves on', () => {
+    const situation = emptySituation()
+    situation.hand = parseTenhou('1122334455667m')
+    const { result } = renderHook(() => useShantenRound(situation, true, false))
+    act(() => result.current.reveal())
+    act(() => result.current.submit(0))
+
+    const entry = useLog.getState().entries.at(-1)!
+    expect(decodeSituation(new URLSearchParams(entry.situation!)).hand).toEqual(situation.hand)
+    // a pinned hand is served once: the stream carries on rather than re-serving it forever
+    expect(result.current.hand).not.toEqual(situation.hand)
   })
 
   it('deals sanma hands without 2m-8m', () => {

@@ -5,7 +5,7 @@ import { serializeTenhou, type ParsedTile } from '../../core/tiles'
 import { deal, INITIAL_HAND_SIZE } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
-import type { Situation } from '../situation/urlCodec'
+import { encodeSituation, type Situation } from '../situation/urlCodec'
 
 export type ShantenPath = 'standard' | 'chiitoitsu' | 'kokushi'
 
@@ -52,6 +52,14 @@ function computeBreakdown(hand: Hand): ShantenBreakdown {
  *  the feedback for the last one alongside the hand already dealt. */
 export function useShantenRound(situation: Situation, timerEnabled: boolean, sanma: boolean) {
   const [handIndex, setHandIndex] = useState(0)
+  // handIndex counts hands dealt this mount, but a link (or a rewind out of the log) names one
+  // exact hand, which only the index-0 deal below shows. Reset it whenever the situation changes
+  // identity — the "adjust state while rendering" pattern the other trainers use
+  const [lastSituation, setLastSituation] = useState(situation)
+  if (situation !== lastSituation) {
+    setLastSituation(situation)
+    setHandIndex(0)
+  }
   const stats = useSessionStats()
   const handRef = useRef<Hand>(undefined)
   const [state, setState] = useState<State>(() => nextHand())
@@ -68,7 +76,9 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
       lastResult: prev?.lastResult ?? null,
     }
     const seed = `${situation.seed || stats.randomSeed}:${handIndex}`
-    if (situation.hand.length === INITIAL_HAND_SIZE) {
+    // a pinned hand is the hand the link names, not every hand from here on: it is shown once and
+    // the stream carries on dealing from the seed, so a rewind doesn't freeze the trainer
+    if (handIndex === 0 && situation.hand.length === INITIAL_HAND_SIZE) {
       const hand = createHand()
       for (const t of situation.hand) addTile(hand, t.id)
       handRef.current = hand
@@ -132,6 +142,9 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
         },
         state.hand,
         serializeTenhou(state.hand),
+        // the hand as it was asked, so the row rewinds (and shares) back to this exact deal —
+        // the tiles pin it outright, which is why no seed replay is involved
+        encodeSituation({ ...situation, hand: state.hand, wall: [], river: [] }),
       )
       stats.record(correct, elapsed)
       // keep running: the feedback rides along with the hand dealt by the index bump

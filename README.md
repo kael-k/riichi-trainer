@@ -42,7 +42,7 @@ Opponents' rivers are never specified: opponents always tsumogiri, so their disc
 /efficiency?hand=19m19p19s1234567z&wall=9m&seed=kokushi-drill
 ```
 
-The shanten trainer uses `hand` only when it is exactly 13 tiles; otherwise it deals fresh hands from `seed` — sanma (from `sanma` or the global setting) drops 2m-8m from that deal too.
+The shanten trainer uses `hand` only when it is exactly 13 tiles, and only for the first hand it deals — the stream then carries on from `seed`, so a shared link (or a rewind out of the log) poses its hand once rather than serving it forever. Sanma (from `sanma` or the global setting) drops 2m-8m from that deal too.
 
 The scoring trainer uses its own, unrelated param set — a graded hand has no wall/river/opponents, so extending `Situation` doesn't fit:
 
