@@ -58,8 +58,9 @@ export function EfficiencyPage() {
           river,
           melds: round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles })),
           nuki: round.nuki,
+          riichi: round.riichi[seat],
         }
-      : { river },
+      : { river, riichi: round.riichi[seat] },
   )
 
   const toggle = (key: keyof typeof settings, label: ReactNode) => (

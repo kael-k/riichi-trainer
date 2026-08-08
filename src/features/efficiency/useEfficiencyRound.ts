@@ -71,6 +71,8 @@ interface RoundState {
   turn: number
   doraIndicators: ParsedTile[]
   rivers: RiverTile[][]
+  /** Seats currently in riichi, by seat index — for the table's bet stick. */
+  riichi: boolean[]
   nuki: ParsedTile[]
   kans: ParsedTile[][]
   seatIndex: number
@@ -211,6 +213,7 @@ function snapshot(core: RoundCore, prev?: RoundState): RoundState {
     turn: match.turn,
     doraIndicators: [...match.doraIndicators],
     rivers: match.players.map((p) => [...p.river]),
+    riichi: match.players.map((p) => p.riichiAt !== undefined),
     nuki: [...player.nuki],
     kans: player.melds.filter((m) => m.kind === 'ankan').map((m) => [...m.tiles]),
     seatIndex,

@@ -13,6 +13,8 @@ export interface SeatView {
   melds?: Meld[]
   /** Nukidora pulled (sanma). */
   nuki?: ParsedTile[]
+  /** This seat has declared riichi — drawn as a 1000-point bet stick in front of its river. */
+  riichi?: boolean
 }
 
 interface TableProps {
@@ -142,12 +144,25 @@ export function Table({
                 {/* fixed at a full river's footprint (6 wide, 3 rows deep) rather than sized to
                     its contents, so discards start in the corner nearest the centre and fill
                     outward instead of drifting as the pile grows — and a 4th row overflows the
-                    box away from the centre, which the rotation handles for every seat */}
+                    box away from the centre, which the rotation handles for every seat. The
+                    riichi stick sits above (flex-col, before River), which is the side nearest
+                    the centre before rotation is applied — the box's own w/h stay untouched so
+                    the fixed footprint keeps doing its job, the stick just overflows into the
+                    gap toward the centre panel like everything else here does */}
                 <div
                   aria-label={wind}
                   data-seat={index}
-                  className={`grid h-[calc(var(--tile-w)*4)] w-[calc(var(--tile-w)*6)] place-items-start place-self-center ${slot.river} ${slot.spin}`}
+                  className={`flex h-[calc(var(--tile-w)*4)] w-[calc(var(--tile-w)*6)] flex-col items-start place-self-center ${slot.river} ${slot.spin}`}
                 >
+                  {seat.riichi && (
+                    <span
+                      role="img"
+                      aria-label={t('table.riichiStick')}
+                      className="mb-[0.4cqw] flex h-[calc(var(--tile-w)*0.4)] w-[calc(var(--tile-w)*2.2)] shrink-0 items-center justify-center self-center rounded-full bg-white shadow-sm ring-1 ring-black/10"
+                    >
+                      <span className="size-[calc(var(--tile-w)*0.4)] rounded-full bg-red-600" />
+                    </span>
+                  )}
                   <River tiles={seat.river ?? []} />
                 </div>
                 {called && (

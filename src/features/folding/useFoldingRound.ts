@@ -79,6 +79,8 @@ interface RoundState {
   rivers: RiverTile[][]
   melds: Meld[][]
   nuki: ParsedTile[][]
+  /** Seats currently in riichi, by seat index — for the table's bet stick. */
+  riichi: boolean[]
   doraIndicators: ParsedTile[]
   liveWall: ParsedTile[]
   deadWall: ParsedTile[]
@@ -260,6 +262,7 @@ function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundStat
     rivers: match.players.map((p) => [...p.river]),
     melds: match.players.map((p) => [...p.melds]),
     nuki: match.players.map((p) => [...p.nuki]),
+    riichi: match.players.map((p) => p.riichiAt !== undefined),
     doraIndicators: [...match.doraIndicators],
     liveWall: [...match.liveWall],
     deadWall: [...match.deadWall],
@@ -402,6 +405,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       rivers: [],
       melds: [],
       nuki: [],
+      riichi: [],
       doraIndicators: [],
       liveWall: [],
       deadWall: [],

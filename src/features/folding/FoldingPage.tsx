@@ -129,6 +129,7 @@ export function FoldingPage() {
     river,
     melds: round.melds[seat],
     nuki: round.nuki[seat],
+    riichi: round.riichi[seat],
   }))
   const threatWinds = round.threatSeats.map((seat) => t(`wind.${WINDS[seat]}`)).join(' · ')
 

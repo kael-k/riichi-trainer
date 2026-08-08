@@ -176,6 +176,11 @@ export function ScoringPage() {
   const flagBadges = FLAG_KEYS.filter((key) => ctx[key]).map((key) => (
     <span key={key}>{badge(termName('flags', key))}</span>
   ))
+  // the table draws the winner's own riichi as a bet stick, so the badge there would say it twice;
+  // the flat bar has no board to show a stick on, so it keeps the plain badge
+  const tableFlagBadges = FLAG_KEYS.filter((key) => key !== 'riichi' && ctx[key]).map((key) => (
+    <span key={key}>{badge(termName('flags', key))}</span>
+  ))
   const winBadge = badge(t(ctx.tsumo ? 'scoring.tsumo' : 'scoring.ron'))
 
   // the hand was actually played, so the board shows the real thing: every seat's real river,
@@ -188,6 +193,7 @@ export function ScoringPage() {
         river: player.river,
         melds: player.melds,
         nuki: player.nuki,
+        riichi: player.riichiAt !== undefined,
       }))
     : Array.from({ length: players }, (_, seat) => ({
         ...(seat === tableSeatIndex && {
@@ -196,6 +202,7 @@ export function ScoringPage() {
             id: HONOR + 3,
             red: false,
           })),
+          riichi: ctx.riichi || ctx.doubleRiichi,
         }),
       }))
 
@@ -277,7 +284,7 @@ export function ScoringPage() {
               honba={round.situation.honba}
             >
               <span className="flex flex-wrap items-center justify-center gap-[1cqw]">
-                {flagBadges}
+                {tableFlagBadges}
               </span>
             </Table>
           ) : (
