@@ -12,7 +12,8 @@
     "newRound": "次の局へ",
     "submit": "決定",
     "wallDetails_other": "山(残り{{count}}枚)",
-    "deadWallMarker": "王牌"
+    "deadWallMarker": "王牌",
+    "rewind": "この操作の前まで巻き戻す"
   },
   "settings": {
     "button": "設定",
@@ -315,6 +316,7 @@
     }
   },
   "log": {
+    "rewound": "{{number}}件目の記録まで巻き戻しました",
     "folding": {
       "safe": "{{turn}}巡目: {{tile}}を切った——{{tier}}、この局面で最も安全",
       "risky": "{{turn}}巡目: {{tile}}を切った（{{tier}}）; {{best}}の方が安全（{{bestTier}}）",

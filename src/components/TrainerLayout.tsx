@@ -1,7 +1,7 @@
-import { ArrowLeft, Check, Copy, Info } from 'lucide-react'
+import { ArrowLeft, Check, Copy, Info, RotateCcw } from 'lucide-react'
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { formatLogEntry } from '../features/i18n/formatLogEntry'
 import { DEFAULT_TILE_SCALE, useSettings } from '../features/settings/settingsStore'
 import { SettingsButton } from '../features/settings/SettingsDialog'
@@ -121,6 +121,8 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
   const { t } = useTranslation()
   const showShanten = useSettings((s) => s.efficiency.showShanten)
   const [copied, setCopied] = useState(false)
+  const [, setSearchParams] = useSearchParams()
+  const log = useLog((s) => s.log)
   return (
     <li className="flex items-center gap-2 py-0.5">
       <span className="w-6 shrink-0 self-start text-right text-xs text-neutral-400 tabular-nums">
@@ -136,6 +138,21 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
           </div>
         )}
       </div>
+      {entry.situation !== undefined && (
+        <button
+          type="button"
+          aria-label={t('common.rewind')}
+          onClick={() => {
+            setSearchParams(entry.situation!)
+            // appended, not replacing the log: rewinding is itself an action worth a record,
+            // and clearing history on rewind would erase feedback the player hasn't seen yet
+            log('log.rewound', { number })
+          }}
+          className="flex size-6 shrink-0 items-center justify-center self-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+        >
+          <RotateCcw className="size-3.5" />
+        </button>
+      )}
       {entry.copyText && (
         <button
           type="button"

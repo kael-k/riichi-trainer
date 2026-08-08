@@ -258,6 +258,20 @@ export function useEfficiencyRound(
   const [randomSeed] = useState(() => Math.random().toString(36).slice(2))
   const core = useRef<RoundCore>(undefined)
   const effectiveSeed = useRef('')
+
+  // A rewind hands in a brand-new `situation` object whose seed already carries whatever
+  // restartCount suffix was live when the log entry was captured (situationQuery() dumps
+  // effectiveSeed.current as-is). restartCount itself is per-mount React state that a rewind
+  // does not and should not reset on its own, so left alone it would keep counting from the old
+  // situation and startRound() below would suffix an already-suffixed seed a second time,
+  // rebuilding a different round than the one the log entry named. Resetting it here whenever
+  // `situation` changes identity (rewind, or a fresh URL load) — the "adjust state while
+  // rendering" pattern — keeps restartCount scoped to whichever situation is current.
+  const [lastSituation, setLastSituation] = useState(situation)
+  if (situation !== lastSituation) {
+    setLastSituation(situation)
+    setRestartCount(0)
+  }
   // round.elapsed at the last choice, so each choice's time is a delta of the same
   // pause-aware clock rather than a second, unpaused one
   const lastChoiceElapsed = useRef(0)
@@ -297,6 +311,9 @@ export function useEfficiencyRound(
     if (!r || state.finished) return
     const tile = index === state.hand.length ? state.drawn : state.hand[index]
     if (!tile) return
+    // captured before anything below mutates match/hand state, so it reproduces the situation
+    // exactly as it stood right before this discard
+    const situationBefore = situationQuery()
 
     const { seen, ranked } = rankDiscards(r, options.sanma)
     const yours = ranked.find((o) => o.discard === tile.id)!
@@ -344,6 +361,8 @@ export function useEfficiencyRound(
           shanten: yours.shanten,
         },
         [...drewTiles, tile],
+        undefined,
+        situationBefore,
       )
     } else {
       log(
@@ -358,6 +377,8 @@ export function useEfficiencyRound(
           shanten: yours.shanten,
         },
         [...drewTiles, tile, { id: best.discard, red: false }],
+        undefined,
+        situationBefore,
       )
     }
     if (missed) {
@@ -365,6 +386,8 @@ export function useEfficiencyRound(
         missed.kind === 'kita' ? 'log.efficiency.missedKita' : 'log.efficiency.missedKan',
         { turn: r.match.turn, tile: tileCode(missed.tile) },
         [{ id: missed.tile, red: false }],
+        undefined,
+        situationBefore,
       )
     }
     if (yours.shanten <= 0) {
@@ -372,6 +395,8 @@ export function useEfficiencyRound(
         'log.efficiency.tenpai',
         { turn: r.match.turn },
         yours.ukeireTiles.map((t) => ({ id: t.tile, red: false })),
+        undefined,
+        situationBefore,
       )
     }
 
@@ -393,6 +418,8 @@ export function useEfficiencyRound(
   function kita() {
     const r = core.current
     if (!r || state.finished || !options.sanma || you(r).hand.counts[NORTH] === 0) return
+    // captured before the pull below mutates hand/nuki/visible state
+    const situationBefore = situationQuery()
 
     const { ranked } = rankDiscards(r, options.sanma)
     const yours = ranked.find((o) => o.discard === NORTH)!
@@ -421,6 +448,8 @@ export function useEfficiencyRound(
         'log.efficiency.kitaBest',
         { turn: r.match.turn, ukeire: yours.ukeireCount, shanten: yours.shanten },
         tiles,
+        undefined,
+        situationBefore,
       )
     } else {
       log(
@@ -433,6 +462,8 @@ export function useEfficiencyRound(
           shanten: yours.shanten,
         },
         tiles,
+        undefined,
+        situationBefore,
       )
     }
 
@@ -453,6 +484,8 @@ export function useEfficiencyRound(
   function kan(id: TileId) {
     const r = core.current
     if (!r || state.finished || you(r).hand.counts[id] !== 4) return
+    // captured before the call below mutates hand/melds/visible/dora state
+    const situationBefore = situationQuery()
 
     const { seen, ranked } = rankDiscards(r, options.sanma)
     const best = ranked[0]
@@ -499,6 +532,8 @@ export function useEfficiencyRound(
         'log.efficiency.kanBest',
         { turn: r.match.turn, tile: tileCode(id), ukeire: yours.ukeireCount, shanten: yours.shanten },
         tiles,
+        undefined,
+        situationBefore,
       )
     } else {
       log(
@@ -512,6 +547,8 @@ export function useEfficiencyRound(
           shanten: yours.shanten,
         },
         tiles,
+        undefined,
+        situationBefore,
       )
     }
 

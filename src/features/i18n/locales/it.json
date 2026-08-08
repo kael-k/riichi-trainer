@@ -16,7 +16,8 @@
     "deadWallMarker": "Muro morto",
     "aboutTrainer": "Informazioni",
     "aboutTrainerTitle": "Informazioni: {{title}}",
-    "learnMoreWiki": "Approfondisci su riichi.wiki"
+    "learnMoreWiki": "Approfondisci su riichi.wiki",
+    "rewind": "Torna indietro a prima di questa azione"
   },
   "settings": {
     "button": "Impostazioni",
@@ -413,6 +414,7 @@
     }
   },
   "log": {
+    "rewound": "Tornato indietro alla voce {{number}}",
     "folding": {
       "safe": "Turno {{turn}}: scartato {{tile}} — {{tier}}, il più sicuro disponibile",
       "risky": "Turno {{turn}}: scartato {{tile}} ({{tier}}); {{best}} era più sicuro ({{bestTier}})",

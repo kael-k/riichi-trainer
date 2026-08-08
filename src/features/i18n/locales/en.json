@@ -16,7 +16,8 @@
     "deadWallMarker": "Dead wall",
     "aboutTrainer": "About",
     "aboutTrainerTitle": "About: {{title}}",
-    "learnMoreWiki": "Learn more on riichi.wiki"
+    "learnMoreWiki": "Learn more on riichi.wiki",
+    "rewind": "Rewind to before this action"
   },
   "settings": {
     "button": "Settings",
@@ -413,6 +414,7 @@
     }
   },
   "log": {
+    "rewound": "Rewound to entry {{number}}",
     "folding": {
       "safe": "Turn {{turn}}: threw {{tile}} — {{tier}}, the safest available",
       "risky": "Turn {{turn}}: threw {{tile}} ({{tier}}); {{best}} was safer ({{bestTier}})",

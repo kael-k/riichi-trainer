@@ -12,7 +12,8 @@
     "newRound": "下一局",
     "submit": "提交",
     "wallDetails_other": "牌山(剩余{{count}}张)",
-    "deadWallMarker": "死墙"
+    "deadWallMarker": "死墙",
+    "rewind": "撤回到此操作之前"
   },
   "settings": {
     "button": "设置",
@@ -315,6 +316,7 @@
     }
   },
   "log": {
+    "rewound": "已撤回到第 {{number}} 条记录",
     "folding": {
       "safe": "第 {{turn}} 巡: 打出 {{tile}}——{{tier}}，当前最安全",
       "risky": "第 {{turn}} 巡: 打出 {{tile}}（{{tier}}）; {{best}} 更安全（{{bestTier}}）",

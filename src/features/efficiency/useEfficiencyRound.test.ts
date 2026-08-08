@@ -1,7 +1,8 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { HONOR, parseTenhou, SOU } from '../../core/tiles'
-import { decodeSituation, emptySituation } from '../situation/urlCodec'
+import { useLog } from '../../store/log'
+import { decodeSituation, emptySituation, type Situation } from '../situation/urlCodec'
 import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
 
 /** Bare-table options: no opponents, no dead wall, no aka, no sanma — fully deterministic. */
@@ -211,6 +212,39 @@ describe('useEfficiencyRound', () => {
     expect(b.result.current.rivers).toEqual(a.result.current.rivers)
     expect(b.result.current.liveWall.length).toBe(a.result.current.liveWall.length)
     expect(b.result.current.doraIndicators).toEqual(a.result.current.doraIndicators)
+  })
+
+  it('logs the pre-discard situation, and a rewind after a restart does not double-suffix the seed', () => {
+    const situation = emptySituation()
+    situation.seed = 'rewind-seed'
+    const { result, rerender } = renderHook(
+      (props: { situation: Situation }) => useEfficiencyRound(props.situation, BARE, true),
+      { initialProps: { situation } },
+    )
+
+    act(() => result.current.discard(0))
+    // the entry describes the round as it stood *before* this discard — turn 1, no river yet —
+    // not the post-discard state the round has already moved on to
+    const firstEntry = useLog.getState().entries.at(-1)!
+    const decodedFirst = decodeSituation(new URLSearchParams(firstEntry.situation!))
+    expect(decodedFirst.seed).toBe('rewind-seed')
+    expect(decodedFirst.river).toHaveLength(0)
+
+    // restart, so a later rewind has a restart-suffixed seed to contend with
+    act(() => result.current.restart())
+    act(() => result.current.discard(0))
+    const secondEntry = useLog.getState().entries.at(-1)!
+    const decoded = decodeSituation(new URLSearchParams(secondEntry.situation!))
+    expect(decoded.seed).toBe('rewind-seed:1') // sanity: the entry itself names the right round
+
+    // simulate the rewind button: the page hands the same mounted hook a brand-new `situation`
+    // object decoded straight from the URL, same as an EfficiencyPage remount would. Without the
+    // restartCount reset, startRound() would suffix this already-suffixed seed a second time.
+    act(() => rerender({ situation: decoded }))
+    const fresh = renderHook(() => useEfficiencyRound(decoded, BARE, true))
+    expect(result.current.hand).toEqual(fresh.result.current.hand)
+    expect(result.current.drawn).toEqual(fresh.result.current.drawn)
+    expect(result.current.turn).toBe(fresh.result.current.turn)
   })
 
   it('sanma: never deals 2m-8m, and aka seeds only two red fives (no 5m)', () => {

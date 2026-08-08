@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { HONOR, parseTenhou, PIN } from '../../core/tiles'
 import { useLog } from '../../store/log'
-import type { ScoringUrl } from './scoringUrl'
+import { decodeScoringUrl, type ScoringUrl } from './scoringUrl'
 import { useScoringRound, type RoundOptions } from './useScoringRound'
 
 const FULL: RoundOptions = {
@@ -49,6 +49,16 @@ describe('useScoringRound', () => {
     expect(result.current.match!.players.some((p) => p.river.length > 0)).toBe(true)
     expect(result.current.seat).toBeGreaterThanOrEqual(0)
     expect(result.current.seat).toBeLessThan(4)
+  })
+
+  // what a share link and the log's rewind button both ride on: the query a round dumps has to
+  // deal that very hand back, not merely a hand from a related seed
+  it('replays the hand its own situationQuery names', async () => {
+    const a = await deal(generated('share-seed'))
+    const query = new URLSearchParams(a.current.situationQuery())
+    const b = await deal(decodeScoringUrl(query))
+    expect(b.current.situation!.concealed).toEqual(a.current.situation!.concealed)
+    expect(b.current.actual!.han).toBe(a.current.actual!.han)
   })
 
   it('is reproducible from the same seed', async () => {

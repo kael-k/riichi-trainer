@@ -103,6 +103,15 @@ function situationFromWin(win: WinRecord, seed: string, options: RoundOptions): 
  *  the feedback here (yaku list, fu breakdown) needs to be read, not just glanced at. */
 export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
   const [handIndex, setHandIndex] = useState(0)
+  // handIndex is per-mount state that counts "next hand" presses, but a link (or a rewind out of
+  // the log) already names one exact hand — carrying a stale index into it would suffix the
+  // pinned seed again and deal a different one. Reset it whenever the link changes identity,
+  // the "adjust state while rendering" pattern
+  const [lastUrlData, setLastUrlData] = useState(urlData)
+  if (urlData !== lastUrlData) {
+    setLastUrlData(urlData)
+    setHandIndex(0)
+  }
   const stats = useSessionStats()
   const [state, setState] = useState<State | null>(null)
   const log = useLog((s) => s.log)
@@ -147,7 +156,13 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
       return
     }
 
-    const seed = `${urlData.seed || stats.randomSeed}:${handIndex}`
+    // no suffix on the first hand of a pinned seed: `situationQuery()` dumps the accepted attempt
+    // seed, so a link (or a rewind) has to replay it verbatim or `findMatchAsync` searches from
+    // somewhere else entirely and grades a different hand
+    const seed =
+      urlData.seed && handIndex === 0
+        ? urlData.seed
+        : `${urlData.seed || stats.randomSeed}:${handIndex}`
     const opts = matchOptions(seed, options)
     setState((prev) => (prev ? { ...prev, loading: true } : prev))
     void findMatchAsync(seed, options.sanma ? 3 : 4, opts, (outcome) =>
@@ -196,9 +211,22 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.checked, state?.loading, options.timerEnabled])
 
+  /** Current hand as a shareable query string. A match reproduces from its seed alone, rivers
+   *  and all, so that is the better link; a pinned or constructed hand has no match behind it
+   *  and ships its tiles instead. */
+  function situationQuery(): string {
+    return state?.matchSeed
+      ? encodeScoringSeedUrl(state.matchSeed, options)
+      : state
+        ? encodeScoringUrl(state.situation, options.sanma)
+        : ''
+  }
+
   function check(answer: Answer) {
     if (!state || state.checked) return
     const { actual } = state
+    // captured before the state update below moves the round on to "checked"
+    const situationBefore = situationQuery()
 
     const correctHan = !options.testHan || answer.han === actual.han
     const skipFu = options.ignoreFuOnLimit && actual.han >= 5
@@ -229,6 +257,7 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
       },
       state.situation.concealed,
       serializeTenhou(state.situation.concealed),
+      situationBefore,
     )
     stats.record(correct, elapsed)
 
@@ -264,13 +293,6 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     averageTime: stats.averageTime,
     check,
     next: () => setHandIndex((n) => n + 1),
-    /** A match reproduces from its seed alone, rivers and all, so that is the better link;
-     *  a pinned or constructed hand has no match behind it and ships its tiles instead. */
-    situationQuery: () =>
-      state?.matchSeed
-        ? encodeScoringSeedUrl(state.matchSeed, options)
-        : state
-          ? encodeScoringUrl(state.situation, options.sanma)
-          : '',
+    situationQuery,
   }
 }
