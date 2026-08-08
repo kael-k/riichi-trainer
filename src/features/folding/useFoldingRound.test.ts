@@ -64,6 +64,16 @@ describe('useFoldingRound', () => {
     expect(shared.current.threatSeats).toEqual(first.current.threatSeats)
   })
 
+  it('seats you somewhere other than always the declarer’s shimocha', async () => {
+    const seats = new Set<number>()
+    for (const seed of ['s1', 's2', 's3', 's4', 's5', 's6']) {
+      const result = await deal({ seed })
+      const threat = result.current.threatSeats[0]
+      seats.add((result.current.seatIndex - threat + 4) % 4)
+    }
+    expect(seats.size).toBeGreaterThan(1)
+  })
+
   it('a mid-hand link replays the discards behind it, and logs them', async () => {
     const first = await deal({ seed: 'midhand-seed' })
     for (let i = 0; i < 2 && !first.current.finished; i++) {
@@ -104,9 +114,8 @@ describe('useFoldingRound', () => {
     }
   })
 
-  it('plays the fold out: the safe pile grows turn after turn', async () => {
+  it('plays the fold out: every turn to the end of the hand is graded', async () => {
     const result = await deal({ seed: 'multi-seed' })
-    const before = result.current.ranked().filter((e) => e.tier === 'genbutsu').length
     let turns = 0
     for (let i = 0; i < 4 && !result.current.finished; i++) {
       const safe = result.current.ranked()[0]
@@ -115,14 +124,10 @@ describe('useFoldingRound', () => {
       )
       turns++
     }
+    // the drill is the whole fold, not one question: the board keeps handing the turn back
     expect(turns).toBeGreaterThan(1)
-    // every discard that goes past the threat without being ronned is one more tile they can
-    // never ron, so the genbutsu set only ever grows
-    if (!result.current.finished) {
-      expect(result.current.ranked().filter((e) => e.tier === 'genbutsu').length).toBeGreaterThan(
-        before,
-      )
-    }
+    expect(result.current.totalCount).toBe(turns)
+    expect(result.current.correctCount).toBe(turns)
   })
 
   it('never lets a folding opponent declare a second riichi', async () => {
@@ -156,13 +161,16 @@ describe('useFoldingRound', () => {
 
   it('never lets the engine call for the player', async () => {
     const result = await deal({ seed: 'nocall-seed' })
+    // a seat can arrive holding a meld it called before the drill started; what must never grow
+    // is the pile after the board is handed over
+    const atHandover = result.current.melds[result.current.seatIndex]
     for (let i = 0; i < 10 && !result.current.finished; i++) {
       const safe = result.current.ranked()[0]
       act(() =>
         result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)),
       )
     }
-    expect(result.current.melds[result.current.seatIndex]).toEqual([])
+    expect(result.current.melds[result.current.seatIndex]).toEqual(atHandover)
   })
 
   it('deals sanma boards without 2m-8m', async () => {

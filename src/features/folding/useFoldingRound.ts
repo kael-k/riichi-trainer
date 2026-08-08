@@ -134,32 +134,44 @@ function riichiSeats(match: MatchState): number[] {
   return match.players.flatMap((player, seat) => (player.riichiAt === undefined ? [] : [seat]))
 }
 
-/** Plays a seed until `threats` seats have declared riichi, stopping at the end of the turn the
- *  last one lands on. Turn granularity is deliberate: `playMatch`'s `stop` fires per event, after
- *  the whole turn has already run, which would leave `match.discards` missing that turn's own
- *  discard and call while the rest of the state already reflects them. */
+/** Plays a seed until `threats` seats have declared riichi, stopping at the end of a turn (never
+ *  mid-turn: `playMatch`'s `stop` fires per event, after the whole turn has already run, which
+ *  would leave `match.discards` missing that turn's own discard and call while the rest of the
+ *  state already reflects them). The board is then handed over a seeded number of seats later, so
+ *  your position relative to the declarer varies: taking the seat due to act the instant the
+ *  declaration lands makes you its shimocha every single time, and defending from shimocha is a
+ *  narrower skill than defending from anywhere at the table. */
 function playToRiichi(seed: string, options: MatchOptions, players: number, threats: number) {
   const match = createMatch(seed, players, options)
   // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
   for (let guard = 0; guard < 400 && !match.ended; guard++) {
     beginTurn(match, options)
     finishTurn(match, options)
-    if (riichiSeats(match).length >= threats) {
-      // whoever is due to act next inherits the decision, so it is immediate rather than three
-      // discards away; the engine only stops deciding for them from here on
-      const seatIndex = match.seat
-      // the target is met, so everyone still building a hand folds: an opponent left to chase
-      // tenpai keeps declaring and floods the table with fresh genbutsu, which is exactly the
-      // pressure this drill means to put on the player's own discards, not the AI's
-      for (const [seat, player] of match.players.entries()) {
-        if (seat !== seatIndex && player.riichiAt === undefined) player.policy = 'defense'
-      }
-      return {
-        match,
-        options: { ...options, human: seatIndex },
-        seatIndex,
-        handedOverAt: match.discards.filter((d) => d.seat === seatIndex).length,
-      }
+    if (riichiSeats(match).length < threats) continue
+
+    // the target is met, so everyone still building a hand folds: an opponent left to chase
+    // tenpai keeps declaring and floods the table with fresh genbutsu, which is exactly the
+    // pressure this drill means to put on the player's own discards, not the AI's. Applied
+    // before the handover turns below, so those turns cannot add a threat the link never
+    // promised — the seat that ends up yours is one the engine stops deciding for anyway
+    for (const player of match.players) {
+      if (player.riichiAt === undefined) player.policy = 'defense'
+    }
+    // seeded off the attempt seed like the round wind, so replaying the seed seats you the same
+    // way and a shared link stays exact
+    const rng = mulberry32(`${seed}:seat`)
+    for (let extra = Math.floor(rng() * (players - 1)); extra > 0 && !match.ended; extra--) {
+      beginTurn(match, options)
+      finishTurn(match, options)
+    }
+    if (match.ended) return null
+
+    const seatIndex = match.seat
+    return {
+      match,
+      options: { ...options, human: seatIndex },
+      seatIndex,
+      handedOverAt: match.discards.filter((d) => d.seat === seatIndex).length,
     }
   }
   return null
