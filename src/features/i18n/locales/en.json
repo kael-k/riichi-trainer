@@ -411,6 +411,7 @@
     "settings": {
       "timer": "Timer",
       "opponentWins": "Opponents can win",
+      "showEquallySafe": "Show other equally safe tiles",
       "threats": "Riichi to fold against"
     }
   },

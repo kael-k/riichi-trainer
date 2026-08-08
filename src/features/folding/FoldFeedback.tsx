@@ -4,6 +4,7 @@ import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Tile } from '../../components/tiles/Tile'
 import type { SafetyTier, TileDanger } from '../../core/danger'
 import type { GlossaryTermId } from '../i18n/glossary'
+import { useSettings } from '../settings/settingsStore'
 import { WINDS } from '../situation/urlCodec'
 import type { TurnResult } from './useFoldingRound'
 
@@ -72,7 +73,12 @@ function Row({ label, entry, seats }: { label: string; entry: TileDanger; seats:
  */
 export function FoldFeedback({ result, seats }: { result: TurnResult; seats: number[] }) {
   const { t } = useTranslation()
-  const alsoSafe = result.safest.filter((entry) => entry.tile !== result.yours.tile)
+  // opt-in: the tie list is a second answer to a question already answered right, and every tile
+  // in it is one the reader didn't have to find themselves next turn
+  const showEquallySafe = useSettings((s) => s.folding.showEquallySafe)
+  const alsoSafe = showEquallySafe
+    ? result.safest.filter((entry) => entry.tile !== result.yours.tile)
+    : []
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
       <Row label={t('folding.yourDiscard')} entry={result.yours} seats={seats} />

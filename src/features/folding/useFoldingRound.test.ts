@@ -12,7 +12,13 @@ import {
   type RoundOptions,
 } from './useFoldingRound'
 
-const OPTIONS: RoundOptions = { sanma: false, timerEnabled: true, threats: 1, opponentWins: true }
+const OPTIONS: RoundOptions = {
+  sanma: false,
+  timerEnabled: true,
+  threats: 1,
+  opponentWins: true,
+  showEquallySafe: false,
+}
 
 /** Generation is a seed search, so hands arrive a tick (or several) later. */
 async function deal(urlData: FoldingUrl, options: RoundOptions = OPTIONS) {

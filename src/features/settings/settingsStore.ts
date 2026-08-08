@@ -53,6 +53,10 @@ export interface Settings {
      *  same grading, but the hand plays to the wall instead of ending on a deal-in. On by
      *  default: a fold you can't lose teaches the tiles but not the stakes. */
     opponentWins: boolean
+    /** After a correct discard, also list the other tiles that tied it. Off by default: the
+     *  answer was already right, and naming the alternatives hands over part of next turn's
+     *  reading for free. */
+    showEquallySafe: boolean
   }
 }
 
@@ -138,7 +142,7 @@ export const useSettings = create<SettingsState>()(
         ignoreFuOnLimit: true,
         openHands: true,
       },
-      folding: { timerEnabled: true, threats: 1, opponentWins: true },
+      folding: { timerEnabled: true, threats: 1, opponentWins: true, showEquallySafe: false },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       showTileNumbers: null,
