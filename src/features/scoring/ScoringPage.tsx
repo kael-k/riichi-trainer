@@ -177,11 +177,16 @@ export function ScoringPage() {
   const flagBadges = FLAG_KEYS.filter((key) => ctx[key]).map((key) => (
     <span key={key}>{badge(termName('flags', key))}</span>
   ))
-  // the table draws the winner's own riichi as a bet stick, so the badge there would say it twice;
-  // the flat bar has no board to show a stick on, so it keeps the plain badge
-  const tableFlagBadges = FLAG_KEYS.filter((key) => key !== 'riichi' && ctx[key]).map((key) => (
-    <span key={key}>{badge(termName('flags', key))}</span>
-  ))
+  // a hand that was really played says all of this on the board, and reading the board is the
+  // drill: riichi is the bet stick (double riichi, the declaration lying on the first discard),
+  // haitei/houtei is the wall count at zero, ippatsu is the win landing before the declarer's own
+  // next discard. A link-pinned or generated hand has no rivers and no wall behind it, so there
+  // the badges are the only place those conditions exist and they stay.
+  const tableFlagBadges = round.match
+    ? []
+    : FLAG_KEYS.filter((key) => key !== 'riichi' && ctx[key]).map((key) => (
+        <span key={key}>{badge(termName('flags', key))}</span>
+      ))
   const winBadge = badge(t(ctx.tsumo ? 'scoring.tsumo' : 'scoring.ron'))
 
   // the hand was actually played, so the board shows the real thing: every seat's real river,
@@ -285,9 +290,11 @@ export function ScoringPage() {
               wallCount={round.match?.liveWall.length}
               honba={round.situation.honba}
             >
-              <span className="flex flex-wrap items-center justify-center gap-[1cqw]">
-                {tableFlagBadges}
-              </span>
+              {tableFlagBadges.length > 0 && (
+                <span className="flex flex-wrap items-center justify-center gap-[1cqw]">
+                  {tableFlagBadges}
+                </span>
+              )}
             </Table>
           ) : (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
