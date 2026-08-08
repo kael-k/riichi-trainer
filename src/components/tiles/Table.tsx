@@ -51,12 +51,20 @@ const WIND_MARKS = [
   'left-0 top-1/2 -translate-y-1/2',
 ]
 
+/** A real dead wall always shows five indicator slots; a kan flips the next one. The unflipped
+ *  ones are drawn face-down rather than left out, so the row says how many are still to come
+ *  instead of silently growing. */
+const INDICATOR_SLOTS = 5
+
 function IndicatorRow({ label, tiles }: { label: string; tiles: ParsedTile[] }) {
   return (
     <span className="flex items-center gap-[0.4cqw]">
       <span className="text-neutral-500 dark:text-neutral-400">{label}</span>
       {tiles.map((tile, i) => (
         <Tile key={i} id={tile.id} red={tile.red} />
+      ))}
+      {Array.from({ length: Math.max(0, INDICATOR_SLOTS - tiles.length) }, (_, i) => (
+        <Tile key={`back-${i}`} />
       ))}
     </span>
   )
