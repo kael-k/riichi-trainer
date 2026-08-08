@@ -7,6 +7,7 @@ import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsed, formatElapsedMs } from '../../lib/formatElapsed'
+import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation, WINDS } from '../situation/urlCodec'
@@ -72,6 +73,7 @@ export function EfficiencyPage() {
   return (
     <TrainerLayout
       title={t('trainer.efficiency.title')}
+      intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
       settings={
         <>
           {toggle('showShanten', 'efficiency.settings.showShanten')}

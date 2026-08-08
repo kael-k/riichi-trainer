@@ -13,7 +13,10 @@
     "submit": "Conferma",
     "wallDetails_one": "Muro ({{count}} tessera)",
     "wallDetails_other": "Muro ({{count}} tessere)",
-    "deadWallMarker": "Muro morto"
+    "deadWallMarker": "Muro morto",
+    "aboutTrainer": "Informazioni",
+    "aboutTrainerTitle": "Informazioni: {{title}}",
+    "learnMoreWiki": "Approfondisci su riichi.wiki"
   },
   "settings": {
     "button": "Impostazioni",
@@ -59,19 +62,23 @@
   "trainer": {
     "efficiency": {
       "title": "Allenamento efficienza",
-      "desc": "Scegli lo scarto migliore; guarda le tessere che migliorano la mano."
+      "desc": "Scegli lo scarto migliore; guarda le tessere che migliorano la mano.",
+      "intro": "Ogni mano ti mette a metà di una partita reale. Scarta la tessera che tiene la mano più vicina al tenpai e con più modi per migliorarla (il suo ukeire). Dopo lo scarto, il trainer mostra se era la scelta migliore e quante tessere hai lasciato sul tavolo."
     },
     "shanten": {
       "title": "Allenamento shanten",
-      "desc": "Indovina a quanto shanten sei dal tenpai, contro il tempo."
+      "desc": "Indovina a quanto shanten sei dal tenpai, contro il tempo.",
+      "intro": "Ti viene mostrata una mano e devi indovinarne lo shanten: quanti scambi di tessere servono per arrivare al tenpai (0 = già in attesa di vincere). Le mani si susseguono senza pause, quindi rispondi in fretta e passa alla successiva."
     },
     "scoring": {
       "title": "Allenamento punteggio",
-      "desc": "Indovina han, fu e punti di una mano vincente."
+      "desc": "Indovina han, fu e punti di una mano vincente.",
+      "intro": "Ti viene mostrata una mano vincente già completa. Calcola i suoi yaku, han, fu e i punti risultanti prima di controllare la risposta: è l'abilità per cui esiste questo trainer."
     },
     "folding": {
       "title": "Trainer difensivo",
-      "desc": "Qualcuno ha dichiarato riichi. Scegli il tile più sicuro da scartare."
+      "desc": "Qualcuno ha dichiarato riichi. Scegli il tile più sicuro da scartare.",
+      "intro": "Un avversario ha dichiarato riichi e non sei in condizione di attaccare. Scegli lo scarto con minor probabilità di entrare nella sua mano, usando solo informazioni pubbliche (i suoi scarti e quelli di tutti gli altri) — mai quello che sta davvero tenendo in mano."
     }
   },
   "efficiency": {

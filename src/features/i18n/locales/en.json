@@ -13,7 +13,10 @@
     "submit": "Submit",
     "wallDetails_one": "Wall ({{count}} tile)",
     "wallDetails_other": "Wall ({{count}} tiles)",
-    "deadWallMarker": "Dead wall"
+    "deadWallMarker": "Dead wall",
+    "aboutTrainer": "About",
+    "aboutTrainerTitle": "About: {{title}}",
+    "learnMoreWiki": "Learn more on riichi.wiki"
   },
   "settings": {
     "button": "Settings",
@@ -59,19 +62,23 @@
   "trainer": {
     "efficiency": {
       "title": "Efficiency trainer",
-      "desc": "Pick the best discard; see the tiles that improve your hand."
+      "desc": "Pick the best discard; see the tiles that improve your hand.",
+      "intro": "Each round deals you a real hand mid-match. Discard the tile that keeps your hand closest to tenpai and keeps the most ways to improve it (its ukeire). After you discard, the trainer shows whether it was the best choice and how many tiles you left on the table."
     },
     "shanten": {
       "title": "Shanten trainer",
-      "desc": "Guess how far a hand is from tenpai, against the clock."
+      "desc": "Guess how far a hand is from tenpai, against the clock.",
+      "intro": "You're shown a hand and asked to guess its shanten: how many tile exchanges it needs to reach tenpai (0 = already waiting to win). Hands stream continuously, so answer quickly and move on to the next."
     },
     "scoring": {
       "title": "Scoring trainer",
-      "desc": "Guess han, fu and points for a winning hand."
+      "desc": "Guess han, fu and points for a winning hand.",
+      "intro": "You're shown a completed, winning hand. Work out its yaku, han, fu and the resulting points before checking the answer — the skill scoring trainers are built for."
     },
     "folding": {
       "title": "Folding trainer",
-      "desc": "Someone declared riichi. Pick the safest tile to throw."
+      "desc": "Someone declared riichi. Pick the safest tile to throw.",
+      "intro": "An opponent has declared riichi and you're not in a position to push. Pick the discard least likely to deal into their hand, using only public information (their discards and everyone else's) — never what they're actually holding."
     }
   },
   "efficiency": {

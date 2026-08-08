@@ -1,5 +1,6 @@
-import { ArrowLeft, Check, Copy } from 'lucide-react'
+import { ArrowLeft, Check, Copy, ExternalLink, Info, X } from 'lucide-react'
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { formatLogEntry } from '../features/i18n/formatLogEntry'
@@ -8,15 +9,24 @@ import { SettingsButton } from '../features/settings/SettingsDialog'
 import { useLog, type LogEntry } from '../store/log'
 import { Tile } from './tiles/Tile'
 
+export interface TrainerIntro {
+  /** Beginner-facing explanation of what the trainer drills. */
+  text: string
+  /** riichi.wiki page with the full rules/theory, if one exists for this trainer's topic. */
+  wikiUrl?: string
+}
+
 interface TrainerLayoutProps {
   title: string
   /** Form controls rendered inside the settings dialog; omit to hide app-specific rows
    *  (the Global section still shows). */
   settings?: ReactNode
+  /** Shown behind an info button in the header; omit to hide the button. */
+  intro?: TrainerIntro
   children: ReactNode
 }
 
-export function TrainerLayout({ title, settings, children }: TrainerLayoutProps) {
+export function TrainerLayout({ title, settings, intro, children }: TrainerLayoutProps) {
   const { t } = useTranslation()
   const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
   const clearLog = useLog((s) => s.clear)
@@ -33,6 +43,7 @@ export function TrainerLayout({ title, settings, children }: TrainerLayoutProps)
           <ArrowLeft className="size-5" />
         </Link>
         <h1 className="flex-1 font-semibold">{title}</h1>
+        {intro && <InfoButton title={title} intro={intro} />}
         <SettingsButton title={title}>{settings}</SettingsButton>
       </header>
       <main
@@ -52,6 +63,85 @@ export function TrainerLayout({ title, settings, children }: TrainerLayoutProps)
       </main>
       <LogPanel />
     </div>
+  )
+}
+
+/** Info button + modal explaining what the trainer drills, with an optional link to the full
+ *  rules/theory on riichi.wiki. Mirrors SettingsButton's overlay (portalled, scrim-dismissed,
+ *  Escape-closed, body scroll locked) but as a centered card — the content is a paragraph, not
+ *  a settings list, so the desktop side-sheet treatment doesn't earn its keep here. */
+export function InfoButton({ title, intro }: { title: string; intro: TrainerIntro }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('keydown', onKey)
+    const { overflow } = document.body.style
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = overflow
+    }
+  }, [open])
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={t('common.aboutTrainer')}
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+        className="flex size-11 items-center justify-center"
+      >
+        <Info className="size-5" />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('common.aboutTrainerTitle', { title })}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setOpen(false)
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3"
+          >
+            <div className="flex max-h-full w-[min(90vw,26rem)] flex-col overflow-hidden rounded-xl bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
+                <h2 className="flex items-center gap-2 font-semibold">
+                  <Info className="size-4 shrink-0 text-neutral-400" />
+                  {t('common.aboutTrainerTitle', { title })}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="flex size-11 items-center justify-center"
+                  aria-label={t('common.close')}
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 text-sm text-neutral-600 dark:text-neutral-400">
+                <p>{intro.text}</p>
+                {intro.wikiUrl && (
+                  <a
+                    href={intro.wikiUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-11 items-center gap-1.5 self-start font-medium text-neutral-900 hover:underline dark:text-neutral-100"
+                  >
+                    {t('common.learnMoreWiki')}
+                    <ExternalLink className="size-3.5 shrink-0" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   )
 }
 

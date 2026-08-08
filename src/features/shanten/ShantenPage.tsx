@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
@@ -56,6 +57,7 @@ export function ShantenPage() {
   return (
     <TrainerLayout
       title={t('trainer.shanten.title')}
+      intro={{ text: t('trainer.shanten.intro'), wikiUrl: TRAINER_WIKI.shanten }}
       settings={
         <>
           <SettingRow label={t('shanten.settings.timer')}>

@@ -7,6 +7,7 @@ import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { WINDS } from '../situation/urlCodec'
@@ -139,7 +140,11 @@ export function FoldingPage() {
   const threatWinds = round.threatSeats.map((seat) => t(`wind.${WINDS[seat]}`)).join(' · ')
 
   return (
-    <TrainerLayout title={t('trainer.folding.title')} settings={settingsRows}>
+    <TrainerLayout
+      title={t('trainer.folding.title')}
+      intro={{ text: t('trainer.folding.intro'), wikiUrl: TRAINER_WIKI.folding }}
+      settings={settingsRows}
+    >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
           <span>{t('folding.turnStatus', { turn: round.turn })}</span>

@@ -9,6 +9,7 @@ import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/ti
 import { HONOR, serializeTenhou } from '../../core/tiles'
 import { WINDS } from '../situation/urlCodec'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { useTermName } from '../i18n/useTermName'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
@@ -212,6 +213,7 @@ export function ScoringPage() {
   return (
     <TrainerLayout
       title={t('trainer.scoring.title')}
+      intro={{ text: t('trainer.scoring.intro'), wikiUrl: TRAINER_WIKI.scoring }}
       settings={
         <>
           {toggle('testHan', 'scoring.settings.testHan', true)}
