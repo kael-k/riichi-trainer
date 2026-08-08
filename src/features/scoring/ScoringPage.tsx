@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
+import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
@@ -289,7 +290,7 @@ export function ScoringPage() {
               </span>
               {round.situation.doraIndicators.length > 0 && (
                 <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                  {t('scoring.doraIndicator')}
+                  <GlossaryTerm id="dora">{t('scoring.doraIndicator')}</GlossaryTerm>
                   {round.situation.doraIndicators.map((id, i) => (
                     <Tile key={i} id={id} />
                   ))}
@@ -297,7 +298,7 @@ export function ScoringPage() {
               )}
               {round.checked && round.situation.uraIndicators.length > 0 && (
                 <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                  {t('scoring.uraIndicator')}
+                  <GlossaryTerm id="uraDora">{t('scoring.uraIndicator')}</GlossaryTerm>
                   {round.situation.uraIndicators.map((id, i) => (
                     <Tile key={i} id={id} />
                   ))}

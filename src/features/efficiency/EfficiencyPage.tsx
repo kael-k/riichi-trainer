@@ -1,8 +1,9 @@
 import { Pause, Play } from 'lucide-react'
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useMemo, type ReactNode } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
+import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Tile'
@@ -59,8 +60,8 @@ export function EfficiencyPage() {
       : { river },
   )
 
-  const toggle = (key: keyof typeof settings, labelKey: string) => (
-    <SettingRow label={t(labelKey)}>
+  const toggle = (key: keyof typeof settings, label: ReactNode) => (
+    <SettingRow label={label}>
       <input
         type="checkbox"
         checked={settings[key]}
@@ -76,13 +77,25 @@ export function EfficiencyPage() {
       intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
       settings={
         <>
-          {toggle('showShanten', 'efficiency.settings.showShanten')}
-          {toggle('timerEnabled', 'efficiency.settings.timer')}
-          {toggle('showUkeire', 'efficiency.settings.showUkeire')}
-          {toggle('opponents', 'efficiency.settings.opponents')}
-          {toggle('deadWall', 'efficiency.settings.deadWall')}
-          {toggle('aka', 'efficiency.settings.redFives')}
-          {toggle('showWall', 'efficiency.settings.showWall')}
+          {toggle(
+            'showShanten',
+            <Trans
+              i18nKey="efficiency.settings.showShanten"
+              components={{ term: <GlossaryTerm id="shanten" /> }}
+            />,
+          )}
+          {toggle('timerEnabled', t('efficiency.settings.timer'))}
+          {toggle(
+            'showUkeire',
+            <Trans
+              i18nKey="efficiency.settings.showUkeire"
+              components={{ term: <GlossaryTerm id="ukeire" /> }}
+            />,
+          )}
+          {toggle('opponents', t('efficiency.settings.opponents'))}
+          {toggle('deadWall', t('efficiency.settings.deadWall'))}
+          {toggle('aka', t('efficiency.settings.redFives'))}
+          {toggle('showWall', t('efficiency.settings.showWall'))}
         </>
       }
     >
@@ -110,7 +123,7 @@ export function EfficiencyPage() {
           )}
           {!showTable && round.doraIndicators.length > 0 && (
             <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-              {t('efficiency.doraIndicator')}{' '}
+              <GlossaryTerm id="dora">{t('efficiency.doraIndicator')}</GlossaryTerm>{' '}
               {round.doraIndicators.map((indicator, i) => (
                 <Tile key={i} id={indicator.id} red={indicator.red} />
               ))}
@@ -118,11 +131,15 @@ export function EfficiencyPage() {
           )}
           <span className="ml-auto flex flex-col items-end">
             <span>
-              {t('efficiency.ukeireLost', {
-                lost: round.cumulativeLost,
-                total: round.cumulativeTotal,
-                accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
-              })}
+              <Trans
+                i18nKey="efficiency.ukeireLost"
+                values={{
+                  lost: round.cumulativeLost,
+                  total: round.cumulativeTotal,
+                  accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+                }}
+                components={{ term: <GlossaryTerm id="ukeire" /> }}
+              />
             </span>
             {settings.timerEnabled && (
               <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>

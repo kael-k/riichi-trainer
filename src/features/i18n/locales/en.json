@@ -53,6 +53,41 @@
     "rotateHint": "Turn your phone sideways to see the table and your hand at once.",
     "rotateHintDismiss": "Do not show this again"
   },
+  "glossary": {
+    "ariaLabel": "Explain: {{term}}",
+    "ukeire": {
+      "term": "Ukeire",
+      "desc": "The tiles that would improve your hand if drawn next — fewer kinds and copies mean a narrower path to tenpai. The efficiency trainer counts it after every discard."
+    },
+    "tedashi": {
+      "term": "Tedashi",
+      "desc": "A discard pulled from your hand rather than the tile you just drew. It reveals more about your hand than a tsumogiri does, since it shows you chose to keep the drawn tile instead."
+    },
+    "tsumogiri": {
+      "term": "Tsumogiri",
+      "desc": "Discarding the tile you just drew, untouched. It gives away less information than a tedashi, because your hand shape didn't visibly change."
+    },
+    "shanten": {
+      "term": "Shanten",
+      "desc": "How many tile exchanges a hand needs to reach tenpai. 0 means already tenpai (waiting to win); -1 means already won."
+    },
+    "genbutsu": {
+      "term": "Genbutsu",
+      "desc": "A tile provably safe against a specific riichi: it's already in that player's own discards, or someone discarded it after their riichi without being ronned. The only tier that's actually 100% safe."
+    },
+    "suji": {
+      "term": "Suji",
+      "desc": "A tile whose matching ryanmen (two-sided wait) is ruled out because its genbutsu counterpart three away is already safe (e.g. 4 is suji if 1 is genbutsu). It only rules out that one wait shape — tanki, shanpon and kanchan waits on the same tile are untouched."
+    },
+    "dora": {
+      "term": "Dora",
+      "desc": "A bonus-value tile indicated by the dora indicator (the next tile after it in sequence). It adds to a hand's han but is not itself a yaku — a hand needs a real yaku to win even with dora."
+    },
+    "uraDora": {
+      "term": "Ura dora",
+      "desc": "A second, hidden dora indicator revealed only for hands that win by riichi. It rewards riichi specifically, on top of whatever yaku and dora the hand already has."
+    }
+  },
   "home": {
     "title": "Riichi Trainer",
     "license": "Free and open-source software, released under the GPLv3.",
@@ -83,9 +118,9 @@
   },
   "efficiency": {
     "settings": {
-      "showShanten": "Show shanten",
+      "showShanten": "Show <term>shanten</term>",
       "timer": "Timer",
-      "showUkeire": "Show ukeire tiles",
+      "showUkeire": "Show <term>ukeire</term> tiles",
       "opponents": "Opponents",
       "deadWall": "Dead wall & dora",
       "redFives": "Red fives",
@@ -98,7 +133,7 @@
     "wallStatus_one": "Wall: {{count}} tile",
     "wallStatus_other": "Wall: {{count}} tiles",
     "doraIndicator": "Dora indicator",
-    "ukeireLost": "Ukeire lost: {{lost}} / {{total}} ({{accuracy}}% accuracy)",
+    "ukeireLost": "<term>Ukeire</term> lost: {{lost}} / {{total}} ({{accuracy}}% accuracy)",
     "tenpaiReached": "Tenpai reached",
     "roundComplete": "Round complete",
     "totalLost_one": "Total ukeire lost across {{turns}} turn: {{lost}} / {{total}} ({{accuracy}}% accuracy)",
@@ -116,7 +151,7 @@
     "yourKan": "Your kan",
     "bestDiscard": "Best discard",
     "bestKita": "Kita",
-    "shantenLine": "shanten {{count}}",
+    "shantenLine": "<term>shanten</term> {{count}}",
     "tilesSuffix_one": "· {{count}} tile",
     "tilesSuffix_other": "· {{count}} tiles",
     "shantenWorse": "This discard is {{count}} shanten worse.",

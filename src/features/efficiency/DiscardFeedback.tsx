@@ -1,6 +1,7 @@
 import { CheckCircle2, TriangleAlert } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import type { DiscardOption } from '../../core/efficiency'
+import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Tile, UkeireTiles } from '../../components/tiles/Tile'
 import { NORTH, type TurnResult } from './useEfficiencyRound'
 
@@ -23,7 +24,11 @@ function FeedbackRow({
         <Tile id={option.discard} />
         {showShanten && (
           <span className="text-neutral-500">
-            {t('discardFeedback.shantenLine', { count: option.shanten })}
+            <Trans
+              i18nKey="discardFeedback.shantenLine"
+              values={{ count: option.shanten }}
+              components={{ term: <GlossaryTerm id="shanten" /> }}
+            />
           </span>
         )}
         <span className="text-neutral-500">

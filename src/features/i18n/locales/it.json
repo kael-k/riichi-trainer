@@ -53,6 +53,41 @@
     "rotateHint": "Ruota il telefono in orizzontale per vedere tavolo e mano insieme.",
     "rotateHintDismiss": "Non mostrare più"
   },
+  "glossary": {
+    "ariaLabel": "Spiega: {{term}}",
+    "ukeire": {
+      "term": "Ukeire",
+      "desc": "Le tessere che migliorerebbero la mano se pescate. Meno tipi e copie disponibili significano un percorso più stretto verso il tenpai. Il trainer di efficienza lo conta dopo ogni scarto."
+    },
+    "tedashi": {
+      "term": "Tedashi",
+      "desc": "Uno scarto preso dalla mano invece che dalla tessera appena pescata. Rivela più informazioni di un tsumogiri, perché mostra che hai scelto di tenere la tessera pescata."
+    },
+    "tsumogiri": {
+      "term": "Tsumogiri",
+      "desc": "Scartare la tessera appena pescata, senza toccarla. Rivela meno informazioni di un tedashi, perché la forma della mano non è visibilmente cambiata."
+    },
+    "shanten": {
+      "term": "Shanten",
+      "desc": "Quanti scambi di tessere servono a una mano per arrivare al tenpai. 0 significa già in tenpai (in attesa di vincere); -1 significa mano già vinta."
+    },
+    "genbutsu": {
+      "term": "Genbutsu",
+      "desc": "Una tessera sicura al 100% contro un riichi specifico: è già tra gli scarti di quel giocatore, oppure qualcuno l'ha scartata dopo il suo riichi senza essere ronnato. L'unico livello davvero sicuro."
+    },
+    "suji": {
+      "term": "Suji",
+      "desc": "Una tessera il cui ryanmen corrispondente (attesa a due lati) è escluso perché la sua controparte genbutsu a distanza di tre è già sicura (es. il 4 è suji se l'1 è genbutsu). Esclude solo quella forma d'attesa: tanki, shanpon e kanchan sulla stessa tessera restano possibili."
+    },
+    "dora": {
+      "term": "Dora",
+      "desc": "Una tessera che vale punti bonus, indicata dall'indicatore dora (la tessera successiva nella sequenza). Aggiunge han alla mano ma non è essa stessa uno yaku: serve comunque uno yaku vero per vincere, anche con dora."
+    },
+    "uraDora": {
+      "term": "Ura dora",
+      "desc": "Un secondo indicatore dora, nascosto, rivelato solo per le mani vinte con riichi. Premia specificamente il riichi, in aggiunta a yaku e dora già presenti nella mano."
+    }
+  },
   "home": {
     "title": "Riichi Trainer",
     "license": "Software libero e open source, rilasciato sotto licenza GPLv3.",
@@ -83,9 +118,9 @@
   },
   "efficiency": {
     "settings": {
-      "showShanten": "Mostra shanten",
+      "showShanten": "Mostra lo <term>shanten</term>",
       "timer": "Timer",
-      "showUkeire": "Mostra tessere di ukeire",
+      "showUkeire": "Mostra tessere di <term>ukeire</term>",
       "opponents": "Avversari",
       "deadWall": "Muro morto e dora",
       "redFives": "Cinque rossi",
@@ -98,7 +133,7 @@
     "wallStatus_one": "Muro: {{count}} tessera",
     "wallStatus_other": "Muro: {{count}} tessere",
     "doraIndicator": "Indicatore dora",
-    "ukeireLost": "Ukeire perso: {{lost}} / {{total}} (precisione {{accuracy}}%)",
+    "ukeireLost": "<term>Ukeire</term> perso: {{lost}} / {{total}} (precisione {{accuracy}}%)",
     "tenpaiReached": "Tenpai raggiunto",
     "roundComplete": "Mano conclusa",
     "totalLost_one": "Ukeire perso in {{turns}} turno: {{lost}} / {{total}} (precisione {{accuracy}}%)",
@@ -116,7 +151,7 @@
     "yourKan": "Il tuo kan",
     "bestDiscard": "Scarto migliore",
     "bestKita": "Kita",
-    "shantenLine": "shanten {{count}}",
+    "shantenLine": "<term>shanten</term> {{count}}",
     "tilesSuffix_one": "· {{count}} tessera",
     "tilesSuffix_other": "· {{count}} tessere",
     "shantenWorse": "Questo scarto è peggiore di {{count}} shanten.",

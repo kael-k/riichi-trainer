@@ -2,6 +2,7 @@ import { Moon, Settings, Sun, SunMoon, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { resolveLocale } from '../i18n'
 import {
   DEFAULT_TILE_SCALE,
@@ -13,8 +14,9 @@ import {
 } from './settingsStore'
 import { useShowTileNumbers } from './useShowTileNumbers'
 
-/** Labeled toggle row for settings dialogs. */
-export function SettingRow({ label, children }: { label: string; children: ReactNode }) {
+/** Labeled toggle row for settings dialogs. `label` takes a GlossaryTerm alongside its text on
+ *  rows that name jargon (e.g. tedashi/tsumogiri), so it's ReactNode rather than a plain string. */
+export function SettingRow({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <label className="flex min-h-11 items-center justify-between gap-4">
       <span>{label}</span>
@@ -153,7 +155,13 @@ export function GlobalSettings() {
           />
         </SettingRow>
       )}
-      <SettingRow label={t('settings.tsumogiriMarks')}>
+      <SettingRow
+        label={
+          <>
+            {t('settings.tsumogiriMarks')} <GlossaryTerm id="tsumogiri" iconOnly />
+          </>
+        }
+      >
         <input
           type="checkbox"
           checked={showTsumogiri}

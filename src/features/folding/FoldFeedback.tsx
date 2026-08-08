@@ -1,9 +1,20 @@
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Tile } from '../../components/tiles/Tile'
 import type { SafetyTier, TileDanger } from '../../core/danger'
+import type { GlossaryTermId } from '../i18n/glossary'
 import { WINDS } from '../situation/urlCodec'
 import type { TurnResult } from './useFoldingRound'
+
+/** Only the tiers with a glossary entry get the popover; the rest (honour, non-suji, walled)
+ *  aren't jargon that needs unpacking beyond what folding.reason.* already says inline. */
+const TIER_GLOSSARY: Partial<Record<SafetyTier, GlossaryTermId>> = {
+  genbutsu: 'genbutsu',
+  suji: 'suji',
+  doubleSuji: 'suji',
+  halfSuji: 'suji',
+}
 
 /** Why this tile sits where it does, per threat. The tiers name a relationship to a *seat*, so
  *  the wind is part of the sentence: "genbutsu vs South" is a different claim from "genbutsu". */
@@ -17,7 +28,15 @@ function Reasons({ entry, seats }: { entry: TileDanger; seats: number[] }) {
           {entry.against.length > 1 && (
             <span className="text-neutral-500">{t(`wind.${WINDS[seats[i]]}`)}</span>
           )}
-          <span className="font-medium">{t(`folding.tier.${against.tier}`)}</span>
+          <span className="font-medium">
+            {TIER_GLOSSARY[against.tier] ? (
+              <GlossaryTerm id={TIER_GLOSSARY[against.tier]!}>
+                {t(`folding.tier.${against.tier}`)}
+              </GlossaryTerm>
+            ) : (
+              t(`folding.tier.${against.tier}`)
+            )}
+          </span>
           <span>
             {t(`folding.reason.${against.tier}`, {
               count: against.tier === 'honour' ? entry.visible : against.because.length,
