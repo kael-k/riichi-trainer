@@ -137,6 +137,9 @@ describe('useEfficiencyRound', () => {
 
   it('opponents before the user act first, and their discards count as visible', () => {
     const situation = emptySituation()
+    // pinned so opponent hands (and whether one happens to pon/kan the 7z below) are stable —
+    // an unset seed made this flaky whenever the random deal gave a seat a callable pair on it
+    situation.seed = 'east-first-seed'
     situation.hand = parseTenhou('123456789m1122z') // discard 7z draw -> shanpon on 1z/2z
     situation.wall = parseTenhou('1z7z')
     situation.seat = 'S' // East tsumogiris before the user's first draw

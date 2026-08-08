@@ -299,6 +299,9 @@ function playPastRiichi(seed: string, extraTurns: number) {
 }
 
 describe('genbutsu never lies (property, over generated matches)', () => {
+  // 150 full match simulations plus per-seat assessDiscards is legitimately heavier than the
+  // 5000ms default; under parallel test-file contention it can miss that window without being
+  // an actual hang, which is what flaked this in CI.
   it('nothing ranked genbutsu is a tile that threat could actually ron', () => {
     let checked = 0
     let hands = 0
@@ -333,7 +336,7 @@ describe('genbutsu never lies (property, over generated matches)', () => {
     }
     expect(hands).toBeGreaterThan(30)
     expect(checked).toBeGreaterThan(200)
-  })
+  }, 15000)
 })
 
 function seenBy(state: MatchState, seat: number): Uint8Array {
