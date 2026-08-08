@@ -320,6 +320,7 @@ export function useEfficiencyRound(
           drawn: drewCode,
           tile: tileCode(tile.id, tile.red),
           ukeire: yours.ukeireCount,
+          shanten: yours.shanten,
         },
         [...drewTiles, tile],
       )
@@ -333,6 +334,7 @@ export function useEfficiencyRound(
           yours: yours.ukeireCount,
           best: tileCode(best.discard),
           bestUkeire: best.ukeireCount,
+          shanten: yours.shanten,
         },
         [...drewTiles, tile, { id: best.discard, red: false }],
       )
@@ -394,7 +396,11 @@ export function useEfficiencyRound(
     const tiles = drawn ? [northTile, drawn] : [northTile]
 
     if (isBest) {
-      log('log.efficiency.kitaBest', { turn: r.match.turn, ukeire: yours.ukeireCount }, tiles)
+      log(
+        'log.efficiency.kitaBest',
+        { turn: r.match.turn, ukeire: yours.ukeireCount, shanten: yours.shanten },
+        tiles,
+      )
     } else {
       log(
         'log.efficiency.kitaMistake',
@@ -403,6 +409,7 @@ export function useEfficiencyRound(
           yours: yours.ukeireCount,
           best: tileCode(best.discard),
           bestUkeire: best.ukeireCount,
+          shanten: yours.shanten,
         },
         tiles,
       )
@@ -469,7 +476,7 @@ export function useEfficiencyRound(
     if (isBest) {
       log(
         'log.efficiency.kanBest',
-        { turn: r.match.turn, tile: tileCode(id), ukeire: yours.ukeireCount },
+        { turn: r.match.turn, tile: tileCode(id), ukeire: yours.ukeireCount, shanten: yours.shanten },
         tiles,
       )
     } else {
@@ -481,6 +488,7 @@ export function useEfficiencyRound(
           yours: yours.ukeireCount,
           best: tileCode(best.discard),
           bestUkeire: best.ukeireCount,
+          shanten: yours.shanten,
         },
         tiles,
       )

@@ -114,11 +114,12 @@ function LogPanel() {
 
 function LogRow({ entry }: { entry: LogEntry }) {
   const { t } = useTranslation()
+  const showShanten = useSettings((s) => s.efficiency.showShanten)
   const [copied, setCopied] = useState(false)
   return (
     <li className="flex items-center gap-2 py-0.5">
       <div className="min-w-0 flex-1">
-        <p>{formatLogEntry(entry, t)}</p>
+        <p>{formatLogEntry(entry, t, showShanten)}</p>
         {entry.tiles && entry.tiles.length > 0 && (
           <div className="flex flex-wrap">
             {entry.tiles.map((tile, i) => (

@@ -30,11 +30,25 @@ interface FoldingDiscardParams {
   correct: boolean
 }
 
+/** Keys carrying a `shanten` param (every efficiency discard/kita/kan outcome) get an
+ *  optional trailing clause here, gated on the live setting rather than baked in at log
+ *  time — matches the discard feedback panel, which is the same toggle. */
+const EFFICIENCY_SHANTEN_KEYS = new Set([
+  'log.efficiency.discardBest',
+  'log.efficiency.discardBestDrew',
+  'log.efficiency.discardMistake',
+  'log.efficiency.discardMistakeDrew',
+  'log.efficiency.kitaBest',
+  'log.efficiency.kitaMistake',
+  'log.efficiency.kanBest',
+  'log.efficiency.kanMistake',
+])
+
 /** Most log entries are a direct t(key, params). The shanten result entry composes two
  *  optional trailing clauses (path names, elapsed time) from raw data at render time, so
  *  switching language re-translates the whole line instead of leaving stale fragments
  *  from whatever language was active when the entry was logged. */
-export function formatLogEntry(entry: LogEntry, t: TFunction): string {
+export function formatLogEntry(entry: LogEntry, t: TFunction, showShanten: boolean): string {
   if (entry.key === 'log.shanten.result') {
     const { hand, guess, actual, paths, correct, timerEnabled, elapsedMs } =
       entry.params as unknown as ShantenResultParams
@@ -83,6 +97,12 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
       tile: string
     }
     return t('log.folding.dealIn', { wind: t(`wind.${WINDS[seat]}`), points, tile })
+  }
+  if (EFFICIENCY_SHANTEN_KEYS.has(entry.key)) {
+    const shanten = (entry.params as { shanten?: number } | undefined)?.shanten
+    const shantenSuffix =
+      showShanten && shanten !== undefined ? ` ${t('log.efficiency.shanten', { count: shanten })}` : ''
+    return t(entry.key, { ...entry.params, shantenSuffix })
   }
   return t(entry.key, entry.params)
 }
