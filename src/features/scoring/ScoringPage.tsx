@@ -7,6 +7,7 @@ import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
+import { concealedTiles } from '../../core/match'
 import { HONOR, serializeTenhou } from '../../core/tiles'
 import { WINDS } from '../situation/urlCodec'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -100,6 +101,7 @@ export function ScoringPage() {
   const sanma = useSettings((s) => s.sanma)
   const aka = useSettings((s) => s.aka)
   const showWall = useSettings((s) => s.showWall)
+  const showOpponentHands = useSettings((s) => s.showOpponentHands)
   const advanced = useSettings((s) => s.advanced)
 
   // the scoring section supplies the round's options, but a link can pin the rules the match was
@@ -189,11 +191,12 @@ export function ScoringPage() {
   const players = options.sanma ? 3 : 4
   const tableSeatIndex = Math.min(round.seat, players - 1)
   const seats: SeatView[] = round.match
-    ? round.match.players.map((player) => ({
+    ? round.match.players.map((player, seat) => ({
         river: player.river,
         melds: player.melds,
         nuki: player.nuki,
         riichi: player.riichiAt !== undefined,
+        hand: showOpponentHands && seat !== round.seat ? concealedTiles(player) : undefined,
       }))
     : Array.from({ length: players }, (_, seat) => ({
         ...(seat === tableSeatIndex && {

@@ -32,6 +32,7 @@
     "tsumogiriMarks": "ツモ切り/手出しを表示",
     "redFives": "赤ドラ",
     "showWall": "山を表示",
+    "showOpponentHands": "対戦相手の手牌を表示",
     "language": "言語",
     "languageAuto": "自動(ブラウザ設定)",
     "translatedTerms": "役名を翻訳して表示"

@@ -91,6 +91,8 @@ export function GlobalSettings() {
   const setAka = useSettings((s) => s.setAka)
   const showWall = useSettings((s) => s.showWall)
   const setShowWall = useSettings((s) => s.setShowWall)
+  const showOpponentHands = useSettings((s) => s.showOpponentHands)
+  const setShowOpponentHands = useSettings((s) => s.setShowOpponentHands)
   const advanced = useSettings((s) => s.advanced)
   const setAdvanced = useSettings((s) => s.setAdvanced)
 
@@ -208,6 +210,14 @@ export function GlobalSettings() {
               type="checkbox"
               checked={showWall}
               onChange={(e) => setShowWall(e.target.checked)}
+              className="size-5"
+            />
+          </SettingRow>
+          <SettingRow label={t('settings.showOpponentHands')}>
+            <input
+              type="checkbox"
+              checked={showOpponentHands}
+              onChange={(e) => setShowOpponentHands(e.target.checked)}
               className="size-5"
             />
           </SettingRow>

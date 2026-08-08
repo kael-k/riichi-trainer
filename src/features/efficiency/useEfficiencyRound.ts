@@ -71,6 +71,9 @@ interface RoundState {
   turn: number
   doraIndicators: ParsedTile[]
   rivers: RiverTile[][]
+  /** Every seat's concealed hand, by seat index — mirrored unconditionally like `rivers`; the
+   *  page decides whether to pass any of it to the table (the `showOpponentHands` setting). */
+  hands: ParsedTile[][]
   /** Seats currently in riichi, by seat index — for the table's bet stick. */
   riichi: boolean[]
   nuki: ParsedTile[]
@@ -213,6 +216,7 @@ function snapshot(core: RoundCore, prev?: RoundState): RoundState {
     turn: match.turn,
     doraIndicators: [...match.doraIndicators],
     rivers: match.players.map((p) => [...p.river]),
+    hands: match.players.map((p) => concealedTiles(p)),
     riichi: match.players.map((p) => p.riichiAt !== undefined),
     nuki: [...player.nuki],
     kans: player.melds.filter((m) => m.kind === 'ankan').map((m) => [...m.tiles]),

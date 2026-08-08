@@ -79,6 +79,9 @@ interface RoundState {
   rivers: RiverTile[][]
   melds: Meld[][]
   nuki: ParsedTile[][]
+  /** Every seat's concealed hand, by seat index — mirrored unconditionally like `rivers`; the
+   *  page decides whether to pass any of it to the table (the `showOpponentHands` setting). */
+  hands: ParsedTile[][]
   /** Seats currently in riichi, by seat index — for the table's bet stick. */
   riichi: boolean[]
   doraIndicators: ParsedTile[]
@@ -262,6 +265,7 @@ function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundStat
     rivers: match.players.map((p) => [...p.river]),
     melds: match.players.map((p) => [...p.melds]),
     nuki: match.players.map((p) => [...p.nuki]),
+    hands: match.players.map((p) => concealedTiles(p)),
     riichi: match.players.map((p) => p.riichiAt !== undefined),
     doraIndicators: [...match.doraIndicators],
     liveWall: [...match.liveWall],
@@ -405,6 +409,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       rivers: [],
       melds: [],
       nuki: [],
+      hands: [],
       riichi: [],
       doraIndicators: [],
       liveWall: [],

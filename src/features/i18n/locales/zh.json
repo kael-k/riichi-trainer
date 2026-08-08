@@ -32,6 +32,7 @@
     "tsumogiriMarks": "显示摸切/手切标记",
     "redFives": "赤宝牌",
     "showWall": "显示牌山",
+    "showOpponentHands": "显示对手手牌",
     "language": "语言",
     "languageAuto": "自动(跟随浏览器)",
     "translatedTerms": "使用翻译役名"

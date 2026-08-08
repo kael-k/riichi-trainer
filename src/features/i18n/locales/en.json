@@ -36,6 +36,7 @@
     "tsumogiriMarks": "Show tsumogiri/tedashi",
     "redFives": "Red fives",
     "showWall": "Show wall",
+    "showOpponentHands": "Show opponent hands",
     "language": "Language",
     "languageAuto": "Auto (browser)",
     "translatedTerms": "Translated yaku names"

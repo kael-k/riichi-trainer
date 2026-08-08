@@ -4,7 +4,7 @@ import type { Meld } from '../../core/agari'
 import { HONOR, type ParsedTile, type RiverTile } from '../../core/tiles'
 import { DEFAULT_TILE_SCALE, useSettings } from '../../features/settings/settingsStore'
 import { WINDS, type Wind } from '../../features/situation/urlCodec'
-import { MeldDisplay, River, Tile } from './Tile'
+import { HandDisplay, MeldDisplay, River, Tile } from './Tile'
 
 /** What one seat shows on the table. Everything is optional: a seat with nothing to show
  *  still holds its position, which is what gives the winds a place rather than a label. */
@@ -15,6 +15,9 @@ export interface SeatView {
   nuki?: ParsedTile[]
   /** This seat has declared riichi — drawn as a 1000-point bet stick in front of its river. */
   riichi?: boolean
+  /** This seat's concealed hand — only ever passed by a caller when the `showOpponentHands`
+   *  advanced setting is on; the table itself doesn't gate on it. */
+  hand?: ParsedTile[]
 }
 
 interface TableProps {
@@ -174,6 +177,11 @@ export function Table({
                     </span>
                   )}
                   <River tiles={seat.river ?? []} />
+                  {seat.hand && seat.hand.length > 0 && (
+                    <div className="mt-[0.4cqw] [--tile-w:calc(100cqw/18)]">
+                      <HandDisplay tiles={seat.hand} />
+                    </div>
+                  )}
                 </div>
                 {called && (
                   <div

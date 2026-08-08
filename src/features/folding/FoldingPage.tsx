@@ -64,6 +64,7 @@ export function FoldingPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const showWall = useSettings((s) => s.showWall)
+  const showOpponentHands = useSettings((s) => s.showOpponentHands)
 
   const options = useMemo<RoundOptions>(() => {
     const isSanma = urlData.sanma ?? sanma
@@ -130,6 +131,7 @@ export function FoldingPage() {
     melds: round.melds[seat],
     nuki: round.nuki[seat],
     riichi: round.riichi[seat],
+    hand: showOpponentHands && seat !== round.seatIndex ? round.hands[seat] : undefined,
   }))
   const threatWinds = round.threatSeats.map((seat) => t(`wind.${WINDS[seat]}`)).join(' · ')
 

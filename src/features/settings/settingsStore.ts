@@ -87,6 +87,11 @@ interface SettingsState extends Settings {
   /** Reveal the live (and, where applicable, dead) wall in draw order. */
   showWall: boolean
   setShowWall: (show: boolean) => void
+  /** Reveal every opponent's (and, in the folding trainer, every threat's) concealed hand on the
+   *  shared table. Off by default: it turns a "read the board" drill into "read the answer key" —
+   *  useful for demos and debugging, not for the drill itself. */
+  showOpponentHands: boolean
+  setShowOpponentHands: (show: boolean) => void
   /** Surfaces options that only make sense once the reader already knows the terms involved
    *  (tsumogiri/tedashi, exact fu, wall reveal, red fives). Off by default so a first-time
    *  player's settings panel stays short. */
@@ -144,6 +149,8 @@ export const useSettings = create<SettingsState>()(
       setAka: (aka) => set({ aka }),
       showWall: false,
       setShowWall: (showWall) => set({ showWall }),
+      showOpponentHands: false,
+      setShowOpponentHands: (showOpponentHands) => set({ showOpponentHands }),
       advanced: false,
       setAdvanced: (advanced) => set({ advanced }),
       locale: 'auto',

@@ -29,6 +29,7 @@ export function EfficiencyPage() {
   const sanma = useSettings((s) => s.sanma)
   const aka = useSettings((s) => s.aka)
   const showWall = useSettings((s) => s.showWall)
+  const showOpponentHands = useSettings((s) => s.showOpponentHands)
 
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<RoundOptions>(
@@ -60,7 +61,11 @@ export function EfficiencyPage() {
           nuki: round.nuki,
           riichi: round.riichi[seat],
         }
-      : { river, riichi: round.riichi[seat] },
+      : {
+          river,
+          riichi: round.riichi[seat],
+          hand: showOpponentHands ? round.hands[seat] : undefined,
+        },
   )
 
   const toggle = (key: keyof typeof settings, label: ReactNode) => (
