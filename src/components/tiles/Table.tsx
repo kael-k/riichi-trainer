@@ -160,6 +160,7 @@ export function Table({
   // reach them through the board's cap — 25.6rem is the old fixed 32rem read back out at the
   // default scale, so an untouched setting leaves the board exactly where it was
   const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
+  const showsHands = seats.some((seat) => seat.hand && seat.hand.length > 0)
 
   return (
     // square, so its size is one number: the narrower of the column it sits in and the height
@@ -172,7 +173,11 @@ export function Table({
       style={{ '--table-max': `${25.6 * tileScale}rem` } as CSSProperties}
     >
       <RotateHint />
-      <div className="@container aspect-square w-full">
+      {/* the revealed hands sit outside the felt, so the square gives up a margin's worth of its
+          own width to hold them — only when they are actually shown, so an ordinary board is
+          exactly as big as it was. The border box stays square either way, which is what keeps
+          each seat's rotation covering it */}
+      <div className={`@container aspect-square w-full ${showsHands ? 'p-[8%]' : ''}`}>
         {/* minmax(0,…): a seat block is measured before it rotates, so its 6-tile row is wider
             than the 4fr band it sits in — with fr's default auto minimum that would grow the
             band and knock the whole board out of square */}
@@ -204,16 +209,15 @@ export function Table({
                   <River tiles={seat.river ?? []} />
                 </div>
                 {seat.hand && seat.hand.length > 0 && (
-                  /* laid over the whole board rather than inside the river's six-tile box, so a
-                     13-tile hand reads as one row across that seat's whole side instead of
-                     wrapping. The board is square, so the seat's own rotation still covers it
-                     exactly and "bottom edge" lands on that seat's outer edge every time. It sits
-                     on its own translucent strip because the rivers already fill their bands —
-                     this is a deliberate peek laid over the table, not part of it */
+                  /* spans the whole (square) board and rotates with the seat, so the row runs that
+                     seat's entire side as one row instead of wrapping inside the river's six-tile
+                     box — and is then pushed clear of the felt entirely, into the margin the
+                     square gave up above. Nothing about the river moves: the hand is beside the
+                     table, which is also where a revealed hand belongs */
                   <div
                     className={`pointer-events-none col-span-3 col-start-1 row-span-3 row-start-1 flex items-end justify-center ${slot.spin}`}
                   >
-                    <div className="flex rounded bg-white/70 px-[0.4cqw] [--tile-w:calc(100cqw/16)] dark:bg-neutral-900/70">
+                    <div className="flex translate-y-[112%] [--tile-w:calc(100cqw/16)]">
                       {seat.hand.map((tile, i) => (
                         <Tile key={i} id={tile.id} red={tile.red} />
                       ))}
