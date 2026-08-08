@@ -104,20 +104,28 @@ function LogPanel() {
       </summary>
       <ol className="max-h-48 overflow-y-auto px-3 pb-2 text-sm [--tile-w:calc(var(--tile-w-base)*0.55)]">
         {entries.length === 0 && <li className="py-1 text-neutral-400">{t('common.noActions')}</li>}
-        {[...entries].reverse().map((entry) => (
-          <LogRow key={entry.id} entry={entry} />
-        ))}
+        {/* numbered from the session's first action, so the numbers stay put as the list grows —
+            the panel shows newest first, which would otherwise renumber every row each turn */}
+        {entries
+          .map((entry, i) => ({ entry, number: i + 1 }))
+          .reverse()
+          .map(({ entry, number }) => (
+            <LogRow key={entry.id} entry={entry} number={number} />
+          ))}
       </ol>
     </details>
   )
 }
 
-function LogRow({ entry }: { entry: LogEntry }) {
+function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
   const { t } = useTranslation()
   const showShanten = useSettings((s) => s.efficiency.showShanten)
   const [copied, setCopied] = useState(false)
   return (
     <li className="flex items-center gap-2 py-0.5">
+      <span className="w-6 shrink-0 self-start text-right text-xs text-neutral-400 tabular-nums">
+        {number}
+      </span>
       <div className="min-w-0 flex-1">
         <p>{formatLogEntry(entry, t, showShanten)}</p>
         {entry.tiles && entry.tiles.length > 0 && (
