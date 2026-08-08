@@ -4,7 +4,7 @@ import type { Meld } from '../../core/agari'
 import { HONOR, type ParsedTile, type RiverTile } from '../../core/tiles'
 import { DEFAULT_TILE_SCALE, useSettings } from '../../features/settings/settingsStore'
 import { WINDS, type Wind } from '../../features/situation/urlCodec'
-import { HandDisplay, MeldDisplay, River, Tile } from './Tile'
+import { MeldDisplay, River, Tile } from './Tile'
 
 /** What one seat shows on the table. Everything is optional: a seat with nothing to show
  *  still holds its position, which is what gives the winds a place rather than a label. */
@@ -202,12 +202,24 @@ export function Table({
                     </span>
                   )}
                   <River tiles={seat.river ?? []} />
-                  {seat.hand && seat.hand.length > 0 && (
-                    <div className="mt-[0.4cqw] [--tile-w:calc(100cqw/18)]">
-                      <HandDisplay tiles={seat.hand} />
-                    </div>
-                  )}
                 </div>
+                {seat.hand && seat.hand.length > 0 && (
+                  /* laid over the whole board rather than inside the river's six-tile box, so a
+                     13-tile hand reads as one row across that seat's whole side instead of
+                     wrapping. The board is square, so the seat's own rotation still covers it
+                     exactly and "bottom edge" lands on that seat's outer edge every time. It sits
+                     on its own translucent strip because the rivers already fill their bands —
+                     this is a deliberate peek laid over the table, not part of it */
+                  <div
+                    className={`pointer-events-none col-span-3 col-start-1 row-span-3 row-start-1 flex items-end justify-center ${slot.spin}`}
+                  >
+                    <div className="flex rounded bg-white/70 px-[0.4cqw] [--tile-w:calc(100cqw/16)] dark:bg-neutral-900/70">
+                      {seat.hand.map((tile, i) => (
+                        <Tile key={i} id={tile.id} red={tile.red} />
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {called && (
                   <div
                     className={`flex flex-col items-end justify-start gap-[0.5cqw] place-self-center [--tile-w:calc(100cqw/18)] ${slot.melds} ${slot.spin}`}
