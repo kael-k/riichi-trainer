@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, Copy, Info, RotateCcw, Share2 } from 'lucide-react'
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
 import { formatLogEntry } from '../features/i18n/formatLogEntry'
@@ -30,8 +30,15 @@ export function TrainerLayout({ title, settings, intro, children }: TrainerLayou
   const { t } = useTranslation()
   const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
   const clearLog = useLog((s) => s.clear)
-  // the log store is a single global instance; each trainer page starts its own log
-  useEffect(() => clearLog(), [clearLog])
+  // The log store is a single global instance; each trainer page starts its own log. Cleared on
+  // this layout's first render rather than from a mount effect: effects run children-first, so a
+  // page whose round writes rows as it mounts (efficiency logs the discards a shared link replays)
+  // would have them wiped a moment later by its own layout.
+  const cleared = useRef(false)
+  if (!cleared.current) {
+    cleared.current = true
+    clearLog()
+  }
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-5xl flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-neutral-200 bg-white/90 px-2 py-1 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">

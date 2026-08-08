@@ -334,7 +334,8 @@
       "kanBest": "第{{turn}}巡: 开杠{{tile}} — 免费 (进张{{ukeire}}){{shantenSuffix}}",
       "kanMistake": "第{{turn}}巡: 开杠{{tile}} (进张{{yours}}); 最佳为{{best}} (进张{{bestUkeire}}){{shantenSuffix}}",
       "missedKita": "第{{turn}}巡: 错过了{{tile}}的免费拔北",
-      "missedKan": "第{{turn}}巡: 错过了{{tile}}的免费开杠"
+      "missedKan": "第{{turn}}巡: 错过了{{tile}}的免费开杠",
+      "replay": "回放：打出 {{tile}}"
     },
     "shanten": {
       "result": "第{{hand}}题: 回答{{guess}},正确{{actual}}{{via}} — {{result}}{{time}}"

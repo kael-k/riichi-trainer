@@ -1,7 +1,6 @@
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
@@ -17,6 +16,7 @@ import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { ScoreBreakdown } from './ScoreBreakdown'
 import { decodeScoringUrl } from './scoringUrl'
+import { useUrlData } from '../situation/useUrlData'
 import { useScoringRound, type Answer, type RoundOptions } from './useScoringRound'
 
 const FLAG_KEYS = [
@@ -93,8 +93,7 @@ function FieldFeedback({
 
 export function ScoringPage() {
   const { t } = useTranslation()
-  const [params] = useSearchParams()
-  const urlData = useMemo(() => decodeScoringUrl(params), [params])
+  const urlData = useUrlData(decodeScoringUrl)
   const termName = useTermName()
   const settings = useSettings((s) => s.scoring)
   const update = useSettings((s) => s.update)

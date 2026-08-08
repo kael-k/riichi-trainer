@@ -1,8 +1,7 @@
 import type { TFunction } from 'i18next'
 import { CheckCircle2, XCircle } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -10,6 +9,7 @@ import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
+import { useUrlData } from '../situation/useUrlData'
 import { RevealTimer } from './RevealTimer'
 import { useShantenRound, type ShantenBreakdown } from './useShantenRound'
 
@@ -22,8 +22,7 @@ function pathsLabel(breakdown: ShantenBreakdown, t: TFunction): string | null {
 
 export function ShantenPage() {
   const { t } = useTranslation()
-  const [params] = useSearchParams()
-  const situation = useMemo(() => decodeSituation(params), [params])
+  const situation = useUrlData(decodeSituation)
   const settings = useSettings((s) => s.shanten)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)

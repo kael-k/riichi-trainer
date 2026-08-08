@@ -1,7 +1,6 @@
 import { Pause, Play } from 'lucide-react'
 import { useMemo, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
@@ -12,6 +11,7 @@ import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation, WINDS } from '../situation/urlCodec'
+import { useUrlData } from '../situation/useUrlData'
 import { DiscardFeedback } from './DiscardFeedback'
 import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
 
@@ -22,8 +22,7 @@ function accuracy(lost: number, total: number): number {
 
 export function EfficiencyPage() {
   const { t } = useTranslation()
-  const [params] = useSearchParams()
-  const situation = useMemo(() => decodeSituation(params), [params])
+  const situation = useUrlData(decodeSituation)
   const settings = useSettings((s) => s.efficiency)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)

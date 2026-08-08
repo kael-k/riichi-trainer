@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
@@ -11,6 +10,7 @@ import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { WINDS } from '../situation/urlCodec'
+import { useUrlData } from '../situation/useUrlData'
 import { FoldFeedback } from './FoldFeedback'
 import {
   decodeFoldingUrl,
@@ -58,8 +58,7 @@ function Reveal({ threat, seats }: { threat: ThreatReveal; seats: number }) {
 
 export function FoldingPage() {
   const { t } = useTranslation()
-  const [params] = useSearchParams()
-  const urlData = useMemo(() => decodeFoldingUrl(params), [params])
+  const urlData = useUrlData(decodeFoldingUrl)
   const settings = useSettings((s) => s.folding)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)

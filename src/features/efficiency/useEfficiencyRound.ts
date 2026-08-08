@@ -106,6 +106,15 @@ function you(core: RoundCore) {
   return core.match.players[core.seatIndex]
 }
 
+/** Every tile you have thrown, in order — from `match.discards`, not your river: `finishTurn`
+ *  pops a called discard out of the river, and a replay that skipped it would deal a different
+ *  hand from the one the link was captured on. */
+function yourDiscards(core: RoundCore): ParsedTile[] {
+  return core.match.discards
+    .filter((d) => d.seat === core.seatIndex)
+    .map((d) => ({ id: d.tile.id, red: d.tile.red }))
+}
+
 /** Ranked discards for the hand as it stands, counting the hand itself plus every face-up tile
  *  as seen. `seen` comes back too, for the kan comparison that needs the same visibility. */
 function rankDiscards(core: RoundCore, sanma: boolean) {
@@ -258,6 +267,8 @@ export function useEfficiencyRound(
   const [randomSeed] = useState(() => Math.random().toString(36).slice(2))
   const core = useRef<RoundCore>(undefined)
   const effectiveSeed = useRef('')
+  // the situation whose replayed river is already on the log; see `logReplay`
+  const loggedReplay = useRef<Situation>(undefined)
 
   // A rewind hands in a brand-new `situation` object whose seed already carries whatever
   // restartCount suffix was live when the log entry was captured (situationQuery() dumps
@@ -297,8 +308,35 @@ export function useEfficiencyRound(
 
   useEffect(() => {
     setState(startRound())
+    logReplay()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [situation, options.opponents, options.deadWall, options.aka, options.sanma, restartCount])
+
+  /** Writes one log row per discard the round was fast-forwarded through, so a shared link (or a
+   *  rewind) arrives with the turns behind it on the record instead of a blank log. Logged from
+   *  the discards the replay actually made, which is also what stops short of a river the deal
+   *  could not honour. Keyed on the situation's identity: the effect above runs twice per mount
+   *  (initial state, then mount) and four times under StrictMode, all for the same round. */
+  function logReplay() {
+    const r = core.current
+    if (!r || loggedReplay.current === situation) return
+    loggedReplay.current = situation
+    const played = yourDiscards(r)
+    played.forEach((tile, i) =>
+      log(
+        'log.efficiency.replay',
+        { tile: tileCode(tile.id, tile.red) },
+        [tile],
+        undefined,
+        encodeSituation({
+          ...situation,
+          seed: effectiveSeed.current,
+          river: played.slice(0, i),
+          ...options,
+        }),
+      ),
+    )
+  }
 
   useEffect(() => {
     if (state.finished || state.paused || !timerEnabled) return
@@ -530,7 +568,12 @@ export function useEfficiencyRound(
     if (isBest) {
       log(
         'log.efficiency.kanBest',
-        { turn: r.match.turn, tile: tileCode(id), ukeire: yours.ukeireCount, shanten: yours.shanten },
+        {
+          turn: r.match.turn,
+          tile: tileCode(id),
+          ukeire: yours.ukeireCount,
+          shanten: yours.shanten,
+        },
         tiles,
         undefined,
         situationBefore,
@@ -568,7 +611,7 @@ export function useEfficiencyRound(
     return encodeSituation({
       ...situation,
       seed: effectiveSeed.current,
-      river: r ? you(r).river.map((t) => ({ id: t.id, red: t.red })) : [],
+      river: r ? yourDiscards(r) : [],
       ...options,
     })
   }

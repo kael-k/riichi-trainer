@@ -247,6 +247,28 @@ describe('useEfficiencyRound', () => {
     expect(result.current.turn).toBe(fresh.result.current.turn)
   })
 
+  it('logs one rewindable entry per discard a shared river was replayed through', () => {
+    const situation = emptySituation()
+    situation.seed = 'replay-seed'
+    const played = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    act(() => played.result.current.discard(0))
+    act(() => played.result.current.discard(0))
+    const shared = decodeSituation(new URLSearchParams(played.result.current.situationQuery()))
+    expect(shared.river).toHaveLength(2)
+
+    // opening that link replays the two discards and puts them on the log, each rewinding to the
+    // round as it stood before it — so the first carries no river and the second carries one tile
+    useLog.getState().clear()
+    const link = renderHook(() => useEfficiencyRound(shared, BARE, true))
+    const entries = useLog.getState().entries
+    expect(entries.map((e) => e.key)).toEqual(['log.efficiency.replay', 'log.efficiency.replay'])
+    expect(
+      entries.map((e) => decodeSituation(new URLSearchParams(e.situation!)).river.length),
+    ).toEqual([0, 1])
+    expect(link.result.current.hand).toEqual(played.result.current.hand)
+    expect(link.result.current.turn).toBe(played.result.current.turn)
+  })
+
   it('sanma: never deals 2m-8m, and aka seeds only two red fives (no 5m)', () => {
     const situation = emptySituation()
     situation.seed = 'sanma-tileset-seed'
