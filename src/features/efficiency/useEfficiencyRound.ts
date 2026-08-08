@@ -324,7 +324,7 @@ export function useEfficiencyRound(
     const played = yourDiscards(r)
     played.forEach((tile, i) =>
       log(
-        'log.efficiency.replay',
+        'log.replay',
         { tile: tileCode(tile.id, tile.red) },
         [tile],
         undefined,

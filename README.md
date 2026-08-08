@@ -62,13 +62,14 @@ The scoring trainer uses its own, unrelated param set — a graded hand has no w
 
 The folding trainer ships no tiles at all — a match replays from its seed, rivers and all:
 
-| param     | meaning                                                                                     |
-| --------- | ------------------------------------------------------------------------------------------- |
-| `seed`    | the accepted attempt seed; replayed verbatim, so the same board comes back                  |
-| `sanma`   | `1`/`0`, pins the ruleset into the link                                                     |
-| `threats` | how many seats were in riichi when the drill started — the search stops at that declaration |
+| param      | meaning                                                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------- |
+| `seed`     | the accepted attempt seed; replayed verbatim, so the same board comes back                        |
+| `sanma`    | `1`/`0`, pins the ruleset into the link                                                           |
+| `threats`  | how many seats were in riichi when the drill started — the search stops at that declaration       |
+| `discards` | your own discards since the board was handed to you, replayed to land on a specific mid-hand turn |
 
-Red fives, calls, the dead wall and opponent riichi are always on for this trainer, so they need no params. The round wind is derived from the seed itself rather than shared separately.
+Red fives, calls, the dead wall and opponent riichi are always on for this trainer, so they need no params. The round wind is derived from the seed itself rather than shared separately. Each replayed discard is written to the log as it is fast-forwarded, so a shared link arrives with the turns behind it on the record.
 
 ## Stack
 

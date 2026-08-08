@@ -17,6 +17,8 @@ import { shanten } from '../../core/shanten'
 import {
   HONOR,
   NUM_TILE_TYPES,
+  parseTenhou,
+  serializeTenhouOrdered,
   tileCode,
   type ParsedTile,
   type RiverTile,
@@ -37,6 +39,9 @@ export interface FoldingUrl {
   /** Threats the link was generated with; replayed verbatim, since the seed only reproduces the
    *  same board when the search stops at the same declaration. */
   threats?: number
+  /** Your own discards since the board was handed to you, replayed from the declaration to
+   *  reach a mid-hand turn. Not extra tiles: the seed already dealt them. */
+  discards?: ParsedTile[]
 }
 
 export interface TurnResult {
@@ -71,6 +76,9 @@ interface RoundCore {
   match: MatchState
   options: MatchOptions
   seatIndex: number
+  /** How many discards your seat had already made when the drill was handed over — everything
+   *  before that was the engine's, so only what follows belongs in a mid-hand link. */
+  handedOverAt: number
 }
 
 interface RoundState {
@@ -146,7 +154,12 @@ function playToRiichi(seed: string, options: MatchOptions, players: number, thre
       for (const [seat, player] of match.players.entries()) {
         if (seat !== seatIndex && player.riichiAt === undefined) player.policy = 'defense'
       }
-      return { match, options: { ...options, human: seatIndex }, seatIndex }
+      return {
+        match,
+        options: { ...options, human: seatIndex },
+        seatIndex,
+        handedOverAt: match.discards.filter((d) => d.seat === seatIndex).length,
+      }
     }
   }
   return null
@@ -188,12 +201,34 @@ function worthwhile(core: RoundCore, sanma: boolean): boolean {
   )
 }
 
-function buildRound(seed: string, sanma: boolean, threats: number): RoundCore | null {
+function buildRound(
+  seed: string,
+  sanma: boolean,
+  threats: number,
+  discards: ParsedTile[] = [],
+): RoundCore | null {
   const players = sanma ? 3 : 4
   const core = playToRiichi(seed, matchOptions(seed, sanma), players, threats)
   if (!core || !worthwhile(core, sanma)) return null
   beginTurn(core.match, core.options)
+  // fast-forward the link's own discards; stops quietly on one this board cannot honour
+  for (const t of discards) {
+    const player = core.match.players[core.seatIndex]
+    if (player.hand.counts[t.id] === 0 || core.match.ended) break
+    const red = player.reds.has(t.id) && (t.red || player.hand.counts[t.id] === 1)
+    advanceAfterDiscard(core, { id: t.id, red })
+  }
   return core
+}
+
+/** Your own discards since the handover, in order — the mid-hand part of a link. Read off
+ *  `match.discards` rather than your river: `finishTurn` pops a claimed discard out of the river,
+ *  and a replay that skipped it would arrive at a different board. */
+function yourDiscards(core: RoundCore): ParsedTile[] {
+  return core.match.discards
+    .filter((d) => d.seat === core.seatIndex)
+    .slice(core.handedOverAt)
+    .map((d) => ({ id: d.tile.id, red: d.tile.red }))
 }
 
 /**
@@ -298,20 +333,29 @@ function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundStat
 export function decodeFoldingUrl(params: URLSearchParams): FoldingUrl {
   const sanma = params.get('sanma')
   const threats = Number(params.get('threats'))
+  const discards = parseTenhou(params.get('discards') ?? '')
   return {
     seed: params.get('seed') ?? '',
     sanma: sanma === null ? undefined : sanma !== '0',
     threats: Number.isInteger(threats) && threats > 0 ? threats : undefined,
+    discards: discards.length > 0 ? discards : undefined,
   }
 }
 
-/** A match replays from its seed, rivers and all, so a link carries no tiles — just the seed and
- *  the two things that change what that seed builds. */
-export function encodeFoldingUrl(seed: string, sanma: boolean, threats: number): string {
+/** A match replays from its seed, rivers and all, so a link carries no tiles of its own — just
+ *  the seed, the two things that change what that seed builds, and the discards you have played
+ *  since, which are what makes a mid-hand turn shareable (and a log row rewindable). */
+export function encodeFoldingUrl(
+  seed: string,
+  sanma: boolean,
+  threats: number,
+  discards: ParsedTile[] = [],
+): string {
   const params = new URLSearchParams()
   params.set('seed', seed)
   params.set('sanma', sanma ? '1' : '0')
   params.set('threats', String(threats))
+  if (discards.length > 0) params.set('discards', serializeTenhouOrdered(discards))
   return params.toString()
 }
 
@@ -323,6 +367,14 @@ export function encodeFoldingUrl(seed: string, sanma: boolean, threats: number):
  */
 export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   const [handIndex, setHandIndex] = useState(0)
+  // handIndex counts "new situation" presses this mount, but a link (or a rewind out of the log)
+  // names one exact board, which only the index-0 build replays verbatim. Reset it whenever the
+  // link changes identity — the "adjust state while rendering" pattern the other trainers use
+  const [lastUrlData, setLastUrlData] = useState(urlData)
+  if (urlData !== lastUrlData) {
+    setLastUrlData(urlData)
+    setHandIndex(0)
+  }
   const stats = useSessionStats()
   const core = useRef<RoundCore>(undefined)
   const roundSeed = useRef('')
@@ -332,6 +384,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   const log = useLog((s) => s.log)
   // a round that resolves after the seed moved on belongs to a hand nobody is looking at
   const request = useRef(0)
+  // the link whose replayed discards are already on the log; see `logReplay`
+  const loggedReplay = useRef<FoldingUrl>(undefined)
 
   useEffect(() => {
     const id = ++request.current
@@ -341,9 +395,12 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     const seed = urlData.seed && handIndex === 0 ? base : `${base}:${handIndex}`
     const threats = urlData.threats ?? options.threats
 
-    // a link's seed is already an accepted attempt, so replay it as-is; only a hand-edited one
-    // falls through to a search
-    const pinned = urlData.seed && handIndex === 0 ? buildRound(seed, options.sanma, threats) : null
+    // a link's seed is already an accepted attempt, so replay it as-is — discards included; only
+    // a hand-edited one falls through to a search
+    const pinned =
+      urlData.seed && handIndex === 0
+        ? buildRound(seed, options.sanma, threats, urlData.discards)
+        : null
     const found = pinned
       ? Promise.resolve({ core: pinned, seed, threats })
       : findRound(seed, options.sanma, threats)
@@ -357,11 +414,36 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       core.current = result.core
       roundSeed.current = result.seed
       roundThreats.current = result.threats
+      logReplay(result.core)
       stats.startClock()
       setState(snapshot(result.core, options.sanma))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlData, handIndex, options.sanma, options.threats])
+
+  /** Writes one log row per discard the link was fast-forwarded through, so a shared link (or a
+   *  rewind) arrives with the turns behind it on the record instead of a blank log. Keyed on the
+   *  link's identity: the effect above runs twice per mount and four times under StrictMode, all
+   *  for one and the same board. */
+  function logReplay(built: RoundCore) {
+    if (loggedReplay.current === urlData) return
+    loggedReplay.current = urlData
+    const played = yourDiscards(built)
+    played.forEach((tile, i) =>
+      log(
+        'log.replay',
+        { tile: tileCode(tile.id, tile.red) },
+        [tile],
+        undefined,
+        encodeFoldingUrl(
+          roundSeed.current,
+          options.sanma,
+          roundThreats.current,
+          played.slice(0, i),
+        ),
+      ),
+    )
+  }
 
   useEffect(() => {
     if (!state || state.finished || state.loading || !options.timerEnabled) return
@@ -378,6 +460,10 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     if (!r || !state || state.finished || state.loading) return
     const tile = index === state.hand.length ? state.drawn : state.hand[index]
     if (!tile) return
+
+    // captured before anything below advances the board, so it reproduces the turn exactly as it
+    // stood right before this discard
+    const situationBefore = situationQuery()
 
     const ranked = rank(r, options.sanma)
     const yours = ranked.find((entry) => entry.tile === tile.id)!
@@ -399,6 +485,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
         correct,
       },
       correct ? [tile] : [tile, { id: safest[0].tile, red: false }],
+      undefined,
+      situationBefore,
     )
     stats.record(correct, elapsed)
 
@@ -409,6 +497,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
         'log.folding.dealIn',
         { seat: next.end.seat, points: next.end.points, tile: tileCode(tile.id, tile.red) },
         [tile],
+        undefined,
+        situationBefore,
       )
     }
     stats.startClock()
@@ -451,9 +541,19 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     ranked: (): TileDanger[] => (core.current ? rank(core.current, options.sanma) : []),
     discard,
     next: () => setHandIndex((n) => n + 1),
-    situationQuery: () =>
-      roundSeed.current
-        ? encodeFoldingUrl(roundSeed.current, options.sanma, roundThreats.current)
-        : '',
+    situationQuery,
+  }
+
+  /** The round as it stands right now: the accepted attempt seed, the rules that seed was built
+   *  under, and the discards you have played since — enough to replay a mid-hand turn. */
+  function situationQuery(): string {
+    return roundSeed.current
+      ? encodeFoldingUrl(
+          roundSeed.current,
+          options.sanma,
+          roundThreats.current,
+          core.current ? yourDiscards(core.current) : [],
+        )
+      : ''
   }
 }

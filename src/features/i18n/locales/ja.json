@@ -317,6 +317,7 @@
   },
   "log": {
     "rewound": "{{number}}件目の記録まで巻き戻しました",
+    "replay": "リプレイ: {{tile}}を捨てた",
     "folding": {
       "safe": "{{turn}}巡目: {{tile}}を切った——{{tier}}、この局面で最も安全",
       "risky": "{{turn}}巡目: {{tile}}を切った（{{tier}}）; {{best}}の方が安全（{{bestTier}}）",
@@ -334,8 +335,7 @@
       "kanBest": "{{turn}}巡目: {{tile}}をカンした — 無料 (受け入れ{{ukeire}}){{shantenSuffix}}",
       "kanMistake": "{{turn}}巡目: {{tile}}をカンした (受け入れ{{yours}}); 最善は{{best}} (受け入れ{{bestUkeire}}){{shantenSuffix}}",
       "missedKita": "{{turn}}巡目: {{tile}}の無料の北抜きを見送った",
-      "missedKan": "{{turn}}巡目: {{tile}}の無料のカンを見送った",
-      "replay": "リプレイ: {{tile}}を捨てた"
+      "missedKan": "{{turn}}巡目: {{tile}}の無料のカンを見送った"
     },
     "shanten": {
       "result": "{{hand}}問目: 回答{{guess}}、正解{{actual}}{{via}} — {{result}}{{time}}"

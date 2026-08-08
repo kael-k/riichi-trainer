@@ -261,7 +261,7 @@ describe('useEfficiencyRound', () => {
     useLog.getState().clear()
     const link = renderHook(() => useEfficiencyRound(shared, BARE, true))
     const entries = useLog.getState().entries
-    expect(entries.map((e) => e.key)).toEqual(['log.efficiency.replay', 'log.efficiency.replay'])
+    expect(entries.map((e) => e.key)).toEqual(['log.replay', 'log.replay'])
     expect(
       entries.map((e) => decodeSituation(new URLSearchParams(e.situation!)).river.length),
     ).toEqual([0, 1])

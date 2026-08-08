@@ -415,6 +415,7 @@
   },
   "log": {
     "rewound": "Tornato indietro alla voce {{number}}",
+    "replay": "Scarto ripetuto {{tile}}",
     "folding": {
       "safe": "Turno {{turn}}: scartato {{tile}} — {{tier}}, il più sicuro disponibile",
       "risky": "Turno {{turn}}: scartato {{tile}} ({{tier}}); {{best}} era più sicuro ({{bestTier}})",
@@ -432,8 +433,7 @@
       "kanBest": "Turno {{turn}}: kan su {{tile}} — gratuito (ukeire {{ukeire}}){{shantenSuffix}}",
       "kanMistake": "Turno {{turn}}: kan su {{tile}} (ukeire {{yours}}); il migliore era {{best}} (ukeire {{bestUkeire}}){{shantenSuffix}}",
       "missedKita": "Turno {{turn}}: un kita gratuito su {{tile}} non è stato colto",
-      "missedKan": "Turno {{turn}}: un kan gratuito su {{tile}} non è stato colto",
-      "replay": "Scarto ripetuto {{tile}}"
+      "missedKan": "Turno {{turn}}: un kan gratuito su {{tile}} non è stato colto"
     },
     "shanten": {
       "result": "Mano {{hand}}: risposto {{guess}}, reale {{actual}}{{via}} — {{result}}{{time}}"

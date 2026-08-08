@@ -415,6 +415,7 @@
   },
   "log": {
     "rewound": "Rewound to entry {{number}}",
+    "replay": "Replayed discard {{tile}}",
     "folding": {
       "safe": "Turn {{turn}}: threw {{tile}} — {{tier}}, the safest available",
       "risky": "Turn {{turn}}: threw {{tile}} ({{tier}}); {{best}} was safer ({{bestTier}})",
@@ -432,8 +433,7 @@
       "kanBest": "Turn {{turn}}: kanned {{tile}} — free (ukeire {{ukeire}}){{shantenSuffix}}",
       "kanMistake": "Turn {{turn}}: kanned {{tile}} (ukeire {{yours}}); best was {{best}} (ukeire {{bestUkeire}}){{shantenSuffix}}",
       "missedKita": "Turn {{turn}}: a free kita on {{tile}} was passed up",
-      "missedKan": "Turn {{turn}}: a free kan on {{tile}} was passed up",
-      "replay": "Replayed discard {{tile}}"
+      "missedKan": "Turn {{turn}}: a free kan on {{tile}} was passed up"
     },
     "shanten": {
       "result": "Hand {{hand}}: guessed {{guess}}, actual {{actual}}{{via}} — {{result}}{{time}}"

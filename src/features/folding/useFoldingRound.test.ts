@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { handFromTenhou } from '../../core/hand'
+import { parseTenhou } from '../../core/tiles'
 import { useLog } from '../../store/log'
 import {
   decodeFoldingUrl,
@@ -61,6 +62,26 @@ describe('useFoldingRound', () => {
     expect(shared.current.hand).toEqual(first.current.hand)
     expect(shared.current.rivers).toEqual(first.current.rivers)
     expect(shared.current.threatSeats).toEqual(first.current.threatSeats)
+  })
+
+  it('a mid-hand link replays the discards behind it, and logs them', async () => {
+    const first = await deal({ seed: 'midhand-seed' })
+    for (let i = 0; i < 2 && !first.current.finished; i++) {
+      const safe = first.current.ranked()[0]
+      act(() => first.current.discard(indexOf(first.current.hand, first.current.drawn, safe.tile)))
+    }
+    const query = first.current.situationQuery()
+    expect(new URLSearchParams(query).get('discards')).toBeTruthy()
+
+    act(() => useLog.getState().clear())
+    const shared = await deal(decodeFoldingUrl(new URLSearchParams(query)))
+    expect(shared.current.hand).toEqual(first.current.hand)
+    expect(shared.current.rivers).toEqual(first.current.rivers)
+    expect(shared.current.turn).toBe(first.current.turn)
+    // the replayed turns land on the log, each rewindable to the turn before it
+    const replayed = useLog.getState().entries.filter((e) => e.key === 'log.replay')
+    expect(replayed).toHaveLength(2)
+    expect(new URLSearchParams(replayed[0].situation!).get('discards')).toBeNull()
   })
 
   it('grades a safest-tier discard correct and anything else wrong', async () => {
@@ -177,7 +198,14 @@ describe('the folding link', () => {
       seed: 'abc#3',
       sanma: true,
       threats: 2,
+      discards: undefined,
     })
+  })
+
+  it('round-trips the discards played since the handover', () => {
+    const discards = parseTenhou('1m9p7z')
+    const query = encodeFoldingUrl('abc', false, 1, discards)
+    expect(decodeFoldingUrl(new URLSearchParams(query)).discards).toEqual(discards)
   })
 
   it('leaves unset rules undefined, so the reader keeps their own settings', () => {
@@ -185,6 +213,7 @@ describe('the folding link', () => {
       seed: '',
       sanma: undefined,
       threats: undefined,
+      discards: undefined,
     })
   })
 })

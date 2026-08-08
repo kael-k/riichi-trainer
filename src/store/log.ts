@@ -11,8 +11,9 @@ export interface LogEntry {
   /** When set, the log row gets a copy button that copies this text (e.g. tenhou notation). */
   copyText?: string
   /** Situation query string for the drill as it stood *before* the logged action — when set,
-   *  the log row gets a rewind button that restores it. Trainers whose URL codec can't express
-   *  a mid-hand decision point (shanten, folding) simply never pass this. */
+   *  the log row gets a rewind button that restores it and a share button for the same link.
+   *  Every trainer passes one; the shanten stream pins its hand by tiles rather than by a
+   *  decision point, since there is no board to rewind. */
   situation?: string
 }
 
