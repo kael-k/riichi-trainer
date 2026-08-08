@@ -15,8 +15,8 @@ import type { Settings } from '../settings/settingsStore'
 import { encodeScoringUrl, encodeScoringSeedUrl, type ScoringUrl } from './scoringUrl'
 
 /** The whole scoring settings section, plus the ruleset the round runs under (which a shared
- *  link can pin, so it isn't a plain setting). */
-export type RoundOptions = Settings['scoring'] & { sanma: boolean }
+ *  link can pin, so it isn't a plain setting) and the global red-fives toggle. */
+export type RoundOptions = Settings['scoring'] & { sanma: boolean; aka: boolean }
 
 export interface Answer {
   han?: number

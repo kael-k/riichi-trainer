@@ -63,6 +63,7 @@ export function FoldingPage() {
   const settings = useSettings((s) => s.folding)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
+  const showWall = useSettings((s) => s.showWall)
 
   const options = useMemo<RoundOptions>(() => {
     const isSanma = urlData.sanma ?? sanma
@@ -99,14 +100,6 @@ export function FoldingPage() {
             </option>
           ))}
         </select>
-      </SettingRow>
-      <SettingRow label={t('folding.settings.showWall')}>
-        <input
-          type="checkbox"
-          checked={settings.showWall}
-          onChange={(e) => update('folding', { showWall: e.target.checked })}
-          className="size-5"
-        />
       </SettingRow>
     </>
   )
@@ -223,9 +216,7 @@ export function FoldingPage() {
               </div>
             )}
 
-            {settings.showWall && (
-              <WallDetails liveWall={round.liveWall} deadWall={round.deadWall} />
-            )}
+            {showWall && <WallDetails liveWall={round.liveWall} deadWall={round.deadWall} />}
 
             <CopyLinkButton query={round.situationQuery} />
           </div>

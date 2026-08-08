@@ -17,10 +17,6 @@ export interface Settings {
     opponents: boolean
     /** Reserve a dead wall and show its dora indicator. */
     deadWall: boolean
-    /** Seed one red five per suit into random walls. */
-    aka: boolean
-    /** Reveal the live wall in draw order. */
-    showWall: boolean
   }
   shanten: { timerEnabled: boolean }
   scoring: {
@@ -44,10 +40,6 @@ export interface Settings {
     ignoreFuOnLimit: boolean
     /** Generate hands with called melds, not just closed ones. */
     openHands: boolean
-    aka: boolean
-    /** Reveal the live and dead wall. Only has tiles to show once the hand actually played out
-     *  through a real match — a link-pinned or constructed hand has no wall behind it. */
-    showWall: boolean
   }
   folding: {
     timerEnabled: boolean
@@ -55,8 +47,6 @@ export interface Settings {
      *  player count; generation falls back to fewer rather than failing when a seed search cannot
      *  find that many. */
     threats: number
-    /** Reveal the live and dead wall. */
-    showWall: boolean
   }
 }
 
@@ -90,6 +80,18 @@ interface SettingsState extends Settings {
    *  puts a mark on most of the table until you know what it means. */
   showTsumogiri: boolean
   setShowTsumogiri: (show: boolean) => void
+  /** Seed one red five per suit into random walls. Shared across efficiency and scoring so a
+   *  wall built for one trainer isn't seeded differently from the other. */
+  aka: boolean
+  setAka: (aka: boolean) => void
+  /** Reveal the live (and, where applicable, dead) wall in draw order. */
+  showWall: boolean
+  setShowWall: (show: boolean) => void
+  /** Surfaces options that only make sense once the reader already knows the terms involved
+   *  (tsumogiri/tedashi, exact fu, wall reveal, red fives). Off by default so a first-time
+   *  player's settings panel stays short. */
+  advanced: boolean
+  setAdvanced: (advanced: boolean) => void
   locale: Locale
   setLocale: (locale: Locale) => void
   /** Name yaku and win conditions in the reader's language ("Pure straight") instead of the
@@ -109,8 +111,6 @@ export const useSettings = create<SettingsState>()(
         showUkeire: true,
         opponents: false,
         deadWall: true,
-        aka: true,
-        showWall: false,
       },
       shanten: { timerEnabled: true },
       scoring: {
@@ -126,10 +126,8 @@ export const useSettings = create<SettingsState>()(
         honba: false,
         ignoreFuOnLimit: false,
         openHands: true,
-        aka: true,
-        showWall: false,
       },
-      folding: { timerEnabled: true, threats: 1, showWall: false },
+      folding: { timerEnabled: true, threats: 1 },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       showTileNumbers: null,
@@ -142,6 +140,12 @@ export const useSettings = create<SettingsState>()(
       setHideRotateHint: (hideRotateHint) => set({ hideRotateHint }),
       showTsumogiri: false,
       setShowTsumogiri: (showTsumogiri) => set({ showTsumogiri }),
+      aka: true,
+      setAka: (aka) => set({ aka }),
+      showWall: false,
+      setShowWall: (showWall) => set({ showWall }),
+      advanced: false,
+      setAdvanced: (advanced) => set({ advanced }),
       locale: 'auto',
       setLocale: (locale) => set({ locale }),
       translatedTerms: true,

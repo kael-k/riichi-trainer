@@ -28,7 +28,10 @@
     "yonma": "四人麻雀",
     "sanma": "三人麻雀",
     "numbersOnTiles": "牌に数字を表示",
-    "tsumogiriMarks": "ツモ切りに色を付ける",
+    "advanced": "上級者向けオプション",
+    "tsumogiriMarks": "ツモ切り/手出しを表示",
+    "redFives": "赤ドラ",
+    "showWall": "山を表示",
     "language": "言語",
     "languageAuto": "自動(ブラウザ設定)",
     "translatedTerms": "役名を翻訳して表示"
@@ -79,9 +82,7 @@
       "timer": "タイマー",
       "showUkeire": "<term>受け入れ</term>牌を表示",
       "opponents": "対戦相手",
-      "deadWall": "王牌とドラ",
-      "redFives": "赤ドラ",
-      "showWall": "山を表示"
+      "deadWall": "王牌とドラ"
     },
     "roundStatus": "{{round}}場・{{turn}}巡目",
     "avgTime": "平均 {{time}}",
@@ -149,9 +150,7 @@
       "kiriageMangan": "切り上げ満貫",
       "honba": "本場",
       "ignoreFuOnLimit": "満貫以上は符を採点しない",
-      "openHands": "副露あり",
-      "aka": "赤ドラ",
-      "showWall": "山を表示"
+      "openHands": "副露あり"
     },
     "handNumber": "{{count}}問目",
     "dealing": "配牌中…",
@@ -309,8 +308,7 @@
     "newSituation": "次の局面",
     "settings": {
       "timer": "タイマー",
-      "threats": "オリる相手のリーチ数",
-      "showWall": "山を表示"
+      "threats": "オリる相手のリーチ数"
     }
   },
   "log": {

@@ -87,6 +87,12 @@ export function GlobalSettings() {
   const setTranslatedTerms = useSettings((s) => s.setTranslatedTerms)
   const showTsumogiri = useSettings((s) => s.showTsumogiri)
   const setShowTsumogiri = useSettings((s) => s.setShowTsumogiri)
+  const aka = useSettings((s) => s.aka)
+  const setAka = useSettings((s) => s.setAka)
+  const showWall = useSettings((s) => s.showWall)
+  const setShowWall = useSettings((s) => s.setShowWall)
+  const advanced = useSettings((s) => s.advanced)
+  const setAdvanced = useSettings((s) => s.setAdvanced)
 
   return (
     <div className="flex flex-col gap-4">
@@ -155,20 +161,6 @@ export function GlobalSettings() {
           />
         </SettingRow>
       )}
-      <SettingRow
-        label={
-          <>
-            {t('settings.tsumogiriMarks')} <GlossaryTerm id="tsumogiri" iconOnly />
-          </>
-        }
-      >
-        <input
-          type="checkbox"
-          checked={showTsumogiri}
-          onChange={(e) => setShowTsumogiri(e.target.checked)}
-          className="size-5"
-        />
-      </SettingRow>
       <SettingRow label={t('settings.numbersOnTiles')}>
         <input
           type="checkbox"
@@ -177,6 +169,50 @@ export function GlobalSettings() {
           className="size-5"
         />
       </SettingRow>
+      <SettingRow label={t('settings.advanced')}>
+        <input
+          type="checkbox"
+          checked={advanced}
+          onChange={(e) => setAdvanced(e.target.checked)}
+          className="size-5"
+        />
+      </SettingRow>
+      {advanced && (
+        <>
+          <SettingRow
+            label={
+              <>
+                {t('settings.tsumogiriMarks')} <GlossaryTerm id="tsumogiri" iconOnly />
+                {' / '}
+                <GlossaryTerm id="tedashi" iconOnly />
+              </>
+            }
+          >
+            <input
+              type="checkbox"
+              checked={showTsumogiri}
+              onChange={(e) => setShowTsumogiri(e.target.checked)}
+              className="size-5"
+            />
+          </SettingRow>
+          <SettingRow label={t('settings.redFives')}>
+            <input
+              type="checkbox"
+              checked={aka}
+              onChange={(e) => setAka(e.target.checked)}
+              className="size-5"
+            />
+          </SettingRow>
+          <SettingRow label={t('settings.showWall')}>
+            <input
+              type="checkbox"
+              checked={showWall}
+              onChange={(e) => setShowWall(e.target.checked)}
+              className="size-5"
+            />
+          </SettingRow>
+        </>
+      )}
     </div>
   )
 }

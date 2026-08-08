@@ -27,16 +27,18 @@ export function EfficiencyPage() {
   const settings = useSettings((s) => s.efficiency)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
+  const aka = useSettings((s) => s.aka)
+  const showWall = useSettings((s) => s.showWall)
 
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<RoundOptions>(
     () => ({
       opponents: situation.opponents ?? settings.opponents,
       deadWall: situation.deadWall ?? settings.deadWall,
-      aka: situation.aka ?? settings.aka,
+      aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
     }),
-    [situation, settings.opponents, settings.deadWall, settings.aka, sanma],
+    [situation, settings.opponents, settings.deadWall, aka, sanma],
   )
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
@@ -94,8 +96,6 @@ export function EfficiencyPage() {
           )}
           {toggle('opponents', t('efficiency.settings.opponents'))}
           {toggle('deadWall', t('efficiency.settings.deadWall'))}
-          {toggle('aka', t('efficiency.settings.redFives'))}
-          {toggle('showWall', t('efficiency.settings.showWall'))}
         </>
       }
     >
@@ -255,9 +255,7 @@ export function EfficiencyPage() {
               </div>
             )}
 
-            {settings.showWall && (
-              <WallDetails liveWall={round.liveWall} deadWall={round.deadWall} />
-            )}
+            {showWall && <WallDetails liveWall={round.liveWall} deadWall={round.deadWall} />}
 
             <CopyLinkButton query={round.situationQuery} />
           </div>

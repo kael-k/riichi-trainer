@@ -32,7 +32,10 @@
     "yonma": "4 giocatori",
     "sanma": "3 giocatori",
     "numbersOnTiles": "Numeri sulle tessere",
-    "tsumogiriMarks": "Ombreggia gli scarti pescati e scartati subito",
+    "advanced": "Opzioni avanzate",
+    "tsumogiriMarks": "Mostra tsumogiri/tedashi",
+    "redFives": "Cinque rossi",
+    "showWall": "Mostra il muro",
     "language": "Lingua",
     "languageAuto": "Automatica (browser)",
     "translatedTerms": "Nomi degli yaku tradotti"
@@ -122,9 +125,7 @@
       "timer": "Timer",
       "showUkeire": "Mostra tessere di <term>ukeire</term>",
       "opponents": "Avversari",
-      "deadWall": "Muro morto e dora",
-      "redFives": "Cinque rossi",
-      "showWall": "Mostra il muro"
+      "deadWall": "Muro morto e dora"
     },
     "roundStatus": "vento {{round}} · turno {{turn}}",
     "avgTime": "media {{time}}",
@@ -196,9 +197,7 @@
       "kiriageMangan": "Kiriage mangan",
       "honba": "Bastoncini honba",
       "ignoreFuOnLimit": "Ignora il fu nelle mani limite",
-      "openHands": "Mani aperte",
-      "aka": "Cinque rossi",
-      "showWall": "Mostra il muro"
+      "openHands": "Mani aperte"
     },
     "handNumber": "Mano {{count}}",
     "dealing": "Distribuzione…",
@@ -407,8 +406,7 @@
     "newSituation": "Nuova situazione",
     "settings": {
       "timer": "Timer",
-      "threats": "Riichi contro cui difendersi",
-      "showWall": "Mostra il muro"
+      "threats": "Riichi contro cui difendersi"
     }
   },
   "log": {

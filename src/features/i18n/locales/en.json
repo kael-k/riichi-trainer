@@ -32,7 +32,10 @@
     "yonma": "4 players",
     "sanma": "3 players",
     "numbersOnTiles": "Numbers on tiles",
-    "tsumogiriMarks": "Shade discards taken straight off the draw",
+    "advanced": "Advanced options",
+    "tsumogiriMarks": "Show tsumogiri/tedashi",
+    "redFives": "Red fives",
+    "showWall": "Show wall",
     "language": "Language",
     "languageAuto": "Auto (browser)",
     "translatedTerms": "Translated yaku names"
@@ -122,9 +125,7 @@
       "timer": "Timer",
       "showUkeire": "Show <term>ukeire</term> tiles",
       "opponents": "Opponents",
-      "deadWall": "Dead wall & dora",
-      "redFives": "Red fives",
-      "showWall": "Show wall"
+      "deadWall": "Dead wall & dora"
     },
     "roundStatus": "{{round}} round · turn {{turn}}",
     "avgTime": "avg {{time}}",
@@ -196,9 +197,7 @@
       "kiriageMangan": "Kiriage mangan",
       "honba": "Honba sticks",
       "ignoreFuOnLimit": "Ignore fu on limit hands",
-      "openHands": "Open hands",
-      "aka": "Red fives",
-      "showWall": "Show wall"
+      "openHands": "Open hands"
     },
     "handNumber": "Hand {{count}}",
     "dealing": "Dealing…",
@@ -407,8 +406,7 @@
     "newSituation": "New situation",
     "settings": {
       "timer": "Timer",
-      "threats": "Riichi to fold against",
-      "showWall": "Show wall"
+      "threats": "Riichi to fold against"
     }
   },
   "log": {

@@ -98,6 +98,9 @@ export function ScoringPage() {
   const settings = useSettings((s) => s.scoring)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
+  const aka = useSettings((s) => s.aka)
+  const showWall = useSettings((s) => s.showWall)
+  const advanced = useSettings((s) => s.advanced)
 
   // the scoring section supplies the round's options, but a link can pin the rules the match was
   // simulated under — without them the same seed would replay into a different hand
@@ -105,11 +108,11 @@ export function ScoringPage() {
     () => ({
       ...settings,
       sanma: urlData.sanma ?? sanma,
-      aka: urlData.aka ?? settings.aka,
+      aka: urlData.aka ?? aka,
       openHands: urlData.calls ?? settings.openHands,
       honba: urlData.honba ?? settings.honba,
     }),
-    [urlData, sanma, settings],
+    [urlData, sanma, aka, settings],
   )
 
   const round = useScoringRound(urlData, options)
@@ -222,15 +225,13 @@ export function ScoringPage() {
           {toggle('testPoints', 'scoring.settings.testPoints', true)}
           {toggle('timerEnabled', 'scoring.settings.timer')}
           {toggle('table', 'scoring.settings.table')}
-          {toggle('exactFu', 'scoring.settings.exactFu')}
+          {advanced && toggle('exactFu', 'scoring.settings.exactFu')}
           {toggle('showYaku', 'scoring.settings.showYaku')}
           {toggle('showFu', 'scoring.settings.showFu')}
           {toggle('kiriageMangan', 'scoring.settings.kiriageMangan')}
           {toggle('honba', 'scoring.settings.honba')}
           {toggle('ignoreFuOnLimit', 'scoring.settings.ignoreFuOnLimit')}
           {toggle('openHands', 'scoring.settings.openHands')}
-          {toggle('aka', 'scoring.settings.aka')}
-          {toggle('showWall', 'scoring.settings.showWall')}
         </>
       }
     >
@@ -436,7 +437,7 @@ export function ScoringPage() {
               </div>
             )}
 
-            {settings.showWall && round.match && (
+            {showWall && round.match && (
               <WallDetails liveWall={round.match.liveWall} deadWall={round.match.deadWall} />
             )}
 
