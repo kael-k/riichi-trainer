@@ -361,6 +361,7 @@
     "prompt_other": "{{winds}} are in riichi. Fold: throw the tile least likely to deal in. Whether folding is right is not graded — only which tile you fold with.",
     "turnStatus": "Turn {{turn}}",
     "score": "Safest: {{correct}} / {{total}}",
+    "accuracy": "accuracy {{percent}}%",
     "avgTime": "avg {{time}}",
     "yourDiscard": "You threw",
     "safestDiscard": "Safest was",

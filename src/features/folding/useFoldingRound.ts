@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Meld } from '../../core/agari'
-import { assessDiscards, type TileDanger } from '../../core/danger'
+import { assessDiscards, dangerScore, type TileDanger } from '../../core/danger'
 import {
   beginTurn,
   concealedTiles,
@@ -506,6 +506,11 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     const correct = yours.rank === 0
     const result: TurnResult = { turn: r.match.turn, yours, safest, correct }
     const elapsed = stats.elapsedNow()
+    // partial credit against the turn's own worst option: right/wrong alone calls a suji throw
+    // when a genbutsu was there the same mistake as throwing the live non-suji 5. A hand where
+    // everything is genbutsu has nothing to be wrong about, so it scores full marks
+    const worst = Math.max(...ranked.map(dangerScore))
+    const quality = worst > 0 ? (worst - dangerScore(yours)) / worst : 1
 
     // logged here, not from an effect watching round state: effect-based logging inverts entry
     // order and duplicates under StrictMode. Raw params, so a language switch re-translates.
@@ -523,7 +528,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       undefined,
       situationBefore,
     )
-    stats.record(correct, elapsed)
+    stats.record(correct, elapsed, quality)
 
     advanceAfterDiscard(r, tile)
     const next = snapshot(r, options.sanma, state)
@@ -571,6 +576,9 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     correctCount: stats.correctCount,
     totalCount: stats.totalCount,
     averageTime: stats.averageTime,
+    /** Mean partial credit across the session's throws, 0-1 — how safe your discards were
+     *  relative to the safest and the most dangerous tile each hand actually held. */
+    accuracy: stats.averageQuality,
     /** The hand ranked as it stands. Deliberately not rendered before the answer — markers on the
      *  tiles turn the drill into reading a hint — but it is what `discard` grades against. */
     ranked: (): TileDanger[] => (core.current ? rank(core.current, options.sanma) : []),

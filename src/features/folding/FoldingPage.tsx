@@ -167,6 +167,11 @@ export function FoldingPage() {
             <span>
               {t('folding.score', { correct: round.correctCount, total: round.totalCount })}
             </span>
+            {/* safest-or-not is pass/fail; this says how close the rest were, measured against the
+                most dangerous tile each hand actually held */}
+            {round.totalCount > 0 && (
+              <span>{t('folding.accuracy', { percent: Math.round(round.accuracy * 100) })}</span>
+            )}
             {settings.timerEnabled && (
               <span>{t('folding.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
             )}

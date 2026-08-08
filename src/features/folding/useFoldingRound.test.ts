@@ -120,6 +120,24 @@ describe('useFoldingRound', () => {
     }
   })
 
+  it('scores accuracy against the turn’s own worst tile, not just right/wrong', async () => {
+    const result = await deal({ seed: 'accuracy-seed' })
+    const safe = result.current.ranked()[0]
+    act(() => result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)))
+    expect(result.current.accuracy).toBe(1)
+
+    const ranked = result.current.ranked()
+    const worst = ranked[ranked.length - 1]
+    if (worst.rank > 0) {
+      act(() =>
+        result.current.discard(indexOf(result.current.hand, result.current.drawn, worst.tile)),
+      )
+      // the most dangerous tile in hand scores zero, so two turns average to a half
+      expect(result.current.accuracy).toBeCloseTo(0.5, 5)
+      expect(result.current.correctCount).toBe(1)
+    }
+  })
+
   it('plays the fold out: every turn to the end of the hand is graded', async () => {
     const result = await deal({ seed: 'multi-seed' })
     let turns = 0

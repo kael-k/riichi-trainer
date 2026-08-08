@@ -11,6 +11,7 @@ export function useSessionStats() {
   const [correctCount, setCorrectCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [totalTime, setTotalTime] = useState(0)
+  const [totalQuality, setTotalQuality] = useState(0)
   const startedAt = useRef(0)
   const entryCount = useLog((s) => s.entries.length)
 
@@ -19,6 +20,7 @@ export function useSessionStats() {
     setCorrectCount(0)
     setTotalCount(0)
     setTotalTime(0)
+    setTotalQuality(0)
   }, [entryCount])
 
   return {
@@ -27,14 +29,20 @@ export function useSessionStats() {
     totalCount,
     /** Mean time per graded hand, in milliseconds. */
     averageTime: totalCount > 0 ? totalTime / totalCount : 0,
+    /** Mean of whatever partial credit `record` was given, 0-1. Right/wrong is a coarse measure
+     *  where an answer can be nearly right (a folding discard one tier off the safest is not the
+     *  same mistake as throwing the most dangerous tile in hand); trainers that can say how close
+     *  a choice was pass it, the rest leave it at right = 1, wrong = 0. */
+    averageQuality: totalCount > 0 ? totalQuality / totalCount : 0,
     /** (Re)starts the clock for the hand now on screen. */
     startClock: () => {
       startedAt.current = performance.now()
     },
     elapsedNow: () => performance.now() - startedAt.current,
-    record: (correct: boolean, elapsed: number) => {
+    record: (correct: boolean, elapsed: number, quality = correct ? 1 : 0) => {
       setTotalCount((n) => n + 1)
       setTotalTime((t) => t + elapsed)
+      setTotalQuality((q) => q + quality)
       if (correct) setCorrectCount((n) => n + 1)
     },
   }

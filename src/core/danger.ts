@@ -99,6 +99,13 @@ function tierScore(tier: SafetyTier, id: TileId, visible: number): number {
   return TIER_SCORE[tier]
 }
 
+/** What the ranking actually sorts on, for one already-assessed tile. Exported because rank is
+ *  ordinal — it says which tile was safest, never how far off a throw was — and a trainer scoring
+ *  "how bad was that, out of the worst thing in the hand" needs the number itself. */
+export function dangerScore(entry: TileDanger): number {
+  return tierScore(entry.tier, entry.tile, entry.visible)
+}
+
 /** A two-tile run shape, as offsets from the tile it waits on. `(n+1, n+2)` and `(n-2, n-1)` are
  *  the ryanmen (each also waits on the far end, which is what suji reads); `(n-1, n+1)` is the
  *  kanchan, which no amount of suji protects against but a wall does. */
