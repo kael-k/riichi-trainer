@@ -27,7 +27,9 @@ export function EfficiencyPage() {
   const settings = useSettings((s) => s.efficiency)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const { aka, showWall, showOpponentHands } = useAdvancedSettings()
+  const { aka, showWall } = useAdvancedSettings()
+  const showOpponentHands = useSettings((s) => s.showOpponentHands)
+  const hideConcealedHands = useSettings((s) => s.hideConcealedHands)
 
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<RoundOptions>(
@@ -62,7 +64,8 @@ export function EfficiencyPage() {
       : {
           river,
           riichi: round.riichi[seat],
-          hand: showOpponentHands ? round.hands[seat] : undefined,
+          hand: showOpponentHands || !hideConcealedHands ? round.hands[seat] : undefined,
+          concealed: !showOpponentHands,
         },
   )
 

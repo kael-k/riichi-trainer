@@ -63,7 +63,9 @@ export function FoldingPage() {
   const settings = useSettings((s) => s.folding)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const { showWall, showOpponentHands } = useAdvancedSettings()
+  const { showWall } = useAdvancedSettings()
+  const showOpponentHands = useSettings((s) => s.showOpponentHands)
+  const hideConcealedHands = useSettings((s) => s.hideConcealedHands)
 
   const options = useMemo<RoundOptions>(() => {
     const isSanma = urlData.sanma ?? sanma
@@ -155,7 +157,11 @@ export function FoldingPage() {
     melds: round.melds[seat],
     nuki: round.nuki[seat],
     riichi: round.riichi[seat],
-    hand: showOpponentHands && seat !== round.seatIndex ? round.hands[seat] : undefined,
+    hand:
+      seat !== round.seatIndex && (showOpponentHands || !hideConcealedHands)
+        ? round.hands[seat]
+        : undefined,
+    concealed: !showOpponentHands,
   }))
   const threatWinds = round.threatSeats.map((seat) => t(`wind.${WINDS[seat]}`)).join(' · ')
   // everything that would tell you how the fold is going so far, held back mid-hand when asked

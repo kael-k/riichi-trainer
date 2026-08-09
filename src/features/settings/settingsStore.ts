@@ -103,10 +103,18 @@ interface SettingsState extends Settings {
   showWall: boolean
   setShowWall: (show: boolean) => void
   /** Reveal every opponent's (and, in the folding trainer, every threat's) concealed hand on the
-   *  shared table. Off by default: it turns a "read the board" drill into "read the answer key" —
-   *  useful for demos and debugging, not for the drill itself. */
+   *  shared table, as real tile faces. Off by default: it turns a "read the board" drill into
+   *  "read the answer key" — useful for demos and debugging, not for the drill itself. A global,
+   *  non-advanced setting: unlike the advanced-gated rows, opponents' hands being *present* (see
+   *  `hideConcealedHands`) is basic table reading, not a jargon-gated extra. */
   showOpponentHands: boolean
   setShowOpponentHands: (show: boolean) => void
+  /** Hide opponents' hands from the table entirely, instead of the default face-down tile backs
+   *  (which show the shape — tile count, melds — without revealing faces). Off by default: showing
+   *  the concealed backs is what makes the table read as a real board. Moot when
+   *  `showOpponentHands` is on. */
+  hideConcealedHands: boolean
+  setHideConcealedHands: (hide: boolean) => void
   /** Surfaces options that only make sense once the reader already knows the terms involved
    *  (tsumogiri/tedashi, exact fu, wall reveal, red fives). Off by default so a first-time
    *  player's settings panel stays short. */
@@ -172,6 +180,8 @@ export const useSettings = create<SettingsState>()(
       setShowWall: (showWall) => set({ showWall }),
       showOpponentHands: false,
       setShowOpponentHands: (showOpponentHands) => set({ showOpponentHands }),
+      hideConcealedHands: false,
+      setHideConcealedHands: (hideConcealedHands) => set({ hideConcealedHands }),
       advanced: false,
       setAdvanced: (advanced) => set({ advanced }),
       locale: 'auto',

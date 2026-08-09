@@ -34,6 +34,7 @@
     "redFives": "赤宝牌",
     "showWall": "显示牌山",
     "showOpponentHands": "显示对手手牌",
+    "hideConcealedHands": "隐藏对手的暗牌",
     "language": "语言",
     "languageAuto": "自动(跟随浏览器)",
     "translatedTerms": "使用翻译役名"

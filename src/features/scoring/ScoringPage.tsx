@@ -100,7 +100,9 @@ export function ScoringPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const advanced = useSettings((s) => s.advanced)
-  const { aka, showWall, showOpponentHands, exactFu } = useAdvancedSettings()
+  const { aka, showWall, exactFu } = useAdvancedSettings()
+  const showOpponentHands = useSettings((s) => s.showOpponentHands)
+  const hideConcealedHands = useSettings((s) => s.hideConcealedHands)
 
   // the scoring section supplies the round's options, but a link can pin the rules the match was
   // simulated under — without them the same seed would replay into a different hand. exactFu is
@@ -202,7 +204,11 @@ export function ScoringPage() {
         melds: player.melds,
         nuki: player.nuki,
         riichi: player.riichiAt !== undefined,
-        hand: showOpponentHands && seat !== round.seat ? concealedTiles(player) : undefined,
+        hand:
+          seat !== round.seat && (showOpponentHands || !hideConcealedHands)
+            ? concealedTiles(player)
+            : undefined,
+        concealed: !showOpponentHands,
       }))
     : Array.from({ length: players }, (_, seat) => ({
         ...(seat === tableSeatIndex && {

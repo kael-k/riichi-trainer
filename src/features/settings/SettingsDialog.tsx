@@ -93,6 +93,8 @@ export function GlobalSettings() {
   const setShowWall = useSettings((s) => s.setShowWall)
   const showOpponentHands = useSettings((s) => s.showOpponentHands)
   const setShowOpponentHands = useSettings((s) => s.setShowOpponentHands)
+  const hideConcealedHands = useSettings((s) => s.hideConcealedHands)
+  const setHideConcealedHands = useSettings((s) => s.setHideConcealedHands)
   const advanced = useSettings((s) => s.advanced)
   const setAdvanced = useSettings((s) => s.setAdvanced)
 
@@ -171,6 +173,25 @@ export function GlobalSettings() {
           className="size-5"
         />
       </SettingRow>
+      <SettingRow label={t('settings.showOpponentHands')}>
+        <input
+          type="checkbox"
+          checked={showOpponentHands}
+          onChange={(e) => setShowOpponentHands(e.target.checked)}
+          className="size-5"
+        />
+      </SettingRow>
+      {/* moot once opponent hands are revealed outright */}
+      {!showOpponentHands && (
+        <SettingRow label={t('settings.hideConcealedHands')}>
+          <input
+            type="checkbox"
+            checked={hideConcealedHands}
+            onChange={(e) => setHideConcealedHands(e.target.checked)}
+            className="size-5"
+          />
+        </SettingRow>
+      )}
       <SettingRow label={t('settings.advanced')}>
         <input
           type="checkbox"
@@ -210,14 +231,6 @@ export function GlobalSettings() {
               type="checkbox"
               checked={showWall}
               onChange={(e) => setShowWall(e.target.checked)}
-              className="size-5"
-            />
-          </SettingRow>
-          <SettingRow label={t('settings.showOpponentHands')}>
-            <input
-              type="checkbox"
-              checked={showOpponentHands}
-              onChange={(e) => setShowOpponentHands(e.target.checked)}
               className="size-5"
             />
           </SettingRow>

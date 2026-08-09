@@ -15,9 +15,14 @@ export interface SeatView {
   nuki?: ParsedTile[]
   /** This seat has declared riichi — drawn as a 1000-point bet stick in front of its river. */
   riichi?: boolean
-  /** This seat's concealed hand — only ever passed by a caller when the `showOpponentHands`
-   *  advanced setting is on; the table itself doesn't gate on it. */
+  /** This seat's hand tiles, shown beside the board — omitted entirely for your own seat (which
+   *  has its own on-screen hand) and for an opponent whose hand the caller has hidden outright
+   *  (the `hideConcealedHands` setting). The table itself doesn't gate on any setting; the caller
+   *  decides both whether to pass this and whether `concealed` accompanies it. */
   hand?: ParsedTile[]
+  /** Draw `hand` as face-down backs — the tile count and melds still read, faces don't. This is
+   *  the default opponent view; pass `false` (real faces) only when `showOpponentHands` is on. */
+  concealed?: boolean
 }
 
 interface TableProps {
@@ -229,7 +234,7 @@ export function Table({
                   >
                     <div className="flex translate-y-[112%] [--tile-w:calc(100cqw/16)]">
                       {seat.hand.map((tile, i) => (
-                        <Tile key={i} id={tile.id} red={tile.red} />
+                        <Tile key={i} id={seat.concealed ? undefined : tile.id} red={tile.red} />
                       ))}
                     </div>
                   </div>
