@@ -13,6 +13,7 @@ import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { useTermName } from '../i18n/useTermName'
 import { SettingRow } from '../settings/SettingsDialog'
+import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
 import { ScoreBreakdown } from './ScoreBreakdown'
 import { decodeScoringUrl } from './scoringUrl'
@@ -98,22 +99,23 @@ export function ScoringPage() {
   const settings = useSettings((s) => s.scoring)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const aka = useSettings((s) => s.aka)
-  const showWall = useSettings((s) => s.showWall)
-  const showOpponentHands = useSettings((s) => s.showOpponentHands)
   const advanced = useSettings((s) => s.advanced)
+  const { aka, showWall, showOpponentHands, exactFu } = useAdvancedSettings()
 
   // the scoring section supplies the round's options, but a link can pin the rules the match was
-  // simulated under — without them the same seed would replay into a different hand
+  // simulated under — without them the same seed would replay into a different hand. exactFu is
+  // the advanced-resolved value, not settings.exactFu straight — grading must fall back the same
+  // way the display does when Advanced is off
   const options = useMemo<RoundOptions>(
     () => ({
       ...settings,
+      exactFu,
       sanma: urlData.sanma ?? sanma,
       aka: urlData.aka ?? aka,
       openHands: urlData.calls ?? settings.openHands,
       honba: urlData.honba ?? settings.honba,
     }),
-    [urlData, sanma, aka, settings],
+    [urlData, sanma, aka, exactFu, settings],
   )
 
   const round = useScoringRound(urlData, options)
@@ -413,7 +415,7 @@ export function ScoringPage() {
                   <FieldFeedback
                     correct={round.lastResult.correctFu}
                     label={t('scoring.fuLabel')}
-                    expected={String(settings.exactFu ? round.actual.fuExact : round.actual.fu)}
+                    expected={String(options.exactFu ? round.actual.fuExact : round.actual.fu)}
                   />
                 )}
                 {settings.testPoints && !split && (

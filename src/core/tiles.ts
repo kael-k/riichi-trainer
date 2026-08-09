@@ -83,13 +83,15 @@ export function parseTenhou(input: string): ParsedTile[] {
       for (const d of digits) {
         const n = Number(d)
         if (n === 0) tiles.push({ id: offset + 4, red: true })
-        else tiles.push({ id: offset + (n - 1), red: false })
+        else if (n >= 1 && n <= 9) tiles.push({ id: offset + (n - 1), red: false })
+        // any other digit (only "0" is special outside 1-9) is not a real tile — dropped
       }
       digits = ''
     } else if (ch === 'z') {
       for (const d of digits) {
         const n = Number(d)
-        tiles.push({ id: HONOR + (n - 1), red: false })
+        if (n >= 1 && n <= 7) tiles.push({ id: HONOR + (n - 1), red: false })
+        // honors only run 1-7 (winds + dragons); anything else is dropped, same as a bad suit digit
       }
       digits = ''
     }

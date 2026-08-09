@@ -9,6 +9,7 @@ import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Ti
 import { formatElapsed, formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
+import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation, WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
@@ -26,9 +27,7 @@ export function EfficiencyPage() {
   const settings = useSettings((s) => s.efficiency)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const aka = useSettings((s) => s.aka)
-  const showWall = useSettings((s) => s.showWall)
-  const showOpponentHands = useSettings((s) => s.showOpponentHands)
+  const { aka, showWall, showOpponentHands } = useAdvancedSettings()
 
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<RoundOptions>(

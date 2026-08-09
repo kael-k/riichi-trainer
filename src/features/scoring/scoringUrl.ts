@@ -96,8 +96,8 @@ export function decodeScoringUrl(params: URLSearchParams): ScoringUrl {
   const uraIndicators = parseTenhou(params.get('ura') ?? '').map((t) => t.id)
   const round = parseWind(params.get('round'))
   const seat = parseWind(params.get('seat'))
-  const honba = Number(params.get('honba') ?? '0') || 0
-  const kita = Number(params.get('nuki') ?? '0') || 0
+  const honba = Math.max(0, Number(params.get('honba') ?? '0') || 0)
+  const kita = Math.max(0, Number(params.get('nuki') ?? '0') || 0)
   const flags = new Set((params.get('flags') ?? '').split('-'))
 
   const ctx: WinContext = {

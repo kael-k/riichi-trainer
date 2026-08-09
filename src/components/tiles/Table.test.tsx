@@ -33,7 +33,8 @@ describe('Table', () => {
     const table = <Table seats={[{ river }, {}, {}, {}]} seatIndex={0} round="E" />
     const shades = (c: HTMLElement) => seatBlock(c, 0).querySelectorAll('[class*="bg-neutral-500"]')
 
-    useSettings.setState({ showTsumogiri: false })
+    // showTsumogiri is an advanced setting: it only takes effect once `advanced` is also on
+    useSettings.setState({ advanced: true, showTsumogiri: false })
     const off = render(table).container
     expect(seatBlock(off, 0).querySelectorAll('[class*="rotate-90"]')).toHaveLength(1)
     expect(shades(off)).toHaveLength(0)

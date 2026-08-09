@@ -43,6 +43,14 @@ describe('parseTenhou', () => {
   it('returns empty array for empty input', () => {
     expect(parseTenhou('')).toEqual([])
   })
+
+  it('drops out-of-range digits instead of producing an invalid tile id', () => {
+    // honors only run 1-7 (E/S/W/N/haku/hatsu/chun) — 8 and 9 are not real tiles
+    expect(parseTenhou('9z')).toEqual([])
+    expect(parseTenhou('8z')).toEqual([])
+    // a valid honor alongside an invalid one: only the valid one survives
+    expect(parseTenhou('91z').map((t) => tileName(t.id))).toEqual(['E'])
+  })
 })
 
 describe('serializeTenhou', () => {

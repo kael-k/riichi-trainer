@@ -101,6 +101,34 @@ describe('detectYaku (standard hands)', () => {
   })
 })
 
+describe('detectYaku (situational)', () => {
+  it('houtei: ron on the last discard of the hand', () => {
+    const names = allYakuNames('123456789m123p55s', [], MAN, { houtei: true })
+    expect(names.has('houtei')).toBe(true)
+    expect(names.has('haitei')).toBe(false) // haitei is the tsumo counterpart, never both
+  })
+
+  it('haitei: tsumo on the last live-wall tile', () => {
+    const names = allYakuNames('123456789m123p55s', [], MAN, { tsumo: true, haitei: true })
+    expect(names.has('haitei')).toBe(true)
+    expect(names.has('houtei')).toBe(false)
+  })
+
+  it('ippatsu stacks with double riichi, not just single riichi', () => {
+    // doubleRiichi implies ctx.riichi is false (they're exclusive win-context flags), so ippatsu
+    // must be gated on riichi-or-doubleRiichi, not riichi alone
+    const withDouble = allYakuNames('123456789m123p55s', [], MAN, {
+      doubleRiichi: true,
+      ippatsu: true,
+    })
+    expect(withDouble.has('ippatsu')).toBe(true)
+    expect(withDouble.has('doubleRiichi')).toBe(true)
+
+    const withSingle = allYakuNames('123456789m123p55s', [], MAN, { riichi: true, ippatsu: true })
+    expect(withSingle.has('ippatsu')).toBe(true)
+  })
+})
+
 describe('detectYaku (yakuman)', () => {
   it('daisangen: three dragon triplets', () => {
     const names = allYakuNames('555666777z12355m', [], MAN)

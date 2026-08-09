@@ -9,7 +9,7 @@ import {
   type RiverTile,
   type TileId,
 } from '../../core/tiles'
-import { useSettings } from '../../features/settings/settingsStore'
+import { useAdvancedSettings } from '../../features/settings/useAdvancedSettings'
 import { useShowTileNumbers } from '../../features/settings/useShowTileNumbers'
 
 interface TileProps {
@@ -155,7 +155,7 @@ export function HandDisplay({
  *  a discard" without a label. Both overlays go on the tile itself rather than the sideways
  *  wrapper, so a riichi declared on that tile rotates them along with the face. */
 function Discard({ tile }: { tile: RiverTile }) {
-  const showTsumogiri = useSettings((s) => s.showTsumogiri)
+  const { showTsumogiri } = useAdvancedSettings()
   const face = (
     <span className="relative flex">
       <Tile id={tile.id} red={tile.red} />

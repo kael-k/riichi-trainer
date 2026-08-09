@@ -8,6 +8,7 @@ import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
+import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
 import { WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
@@ -62,8 +63,7 @@ export function FoldingPage() {
   const settings = useSettings((s) => s.folding)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const showWall = useSettings((s) => s.showWall)
-  const showOpponentHands = useSettings((s) => s.showOpponentHands)
+  const { showWall, showOpponentHands } = useAdvancedSettings()
 
   const options = useMemo<RoundOptions>(() => {
     const isSanma = urlData.sanma ?? sanma

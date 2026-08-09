@@ -203,7 +203,7 @@ export function detectYaku(
 
   const yaku: YakuHit[] = []
   pushRiichiTsumoEdge(yaku, ctx, menzen)
-  if (ctx.haitei) yaku.push({ name: ctx.tsumo ? 'haitei' : 'houtei', han: 1 })
+  if (ctx.haitei || ctx.houtei) yaku.push({ name: ctx.tsumo ? 'haitei' : 'houtei', han: 1 })
   if (ctx.rinshan) yaku.push({ name: 'rinshan', han: 1 })
   if (ctx.chankan) yaku.push({ name: 'chankan', han: 1 })
 
@@ -313,6 +313,6 @@ export function detectYaku(
 function pushRiichiTsumoEdge(yaku: YakuHit[], ctx: WinContext, menzen: boolean): void {
   if (menzen && ctx.doubleRiichi) yaku.push({ name: 'doubleRiichi', han: 2 })
   else if (menzen && ctx.riichi) yaku.push({ name: 'riichi', han: 1 })
-  if (menzen && ctx.riichi && ctx.ippatsu) yaku.push({ name: 'ippatsu', han: 1 })
+  if (menzen && (ctx.riichi || ctx.doubleRiichi) && ctx.ippatsu) yaku.push({ name: 'ippatsu', han: 1 })
   if (menzen && ctx.tsumo) yaku.push({ name: 'menzenTsumo', han: 1 })
 }
