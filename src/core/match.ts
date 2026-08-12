@@ -1,21 +1,12 @@
 import { decompose, type Meld } from './agari'
 import type { ThreatView } from './danger'
 import { evaluateDiscards, isBestDiscard } from './efficiency'
-import { addTile, createHand, removeTile, tileCount, type Hand } from './hand'
+import { addTile, createHand, removeTile, type Hand } from './hand'
 import { chooseCall, chooseDiscard, chooseFold, isFuriten, waits, type SeatPolicy } from './policy'
 import { scoreHand, type ScoreResult } from './score'
 import { shanten } from './shanten'
-import {
-  HONOR,
-  MAN,
-  NUM_TILE_TYPES,
-  PIN,
-  SOU,
-  type ParsedTile,
-  type RiverTile,
-  type TileId,
-} from './tiles'
-import { buildWall, DEAD_WALL_SIZE, INITIAL_HAND_SIZE } from './wall'
+import { HONOR, NUM_TILE_TYPES, type ParsedTile, type RiverTile, type TileId } from './tiles'
+import { completeWall, DEAD_WALL_SIZE, fullWallSize, INITIAL_HAND_SIZE } from './wall'
 import { isMenzen, type WinContext } from './yaku'
 
 /**
@@ -98,6 +89,11 @@ export type MatchEvent =
 
 export interface MatchState {
   players: PlayerState[]
+  /** The complete wall this match dealt from, in draw order: each seat's 13 starting tiles, then
+   *  the live draws, then the trailing 14 tiles the dead wall is cut from (dora indicator first).
+   *  Captured once in `createMatch` and never touched again — unlike `liveWall`, which shrinks as
+   *  the hand is played. */
+  wall: ParsedTile[]
   liveWall: ParsedTile[]
   /** The live wall exactly as dealt — snapshotted once at the end of the deal, in `createMatch`,
    *  and never touched again. `liveWall` above only holds what's left (`take()` shifts off its
@@ -132,18 +128,6 @@ export interface MatchState {
   win?: WinRecord
 }
 
-export interface Pinned {
-  /** Seat whose starting hand is fixed. */
-  seat: number
-  hand: ParsedTile[]
-  /** Wall prefix in draw order, consumed by whoever draws next — opponents included. */
-  wall: ParsedTile[]
-}
-
-function redFiveIds(sanma: boolean): TileId[] {
-  return sanma ? [PIN + 4, SOU + 4] : [MAN + 4, PIN + 4, SOU + 4]
-}
-
 function createPlayer(): PlayerState {
   return {
     hand: createHand(),
@@ -158,37 +142,22 @@ function createPlayer(): PlayerState {
 }
 
 /**
- * Deals a match: seeded pool minus any pinned tiles, aka marked in, dead wall and its dora/ura
- * stacks reserved off the pool *tail* so they never eat the pinned prefix, then 13 to each seat
- * starting from the dealer.
+ * Deals a match from an explicit wall, in draw order: `wall`'s leading `players * 13` tiles ARE
+ * the starting hands (seat 0's 13, then seat 1's, …), the trailing `DEAD_WALL_SIZE` (when
+ * `options.deadWall`) are cut off for the dead wall and its dora/ura stacks, and everything
+ * between is the live draw pool. A short `wall` is a prefix — `completeWall` fills the remainder
+ * at random (or from `fillSeed`, for reproducible tests/generation) from the copies it leaves.
  */
 export function createMatch(
-  seed: string,
+  wall: ParsedTile[],
   players: number,
   options: MatchOptions,
-  pinned?: Pinned,
+  fillSeed?: string,
 ): MatchState {
-  const used = new Uint8Array(NUM_TILE_TYPES)
-  const pinnedRedSuits = new Set<TileId>()
-  for (const t of [...(pinned?.hand ?? []), ...(pinned?.wall ?? [])]) {
-    used[t.id]++
-    if (t.red) pinnedRedSuits.add(t.id)
-  }
-
-  const pool: ParsedTile[] = buildWall(seed, options.sanma)
-    .filter((id) => {
-      if (used[id] === 0) return true
-      used[id]--
-      return false
-    })
-    .map((id) => ({ id, red: false }))
-  if (options.aka) {
-    for (const redId of redFiveIds(options.sanma)) {
-      if (pinnedRedSuits.has(redId)) continue
-      const i = pool.findIndex((t) => t.id === redId)
-      if (i >= 0) pool[i] = { id: redId, red: true }
-    }
-  }
+  const full =
+    wall.length >= fullWallSize(options.sanma)
+      ? wall
+      : completeWall(wall, options.sanma, options.aka, fillSeed)
 
   let deadWall: ParsedTile[] = []
   let deadWallSnapshot: ParsedTile[] = []
@@ -196,6 +165,7 @@ export function createMatch(
   let uraStack: ParsedTile[] = []
   const doraIndicators: ParsedTile[] = []
   let reserved = 0
+  const pool = full.slice(players * INITIAL_HAND_SIZE)
   if (options.deadWall) {
     const dead = Math.min(DEAD_WALL_SIZE, pool.length)
     const chunk = pool.slice(pool.length - dead)
@@ -218,6 +188,7 @@ export function createMatch(
 
   const state: MatchState = {
     players: Array.from({ length: players }, createPlayer),
+    wall: full,
     liveWall: dealable,
     liveWallSnapshot: [],
     deadWall,
@@ -233,24 +204,14 @@ export function createMatch(
     replacements: 0,
   }
 
-  if (pinned) {
-    const player = state.players[pinned.seat]
-    for (const t of pinned.hand) {
+  for (let i = 0; i < players; i++) {
+    const player = state.players[i]
+    for (const t of full.slice(i * INITIAL_HAND_SIZE, (i + 1) * INITIAL_HAND_SIZE)) {
       addTile(player.hand, t.id)
       if (t.red) player.reds.add(t.id)
     }
   }
-  for (const player of state.players) {
-    while (tileCount(player.hand) < INITIAL_HAND_SIZE && state.liveWall.length > 0) {
-      take(state, player)
-    }
-  }
-  // the pinned prefix goes in front only now: it names what gets *drawn* next, so the deal must
-  // come out of the seeded pool first or a pinned wall would end up in somebody's starting hand
-  if (pinned?.wall.length) state.liveWall.unshift(...pinned.wall)
-  // captured after the prefix, not before: the snapshot is the wall play will actually draw
-  // from, and a snapshot missing the prefix would make `wallDrawnCount` go negative the moment
-  // a pinned tile is drawn
+  // captured after the deal, not before: the snapshot is the wall play will actually draw from
   state.liveWallSnapshot = [...state.liveWall]
   return state
 }
@@ -635,7 +596,7 @@ export function playMatch(
   options: MatchOptions,
   stop?: (event: MatchEvent, state: MatchState) => boolean,
 ): MatchOutcome {
-  const state = createMatch(seed, players, options)
+  const state = createMatch([], players, options, seed)
   const events: MatchEvent[] = []
   // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
   for (let guard = 0; guard < 400 && !state.ended; guard++) {

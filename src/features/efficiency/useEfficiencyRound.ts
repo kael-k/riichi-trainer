@@ -185,19 +185,16 @@ function matchOptions(options: RoundOptions, round: TileId, seatIndex: number): 
   }
 }
 
-/** Builds the round: a real deal, the seats before yours acting first, then a replay of the
- *  situation's river to fast-forward to its decision point. */
-function createRound(situation: Situation, options: RoundOptions, seed: string): RoundCore {
+/** Builds the round: a real deal off the situation's own wall (empty deals a fresh random board),
+ *  the seats before yours acting first, then a replay of the situation's river to fast-forward to
+ *  its decision point. */
+function createRound(situation: Situation, options: RoundOptions): RoundCore {
   const players = options.sanma ? 3 : 4
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const seatIndex = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
   const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const opts = matchOptions(options, round, seatIndex)
-  const match = createMatch(seed, players, opts, {
-    seat: seatIndex,
-    hand: situation.hand,
-    wall: situation.wall,
-  })
+  const match = createMatch(situation.wall, players, opts)
   const core: RoundCore = { match, options: opts, seatIndex }
 
   // a situation that pins all fourteen tiles has already had its draw; anything else starts the
@@ -263,21 +260,17 @@ export function useEfficiencyRound(
   timerEnabled: boolean,
 ) {
   const [restartCount, setRestartCount] = useState(0)
-  // stable per mount, so an unspecified seed still gets a fresh deal each page load
-  const [randomSeed] = useState(() => Math.random().toString(36).slice(2))
   const core = useRef<RoundCore>(undefined)
-  const effectiveSeed = useRef('')
   // the situation whose replayed river is already on the log; see `logReplay`
   const loggedReplay = useRef<Situation>(undefined)
 
-  // A rewind hands in a brand-new `situation` object whose seed already carries whatever
-  // restartCount suffix was live when the log entry was captured (situationQuery() dumps
-  // effectiveSeed.current as-is). restartCount itself is per-mount React state that a rewind
-  // does not and should not reset on its own, so left alone it would keep counting from the old
-  // situation and startRound() below would suffix an already-suffixed seed a second time,
-  // rebuilding a different round than the one the log entry named. Resetting it here whenever
-  // `situation` changes identity (rewind, or a fresh URL load) — the "adjust state while
-  // rendering" pattern — keeps restartCount scoped to whichever situation is current.
+  // A rewind hands in a brand-new `situation` object naming its own wall (situationQuery() dumps
+  // the wall actually dealt). restartCount itself is per-mount React state that a rewind does not
+  // and should not reset on its own, so left alone it would keep counting from the old situation
+  // and startRound() below would treat the rewound situation's own wall as already-restarted-past
+  // (empty), dealing a fresh random board instead of the one the log entry named. Resetting it
+  // here whenever `situation` changes identity (rewind, or a fresh URL load) — the "adjust state
+  // while rendering" pattern — keeps restartCount scoped to whichever situation is current.
   const [lastSituation, setLastSituation] = useState(situation)
   if (situation !== lastSituation) {
     setLastSituation(situation)
@@ -291,11 +284,11 @@ export function useEfficiencyRound(
   const stats = useSessionStats()
 
   function startRound(): RoundState {
-    // no suffix on first load, so a URL whose seed came from situationQuery() (already
-    // suffixed or not) rebuilds the identical round instead of hashing differently
-    const base = situation.seed || randomSeed
-    effectiveSeed.current = restartCount === 0 ? base : `${base}:${restartCount}`
-    core.current = createRound(situation, options, effectiveSeed.current)
+    // a restart deals a fresh random board rather than replaying the situation's own wall — an
+    // unspecified wall (the common case) already deals randomly, since `createMatch` fills an
+    // empty/short wall itself
+    const wall = restartCount === 0 ? situation.wall : []
+    core.current = createRound({ ...situation, wall }, options)
     lastChoiceElapsed.current = 0
     return snapshot(core.current)
   }
@@ -330,7 +323,7 @@ export function useEfficiencyRound(
         undefined,
         encodeSituation({
           ...situation,
-          seed: effectiveSeed.current,
+          wall: [...r.match.wall],
           river: played.slice(0, i),
           ...options,
         }),
@@ -604,13 +597,13 @@ export function useEfficiencyRound(
     }))
   }
 
-  /** Current round as a shareable query string: same seed, original hand/wall, the
+  /** Current round as a shareable query string: the wall actually dealt, the
    *  user's discards so far as the replay river, and the round options pinned. */
   function situationQuery(): string {
     const r = core.current
     return encodeSituation({
       ...situation,
-      seed: effectiveSeed.current,
+      wall: r ? [...r.match.wall] : situation.wall,
       river: r ? yourDiscards(r) : [],
       ...options,
     })

@@ -78,7 +78,7 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
     const seed = `${situation.seed || stats.randomSeed}:${handIndex}`
     // a pinned hand is the hand the link names, not every hand from here on: it is shown once and
     // the stream carries on dealing from the seed, so a rewind doesn't freeze the trainer
-    if (handIndex === 0 && situation.hand.length === INITIAL_HAND_SIZE) {
+    if (handIndex === 0 && situation.hand?.length === INITIAL_HAND_SIZE) {
       const hand = createHand()
       for (const t of situation.hand) addTile(hand, t.id)
       handRef.current = hand

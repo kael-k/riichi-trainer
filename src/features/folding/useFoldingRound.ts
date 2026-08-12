@@ -163,7 +163,7 @@ function riichiSeats(match: MatchState): number[] {
  *  declaration lands makes you its shimocha every single time, and defending from shimocha is a
  *  narrower skill than defending from anywhere at the table. */
 function playToRiichi(seed: string, options: MatchOptions, players: number, threats: number) {
-  const match = createMatch(seed, players, options)
+  const match = createMatch([], players, options, seed)
   // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
   for (let guard = 0; guard < 400 && !match.ended; guard++) {
     beginTurn(match, options)

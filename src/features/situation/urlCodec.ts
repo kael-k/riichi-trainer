@@ -4,10 +4,18 @@ export type Wind = 'E' | 'S' | 'W' | 'N'
 export const WINDS: Wind[] = ['E', 'S', 'W', 'N']
 
 export interface Situation {
-  seed: string
-  hand: ParsedTile[]
-  /** Wall prefix in draw order — consumed by whoever draws next (opponents included);
-   *  unspecified draws come from the seeded pool. */
+  /** Seed backing the shanten trainer's continuous hand stream, and a pinned hand for its
+   *  one-shot reveal. The shanten trainer is the only one left on this seed+hand format —
+   *  every wall-based trainer (efficiency, folding, scoring, the lab) shares a board via the
+   *  explicit `wall` below instead. Optional rather than removed: `useShantenRound.ts` shares
+   *  this codec and is out of this phase's scope. */
+  seed?: string
+  hand?: ParsedTile[]
+  /** Explicit wall in draw order for wall-based trainers: seat 0's 13 tiles, seat 1's 13, …,
+   *  then the live draws, then the last 14 tiles as the dead wall (dora indicator first). A
+   *  short wall is a prefix — the remainder is completed at random from the copies it leaves
+   *  (D-11). This is the deal itself, not a "prefix consumed on next draw" the way `wall` used
+   *  to mean before this phase (D-10). */
   wall: ParsedTile[]
   /** The user's own past discards, replayed from the deal to reach the situation's
    *  decision point. Not extra tiles: each one must already be in hand/wall. */
@@ -27,8 +35,6 @@ const FLAGS = ['opponents', 'deadWall', 'aka', 'sanma'] as const
 
 export function emptySituation(): Situation {
   return {
-    seed: '',
-    hand: [],
     wall: [],
     river: [],
     round: 'E',
@@ -38,8 +44,10 @@ export function emptySituation(): Situation {
 
 export function decodeSituation(params: URLSearchParams): Situation {
   const s = emptySituation()
-  s.seed = params.get('seed') ?? ''
-  s.hand = parseTenhou(params.get('hand') ?? '')
+  const seed = params.get('seed')
+  if (seed !== null) s.seed = seed
+  const hand = params.get('hand')
+  if (hand !== null) s.hand = parseTenhou(hand)
   s.wall = parseTenhou(params.get('wall') ?? '')
   s.river = parseTenhou(params.get('river') ?? '')
   const round = params.get('round') as Wind
@@ -57,7 +65,7 @@ export function decodeSituation(params: URLSearchParams): Situation {
 export function encodeSituation(s: Situation): string {
   const params = new URLSearchParams()
   if (s.seed) params.set('seed', s.seed)
-  if (s.hand.length) params.set('hand', serializeTenhouOrdered(s.hand))
+  if (s.hand?.length) params.set('hand', serializeTenhouOrdered(s.hand))
   if (s.wall.length) params.set('wall', serializeTenhouOrdered(s.wall))
   if (s.river.length) params.set('river', serializeTenhouOrdered(s.river))
   if (s.round !== 'E') params.set('round', s.round)
@@ -68,8 +76,17 @@ export function encodeSituation(s: Situation): string {
   return params.toString()
 }
 
-/** All tiles the situation pins down (hand + wall). The river is a replay of
- *  discards drawn from these, not additional tiles. */
+/** All tiles the situation pins down for a wall-based trainer. */
 export function allTiles(s: Situation): ParsedTile[] {
-  return [...s.hand, ...s.wall]
+  return s.wall
+}
+
+/** Ruleset a wall-based trainer runs under: a full wall's own length settles it (108 = sanma,
+ *  136 = yonma) — a loaded wall wins over the reader's own setting. A short/partial wall can't be
+ *  inferred from length alone, so it falls back to `flag` (the situation's own `sanma` override,
+ *  when a link carries one) and then to `global` (the reader's setting). */
+export function resolveSanma(wall: ParsedTile[], flag: boolean | undefined, global: boolean): boolean {
+  if (wall.length === 108) return true
+  if (wall.length === 136) return false
+  return flag ?? global
 }

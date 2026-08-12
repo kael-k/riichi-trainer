@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { NUM_TILE_TYPES } from './tiles'
-import { buildWall, deal, INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
+import { parseTenhou, NUM_TILE_TYPES } from './tiles'
+import {
+  buildWall,
+  completeWall,
+  deal,
+  fullWallSize,
+  INITIAL_HAND_SIZE,
+  TILES_PER_KIND,
+} from './wall'
 import { tileCount } from './hand'
 
 describe('buildWall', () => {
@@ -42,5 +49,38 @@ describe('deal', () => {
     const hand = deal('sanma-deal', INITIAL_HAND_SIZE, true)
     expect(tileCount(hand)).toBe(INITIAL_HAND_SIZE)
     expect(hand.counts.slice(1, 8).every((c) => c === 0)).toBe(true)
+  })
+})
+
+describe('fullWallSize', () => {
+  it('is 136 for yonma, 108 for sanma', () => {
+    expect(fullWallSize(false)).toBe(136)
+    expect(fullWallSize(true)).toBe(108)
+  })
+})
+
+describe('completeWall', () => {
+  it('keeps the prefix verbatim and fills the rest to a full wall', () => {
+    const prefix = parseTenhou('1112345678999m')
+    const wall = completeWall(prefix, false, true, 'complete-seed')
+    expect(wall).toHaveLength(fullWallSize(false))
+    expect(wall.slice(0, prefix.length)).toEqual(prefix)
+  })
+
+  it('is deterministic for the same fill seed, and every kind still totals 4 copies', () => {
+    const prefix = parseTenhou('123m')
+    const a = completeWall(prefix, false, true, 'same-fill')
+    const b = completeWall(prefix, false, true, 'same-fill')
+    expect(a).toEqual(b)
+
+    const counts = new Array(NUM_TILE_TYPES).fill(0)
+    for (const t of a) counts[t.id]++
+    expect(counts.every((c) => c === TILES_PER_KIND)).toBe(true)
+  })
+
+  it('seeds no red when aka is off, even leaving a prefix-named red alone', () => {
+    const prefix = parseTenhou('0p') // red 5p, named explicitly
+    const wall = completeWall(prefix, false, false, 'no-aka-seed')
+    expect(wall.filter((t) => t.red)).toEqual([{ id: 13, red: true }])
   })
 })
