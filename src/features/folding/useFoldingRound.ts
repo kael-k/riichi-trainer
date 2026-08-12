@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Meld } from '../../core/agari'
-import { assessDiscards, dangerScore, type TileDanger } from '../../core/danger'
+import { dangerScore, type TileDanger } from '../../core/danger'
 import {
   beginTurn,
   concealedTiles,
   createMatch,
   finishTurn,
-  threatViews,
-  wallDrawnCount,
   type MatchOptions,
   type MatchState,
 } from '../../core/match'
@@ -15,16 +12,22 @@ import { waits } from '../../core/policy'
 import { mulberry32 } from '../../core/rng'
 import { shanten } from '../../core/shanten'
 import {
+  analysisOf,
+  goRound,
+  replayDiscards,
+  snapshotTable,
+  yourDiscards,
+  type TableCore,
+  type TableSnapshot,
+} from '../../core/table'
+import {
   HONOR,
-  NUM_TILE_TYPES,
   parseTenhou,
   serializeTenhouOrdered,
   tileCode,
   type ParsedTile,
-  type RiverTile,
   type TileId,
 } from '../../core/tiles'
-import { TILES_PER_KIND } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
 import type { Settings } from '../settings/settingsStore'
@@ -73,42 +76,17 @@ export interface RoundEnd {
   threats: ThreatReveal[]
 }
 
-/** A real hand of mahjong plus which seat is yours. `threatViews` (from `match.ts`) reads its
- *  genbutsu straight off `match.discards`, so this hook carries no event log of its own. */
-interface RoundCore {
-  match: MatchState
-  options: MatchOptions
-  seatIndex: number
+/** A real hand of mahjong plus which seat is yours — `core/table.ts`'s `TableCore` plus the one
+ *  field that is folding's own. `threatViews` (from `match.ts`, read inside `analysisOf`) reads
+ *  its genbutsu straight off `match.discards`, so this hook carries no event log of its own. */
+interface RoundCore extends TableCore {
   /** How many discards your seat had already made when the drill was handed over — everything
    *  before that was the engine's, so only what follows belongs in a mid-hand link. */
   handedOverAt: number
 }
 
-interface RoundState {
-  hand: ParsedTile[]
-  drawn: ParsedTile | undefined
-  turn: number
-  rivers: RiverTile[][]
-  melds: Meld[][]
-  nuki: ParsedTile[][]
-  /** Every seat's concealed hand, by seat index — mirrored unconditionally like `rivers`; the
-   *  page decides whether to pass any of it to the table (the `showOpponentHands` setting). */
-  hands: ParsedTile[][]
-  /** Seats currently in riichi, by seat index — for the table's bet stick. */
-  riichi: boolean[]
-  doraIndicators: ParsedTile[]
-  liveWall: ParsedTile[]
-  deadWall: ParsedTile[]
-  /** Whole live wall as dealt, plus how much of it (front) is already drawn — the wall-reveal
-   *  display's data; `liveWall` above stays "what's left", since it also feeds the board's tile
-   *  count. See `wallDrawnCount`. */
-  liveWallSnapshot: ParsedTile[]
-  liveWallDrawn: number
-  /** All 14 dead-wall tiles in build order, for the same display; empty when the dead wall is off. */
-  deadWallSnapshot: ParsedTile[]
-  /** Replacement (rinshan) draws taken so far — greys the tail of both snapshots above. */
-  replacements: number
-  seatIndex: number
+/** `TableSnapshot` plus folding's own grading/session fields. */
+interface RoundState extends TableSnapshot {
   round: TileId
   /** Seats currently threatening — everyone in riichi. Grows if someone else declares. */
   threatSeats: number[]
@@ -198,27 +176,8 @@ function playToRiichi(seed: string, options: MatchOptions, players: number, thre
   return null
 }
 
-/** What this seat can see: every face-up tile plus its own hand. */
-function seenBy(core: RoundCore): Uint8Array {
-  const seen = new Uint8Array(NUM_TILE_TYPES)
-  const counts = core.match.players[core.seatIndex].hand.counts
-  for (let i = 0; i < NUM_TILE_TYPES; i++) {
-    seen[i] = Math.min(TILES_PER_KIND, core.match.visible[i] + counts[i])
-  }
-  return seen
-}
-
-function rank(core: RoundCore, sanma: boolean): TileDanger[] {
-  return assessDiscards(
-    core.match.players[core.seatIndex].hand,
-    threatViews(core.match),
-    seenBy(core),
-    sanma,
-  )
-}
-
 /** A situation only teaches something when the answer is neither forced nor obvious. */
-function worthwhile(core: RoundCore, sanma: boolean): boolean {
+function worthwhile(core: RoundCore): boolean {
   const { match, seatIndex } = core
   const player = match.players[seatIndex]
   if (match.ended) return false
@@ -226,7 +185,7 @@ function worthwhile(core: RoundCore, sanma: boolean): boolean {
   if (player.riichiAt !== undefined) return false
   if (shanten(player.hand) < 1) return false
   if (match.liveWall.length < 4 * match.players.length) return false
-  const ranked = rank(core, sanma)
+  const ranked = analysisOf(core).danger
   // a hand with no safe tile has no lesson in it, and one with nothing dangerous has no question
   return (
     ranked[0]?.tier === 'genbutsu' &&
@@ -242,26 +201,14 @@ function buildRound(
   const { sanma, threats } = options
   const players = sanma ? 3 : 4
   const core = playToRiichi(seed, matchOptions(seed, options), players, threats)
-  if (!core || !worthwhile(core, sanma)) return null
+  if (!core || !worthwhile(core)) return null
   beginTurn(core.match, core.options)
   // fast-forward the link's own discards; stops quietly on one this board cannot honour
-  for (const t of discards) {
-    const player = core.match.players[core.seatIndex]
-    if (player.hand.counts[t.id] === 0 || core.match.ended) break
-    const red = player.reds.has(t.id) && (t.red || player.hand.counts[t.id] === 1)
-    advanceAfterDiscard(core, { id: t.id, red })
-  }
+  replayDiscards(core, discards, (_c, tile) => {
+    advanceAfterDiscard(core, tile)
+    return !core.match.ended
+  })
   return core
-}
-
-/** Your own discards since the handover, in order — the mid-hand part of a link. Read off
- *  `match.discards` rather than your river: `finishTurn` pops a claimed discard out of the river,
- *  and a replay that skipped it would arrive at a different board. */
-function yourDiscards(core: RoundCore): ParsedTile[] {
-  return core.match.discards
-    .filter((d) => d.seat === core.seatIndex)
-    .slice(core.handedOverAt)
-    .map((d) => ({ id: d.tile.id, red: d.tile.red }))
 }
 
 /**
@@ -286,13 +233,9 @@ async function findRound(
 
 /** Your discard, then every other seat back round to you, then your next draw. */
 function advanceAfterDiscard(core: RoundCore, tile: ParsedTile): void {
-  const { match, options, seatIndex } = core
+  const { match, options } = core
   finishTurn(match, options, tile)
-  // one full go-round is the bound; a call hands the turn sideways but never backwards
-  for (let guard = 0; guard < 8 && match.seat !== seatIndex && !match.ended; guard++) {
-    beginTurn(match, options)
-    finishTurn(match, options)
-  }
+  goRound(core)
   if (!match.ended && match.liveWall.length > 0) {
     beginTurn(match, options)
   }
@@ -328,33 +271,11 @@ function endOf(core: RoundCore, sanma: boolean): RoundEnd | null {
 }
 
 function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundState {
-  const { match, seatIndex } = core
-  const player = match.players[seatIndex]
-  let hand = concealedTiles(player)
-  if (match.drawn) {
-    const i = hand.findIndex((t) => t.id === match.drawn!.id && t.red === match.drawn!.red)
-    if (i >= 0) hand = [...hand.slice(0, i), ...hand.slice(i + 1)]
-  }
   const end = endOf(core, sanma)
   return {
-    hand,
-    drawn: match.drawn,
-    turn: match.turn,
-    rivers: match.players.map((p) => [...p.river]),
-    melds: match.players.map((p) => [...p.melds]),
-    nuki: match.players.map((p) => [...p.nuki]),
-    hands: match.players.map((p) => concealedTiles(p)),
-    riichi: match.players.map((p) => p.riichiAt !== undefined),
-    doraIndicators: [...match.doraIndicators],
-    liveWall: [...match.liveWall],
-    deadWall: [...match.deadWall],
-    liveWallSnapshot: match.liveWallSnapshot,
-    liveWallDrawn: wallDrawnCount(match),
-    deadWallSnapshot: match.deadWallSnapshot,
-    replacements: match.replacements,
-    seatIndex,
+    ...snapshotTable(core),
     round: core.options.round,
-    threatSeats: riichiSeats(match),
+    threatSeats: riichiSeats(core.match),
     lastResult: prev?.lastResult ?? null,
     results: prev?.results ?? [],
     finished: end !== null,
@@ -477,7 +398,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   function logReplay(built: RoundCore) {
     if (loggedReplay.current === urlData) return
     loggedReplay.current = urlData
-    const played = yourDiscards(built)
+    const played = yourDiscards(built, built.handedOverAt)
     played.forEach((tile, i) =>
       log(
         'log.replay',
@@ -509,7 +430,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     // stood right before this discard
     const situationBefore = situationQuery()
 
-    const ranked = rank(r, options.sanma)
+    const ranked = analysisOf(r).danger
     const yours = ranked.find((entry) => entry.tile === tile.id)!
     const safest = ranked.filter((entry) => entry.rank === 0)
     const correct = yours.rank === 0
@@ -591,6 +512,9 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       deadWallSnapshot: [],
       replacements: 0,
       seatIndex: 0,
+      ended: undefined,
+      win: undefined,
+      wall: [],
       round: HONOR,
       threatSeats: [],
       lastResult: null,
@@ -610,7 +534,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     accuracy: stats.averageQuality,
     /** The hand ranked as it stands. Deliberately not rendered before the answer — markers on the
      *  tiles turn the drill into reading a hint — but it is what `discard` grades against. */
-    ranked: (): TileDanger[] => (core.current ? rank(core.current, options.sanma) : []),
+    ranked: (): TileDanger[] => (core.current ? analysisOf(core.current).danger : []),
     discard,
     next: () => setHandIndex((n) => n + 1),
     situationQuery,
@@ -623,7 +547,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       ? encodeFoldingUrl(
           roundSeed.current,
           roundBoard.current,
-          core.current ? yourDiscards(core.current) : [],
+          core.current ? yourDiscards(core.current, core.current.handedOverAt) : [],
         )
       : ''
   }
