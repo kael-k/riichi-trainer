@@ -1,9 +1,12 @@
 import type { Meld } from './agari'
+import { assessDiscards, type TileDanger } from './danger'
+import { evaluateDiscards, type DiscardOption } from './efficiency'
 import {
   beginTurn,
   concealedTiles,
   finishTurn,
   seenBy as seenByMatch,
+  threatViews,
   wallDrawnCount,
   type MatchOptions,
   type MatchState,
@@ -152,4 +155,44 @@ export function replayDiscards(
     if (keepGoing === false) break
   }
   return played
+}
+
+/** Per-turn analysis for `core`'s own seat, computed lazily and cached per object (D-05): the
+ *  solitaire trainer never reads `danger`, the folding trainer never reads `ranked`, and
+ *  `evaluateDiscards` costs roughly 476 shanten probes per turn — nobody should pay for analysis
+ *  they never read. An analysis object is a snapshot of one moment: a consumer captures it at draw
+ *  time and hands the *same* object to its discard grading, which is what stops the numbers being
+ *  recomputed against an already-13-tile hand after the throw. */
+export interface TableAnalysis {
+  readonly seen: Uint8Array
+  readonly ranked: DiscardOption[]
+  readonly danger: TileDanger[]
+}
+
+/** Builds a fresh `TableAnalysis` for `core` as it stands right now — call it again after the
+ *  board moves on rather than reusing an old one, since each object's members cache only their own
+ *  first read. */
+export function analysisOf(core: TableCore): TableAnalysis {
+  const player = core.match.players[core.seatIndex]
+  let seenCache: Uint8Array | undefined
+  let rankedCache: DiscardOption[] | undefined
+  let dangerCache: TileDanger[] | undefined
+  const getSeen = () => (seenCache ??= seenBy(core))
+
+  return {
+    get seen() {
+      return getSeen()
+    },
+    get ranked() {
+      return (rankedCache ??= evaluateDiscards(player.hand, getSeen(), core.options.sanma))
+    },
+    get danger() {
+      return (dangerCache ??= assessDiscards(
+        player.hand,
+        threatViews(core.match),
+        getSeen(),
+        core.options.sanma,
+      ))
+    },
+  }
 }

@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { assessDiscards } from './danger'
+import { evaluateDiscards } from './efficiency'
 import { beginTurn, createMatch, finishTurn, type MatchOptions } from './match'
 import { HONOR, NUM_TILE_TYPES, parseTenhou } from './tiles'
 import {
+  analysisOf,
   goRound,
   replayDiscards,
   seenBy,
@@ -9,6 +12,17 @@ import {
   yourDiscards,
   type TableCore,
 } from './table'
+
+// wraps the real implementations in vi.fn so laziness can be proved by call count, not inspection
+// (D-05) — every other test in this file still gets the real analysis, since these pass through
+vi.mock('./efficiency', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./efficiency')>()
+  return { ...actual, evaluateDiscards: vi.fn(actual.evaluateDiscards) }
+})
+vi.mock('./danger', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./danger')>()
+  return { ...actual, assessDiscards: vi.fn(actual.assessDiscards) }
+})
 
 const YONMA: MatchOptions = {
   sanma: false,
@@ -220,5 +234,49 @@ describe('replayDiscards', () => {
     )
     expect(calls).toBe(1)
     expect(played.map((t) => t.id)).toEqual([0])
+  })
+})
+
+describe('analysisOf', () => {
+  it('caches .ranked: reading it twice returns the identical array reference', () => {
+    const match = createMatch([], 4, YONMA, 'table-analysis-1')
+    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    beginTurn(match, YONMA)
+    const analysis = analysisOf(core)
+    expect(analysis.ranked).toBe(analysis.ranked)
+  })
+
+  it('never calls evaluateDiscards when only .danger is read', () => {
+    vi.clearAllMocks()
+    const match = createMatch([], 4, YONMA, 'table-analysis-2')
+    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    beginTurn(match, YONMA)
+    void analysisOf(core).danger
+    expect(vi.mocked(evaluateDiscards)).not.toHaveBeenCalled()
+  })
+
+  it('never calls assessDiscards when only .ranked is read', () => {
+    vi.clearAllMocks()
+    const match = createMatch([], 4, YONMA, 'table-analysis-3')
+    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    beginTurn(match, YONMA)
+    void analysisOf(core).ranked
+    expect(vi.mocked(assessDiscards)).not.toHaveBeenCalled()
+  })
+
+  it('returns a distinct object each call, so an earlier capture keeps its pre-throw numbers', () => {
+    const match = createMatch([], 4, YONMA, 'table-analysis-4')
+    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    beginTurn(match, YONMA)
+    expect(analysisOf(core)).not.toBe(analysisOf(core))
+  })
+
+  it('with nobody in riichi, .danger still returns one entry per held kind', () => {
+    const match = createMatch([], 4, { ...YONMA, riichi: false }, 'table-analysis-5')
+    const core: TableCore = { match, options: { ...YONMA, riichi: false }, seatIndex: 0 }
+    beginTurn(match, core.options)
+    const player = match.players[0]
+    const distinctKinds = player.hand.counts.filter((c) => c > 0).length
+    expect(analysisOf(core).danger.length).toBe(distinctKinds)
   })
 })
