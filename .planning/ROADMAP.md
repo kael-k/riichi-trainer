@@ -40,24 +40,33 @@ settings under a global-default-plus-per-app-override schema; ship a standalone 
      `seenBy`/snapshot/replay-fast-forward logic the pre-Phase-1 audit found
   5. `npm test` (including the tile-census and shanten-equivalence invariants), `npm run lint`, and
      `npm run build` all pass
-**Plans**: TBD — see `.planning/phases/01-table-architecture-centralization/01-CONTEXT.md` for the
-  locked decisions this phase's plans must respect; not yet decomposed by `/gsd-plan-phase`
+**Plans**: 7 plans, in 6 execution waves — see
+  `.planning/phases/01-table-architecture-centralization/01-CONTEXT.md` for the locked decisions
+  they respect
 
 Plans:
-- [ ] 01-01: TBD — explicit, validated walls in `core/match.ts` (drop seeds as the shared record)
-- [ ] 01-02: TBD — pure `core/table.ts` turn-stepper + per-turn analysis, absorbing the audited duplication
-- [ ] 01-03: TBD — `useTableRound` React hook (`onUserDraw`/`onUserDiscard`/`onAgariCall`)
-- [ ] 01-04: TBD — split the efficiency trainer into solitaire + table apps on top of the hook
-- [ ] 01-05: TBD — table settings schema (global + per-app override) and the folding reveal hard-gate
-- [ ] 01-06: TBD — statistical lab trainer
-- [ ] 01-07: TBD — migrate folding's round hook onto `core/table.ts`'s pure stepper (own thin hook,
-  not `useTableRound`)
+- [ ] 01-01-PLAN.md — explicit, validated walls: `createMatch` takes a `ParsedTile[]` wall, seeds
+  drop as the shared record, an invalid `wall=` is rejected by zone and tile (wave 1, REQ-02)
+- [ ] 01-02-PLAN.md — pure `core/table.ts`: one `seenBy`, one go-round, one snapshot, one replay,
+  per-turn analysis as lazy getters (wave 2, REQ-03)
+- [ ] 01-03-PLAN.md — `useTableRound` (`onUserDraw`/`onUserDiscard`/`onAgariCall`) and scoring
+  moved onto that entry point and onto wall-backed links (wave 3, REQ-03)
+- [ ] 01-04-PLAN.md — folding's own thin hook rebuilt on `core/table.ts`'s stepper, wall-backed
+  links, and the threat-reveal hard-gate (wave 3, REQ-07 + REQ-06)
+- [ ] 01-05-PLAN.md — split the efficiency trainer into solitaire and table routes; `opponents`
+  deleted from settings, codec and round options (wave 4, REQ-01)
+- [ ] 01-06-PLAN.md — table settings schema: global default plus per-app override, behind a
+  persist version bump (wave 5, REQ-04)
+- [ ] 01-07-PLAN.md — statistical lab: load or author a wall, full ukeire ranking and full danger
+  tier list, nothing graded (wave 6, REQ-05)
 
 ## Progress
 
 **Execution Order:**
-Phase 1 only.
+Phase 1 only. Its seven plans run in six waves, near-serial by necessity — each layer's tests need
+the layer below it to have settled: walls (1) → `core/table.ts` (2) → `useTableRound` + folding's
+own hook, in parallel (3) → the efficiency split (4) → table settings (5) → the statistical lab (6).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|-----------------|--------|-----------|
-| 1. Table architecture centralization | 0/7 (TBD) | Not planned | - |
+| 1. Table architecture centralization | 0/7 | Planned | - |

@@ -1,12 +1,19 @@
 ---
-gsd_state_version: '1.0'
-status: planning
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: 1
+current_phase_name: Table architecture centralization
+status: executing
+stopped_at: Phase 1 UI-SPEC approved
+last_updated: "2026-08-12T13:51:28.515Z"
+last_activity: 2026-08-12
+last_activity_desc: PROJECT.md/ROADMAP.md/STATE.md and Phase 1 CONTEXT.md hand-authored
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 0
+  total_plans: 7
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -23,7 +30,7 @@ hand-verify — no invented numbers.
 
 Phase: 1 of 1 (Table architecture centralization)
 Plan: 0 of 7 (TBD — not yet decomposed)
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-08-12 — PROJECT.md/ROADMAP.md/STATE.md and Phase 1 CONTEXT.md hand-authored
 (onboarding-equivalent) from an in-session codebase audit; no mapper/researcher agents run since
 the context was already gathered directly.
@@ -33,6 +40,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: —
 - Total execution time: —
@@ -44,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: —
 - Trend: —
 
@@ -58,6 +67,7 @@ Full decision log lives in PROJECT.md Key Decisions table and
 
 - Phase 1: efficiency trainer split into two routes, not a hook fork — shared mass moves to
   `core/table.ts` instead
+
 - Phase 1: seeds dropped as the shared/URL record in favor of explicit validated walls
 
 ### Pending Todos
@@ -78,8 +88,8 @@ onto the shared layer this phase) was resolved with the user: it does, via its o
 
 ## Session Continuity
 
-Last session: 2026-08-12
-Stopped at: Phase 1 scaffolded (PROJECT.md, ROADMAP.md, STATE.md, CONTEXT.md); plans not yet
+Last session: 2026-08-12T12:46:30.270Z
+Stopped at: Phase 1 UI-SPEC approved
 decomposed — next step is `/gsd-plan-phase 1`, not `/gsd-import` (the source material is phase-goal
 and locked-decision content, not an already task-shaped external plan).
-Resume file: None
+Resume file: /home/kael-k/projects/riichi-trainer/.planning/phases/01-table-architecture-centralization/01-UI-SPEC.md
