@@ -2,7 +2,8 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { handFromTenhou } from '../../core/hand'
-import { parseTenhou } from '../../core/tiles'
+import { parseTenhou, type ParsedTile } from '../../core/tiles'
+import { completeWall } from '../../core/wall'
 import { useLog } from '../../store/log'
 import {
   decodeFoldingUrl,
@@ -21,7 +22,14 @@ const OPTIONS: RoundOptions = {
   feedbackAtEnd: false,
 }
 
-/** Generation is a seed search, so hands arrive a tick (or several) later. */
+/** A deterministic pseudo-random full wall — not necessarily a worthwhile board on its own (a
+ *  pinned wall that isn't falls through to a fresh search), just a repeatable one to hand the
+ *  hook in place of the old seed strings. */
+function wall(seed: string, sanma = false): ParsedTile[] {
+  return completeWall([], sanma, true, seed)
+}
+
+/** Generation is a wall search, so hands arrive a tick (or several) later. */
 async function deal(urlData: FoldingUrl, options: RoundOptions = OPTIONS) {
   const { result } = renderHook(() => useFoldingRound(urlData, options))
   await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 })
@@ -36,45 +44,63 @@ function indexOf(hand: { id: number }[], drawn: { id: number } | undefined, tile
 
 describe('useFoldingRound', () => {
   it('deals a hand with a threat already in riichi and the decision on you', async () => {
-    const result = await deal({ seed: 'fold-seed' })
+    const result = await deal({ wall: wall('fold-seed') })
     expect(result.current.failed).toBe(false)
     expect(result.current.threatSeats.length).toBeGreaterThanOrEqual(1)
     expect(result.current.threatSeats).not.toContain(result.current.seatIndex)
-    // 13 + the tile you just drew, and the threat's declaration tile is lying sideways
-    expect(result.current.hand.length + (result.current.drawn ? 1 : 0)).toBe(14)
+    // 13 + the tile you just drew, minus whatever the AI already called before the handover
+    const meldTiles = result.current.melds[result.current.seatIndex].reduce(
+      (n, m) => n + m.tiles.length,
+      0,
+    )
+    expect(result.current.hand.length + (result.current.drawn ? 1 : 0) + meldTiles).toBe(14)
     const threat = result.current.threatSeats[0]
-    expect(result.current.rivers[threat].some((t) => t.riichi)).toBe(true)
+    // not the river's own riichi-flagged tile: a called declaration tile is popped back out of
+    // the river, but the seat is still in riichi
+    expect(result.current.riichi[threat]).toBe(true)
   })
 
   it('only offers hands where the choice matters', async () => {
-    const result = await deal({ seed: 'worth-seed' })
+    const result = await deal({ wall: wall('worth-seed') })
     const ranked = result.current.ranked()
     expect(ranked[0].tier).toBe('genbutsu')
     expect(ranked.some((e) => e.tier === 'nonSuji' || e.tier === 'halfSuji')).toBe(true)
     expect(result.current.finished).toBe(false)
   })
 
-  it('is reproducible: the same seed rebuilds the same board', async () => {
-    const a = await deal({ seed: 'repeat-seed' })
-    const b = await deal({ seed: 'repeat-seed' })
+  it('is reproducible: the same wall rebuilds the same board', async () => {
+    const seeded = await deal({ wall: wall('repeat-seed') })
+    const sameWall = seeded.current.wall
+    const a = await deal({ wall: sameWall })
+    const b = await deal({ wall: sameWall })
     expect(a.current.hand).toEqual(b.current.hand)
     expect(a.current.rivers).toEqual(b.current.rivers)
     expect(a.current.seatIndex).toBe(b.current.seatIndex)
   })
 
+  it('the same wall always deals the same round wind and seat', async () => {
+    const seeded = await deal({ wall: wall('wind-seed') })
+    const sameWall = seeded.current.wall
+    const a = await deal({ wall: sameWall })
+    const b = await deal({ wall: sameWall })
+    expect(a.current.round).toBe(b.current.round)
+    expect(a.current.seatIndex).toBe(b.current.seatIndex)
+  })
+
   it('the share link replays into the identical board', async () => {
-    const first = await deal({ seed: 'share-seed' })
+    const first = await deal({ wall: wall('share-seed') })
     const query = first.current.situationQuery()
     const shared = await deal(decodeFoldingUrl(new URLSearchParams(query)))
     expect(shared.current.hand).toEqual(first.current.hand)
     expect(shared.current.rivers).toEqual(first.current.rivers)
     expect(shared.current.threatSeats).toEqual(first.current.threatSeats)
+    expect(shared.current.seatIndex).toBe(first.current.seatIndex)
   })
 
   it('seats you somewhere other than always the declarer’s shimocha', async () => {
     const seats = new Set<number>()
     for (const seed of ['s1', 's2', 's3', 's4', 's5', 's6']) {
-      const result = await deal({ seed })
+      const result = await deal({ wall: wall(seed) })
       const threat = result.current.threatSeats[0]
       seats.add((result.current.seatIndex - threat + 4) % 4)
     }
@@ -82,7 +108,7 @@ describe('useFoldingRound', () => {
   })
 
   it('a mid-hand link replays the discards behind it, and logs them', async () => {
-    const first = await deal({ seed: 'midhand-seed' })
+    const first = await deal({ wall: wall('midhand-seed') })
     for (let i = 0; i < 2 && !first.current.finished; i++) {
       const safe = first.current.ranked()[0]
       act(() => first.current.discard(indexOf(first.current.hand, first.current.drawn, safe.tile)))
@@ -102,7 +128,7 @@ describe('useFoldingRound', () => {
   })
 
   it('grades a safest-tier discard correct and anything else wrong', async () => {
-    const result = await deal({ seed: 'grade-seed' })
+    const result = await deal({ wall: wall('grade-seed') })
     const safe = result.current.ranked()[0]
     act(() => result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)))
     expect(result.current.lastResult?.correct).toBe(true)
@@ -122,7 +148,7 @@ describe('useFoldingRound', () => {
   })
 
   it('scores accuracy against the turn’s own worst tile, not just right/wrong', async () => {
-    const result = await deal({ seed: 'accuracy-seed' })
+    const result = await deal({ wall: wall('accuracy-seed') })
     const safe = result.current.ranked()[0]
     act(() => result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)))
     expect(result.current.accuracy).toBe(1)
@@ -140,7 +166,7 @@ describe('useFoldingRound', () => {
   })
 
   it('plays the fold out: every turn to the end of the hand is graded', async () => {
-    const result = await deal({ seed: 'multi-seed' })
+    const result = await deal({ wall: wall('multi-seed') })
     let turns = 0
     for (let i = 0; i < 4 && !result.current.finished; i++) {
       const safe = result.current.ranked()[0]
@@ -156,7 +182,7 @@ describe('useFoldingRound', () => {
   })
 
   it('holds every graded turn back to the end of the hand when asked', async () => {
-    const result = await deal({ seed: 'held-seed' }, { ...OPTIONS, feedbackAtEnd: true })
+    const result = await deal({ wall: wall('held-seed') }, { ...OPTIONS, feedbackAtEnd: true })
     act(() => useLog.getState().clear())
     let turns = 0
     for (let i = 0; i < 40 && !result.current.finished; i++) {
@@ -178,7 +204,7 @@ describe('useFoldingRound', () => {
   })
 
   it('with opponent wins off, the hand plays to the wall instead of ending on a win', async () => {
-    const result = await deal({ seed: 'nowin-seed' }, { ...OPTIONS, opponentWins: false })
+    const result = await deal({ wall: wall('nowin-seed') }, { ...OPTIONS, opponentWins: false })
     // deliberately the most dangerous tile every turn: with wins off nobody can collect
     for (let i = 0; i < 40 && !result.current.finished; i++) {
       const ranked = result.current.ranked()
@@ -195,7 +221,7 @@ describe('useFoldingRound', () => {
   })
 
   it('never lets a folding opponent declare a second riichi', async () => {
-    const result = await deal({ seed: 'multi-seed' })
+    const result = await deal({ wall: wall('multi-seed') })
     const initialThreats = result.current.threatSeats.length
     for (let i = 0; i < 30 && !result.current.finished; i++) {
       const safe = result.current.ranked()[0]
@@ -207,9 +233,15 @@ describe('useFoldingRound', () => {
   })
 
   it('holds the reveal back until the hand is over', async () => {
-    const result = await deal({ seed: 'reveal-seed' })
+    // wins off: a threat that won its own hand via tsumo would show a 14-tile complete hand and
+    // no waits, which isn't what this test is after — wins off keeps every threat tenpai at 13
+    // all the way to exhaustive/wall
+    const result = await deal(
+      { wall: wall('reveal-seed') },
+      { ...OPTIONS, opponentWins: false },
+    )
     expect(result.current.end).toBeNull()
-    for (let i = 0; i < 30 && !result.current.finished; i++) {
+    for (let i = 0; i < 40 && !result.current.finished; i++) {
       const safe = result.current.ranked()[0]
       act(() =>
         result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)),
@@ -224,7 +256,7 @@ describe('useFoldingRound', () => {
   })
 
   it('never lets the engine call for the player', async () => {
-    const result = await deal({ seed: 'nocall-seed' })
+    const result = await deal({ wall: wall('nocall-seed') })
     // a seat can arrive holding a meld it called before the drill started; what must never grow
     // is the pile after the board is handed over
     const atHandover = result.current.melds[result.current.seatIndex]
@@ -238,13 +270,13 @@ describe('useFoldingRound', () => {
   })
 
   it('deals sanma boards without 2m-8m', async () => {
-    const result = await deal({ seed: 'sanma-seed' }, { ...OPTIONS, sanma: true })
+    const result = await deal({ wall: wall('sanma-seed', true) }, { ...OPTIONS, sanma: true })
     expect(result.current.rivers).toHaveLength(3)
     expect(result.current.hand.some((t) => t.id >= 1 && t.id <= 7)).toBe(false)
   })
 
   it('next() deals a different hand', async () => {
-    const result = await deal({ seed: 'next-seed' })
+    const result = await deal({ wall: wall('next-seed') })
     const first = result.current.hand
     act(() => result.current.next())
     await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 })
@@ -253,7 +285,7 @@ describe('useFoldingRound', () => {
   })
 
   it('clearing the log resets the session score', async () => {
-    const result = await deal({ seed: 'log-seed' })
+    const result = await deal({ wall: wall('log-seed') })
     const safe = result.current.ranked()[0]
     act(() => result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)))
     expect(result.current.totalCount).toBe(1)
@@ -261,13 +293,23 @@ describe('useFoldingRound', () => {
     expect(result.current.totalCount).toBe(0)
     expect(result.current.averageTime).toBe(0)
   })
+
+  it('an invalid wall link falls back to a fresh search instead of dealing an impossible board', async () => {
+    const urlData = decodeFoldingUrl(new URLSearchParams('wall=11111m'))
+    expect(urlData.wallError).toBeTruthy()
+    expect(urlData.wall).toHaveLength(0)
+    const result = await deal(urlData)
+    expect(result.current.failed).toBe(false)
+    expect(result.current.wall.length).toBeGreaterThan(0)
+  })
 })
 
 describe('the folding link', () => {
-  it('round-trips the seed and the rules the board was built under', () => {
-    const query = encodeFoldingUrl('abc#3', { sanma: true, threats: 2, wins: true })
+  it('round-trips the wall and the rules the board was built under', () => {
+    const w = wall('link-seed', true)
+    const query = encodeFoldingUrl(w, { sanma: true, threats: 2, wins: true })
     expect(decodeFoldingUrl(new URLSearchParams(query))).toEqual({
-      seed: 'abc#3',
+      wall: w,
       sanma: true,
       wins: true,
       threats: 2,
@@ -276,19 +318,26 @@ describe('the folding link', () => {
   })
 
   it('round-trips the discards played since the handover', () => {
+    const w = wall('link-seed-2')
     const discards = parseTenhou('1m9p7z')
-    const query = encodeFoldingUrl('abc', { sanma: false, threats: 1, wins: true }, discards)
+    const query = encodeFoldingUrl(w, { sanma: false, threats: 1, wins: true }, discards)
     expect(decodeFoldingUrl(new URLSearchParams(query)).discards).toEqual(discards)
   })
 
   it('leaves unset rules undefined, so the reader keeps their own settings', () => {
     expect(decodeFoldingUrl(new URLSearchParams(''))).toEqual({
-      seed: '',
+      wall: [],
       sanma: undefined,
       wins: undefined,
       threats: undefined,
       discards: undefined,
     })
+  })
+
+  it('an invalid wall sets wallError and leaves wall empty', () => {
+    const decoded = decodeFoldingUrl(new URLSearchParams('wall=11111m'))
+    expect(decoded.wallError).toBeTruthy()
+    expect(decoded.wall).toHaveLength(0)
   })
 })
 

@@ -28,8 +28,10 @@ import {
   type ParsedTile,
   type TileId,
 } from '../../core/tiles'
+import { completeWall, validateWall, type WallError } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
+import { resolveSanma } from '../situation/urlCodec'
 import type { Settings } from '../settings/settingsStore'
 
 /** The folding settings section plus the ruleset the round runs under (which a link can pin, so
@@ -37,16 +39,21 @@ import type { Settings } from '../settings/settingsStore'
 export type RoundOptions = Settings['folding'] & { sanma: boolean }
 
 export interface FoldingUrl {
-  seed: string
+  /** Explicit wall in draw order, same format as the situation codec's — the board a link shares
+   *  (D-09). Empty means "deal something fresh" rather than "replay this exact board". */
+  wall: ParsedTile[]
+  /** Set when `wall` failed `validateWall` (D-12) — `wall` is then empty and must never reach
+   *  `createMatch`. */
+  wallError?: WallError
   sanma?: boolean
   /** Whether the threats could win at all; pinned, since a board where nobody rons plays on past
-   *  a deal-in and diverges from the same seed played for keeps. */
+   *  a deal-in and diverges from the same wall played for keeps. */
   wins?: boolean
-  /** Threats the link was generated with; replayed verbatim, since the seed only reproduces the
-   *  same board when the search stops at the same declaration. */
+  /** Threats the link was generated with; replayed verbatim, since the same wall only reproduces
+   *  the same board when the search stops at the same declaration. */
   threats?: number
   /** Your own discards since the board was handed to you, replayed from the declaration to
-   *  reach a mid-hand turn. Not extra tiles: the seed already dealt them. */
+   *  reach a mid-hand turn. Not extra tiles: the wall already dealt them. */
   discards?: ParsedTile[]
 }
 
@@ -107,8 +114,8 @@ const TICK_MS = 50
  *  little as possible — change one of these and old links change meaning. */
 const RULES = { aka: true, deadWall: true, calls: true, riichi: true } as const
 
-/** What a board is built from: everything that changes what a given seed deals, and so everything
- *  a link has to carry alongside the seed. */
+/** What a board is built from: everything that changes what a given wall deals, and so everything
+ *  a link has to carry alongside the wall. */
 export interface BoardOptions {
   sanma: boolean
   threats: number
@@ -117,10 +124,16 @@ export interface BoardOptions {
   wins: boolean
 }
 
-function matchOptions(seed: string, options: BoardOptions): MatchOptions {
+/** The wall itself, as a string key for seeding everything else this board needs to be
+ *  reproducible from the wall alone (D-09): the round wind, the handover offset. */
+function wallKey(wall: ParsedTile[]): string {
+  return serializeTenhouOrdered(wall)
+}
+
+function matchOptions(wall: ParsedTile[], options: BoardOptions): MatchOptions {
   // the round wind decides which winds are yakuhai, which is part of reading a threat, so it
-  // varies per hand — seeded off the attempt seed itself, so replaying that seed rebuilds it
-  const rng = mulberry32(`${seed}:round`)
+  // varies per hand — seeded off the wall itself, so replaying the same wall rebuilds it
+  const rng = mulberry32(`${wallKey(wall)}:round`)
   return {
     ...RULES,
     sanma: options.sanma,
@@ -133,15 +146,15 @@ function riichiSeats(match: MatchState): number[] {
   return match.players.flatMap((player, seat) => (player.riichiAt === undefined ? [] : [seat]))
 }
 
-/** Plays a seed until `threats` seats have declared riichi, stopping at the end of a turn (never
+/** Plays a wall until `threats` seats have declared riichi, stopping at the end of a turn (never
  *  mid-turn: `playMatch`'s `stop` fires per event, after the whole turn has already run, which
  *  would leave `match.discards` missing that turn's own discard and call while the rest of the
  *  state already reflects them). The board is then handed over a seeded number of seats later, so
  *  your position relative to the declarer varies: taking the seat due to act the instant the
  *  declaration lands makes you its shimocha every single time, and defending from shimocha is a
  *  narrower skill than defending from anywhere at the table. */
-function playToRiichi(seed: string, options: MatchOptions, players: number, threats: number) {
-  const match = createMatch([], players, options, seed)
+function playToRiichi(wall: ParsedTile[], options: MatchOptions, players: number, threats: number) {
+  const match = createMatch(wall, players, options)
   // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
   for (let guard = 0; guard < 400 && !match.ended; guard++) {
     beginTurn(match, options)
@@ -156,9 +169,9 @@ function playToRiichi(seed: string, options: MatchOptions, players: number, thre
     for (const player of match.players) {
       if (player.riichiAt === undefined) player.policy = 'defense'
     }
-    // seeded off the attempt seed like the round wind, so replaying the seed seats you the same
-    // way and a shared link stays exact
-    const rng = mulberry32(`${seed}:seat`)
+    // seeded off the wall like the round wind, so replaying the wall seats you the same way and
+    // a shared link stays exact
+    const rng = mulberry32(`${wallKey(wall)}:seat`)
     for (let extra = Math.floor(rng() * (players - 1)); extra > 0 && !match.ended; extra--) {
       beginTurn(match, options)
       finishTurn(match, options)
@@ -194,13 +207,13 @@ function worthwhile(core: RoundCore): boolean {
 }
 
 function buildRound(
-  seed: string,
+  wall: ParsedTile[],
   options: BoardOptions,
   discards: ParsedTile[] = [],
 ): RoundCore | null {
   const { sanma, threats } = options
   const players = sanma ? 3 : 4
-  const core = playToRiichi(seed, matchOptions(seed, options), players, threats)
+  const core = playToRiichi(wall, matchOptions(wall, options), players, threats)
   if (!core || !worthwhile(core)) return null
   beginTurn(core.match, core.options)
   // fast-forward the link's own discards; stops quietly on one this board cannot honour
@@ -212,23 +225,22 @@ function buildRound(
 }
 
 /**
- * Searches `seed`, `seed#1`, `seed#2`… for a hand worth drilling, yielding between attempts so
- * the page can paint a dealing state. Falls back to fewer threats rather than failing: three
- * simultaneous riichi in a four-player hand is rare enough that no sane attempt budget finds one
- * every time, and the board says how many are out without needing to be told.
+ * Searches fresh random walls for a hand worth drilling, yielding between attempts so the page
+ * can paint a dealing state. Falls back to fewer threats rather than failing: three simultaneous
+ * riichi in a four-player hand is rare enough that no sane attempt budget finds one every time,
+ * and the board says how many are out without needing to be told.
  */
 async function findRound(
-  seed: string,
   options: BoardOptions,
-): Promise<{ core: RoundCore; seed: string; threats: number } | null> {
+): Promise<{ core: RoundCore; wall: ParsedTile[]; threats: number } | null> {
   const { threats } = options
   for (let i = 0; i < 40 * threats; i++) {
-    const attemptSeed = i === 0 ? seed : `${seed}#${i}`
-    const core = buildRound(attemptSeed, options)
-    if (core) return { core, seed: attemptSeed, threats }
+    const wall = completeWall([], options.sanma, RULES.aka)
+    const core = buildRound(wall, options)
+    if (core) return { core, wall, threats }
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
-  return threats > 1 ? findRound(seed, { ...options, threats: threats - 1 }) : null
+  return threats > 1 ? findRound({ ...options, threats: threats - 1 }) : null
 }
 
 /** Your discard, then every other seat back round to you, then your next draw. */
@@ -292,25 +304,37 @@ export function decodeFoldingUrl(params: URLSearchParams): FoldingUrl {
   }
   const threats = Number(params.get('threats'))
   const discards = parseTenhou(params.get('discards') ?? '')
-  return {
-    seed: params.get('seed') ?? '',
-    sanma: flag('sanma'),
+  const sanmaFlag = flag('sanma')
+  const wall = parseTenhou(params.get('wall') ?? '')
+
+  // untrusted input: reject a malformed/over-counted wall by name rather than let it reach
+  // createMatch — the same D-12 gate `urlCodec.ts#decodeSituation` runs for the other wall-based
+  // trainers. A partial wall with no explicit sanma flag validates against yonma; a full wall's
+  // own length already settles the ruleset either way.
+  const sanma = resolveSanma(wall, sanmaFlag, false)
+  const error = validateWall(wall, sanma ? 3 : 4, sanma)
+
+  const result: FoldingUrl = {
+    wall: error ? [] : wall,
+    sanma: sanmaFlag,
     wins: flag('wins'),
     threats: Number.isInteger(threats) && threats > 0 ? threats : undefined,
     discards: discards.length > 0 ? discards : undefined,
   }
+  if (error) result.wallError = error
+  return result
 }
 
-/** A match replays from its seed, rivers and all, so a link carries no tiles of its own — just
- *  the seed, the two things that change what that seed builds, and the discards you have played
- *  since, which are what makes a mid-hand turn shareable (and a log row rewindable). */
+/** A match replays from its wall, rivers and all, so a link carries no tiles of its own beyond
+ *  the wall itself — the two things that change what that wall deals, and the discards you have
+ *  played since, which are what makes a mid-hand turn shareable (and a log row rewindable). */
 export function encodeFoldingUrl(
-  seed: string,
+  wall: ParsedTile[],
   options: BoardOptions,
   discards: ParsedTile[] = [],
 ): string {
   const params = new URLSearchParams()
-  params.set('seed', seed)
+  params.set('wall', serializeTenhouOrdered(wall))
   params.set('sanma', options.sanma ? '1' : '0')
   params.set('threats', String(options.threats))
   params.set('wins', options.wins ? '1' : '0')
@@ -336,7 +360,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   }
   const stats = useSessionStats()
   const core = useRef<RoundCore>(undefined)
-  const roundSeed = useRef('')
+  const roundWall = useRef<ParsedTile[]>([])
   // the board actually built, which is not always the one asked for: the search falls back to
   // fewer threats rather than failing, and a link has to carry what it got
   const roundBoard = useRef<BoardOptions>(undefined)
@@ -357,9 +381,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     // nobody is looking at any more
     held.current = []
     setState((prev) => (prev ? { ...prev, loading: true } : prev))
-    const base = urlData.seed || stats.randomSeed
-    const seed = urlData.seed && handIndex === 0 ? base : `${base}:${handIndex}`
-    // a link pins the rules its board was built under; without them the same seed deals a
+    // a link pins the rules its board was built under; without them the same wall deals a
     // different hand for the reader
     const board: BoardOptions = {
       sanma: options.sanma,
@@ -367,13 +389,15 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       wins: urlData.wins ?? options.opponentWins,
     }
 
-    // a link's seed is already an accepted attempt, so replay it as-is — discards included; only
-    // a hand-edited one falls through to a search
+    // a link's wall is already an accepted board, so replay it as-is — discards included; only a
+    // hand-edited one (or a fresh "new situation" request) falls through to a search
     const pinned =
-      urlData.seed && handIndex === 0 ? buildRound(seed, board, urlData.discards) : null
+      urlData.wall.length > 0 && handIndex === 0
+        ? buildRound(urlData.wall, board, urlData.discards)
+        : null
     const found = pinned
-      ? Promise.resolve({ core: pinned, seed, threats: board.threats })
-      : findRound(seed, board)
+      ? Promise.resolve({ core: pinned, wall: urlData.wall, threats: board.threats })
+      : findRound(board)
 
     void found.then((result) => {
       if (id !== request.current) return
@@ -382,7 +406,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
         return
       }
       core.current = result.core
-      roundSeed.current = result.seed
+      roundWall.current = result.wall
       roundBoard.current = { ...board, threats: result.threats }
       logReplay(result.core)
       stats.startClock()
@@ -405,7 +429,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
         { tile: tileCode(tile.id, tile.red) },
         [tile],
         undefined,
-        encodeFoldingUrl(roundSeed.current, roundBoard.current!, played.slice(0, i)),
+        encodeFoldingUrl(roundWall.current, roundBoard.current!, played.slice(0, i)),
       ),
     )
   }
@@ -540,12 +564,12 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     situationQuery,
   }
 
-  /** The round as it stands right now: the accepted attempt seed, the rules that seed was built
-   *  under, and the discards you have played since — enough to replay a mid-hand turn. */
+  /** The round as it stands right now: the accepted wall, the rules it was built under, and the
+   *  discards you have played since — enough to replay a mid-hand turn. */
   function situationQuery(): string {
-    return roundSeed.current && roundBoard.current
+    return roundWall.current.length > 0 && roundBoard.current
       ? encodeFoldingUrl(
-          roundSeed.current,
+          roundWall.current,
           roundBoard.current,
           core.current ? yourDiscards(core.current, core.current.handedOverAt) : [],
         )
