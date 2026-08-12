@@ -1,0 +1,336 @@
+import { useEffect, useRef, useState } from 'react'
+import type { Meld } from '../../core/agari'
+import type { TileDanger } from '../../core/danger'
+import { evaluateKan, type DiscardOption } from '../../core/efficiency'
+import { removeTile, tileCount } from '../../core/hand'
+import {
+  beginTurn,
+  createMatch,
+  drawReplacement,
+  finishTurn,
+  NORTH,
+  type MatchOptions,
+  type PlayerState,
+  type WinRecord,
+} from '../../core/match'
+import { shanten } from '../../core/shanten'
+import {
+  analysisOf,
+  goRound,
+  replayDiscards,
+  snapshotTable,
+  yourDiscards,
+  type TableAnalysis,
+  type TableCore,
+  type TableSnapshot,
+} from '../../core/table'
+import { HONOR, type ParsedTile, type TileId } from '../../core/tiles'
+import { WINDS, type Situation } from '../situation/urlCodec'
+
+/**
+ * The React hook layer over `core/table.ts`: `useTableRound`. Every trainer built on a real match
+ * (the table efficiency app, the statistical lab, and later plans' consumers) drives a round
+ * through exactly three callbacks — `onUserDraw`, `onUserDiscard`, `onAgariCall` — rather than
+ * each reimplementing the go-round loop, the snapshot mirror and the replay fast-forward
+ * `core/table.ts` already centralizes. Scoring and folding are the two exceptions: scoring never
+ * re-touches its match after generation (its only entry point is `onAgariCall`, Task 2 of this
+ * plan), and folding drives `beginTurn`/`finishTurn` itself through its own thin hook on
+ * `core/table.ts`'s primitives (REQ-07, D-08) because its mid-hand policy flip needs
+ * turn-granularity control this hook's three-callback contract does not offer.
+ */
+
+export interface TableRoundInput {
+  wall: ParsedTile[]
+  players: number
+  seatIndex: number
+  options: MatchOptions
+  /** Discards already played, replayed silently (D-06) to fast-forward to a mid-round decision
+   *  point — a shared link or a log rewind, not extra tiles: each one must already be in hand. */
+  replay?: ParsedTile[]
+  /** Stops the round the moment your own discard reaches tenpai, leaving the hand at 13 tiles
+   *  (the efficiency trainers' drill) rather than playing the wall out. */
+  stopAtTenpai?: boolean
+  onUserDraw?: (ctx: UserDrawContext) => void
+  onUserDiscard?: (tile: ParsedTile, stats: DiscardStats) => void
+  onAgariCall?: AgariCall
+}
+
+export interface UserDrawContext {
+  turn: number
+  drawn: ParsedTile | undefined
+  analysis: TableAnalysis
+}
+
+/** `yours`/`best`/`danger` are getters over `analysis` — a consumer that only wants tiers never
+ *  triggers the ukeire ranking, and one that only wants ukeire never triggers the danger
+ *  assessment (D-05). `analysis` is the *same* object `onUserDraw` handed over: reading these
+ *  getters synchronously inside `onUserDiscard`, before returning, is what keeps them measured
+ *  against the pre-throw hand — `useTableRound` fires this callback before the discard itself
+ *  mutates the board, but a consumer that stashes `DiscardStats` and reads it only after the
+ *  board has moved on will read a mutated hand, since `analysis`'s getters close over the live
+ *  `Hand` object rather than a frozen copy (see `core/table.ts#analysisOf`). */
+export interface DiscardStats {
+  /** 'kita' / 'kan' when this grades a nukidora pull or an ankan rather than a plain discard. */
+  kind: 'discard' | 'kita' | 'kan'
+  analysis: TableAnalysis
+  readonly yours: DiscardOption
+  readonly best: DiscardOption
+  readonly danger: TileDanger | undefined
+}
+
+export type AgariCall = (win: WinRecord) => void
+
+function you(core: TableCore): PlayerState {
+  return core.match.players[core.seatIndex]
+}
+
+/** Builds the `DiscardStats` handed to `onUserDiscard`. `yours`/`best`/`danger` all read off the
+ *  stashed draw-time `analysis` — never a fresh `analysisOf` call, which would rank against a hand
+ *  that has already lost (or, for kan, already locked) the tile in question. */
+function statsFor(
+  analysis: TableAnalysis,
+  kind: DiscardStats['kind'],
+  tile: ParsedTile,
+  player: PlayerState,
+  sanma: boolean,
+): DiscardStats {
+  return {
+    kind,
+    analysis,
+    get yours(): DiscardOption {
+      if (kind === 'kita') return analysis.ranked.find((o) => o.discard === NORTH)!
+      if (kind === 'kan') {
+        return evaluateKan(player.hand, analysis.seen, sanma).find((o) => o.discard === tile.id)!
+      }
+      return analysis.ranked.find((o) => o.discard === tile.id)!
+    },
+    get best(): DiscardOption {
+      return analysis.ranked[0]
+    },
+    get danger(): TileDanger | undefined {
+      return analysis.danger.find((d) => d.tile === tile.id)
+    },
+  }
+}
+
+/** Drives one round of a real `core/match` through the three-callback contract. */
+export function useTableRound(input: TableRoundInput) {
+  const core = useRef<TableCore | undefined>(undefined)
+  // suppresses onUserDraw/onUserDiscard/onAgariCall while a recorded discard list is being fast
+  // forwarded (D-06) — the board still advances underneath, only the callbacks stay silent
+  const replaying = useRef(false)
+  // the analysis handed to the most recent onUserDraw, so onUserDiscard grades the pre-throw hand
+  const drawAnalysis = useRef<TableAnalysis | undefined>(undefined)
+  // StrictMode double-invokes the mount effect (see Pitfall 4); this dedupes the *initial*
+  // onUserDraw/onAgariCall fire to once per distinct (wall identity, restart count) build, the
+  // same identity-keyed guard `logReplay` uses for its own log rows
+  const builtFor = useRef<{ wall: ParsedTile[]; count: number } | undefined>(undefined)
+
+  const [restartCount, setRestartCount] = useState(0)
+  // a rewind/new-link hands in a brand-new `input.wall` naming its own board; restartCount is
+  // per-mount React state a wall swap does not and should not reset on its own, so left alone
+  // buildRound() below would treat the new wall as already-restarted-past. Reset while rendering,
+  // keyed on wall identity — the caller must hand in an identity-stable `wall` (and `options`),
+  // which `useUrlData`'s per-navigation memoisation already provides.
+  const [lastWall, setLastWall] = useState(input.wall)
+  if (input.wall !== lastWall) {
+    setLastWall(input.wall)
+    setRestartCount(0)
+  }
+
+  /** Stashes `analysisOf(core)` for the seat's current 14-tile hand and fires `onUserDraw` (unless
+   *  replaying). A no-op past the end of the hand or mid-tenpai-stop, where the seat never reaches
+   *  14 tiles again. */
+  function fireDraw(c: TableCore): void {
+    const player = you(c)
+    if (c.match.ended || tileCount(player.hand) !== 14) {
+      drawAnalysis.current = undefined
+      return
+    }
+    const analysis = analysisOf(c)
+    drawAnalysis.current = analysis
+    if (!replaying.current) {
+      input.onUserDraw?.({ turn: c.match.turn, drawn: c.match.drawn, analysis })
+    }
+  }
+
+  /** Fires `onUserDiscard` (unless replaying) from the analysis stashed by the last `fireDraw` —
+   *  called before the board itself mutates, which is what keeps a synchronous read of the stats
+   *  measured against the still-14-tile hand. */
+  function fireDiscard(c: TableCore, tile: ParsedTile, kind: DiscardStats['kind']): void {
+    const analysis = drawAnalysis.current
+    if (!analysis || replaying.current) return
+    input.onUserDiscard?.(tile, statsFor(analysis, kind, tile, you(c), c.options.sanma))
+  }
+
+  /** Fires `onAgariCall` once (unless replaying) the instant `match.win` appears, and reports
+   *  whether the match has ended either way — the caller stops advancing regardless of whether
+   *  the callback itself fired. */
+  function maybeFireAgari(c: TableCore): boolean {
+    if (c.match.win && !replaying.current) input.onAgariCall?.(c.match.win)
+    return c.match.ended !== undefined
+  }
+
+  /** Discards `tile` for your seat (or replays one already recorded), grades it, lets the table
+   *  play back around to you, and draws your next tile — or stops when the round is over:
+   *  `stopAtTenpai` reaching tenpai, the wall running dry, or anyone winning. Shared by `discard()`
+   *  and `replayDiscards`'s step, so a live discard and a replayed one advance the board through
+   *  the identical path. */
+  function advance(c: TableCore, tile: ParsedTile, kind: DiscardStats['kind'] = 'discard'): boolean {
+    fireDiscard(c, tile, kind)
+    finishTurn(c.match, c.options, tile)
+    if (maybeFireAgari(c)) return false
+
+    if (input.stopAtTenpai && shanten(you(c).hand) <= 0) {
+      c.match.drawn = undefined
+      return false
+    }
+    goRound(c)
+    if (maybeFireAgari(c)) return false
+
+    beginTurn(c.match, c.options)
+    if (maybeFireAgari(c)) return false
+
+    fireDraw(c)
+    return true
+  }
+
+  /** Deals (or, past the first build, redeals from an empty wall) and steps to the first live
+   *  decision: the seats before yours act (`goRound`), then your own `beginTurn`, then any
+   *  `input.replay` fast-forwards silently through `advance`. Never fires a callback itself —
+   *  the caller decides whether this build's outcome (a win, or a fresh draw) is worth firing. */
+  function buildRound(): TableSnapshot {
+    const wall = restartCount === 0 ? input.wall : []
+    const match = createMatch(wall, input.players, input.options)
+    const c: TableCore = { match, options: input.options, seatIndex: input.seatIndex }
+    core.current = c
+    goRound(c)
+    beginTurn(c.match, c.options) // no-op when goRound already ended the match
+
+    replaying.current = true
+    replayDiscards(c, input.replay ?? [], (rc, tile) => advance(rc, tile))
+    replaying.current = false
+
+    return snapshotTable(c)
+  }
+
+  const [snapshot, setSnapshot] = useState<TableSnapshot>(() => buildRound())
+
+  useEffect(() => {
+    const snap = buildRound()
+    setSnapshot(snap)
+    const c = core.current!
+    const already = builtFor.current?.wall === input.wall && builtFor.current?.count === restartCount
+    if (!already) {
+      builtFor.current = { wall: input.wall, count: restartCount }
+      if (c.match.win) input.onAgariCall?.(c.match.win)
+      else fireDraw(c)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    input.wall,
+    input.replay,
+    input.players,
+    input.seatIndex,
+    input.stopAtTenpai,
+    input.options.sanma,
+    input.options.aka,
+    input.options.round,
+    input.options.deadWall,
+    input.options.calls,
+    input.options.riichi,
+    input.options.wins,
+    input.options.human,
+    restartCount,
+  ])
+
+  /** Discards the tile at `index` into `snapshot.hand` (or the drawn tile, at `hand.length`). */
+  function discard(index: number): void {
+    const c = core.current
+    if (!c || c.match.ended || tileCount(you(c).hand) !== 14) return
+    const tile = index === snapshot.hand.length ? snapshot.drawn : snapshot.hand[index]
+    if (!tile) return
+    advance(c, tile)
+    setSnapshot(snapshotTable(c))
+  }
+
+  /** Pulls a held north (sanma only), graded like a discard via north's own `evaluateDiscards`
+   *  entry — the same comparison `discard()` uses. */
+  function kita(): void {
+    const c = core.current
+    if (!c || !c.options.sanma || c.match.ended || tileCount(you(c).hand) !== 14) return
+    if (you(c).hand.counts[NORTH] === 0) return
+    const northTile: ParsedTile = { id: NORTH, red: false }
+    fireDiscard(c, northTile, 'kita')
+
+    const player = you(c)
+    removeTile(player.hand, NORTH)
+    player.nuki.push(northTile)
+    c.match.visible[NORTH]++
+    c.match.drawn = drawReplacement(c.match, player)
+    fireDraw(c)
+    setSnapshot(snapshotTable(c))
+  }
+
+  /** Calls a closed kan on a held quad, graded against `evaluateKan`'s entry for `id` compared to
+   *  the same best discard `discard()` uses. */
+  function kan(id: TileId): void {
+    const c = core.current
+    if (!c || c.match.ended || tileCount(you(c).hand) !== 14) return
+    if (you(c).hand.counts[id] !== 4) return
+    const player = you(c)
+    const red = player.reds.has(id)
+    const kanTile: ParsedTile = { id, red }
+    fireDiscard(c, kanTile, 'kan')
+
+    for (let k = 0; k < 4; k++) removeTile(player.hand, id)
+    player.hand.melds++
+    player.reds.delete(id)
+    c.match.visible[id] += 4
+    const meld: Meld = {
+      kind: 'ankan',
+      tiles: [
+        { id, red },
+        { id, red: false },
+        { id, red: false },
+        { id, red: false },
+      ],
+    }
+    player.melds.push(meld)
+
+    const indicator = c.match.doraStack.shift()
+    if (indicator) {
+      c.match.doraIndicators.push(indicator)
+      c.match.visible[indicator.id]++
+    }
+    c.match.drawn = drawReplacement(c.match, player)
+    fireDraw(c)
+    setSnapshot(snapshotTable(c))
+  }
+
+  /** Current round as a shareable `Situation`: the wall actually dealt and the discards your own
+   *  seat has played so far, ready for `encodeSituation`. */
+  function situation(): Situation {
+    const c = core.current
+    return {
+      wall: c ? [...c.match.wall] : [...input.wall],
+      river: c ? yourDiscards(c) : [],
+      round: WINDS[input.options.round - HONOR] ?? 'E',
+      seat: WINDS[input.seatIndex] ?? 'E',
+      opponents: input.options.calls,
+      deadWall: input.options.deadWall,
+      aka: input.options.aka,
+      sanma: input.options.sanma,
+    }
+  }
+
+  return {
+    ...snapshot,
+    discard,
+    kita,
+    kan,
+    restart: () => setRestartCount((n) => n + 1),
+    replaying: replaying.current,
+    situation,
+  }
+}
