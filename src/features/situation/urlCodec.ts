@@ -1,4 +1,5 @@
 import { parseTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
+import { validateWall, type WallError } from '../../core/wall'
 
 export type Wind = 'E' | 'S' | 'W' | 'N'
 export const WINDS: Wind[] = ['E', 'S', 'W', 'N']
@@ -17,6 +18,11 @@ export interface Situation {
    *  (D-11). This is the deal itself, not a "prefix consumed on next draw" the way `wall` used
    *  to mean before this phase (D-10). */
   wall: ParsedTile[]
+  /** Set when `wall` failed `validateWall` (D-12) — `wall` is then empty and must never reach
+   *  `createMatch`. This is the one codec in the repo that rejects rather than silently drops
+   *  (contrast `parseTenhou`, which drops a malformed digit): a wall is positionally meaningful,
+   *  so repairing it would hand back a different board than the link claimed to share. */
+  wallError?: WallError
   /** The user's own past discards, replayed from the deal to reach the situation's
    *  decision point. Not extra tiles: each one must already be in hand/wall. */
   river: ParsedTile[]
@@ -57,6 +63,17 @@ export function decodeSituation(params: URLSearchParams): Situation {
   for (const flag of FLAGS) {
     const v = params.get(flag.toLowerCase())
     if (v !== null) s[flag] = v !== '0'
+  }
+
+  // untrusted input: reject a malformed/over-counted wall by name rather than let it reach
+  // createMatch. No global setting is available at this pure-codec boundary, so a partial wall
+  // with no explicit sanma flag validates against yonma — the reader's own trainer resolves the
+  // real ruleset (and, for a full wall, length alone already settles it either way)
+  const sanma = resolveSanma(s.wall, s.sanma, false)
+  const error = validateWall(s.wall, sanma ? 3 : 4, sanma)
+  if (error) {
+    s.wallError = error
+    s.wall = []
   }
   return s
 }

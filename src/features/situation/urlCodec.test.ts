@@ -82,4 +82,16 @@ describe('urlCodec', () => {
 
     expect(state.players[0].hand.counts).toEqual(handFromTenhou('1112345678999m').counts)
   })
+
+  it('rejects an invalid wall by name: the wall is emptied and never reaches createMatch', () => {
+    const decoded = decodeSituation(new URLSearchParams('wall=11111m'))
+    expect(decoded.wall).toHaveLength(0)
+    expect(decoded.wallError).toEqual({ zone: 'hand', seat: 0, tile: 0, reason: 'copies' })
+  })
+
+  it('a valid full or partial wall carries no wallError', () => {
+    const valid = decodeSituation(new URLSearchParams('wall=123456789m'))
+    expect(valid.wallError).toBeUndefined()
+    expect(valid.wall).toEqual(parseTenhou('123456789m'))
+  })
 })
