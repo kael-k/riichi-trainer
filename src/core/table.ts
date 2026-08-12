@@ -136,8 +136,8 @@ export function snapshotTable(core: TableCore): TableSnapshot {
  *  it: the seat's own red copy only survives onto the replayed tile when it still holds that kind's
  *  red five. `step` is what actually advances the board (a discard alone does nothing without it) —
  *  that indirection is how efficiency keeps its tenpai stop and folding its hand-ended stop without
- *  this function knowing about either. The StrictMode-dedup `useRef` guard that decides whether a
- *  replay gets *logged* stays in each React hook — that is a React concern, and this module is
+ *  this function knowing about either. The StrictMode-dedup mutable-ref guard that decides whether
+ *  a replay gets *logged* stays in each React hook — that is a React concern, and this module is
  *  React-free. */
 export function replayDiscards(
   core: TableCore,
