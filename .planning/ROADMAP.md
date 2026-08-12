@@ -46,7 +46,7 @@ settings under a global-default-plus-per-app-override schema; ship a standalone 
 
   5. `npm test` (including the tile-census and shanten-equivalence invariants), `npm run lint`, and
      `npm run build` all pass
-**Plans**: 1/7 plans executed, in 6 execution waves — see
+**Plans**: 2/7 plans executed, in 6 execution waves — see
   `.planning/phases/01-table-architecture-centralization/01-CONTEXT.md` for the locked decisions
   they respect
 
@@ -55,7 +55,7 @@ Plans:
 - [x] 01-01-PLAN.md — explicit, validated walls: `createMatch` takes a `ParsedTile[]` wall, seeds
   drop as the shared record, an invalid `wall=` is rejected by zone and tile (wave 1, REQ-02)
 
-- [ ] 01-02-PLAN.md — pure `core/table.ts`: one `seenBy`, one go-round, one snapshot, one replay,
+- [x] 01-02-PLAN.md — pure `core/table.ts`: one `seenBy`, one go-round, one snapshot, one replay,
   per-turn analysis as lazy getters (wave 2, REQ-03)
 
 - [ ] 01-03-PLAN.md — `useTableRound` (`onUserDraw`/`onUserDiscard`/`onAgariCall`) and scoring
@@ -82,4 +82,4 @@ own hook, in parallel (3) → the efficiency split (4) → table settings (5) �
 
 | Phase | Plans Complete | Status | Completed |
 |-------|-----------------|--------|-----------|
-| 1. Table architecture centralization | 1/7 | In Progress|  |
+| 1. Table architecture centralization | 2/7 | In Progress|  |
