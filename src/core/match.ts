@@ -6,7 +6,7 @@ import { chooseCall, chooseDiscard, chooseFold, isFuriten, waits, type SeatPolic
 import { scoreHand, type ScoreResult } from './score'
 import { shanten } from './shanten'
 import { HONOR, NUM_TILE_TYPES, type ParsedTile, type RiverTile, type TileId } from './tiles'
-import { completeWall, DEAD_WALL_SIZE, fullWallSize, INITIAL_HAND_SIZE } from './wall'
+import { completeWall, DEAD_WALL_SIZE, fullWallSize, INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
 import { isMenzen, type WinContext } from './yaku'
 
 /**
@@ -235,10 +235,17 @@ export function concealedTiles(player: PlayerState): ParsedTile[] {
   return tiles
 }
 
-/** What this seat can see when deciding: every face-up tile plus its own hand. */
-function seenBy(state: MatchState, player: PlayerState): Uint8Array {
+/** What this seat can see when deciding: every face-up tile plus its own hand. Clamped to
+ *  `TILES_PER_KIND` as a safety net, not a behaviour change — face-up tiles and your own hand are
+ *  disjoint sets, so the sum cannot legitimately exceed four copies; clamping means a future
+ *  bookkeeping slip degrades an ukeire count instead of proposing a fifth copy. Exported (rather
+ *  than wrapped only in `table.ts`) because `table.ts` imports this stepper, so this module must
+ *  not import back from `table.ts` — the canonical computation has to live here. */
+export function seenBy(state: MatchState, player: PlayerState): Uint8Array {
   const seen = new Uint8Array(NUM_TILE_TYPES)
-  for (let i = 0; i < NUM_TILE_TYPES; i++) seen[i] = state.visible[i] + player.hand.counts[i]
+  for (let i = 0; i < NUM_TILE_TYPES; i++) {
+    seen[i] = Math.min(TILES_PER_KIND, state.visible[i] + player.hand.counts[i])
+  }
   return seen
 }
 
