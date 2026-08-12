@@ -64,8 +64,10 @@ export function FoldingPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const { showWall } = useAdvancedSettings()
+  // no hideConcealedHands here: folding always shows the board (reading it is the drill), and the
+  // D-14 reveal gate below already withholds real tile ids until `round.finished` regardless of
+  // any setting
   const showOpponentHands = useSettings((s) => s.showOpponentHands)
-  const hideConcealedHands = useSettings((s) => s.hideConcealedHands)
 
   const options = useMemo<RoundOptions>(() => {
     const isSanma = urlData.sanma ?? sanma
@@ -157,11 +159,10 @@ export function FoldingPage() {
     melds: round.melds[seat],
     nuki: round.nuki[seat],
     riichi: round.riichi[seat],
-    hand:
-      seat !== round.seatIndex && (showOpponentHands || !hideConcealedHands)
-        ? round.hands[seat]
-        : undefined,
-    concealed: !showOpponentHands,
+    // `round.boardHands` is already the D-14 gate: face-down filler at the right count until
+    // `round.finished`, real tiles after — no setting decides whether real ids reach this prop
+    hand: seat !== round.seatIndex ? round.boardHands[seat] : undefined,
+    concealed: !(showOpponentHands && round.finished),
   }))
   const threatWinds = round.threatSeats.map((seat) => t(`wind.${WINDS[seat]}`)).join(' · ')
   // everything that would tell you how the fold is going so far, held back mid-hand when asked

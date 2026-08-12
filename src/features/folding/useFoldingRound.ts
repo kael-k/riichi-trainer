@@ -106,6 +106,24 @@ interface RoundState extends TableSnapshot {
   elapsed: number
   /** Searching for a hand: the board is not up and the clock has not started. */
   loading: boolean
+  /** Every seat's hand as the board may show it right now (D-14): your own seat and, once
+   *  `finished`, every seat, get `concealedTiles` — everyone else gets `BACK_TILE` filler at the
+   *  same count. The gate lives here, below the settings layer, so no reveal setting or override
+   *  can put a threat's real tile ids on screen before the hand is over. */
+  boardHands: ParsedTile[][]
+}
+
+/** Face-down filler: a back has no identity, and mid-hand the board must not be holding one. */
+const BACK_TILE: ParsedTile = { id: 0, red: false }
+
+/** Gating only a `concealed` display flag would leave the real tile ids sitting in the component
+ *  props (inspectable via devtools) the moment the hand is dealt — the reveal has to be withheld
+ *  from the data itself, not just from how it is drawn. */
+function boardHandsOf(core: RoundCore, finished: boolean): ParsedTile[][] {
+  return core.match.players.map((player, seat) => {
+    if (seat === core.seatIndex || finished) return concealedTiles(player)
+    return concealedTiles(player).map(() => BACK_TILE)
+  })
 }
 
 const TICK_MS = 50
@@ -284,16 +302,18 @@ function endOf(core: RoundCore, sanma: boolean): RoundEnd | null {
 
 function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundState {
   const end = endOf(core, sanma)
+  const finished = end !== null
   return {
     ...snapshotTable(core),
     round: core.options.round,
     threatSeats: riichiSeats(core.match),
     lastResult: prev?.lastResult ?? null,
     results: prev?.results ?? [],
-    finished: end !== null,
+    finished,
     end,
     elapsed: 0,
     loading: false,
+    boardHands: boardHandsOf(core, finished),
   }
 }
 
@@ -546,6 +566,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       finished: false,
       end: null,
       elapsed: 0,
+      boardHands: [],
     }),
     loading: !failed && (state === null || state.loading),
     /** No seed in the budget produced a drillable hand — the page offers another deal. */

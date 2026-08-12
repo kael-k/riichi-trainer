@@ -304,6 +304,45 @@ describe('useFoldingRound', () => {
   })
 })
 
+describe('boardHands (the D-14 reveal gate)', () => {
+  it('gives every other seat face-down filler at the right count, mid-hand', async () => {
+    const result = await deal({ wall: wall('boardhands-seed') })
+    for (let seat = 0; seat < result.current.hands.length; seat++) {
+      if (seat === result.current.seatIndex) continue
+      const real = result.current.hands[seat]
+      expect(result.current.boardHands[seat]).toHaveLength(real.length)
+      // every filler entry is the same identity-free tile — no real tile id leaks through
+      expect(new Set(result.current.boardHands[seat].map((t) => t.id)).size).toBe(1)
+    }
+  })
+
+  it('always shows your own seat for real, even mid-hand', async () => {
+    const result = await deal({ wall: wall('boardhands-self-seed') })
+    const own = result.current.boardHands[result.current.seatIndex]
+    expect(own).toEqual(result.current.hands[result.current.seatIndex])
+    expect(own.length).toBe(result.current.hand.length + (result.current.drawn ? 1 : 0))
+  })
+
+  it('reveals real tiles once the hand is over, matching the reveal panel', async () => {
+    // wins off, same reasoning as the reveal-panel test above: keeps every threat tenpai so this
+    // exercises a genuinely riichi'd hand rather than a completed one
+    const result = await deal(
+      { wall: wall('boardhands-reveal-seed') },
+      { ...OPTIONS, opponentWins: false },
+    )
+    for (let i = 0; i < 40 && !result.current.finished; i++) {
+      const safe = result.current.ranked()[0]
+      act(() =>
+        result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)),
+      )
+    }
+    expect(result.current.finished).toBe(true)
+    for (const threat of result.current.end!.threats) {
+      expect(result.current.boardHands[threat.seat]).toEqual(threat.hand)
+    }
+  })
+})
+
 describe('the folding link', () => {
   it('round-trips the wall and the rules the board was built under', () => {
     const w = wall('link-seed', true)
