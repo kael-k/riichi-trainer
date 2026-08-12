@@ -595,15 +595,14 @@ export interface MatchOutcome {
   ended: 'win' | 'exhaustive' | 'stopped'
 }
 
-/** Plays a whole hand out. `stop` ends it early — that is how a generator asks for "the first
- *  match that reaches X" without knowing anything about how a hand is played. */
-export function playMatch(
-  seed: string,
-  players: number,
+/** Plays `state` out from wherever it stands. `stop` ends it early — that is how a generator asks
+ *  for "the first match that reaches X" without knowing anything about how a hand is played.
+ *  Shared by `playMatch` (seeded, dealt fresh) and `playWall` (an explicit wall, already dealt). */
+function playFrom(
+  state: MatchState,
   options: MatchOptions,
   stop?: (event: MatchEvent, state: MatchState) => boolean,
 ): MatchOutcome {
-  const state = createMatch([], players, options, seed)
   const events: MatchEvent[] = []
   // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
   for (let guard = 0; guard < 400 && !state.ended; guard++) {
@@ -613,6 +612,29 @@ export function playMatch(
     }
   }
   return { state, events, ended: state.ended ?? 'exhaustive' }
+}
+
+/** Plays a whole hand out from a seeded deal. */
+export function playMatch(
+  seed: string,
+  players: number,
+  options: MatchOptions,
+  stop?: (event: MatchEvent, state: MatchState) => boolean,
+): MatchOutcome {
+  return playFrom(createMatch([], players, options, seed), options, stop)
+}
+
+/** Plays a whole hand out from an explicit wall — the scoring trainer's random-wall search
+ *  (D-09): unlike `playMatch`'s seed suffixing, a fresh wall is dealt per attempt by handing in a
+ *  short/empty wall each time, and the wall actually dealt (`outcome.state.wall`) is what gets
+ *  shared, not a seed. */
+export function playWall(
+  wall: ParsedTile[],
+  players: number,
+  options: MatchOptions,
+  stop?: (event: MatchEvent, state: MatchState) => boolean,
+): MatchOutcome {
+  return playFrom(createMatch(wall, players, options), options, stop)
 }
 
 /**

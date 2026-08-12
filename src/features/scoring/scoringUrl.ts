@@ -1,8 +1,9 @@
 import type { Meld, MeldKind } from '../../core/agari'
 import type { ScoringSituation } from '../../core/generateHand'
-import { HONOR, parseTenhou, serializeTenhouOrdered, tileCode } from '../../core/tiles'
+import { HONOR, parseTenhou, serializeTenhouOrdered, tileCode, type ParsedTile } from '../../core/tiles'
+import { validateWall, type WallError } from '../../core/wall'
 import type { WinContext } from '../../core/yaku'
-import { WINDS, type Wind } from '../situation/urlCodec'
+import { resolveSanma, WINDS, type Wind } from '../situation/urlCodec'
 
 const MELD_KIND_CHARS: Record<MeldKind, string> = { chi: 'c', pon: 'p', minkan: 'k', ankan: 'a' }
 const MELD_CHAR_KINDS: Record<string, MeldKind> = { c: 'chi', p: 'pon', k: 'minkan', a: 'ankan' }
@@ -34,10 +35,16 @@ function parseWind(v: string | null): Wind {
 }
 
 export interface ScoringUrl {
-  seed: string
-  /** Null means "generate from `seed`"; a pinned hand always carries its own full context. */
+  /** Explicit wall in draw order, exactly `urlCodec.ts`'s `Situation.wall` (D-09/D-10): a full
+   *  wall, or a short prefix `createMatch` pads at random. Empty means "generate a fresh hand". */
+  wall: ParsedTile[]
+  /** Set when `wall` failed `validateWall` (D-12) — `wall` is then empty and a generated hand
+   *  takes over, same as an empty link, rather than dealing an impossible board. */
+  wallError?: WallError
+  /** Null means "generate from `wall` (or fresh, when `wall` is empty)"; a pinned hand always
+   *  carries its own full context. */
   situation: ScoringSituation | null
-  /** Rule overrides pinned by the link. A seed only reproduces the same match if the rules the
+  /** Rule overrides pinned by the link. A wall only reproduces the same match if the rules the
    *  match was simulated under come with it, so these travel alongside it. */
   sanma?: boolean
   aka?: boolean
@@ -45,14 +52,14 @@ export interface ScoringUrl {
   honba?: boolean
 }
 
-/** A match reproduces from its seed, so a link to one needs the seed plus the rules it was
- *  played under — no tiles at all, and the receiver replays the whole hand, rivers included. */
-export function encodeScoringSeedUrl(
-  seed: string,
+/** A match reproduces from its wall, so a link to one needs the wall plus the rules it was
+ *  played under — the receiver replays the whole hand, rivers included, from `playWall`. */
+export function encodeScoringWallUrl(
+  wall: ParsedTile[],
   options: { sanma: boolean; aka: boolean; openHands: boolean; honba: boolean },
 ): string {
   const params = new URLSearchParams()
-  params.set('seed', seed)
+  params.set('wall', serializeTenhouOrdered(wall))
   params.set('sanma', options.sanma ? '1' : '0')
   params.set('aka', options.aka ? '1' : '0')
   params.set('calls', options.openHands ? '1' : '0')
@@ -63,19 +70,33 @@ export function encodeScoringSeedUrl(
 }
 
 /** Decodes a scoring situation from the query string — the scoring trainer's analogue of
- *  `decodeSituation`, but a standalone param set (not an extension of `Situation`): wall/
- *  river/opponents don't mean anything for a single graded hand. */
+ *  `decodeSituation`, but a standalone param set (not an extension of `Situation`): river/
+ *  opponents don't mean anything for a single graded hand. */
 export function decodeScoringUrl(params: URLSearchParams): ScoringUrl {
-  const seed = params.get('seed') ?? ''
   const handParam = params.get('hand')
   const flag = (name: string): boolean | undefined => {
     const value = params.get(name)
     return value === null ? undefined : value !== '0'
   }
   const sanma = flag('sanma')
+
+  let wall = parseTenhou(params.get('wall') ?? '')
+  let wallError: WallError | undefined
+  // untrusted input: reject a malformed/over-counted wall by name rather than let it reach
+  // playWall (D-12) — see `urlCodec.decodeSituation`'s identical gate. No global setting is
+  // available at this pure-codec boundary, so a partial wall with no explicit sanma flag
+  // validates against yonma.
+  const resolvedSanma = resolveSanma(wall, sanma, false)
+  const error = validateWall(wall, resolvedSanma ? 3 : 4, resolvedSanma)
+  if (error) {
+    wallError = error
+    wall = []
+  }
+
   if (!handParam) {
     return {
-      seed,
+      wall,
+      wallError,
       situation: null,
       sanma,
       aka: flag('aka'),
@@ -115,7 +136,8 @@ export function decodeScoringUrl(params: URLSearchParams): ScoringUrl {
   }
 
   return {
-    seed,
+    wall,
+    wallError,
     situation: { concealed, melds, ctx, doraIndicators, uraIndicators, kita, honba },
     sanma,
   }
