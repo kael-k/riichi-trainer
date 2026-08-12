@@ -46,7 +46,7 @@ settings under a global-default-plus-per-app-override schema; ship a standalone 
 
   5. `npm test` (including the tile-census and shanten-equivalence invariants), `npm run lint`, and
      `npm run build` all pass
-**Plans**: 2/7 plans executed, in 6 execution waves — see
+**Plans**: 4/7 plans executed, in 6 execution waves — see
   `.planning/phases/01-table-architecture-centralization/01-CONTEXT.md` for the locked decisions
   they respect
 
@@ -58,10 +58,10 @@ Plans:
 - [x] 01-02-PLAN.md — pure `core/table.ts`: one `seenBy`, one go-round, one snapshot, one replay,
   per-turn analysis as lazy getters (wave 2, REQ-03)
 
-- [ ] 01-03-PLAN.md — `useTableRound` (`onUserDraw`/`onUserDiscard`/`onAgariCall`) and scoring
+- [x] 01-03-PLAN.md — `useTableRound` (`onUserDraw`/`onUserDiscard`/`onAgariCall`) and scoring
   moved onto that entry point and onto wall-backed links (wave 3, REQ-03)
 
-- [ ] 01-04-PLAN.md — folding's own thin hook rebuilt on `core/table.ts`'s stepper, wall-backed
+- [x] 01-04-PLAN.md — folding's own thin hook rebuilt on `core/table.ts`'s stepper, wall-backed
   links, and the threat-reveal hard-gate (wave 3, REQ-07 + REQ-06)
 
 - [ ] 01-05-PLAN.md — split the efficiency trainer into solitaire and table routes; `opponents`
@@ -82,4 +82,4 @@ own hook, in parallel (3) → the efficiency split (4) → table settings (5) �
 
 | Phase | Plans Complete | Status | Completed |
 |-------|-----------------|--------|-----------|
-| 1. Table architecture centralization | 2/7 | In Progress|  |
+| 1. Table architecture centralization | 4/7 | In Progress|  |
