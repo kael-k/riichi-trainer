@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { beginTurn, createMatch, finishTurn, type MatchOptions } from './match'
 import { HONOR, NUM_TILE_TYPES, parseTenhou } from './tiles'
-import { goRound, seenBy, yourDiscards, type TableCore } from './table'
+import {
+  goRound,
+  replayDiscards,
+  seenBy,
+  snapshotTable,
+  yourDiscards,
+  type TableCore,
+} from './table'
 
 const YONMA: MatchOptions = {
   sanma: false,
@@ -102,5 +109,116 @@ describe('yourDiscards', () => {
     finishTurn(match, NO_WIN, { id: 1, red: false })
     const played = yourDiscards(core, 1)
     expect(played.map((t) => t.id)).toEqual([1])
+  })
+})
+
+describe('snapshotTable', () => {
+  it("separates the drawn tile out of hand into .drawn", () => {
+    const match = createMatch([], 4, YONMA, 'table-snap-1')
+    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    beginTurn(match, YONMA)
+    const snap = snapshotTable(core)
+    expect(snap.drawn).toEqual(match.drawn)
+    expect(snap.hand.some((t) => t.id === match.drawn!.id && t.red === match.drawn!.red)).toBe(
+      false,
+    )
+  })
+
+  it('mirrors every seat with one entry per player, for both 4-seat and 3-seat tables', () => {
+    const match4 = createMatch([], 4, YONMA, 'table-snap-4')
+    const snap4 = snapshotTable({ match: match4, options: YONMA, seatIndex: 0 })
+    expect(snap4.rivers.length).toBe(match4.players.length)
+    expect(snap4.hands.length).toBe(match4.players.length)
+    expect(snap4.melds.length).toBe(match4.players.length)
+    expect(snap4.nuki.length).toBe(match4.players.length)
+    expect(snap4.riichi.length).toBe(match4.players.length)
+
+    const sanma = { ...YONMA, sanma: true }
+    const match3 = createMatch([], 3, sanma, 'table-snap-3')
+    const snap3 = snapshotTable({ match: match3, options: sanma, seatIndex: 0 })
+    expect(snap3.rivers.length).toBe(match3.players.length)
+  })
+
+  it('copies every array defensively: mutating the match after a snapshot leaves it unchanged', () => {
+    const match = createMatch([], 4, { ...YONMA, wins: false }, 'table-snap-copy')
+    const core: TableCore = { match, options: { ...YONMA, wins: false }, seatIndex: 0 }
+    beginTurn(match, core.options)
+    finishTurn(match, core.options)
+    const before = snapshotTable(core)
+    const riversBefore = before.rivers.map((r) => [...r])
+    const handsBefore = before.hands.map((h) => [...h])
+
+    goRound(core)
+    if (!match.ended) beginTurn(match, core.options)
+    if (!match.ended) finishTurn(match, core.options)
+
+    expect(before.rivers).toEqual(riversBefore)
+    expect(before.hands).toEqual(handsBefore)
+  })
+})
+
+describe('replayDiscards', () => {
+  it('plays every tile through step and returns them all when the board can honour them', () => {
+    const wall = parseTenhou('123456789m1122p')
+    const match = createMatch(wall, 4, NO_WIN, 'table-replay-1')
+    const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
+    beginTurn(match, NO_WIN)
+    const step = (c: TableCore, tile: { id: number; red: boolean }) => {
+      finishTurn(c.match, NO_WIN, tile)
+      for (let g = 0; g < 3; g++) {
+        beginTurn(c.match, NO_WIN)
+        finishTurn(c.match, NO_WIN)
+      }
+      beginTurn(c.match, NO_WIN)
+    }
+    const played = replayDiscards(core, [{ id: 0, red: false }, { id: 1, red: false }], step)
+    expect(played.map((t) => t.id)).toEqual([0, 1])
+  })
+
+  it('stops quietly, returning what it managed, on a tile the seat does not hold', () => {
+    const wall = parseTenhou('123456789m1122p')
+    const match = createMatch(wall, 4, NO_WIN, 'table-replay-2')
+    const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
+    beginTurn(match, NO_WIN)
+    const step = (c: TableCore, tile: { id: number; red: boolean }) => {
+      finishTurn(c.match, NO_WIN, tile)
+      for (let g = 0; g < 3; g++) {
+        beginTurn(c.match, NO_WIN)
+        finishTurn(c.match, NO_WIN)
+      }
+      beginTurn(c.match, NO_WIN)
+    }
+    // id 33 (a tile not in the hand) never gets reached
+    const input = [
+      { id: 0, red: false },
+      { id: 33, red: false },
+      { id: 1, red: false },
+    ]
+    const played = replayDiscards(core, input, step)
+    expect(played.length).toBeLessThan(input.length)
+    expect(match.ended).toBeUndefined()
+  })
+
+  it('stops when step returns false, after playing the tile it was given', () => {
+    const wall = parseTenhou('123456789m1122p')
+    const match = createMatch(wall, 4, NO_WIN, 'table-replay-3')
+    const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
+    beginTurn(match, NO_WIN)
+    let calls = 0
+    const step = (c: TableCore, tile: { id: number; red: boolean }): boolean => {
+      finishTurn(c.match, NO_WIN, tile)
+      calls++
+      return false
+    }
+    const played = replayDiscards(
+      core,
+      [
+        { id: 0, red: false },
+        { id: 1, red: false },
+      ],
+      step,
+    )
+    expect(calls).toBe(1)
+    expect(played.map((t) => t.id)).toEqual([0])
   })
 })

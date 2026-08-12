@@ -1,11 +1,15 @@
+import type { Meld } from './agari'
 import {
   beginTurn,
+  concealedTiles,
   finishTurn,
   seenBy as seenByMatch,
+  wallDrawnCount,
   type MatchOptions,
   type MatchState,
+  type WinRecord,
 } from './match'
-import type { ParsedTile } from './tiles'
+import type { ParsedTile, RiverTile } from './tiles'
 
 /**
  * Pure, React-free primitives for stepping a match, reading what a seat can see, and replaying its
@@ -58,4 +62,94 @@ export function yourDiscards(core: TableCore, from = 0): ParsedTile[] {
     .filter((d) => d.seat === core.seatIndex)
     .slice(from)
     .map((d) => ({ id: d.tile.id, red: d.tile.red }))
+}
+
+/** A render-ready mirror of the match, seat-index-first, with `core`'s own seat's drawn tile
+ *  separated out into `drawn`. Every array is a fresh copy — mutating the match after a snapshot
+ *  was taken never mutates that snapshot — except `liveWallSnapshot`/`deadWallSnapshot`/`wall`,
+ *  passed through by reference since `createMatch` never mutates them once the deal is done.
+ *  Carries no trainer-specific field — no score, no clock, no grading result and no `finished`
+ *  flag: each consumer derives its own end condition (efficiency: hand below 14 tiles; folding:
+ *  `match.ended`/wall-out). `melds`/`nuki` are per-seat here, where the efficiency hook keeps only
+ *  its own — that hook indexes its seat out of these. */
+export interface TableSnapshot {
+  hand: ParsedTile[]
+  drawn: ParsedTile | undefined
+  turn: number
+  doraIndicators: ParsedTile[]
+  rivers: RiverTile[][]
+  hands: ParsedTile[][]
+  melds: Meld[][]
+  nuki: ParsedTile[][]
+  riichi: boolean[]
+  seatIndex: number
+  liveWall: ParsedTile[]
+  deadWall: ParsedTile[]
+  liveWallSnapshot: ParsedTile[]
+  liveWallDrawn: number
+  deadWallSnapshot: ParsedTile[]
+  replacements: number
+  ended: MatchState['ended']
+  win: WinRecord | undefined
+  wall: ParsedTile[]
+}
+
+/** Builds a `TableSnapshot` for `core` as the match stands right now. */
+export function snapshotTable(core: TableCore): TableSnapshot {
+  const { match, seatIndex } = core
+  const player = match.players[seatIndex]
+  let hand = concealedTiles(player)
+  if (match.drawn) {
+    const i = hand.findIndex((t) => t.id === match.drawn!.id && t.red === match.drawn!.red)
+    if (i >= 0) hand = [...hand.slice(0, i), ...hand.slice(i + 1)]
+  }
+  return {
+    hand,
+    drawn: match.drawn,
+    turn: match.turn,
+    doraIndicators: [...match.doraIndicators],
+    rivers: match.players.map((p) => [...p.river]),
+    hands: match.players.map((p) => concealedTiles(p)),
+    melds: match.players.map((p) => [...p.melds]),
+    nuki: match.players.map((p) => [...p.nuki]),
+    riichi: match.players.map((p) => p.riichiAt !== undefined),
+    seatIndex,
+    liveWall: [...match.liveWall],
+    deadWall: [...match.deadWall],
+    liveWallSnapshot: match.liveWallSnapshot,
+    liveWallDrawn: wallDrawnCount(match),
+    deadWallSnapshot: match.deadWallSnapshot,
+    replacements: match.replacements,
+    ended: match.ended,
+    win: match.win,
+    wall: match.wall,
+  }
+}
+
+/** Fast-forwards `core`'s own seat through a recorded list of `discards`, generalising the two
+ *  identical fast-forward loops both hooks wrote. Stops quietly — returning the tiles it actually
+ *  played rather than throwing — when the match has ended, when the seat no longer holds that
+ *  kind, or when `step` itself returns `false`. Redness is derived the same way both hooks derive
+ *  it: the seat's own red copy only survives onto the replayed tile when it still holds that kind's
+ *  red five. `step` is what actually advances the board (a discard alone does nothing without it) —
+ *  that indirection is how efficiency keeps its tenpai stop and folding its hand-ended stop without
+ *  this function knowing about either. The StrictMode-dedup `useRef` guard that decides whether a
+ *  replay gets *logged* stays in each React hook — that is a React concern, and this module is
+ *  React-free. */
+export function replayDiscards(
+  core: TableCore,
+  discards: ParsedTile[],
+  step: (core: TableCore, tile: ParsedTile) => boolean | void,
+): ParsedTile[] {
+  const played: ParsedTile[] = []
+  for (const t of discards) {
+    const player = core.match.players[core.seatIndex]
+    if (core.match.ended || player.hand.counts[t.id] === 0) break
+    const red = player.reds.has(t.id) && (t.red || player.hand.counts[t.id] === 1)
+    const tile: ParsedTile = { id: t.id, red }
+    const keepGoing = step(core, tile)
+    played.push(tile)
+    if (keepGoing === false) break
+  }
+  return played
 }
