@@ -281,7 +281,7 @@ const YONMA: MatchOptions = {
 /** Plays a seed until someone declares riichi, then `extraTurns` further turns so tiles have been
  *  passed on since. Discards come off the event log in play order, the way the trainer reads them. */
 function playPastRiichi(seed: string, extraTurns: number) {
-  const state = createMatch(seed, 4, YONMA)
+  const state = createMatch([], 4, YONMA, seed)
   const thrown: { seat: number; tile: TileId }[] = []
   let declaredAt = -1
   let declaredAfter = 0

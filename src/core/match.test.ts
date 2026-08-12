@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from './danger'
-import { tileCount } from './hand'
+import { handFromTenhou, tileCount } from './hand'
 import {
   beginTurn,
   createMatch,
@@ -14,8 +14,8 @@ import {
   type MatchState,
 } from './match'
 import { scoreHand } from './score'
-import { HONOR, inTileSet, NUM_TILE_TYPES } from './tiles'
-import { TILES_PER_KIND } from './wall'
+import { HONOR, inTileSet, NUM_TILE_TYPES, parseTenhou } from './tiles'
+import { TILES_PER_KIND, wallWithHand } from './wall'
 
 const YONMA: MatchOptions = {
   sanma: false,
@@ -178,7 +178,7 @@ describe('createMatch', () => {
     // a red copy is either still in a pile, or held — `reds` names the kinds a player holds one
     // of, and there is at most one red per kind, so the two counts add up exactly
     const reds = (options: MatchOptions, players: number) => {
-      const state = createMatch('aka-seed', players, options)
+      const state = createMatch([], players, options, 'aka-seed')
       const inPiles = [state.liveWall, state.deadWall, state.doraStack, state.uraStack]
         .flat()
         .filter((t) => t.red).length
@@ -191,18 +191,18 @@ describe('createMatch', () => {
     expect(reds(SANMA, 3)).toBe(2)
   })
 
-  it('honours a pinned hand and wall prefix', () => {
-    const pinned = {
-      seat: 1,
-      hand: [
-        { id: 0, red: false },
-        { id: 1, red: false },
-      ],
-      wall: [{ id: 33, red: false }],
-    }
-    const state = createMatch('pinned', 4, YONMA, pinned)
+  it('honours a wall pinning one seat, filling the rest of the wall itself', () => {
+    const wall = wallWithHand(1, parseTenhou('12m'), false, true, 'pinned')
+    const state = createMatch(wall, 4, YONMA)
     expect(state.players[1].hand.counts[0]).toBeGreaterThan(0)
     expect(state.players[1].hand.counts[1]).toBeGreaterThan(0)
+    const counts = census(state)
+    for (let id = 0; id < NUM_TILE_TYPES; id++) expect(counts[id]).toBe(TILES_PER_KIND)
+  })
+
+  it('honours a short wall prefix as seat 0’s exact starting hand', () => {
+    const state = createMatch(parseTenhou('1112345678999m'), 4, YONMA)
+    expect(state.players[0].hand.counts).toEqual(handFromTenhou('1112345678999m').counts)
     const counts = census(state)
     for (let id = 0; id < NUM_TILE_TYPES; id++) expect(counts[id]).toBe(TILES_PER_KIND)
   })
@@ -256,7 +256,7 @@ function seenBy(state: MatchState, seat: number): Uint8Array {
  *  same handoff the folding trainer performs — then plays the rest of the hand out, checking every
  *  folding seat's discard against what `assessDiscards` would itself pick. */
 function playWithDefense(seed: string) {
-  const state = createMatch(seed, 4, YONMA)
+  const state = createMatch([], 4, YONMA, seed)
   let declarer = -1
   let switched = false
   let sawCall = false
