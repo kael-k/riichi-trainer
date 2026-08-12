@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 1
-current_phase_name: Table architecture centralization
+current_phase: 01
+current_phase_name: table-architecture-centralization
 status: executing
 stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-08-12T13:51:28.515Z"
+last_updated: "2026-08-12T16:03:12.124Z"
 last_activity: 2026-08-12
 last_activity_desc: PROJECT.md/ROADMAP.md/STATE.md and Phase 1 CONTEXT.md hand-authored
 progress:
@@ -24,14 +24,14 @@ See: .planning/PROJECT.md (updated 2026-08-12)
 
 **Core value:** Every drill is graded against the same deterministic engine a human could
 hand-verify — no invented numbers.
-**Current focus:** Phase 1 — Table architecture centralization
+**Current focus:** Phase 01 — table-architecture-centralization
 
 ## Current Position
 
-Phase: 1 of 1 (Table architecture centralization)
-Plan: 0 of 7 (TBD — not yet decomposed)
-Status: Ready to execute
-Last activity: 2026-08-12 — PROJECT.md/ROADMAP.md/STATE.md and Phase 1 CONTEXT.md hand-authored
+Phase: 01 (table-architecture-centralization) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 01
+Last activity: 2026-08-12 — Phase 01 execution started
 (onboarding-equivalent) from an in-session codebase audit; no mapper/researcher agents run since
 the context was already gathered directly.
 

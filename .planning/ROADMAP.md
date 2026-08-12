@@ -11,6 +11,7 @@ top of the same shared layer.
 ## Phases
 
 **Phase Numbering:**
+
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
@@ -29,34 +30,46 @@ settings under a global-default-plus-per-app-override schema; ship a standalone 
 **Depends on**: Nothing (first phase)
 **Requirements**: REQ-01, REQ-02, REQ-03, REQ-04, REQ-05, REQ-06, REQ-07
 **Success Criteria** (what must be TRUE):
+
   1. The home page lists two solitaire apps (efficiency solo, shanten) and four table apps
      (efficiency, folding, scoring, statistical lab), each its own route — no setting silently
      changes which app a route is
+
   2. A wall built or edited in the statistical lab opens as the identical board in the table
      efficiency trainer via a shared link
+
   3. Turning on every "show hands"/reveal setting during a folding drill never shows a threat's hand
      before the hand is over
+
   4. Folding's round hook is built on `core/table.ts`'s stepper, with none of the duplicated
      `seenBy`/snapshot/replay-fast-forward logic the pre-Phase-1 audit found
+
   5. `npm test` (including the tile-census and shanten-equivalence invariants), `npm run lint`, and
      `npm run build` all pass
-**Plans**: 7 plans, in 6 execution waves — see
+**Plans**: 1/7 plans executed, in 6 execution waves — see
   `.planning/phases/01-table-architecture-centralization/01-CONTEXT.md` for the locked decisions
   they respect
 
 Plans:
-- [ ] 01-01-PLAN.md — explicit, validated walls: `createMatch` takes a `ParsedTile[]` wall, seeds
+
+- [x] 01-01-PLAN.md — explicit, validated walls: `createMatch` takes a `ParsedTile[]` wall, seeds
   drop as the shared record, an invalid `wall=` is rejected by zone and tile (wave 1, REQ-02)
+
 - [ ] 01-02-PLAN.md — pure `core/table.ts`: one `seenBy`, one go-round, one snapshot, one replay,
   per-turn analysis as lazy getters (wave 2, REQ-03)
+
 - [ ] 01-03-PLAN.md — `useTableRound` (`onUserDraw`/`onUserDiscard`/`onAgariCall`) and scoring
   moved onto that entry point and onto wall-backed links (wave 3, REQ-03)
+
 - [ ] 01-04-PLAN.md — folding's own thin hook rebuilt on `core/table.ts`'s stepper, wall-backed
   links, and the threat-reveal hard-gate (wave 3, REQ-07 + REQ-06)
+
 - [ ] 01-05-PLAN.md — split the efficiency trainer into solitaire and table routes; `opponents`
   deleted from settings, codec and round options (wave 4, REQ-01)
+
 - [ ] 01-06-PLAN.md — table settings schema: global default plus per-app override, behind a
   persist version bump (wave 5, REQ-04)
+
 - [ ] 01-07-PLAN.md — statistical lab: load or author a wall, full ukeire ranking and full danger
   tier list, nothing graded (wave 6, REQ-05)
 
@@ -69,4 +82,4 @@ own hook, in parallel (3) → the efficiency split (4) → table settings (5) �
 
 | Phase | Plans Complete | Status | Completed |
 |-------|-----------------|--------|-----------|
-| 1. Table architecture centralization | 0/7 | Planned | - |
+| 1. Table architecture centralization | 1/7 | In Progress|  |
