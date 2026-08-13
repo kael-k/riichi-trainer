@@ -269,7 +269,7 @@ export function Table({
 
           {/* the gap here separates the panel's three readouts (round, counters, indicators) and
               nothing inside them — the dora/ura rows keep their own tighter grid spacing */}
-          <div className="relative col-start-2 row-start-2 flex flex-col items-center justify-center gap-[4cqw] rounded-lg border border-neutral-400/30 p-[3.75cqw] text-center text-[2.6cqw] leading-tight">
+          <div className="relative col-start-2 row-start-2 flex flex-col items-center justify-center gap-[3cqw] rounded-lg border border-neutral-400/30 p-[3.5cqw] text-center text-[2.6cqw] leading-tight">
             {seats.map((_, index) => {
               const slot = slotOf[(index - seatIndex + players) % players]
               const you = index === seatIndex
