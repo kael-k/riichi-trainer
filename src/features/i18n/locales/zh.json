@@ -69,11 +69,11 @@
   },
   "trainer": {
     "efficiency": {
-      "title": "牌效率训练",
+      "title": "牌效率训练 - 有对手",
       "desc": "在有对手的牌桌上选择最佳出牌。"
     },
     "efficiencySolo": {
-      "title": "牌效率训练（单人）",
+      "title": "牌效率训练 - 单人",
       "desc": "选择最佳出牌,查看能改善手牌的进张。没有对手，只有你和牌山。"
     },
     "shanten": {

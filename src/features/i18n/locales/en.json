@@ -108,12 +108,12 @@
   },
   "trainer": {
     "efficiency": {
-      "title": "Efficiency trainer",
+      "title": "Efficiency trainer - with opponents",
       "desc": "Pick the best discard against real opponents at a full table.",
       "intro": "Each round deals you a real hand mid-match. Discard the tile that keeps your hand closest to tenpai and keeps the most ways to improve it (its ukeire). After you discard, the trainer shows whether it was the best choice and how many tiles you left on the table."
     },
     "efficiencySolo": {
-      "title": "Efficiency trainer (solo)",
+      "title": "Efficiency trainer - solo",
       "desc": "Pick the best discard; see the tiles that improve your hand. No opponents — just you and the wall.",
       "intro": "Each round deals you a real hand mid-match, with no other seats to read. Discard the tile that keeps your hand closest to tenpai and keeps the most ways to improve it (its ukeire). After you discard, the trainer shows whether it was the best choice and how many tiles you left on the table."
     },
