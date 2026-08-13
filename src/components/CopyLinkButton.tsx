@@ -1,6 +1,7 @@
 import { Check, Link as LinkIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { copyText } from '../lib/clipboard'
 
 /** Copies the drill on screen as a shareable link. `query` runs on click, so the link always
  *  reflects the round as it stands right then. */
@@ -9,7 +10,8 @@ export function CopyLinkButton({ query }: { query: () => string }) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     const q = query()
-    await navigator.clipboard.writeText(`${location.origin}${location.pathname}${q ? `?${q}` : ''}`)
+    const ok = await copyText(`${location.origin}${location.pathname}${q ? `?${q}` : ''}`)
+    if (!ok) return
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }

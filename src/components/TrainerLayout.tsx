@@ -3,6 +3,7 @@ import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
 import { formatLogEntry } from '../features/i18n/formatLogEntry'
+import { copyText } from '../lib/clipboard'
 import { DEFAULT_TILE_SCALE, useSettings } from '../features/settings/settingsStore'
 import { SettingsButton } from '../features/settings/SettingsDialog'
 import { useLog, type LogEntry } from '../store/log'
@@ -133,7 +134,8 @@ function CopyButton({ label, text, icon }: { label: string; text: string; icon: 
       type="button"
       aria-label={label}
       onClick={async () => {
-        await navigator.clipboard.writeText(text)
+        const ok = await copyText(text)
+        if (!ok) return
         setCopied(true)
         setTimeout(() => setCopied(false), 1200)
       }}
