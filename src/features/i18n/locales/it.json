@@ -401,12 +401,6 @@
       "halfSuji": "solo un lato è suji: il ryanmen dall’altro lato è ancora vivo",
       "nonSuji": "niente sul tavolo lo esclude"
     },
-    "caveat": {
-      "genbutsu": "Solo il genbutsu è davvero sicuro: lo hanno scartato, quindi non possono farci ron.",
-      "suji": "Il suji esclude solo il ryanmen. Tanki, shanpon, kanchan o penchan su questo tile vincono comunque.",
-      "kabe": "Il muro esclude solo le scale. Un tanki o uno shanpon su questo tile vince comunque.",
-      "general": "Sotto il genbutsu niente è sicuro: è solo meno probabile."
-    },
     "threatHand": "Cosa avevano in mano",
     "threatHandOf": "Cosa aveva {{wind}}",
     "waitingOn": "In attesa di",

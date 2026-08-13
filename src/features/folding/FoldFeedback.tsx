@@ -9,7 +9,7 @@ import { WINDS } from '../situation/urlCodec'
 import type { TurnResult } from './useFoldingRound'
 
 /** Only the tiers with a glossary entry get the popover; the rest (honour, non-suji, walled)
- *  aren't jargon that needs unpacking beyond what folding.reason.* already says inline. */
+ *  are plain English already. */
 const TIER_GLOSSARY: Partial<Record<SafetyTier, GlossaryTermId>> = {
   genbutsu: 'genbutsu',
   suji: 'suji',
@@ -37,11 +37,6 @@ function Reasons({ entry, seats }: { entry: TileDanger; seats: number[] }) {
             ) : (
               t(`folding.tier.${against.tier}`)
             )}
-          </span>
-          <span>
-            {t(`folding.reason.${against.tier}`, {
-              count: against.tier === 'honour' ? entry.visible : against.because.length,
-            })}
           </span>
           <span className="flex items-center [--tile-w:calc(var(--tile-w-base)*0.55)]">
             {against.because.map((tile) => (
@@ -106,20 +101,6 @@ export function FoldFeedback({ result, seats }: { result: TurnResult; seats: num
           <Row label={t('folding.safestDiscard')} entry={result.safest[0]} seats={seats} />
         </>
       )}
-      <p className="text-xs text-neutral-500">{t(`folding.caveat.${caveatFor(result)}`)}</p>
     </div>
   )
-}
-
-/** The one thing a folding trainer must never do is let a tier read as "safe". Every tier below
- *  genbutsu still deals into a tanki or a shanpon, and suji only ever spoke about ryanmen. */
-function caveatFor(result: TurnResult): 'genbutsu' | 'suji' | 'kabe' | 'general' {
-  const tier: SafetyTier = result.yours.tier
-  return tier === 'suji' || tier === 'doubleSuji' || tier === 'halfSuji'
-    ? 'suji'
-    : tier === 'noChance' || tier === 'oneChance'
-      ? 'kabe'
-      : tier === 'genbutsu'
-        ? 'genbutsu'
-        : 'general'
 }

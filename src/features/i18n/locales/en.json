@@ -401,12 +401,6 @@
       "halfSuji": "only one side is suji — the ryanmen on the other side is still live",
       "nonSuji": "nothing on the table rules it out"
     },
-    "caveat": {
-      "genbutsu": "Genbutsu is the only real safety: they discarded it, so they cannot ron it.",
-      "suji": "Suji only rules out a ryanmen. A tanki, shanpon, kanchan or penchan on this tile still wins.",
-      "kabe": "A wall only rules out runs. A tanki or shanpon on this tile still wins.",
-      "general": "Nothing below genbutsu is safe — it is only less likely."
-    },
     "threatHand": "What they were holding",
     "threatHandOf": "What {{wind}} was holding",
     "waitingOn": "Waiting on",
