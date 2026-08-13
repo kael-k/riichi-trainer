@@ -44,12 +44,12 @@ export function TrainerStatusBar({
             type="button"
             onClick={onToggle}
             aria-label={toggleLabel}
-            className="flex size-11 items-center justify-center rounded-full bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+            className="flex size-12 items-center justify-center"
           >
             {paused ? (
-              <Play className="size-5 fill-current" />
+              <Play className="size-6 fill-current" />
             ) : (
-              <Pause className="size-4 fill-current" />
+              <Pause className="size-6 fill-current" />
             )}
           </button>
         )}
@@ -57,9 +57,9 @@ export function TrainerStatusBar({
           type="button"
           onClick={onReset}
           aria-label={resetLabel}
-          className="flex size-11 items-center justify-center text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+          className="flex size-12 items-center justify-center"
         >
-          <RotateCcw className="size-4" />
+          <RotateCcw className="size-6" />
         </button>
         {showToggle && timerEnabled && (
           <span className="font-mono tabular-nums">{formatElapsedMs(elapsed)}</span>
