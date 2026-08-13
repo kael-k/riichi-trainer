@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: retested
 phase: 01-table-architecture-centralization
 source: [01-VERIFICATION.md]
 started: 2026-08-13T09:37:13Z
-updated: 2026-08-13T10:05:00Z
+updated: 2026-08-13T13:15:00Z
 ---
 
 ## Current Test
@@ -24,8 +24,8 @@ expected: |
   Open the home page and visually confirm the Solitaire heading over two cards (efficiency-solo,
   shanten) and the Table heading over four cards (efficiency, folding, scoring, lab); open
   `/efficiency-solo` and confirm no board renders, open `/efficiency` and confirm the board renders.
-result: issue
-reported: "lgtm, just small change replace (solo) with `- solo` and the table versio with `- with opponents`"
+result: pass
+reported: "fixed — titles now read '- with opponents' / '- solo' across all 4 locales; re-tested, confirmed"
 severity: minor
 
 ### 3. Efficiency-solo phone-width layout
@@ -52,8 +52,8 @@ expected: |
   In the statistical lab, paste/load a wall string that fails validation (e.g. `wall=11111m`). One
   inline red sentence names the offending zone and tile; the board stays empty; nothing is silently
   loaded.
-result: issue
-reported: "copy link buttons are broken (at least, by running the project with `npm run dev -- --host` and accessing with LAN ip"
+result: pass
+reported: "fixed — copyText() helper falls back to execCommand when navigator.clipboard is unavailable; re-tested over LAN IP, confirmed working"
 severity: blocker
 
 ### 7. Lab phone-width scroll behavior
@@ -68,8 +68,8 @@ expected: |
   Copy a wall link out of the table efficiency trainer (`/efficiency`) and open it in the
   statistical lab (`/lab`). The identical board appears in the lab, with the full ranking and full
   danger-tier list for the same hand.
-result: issue
-reported: "copy button doesn't work,"
+result: pass
+reported: "fixed by same clipboard change as test 6; re-tested — wall link round-trips from /efficiency into /lab"
 severity: major
 
 ### 9. Lab dark mode read
@@ -81,8 +81,8 @@ result: pass
 ## Summary
 
 total: 9
-passed: 5
-issues: 3
+passed: 8
+issues: 0
 pending: 0
 skipped: 1
 blocked: 0
