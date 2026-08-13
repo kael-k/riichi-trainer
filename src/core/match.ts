@@ -308,6 +308,12 @@ function tryWin(
 ): WinRecord | null {
   if (!options.wins) return null
   const player = state.players[seat]
+  // a folding seat is trying to leave the hand, not win it — same reasoning as the riichi and
+  // call gates in finishTurn below, just reached from the draw/ron side instead of the discard
+  // side. Never for options.human: the engine never decides for that seat, a stray leftover
+  // 'defense' from the folding trainer's own handoff (see useFoldingRound.ts#playToRiichi) must
+  // not block a human win the player actually drew or ronned into.
+  if (player.policy === 'defense' && seat !== options.human) return null
 
   // one shanten call gates the whole win check, and it fails for almost every seat on almost
   // every discard. Everything below — decompose, the wait set, scoring — is far more expensive,

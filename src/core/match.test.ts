@@ -15,7 +15,7 @@ import {
 } from './match'
 import { scoreHand } from './score'
 import { HONOR, inTileSet, NUM_TILE_TYPES, parseTenhou } from './tiles'
-import { TILES_PER_KIND, wallWithHand } from './wall'
+import { INITIAL_HAND_SIZE, TILES_PER_KIND, wallWithHand } from './wall'
 
 const YONMA: MatchOptions = {
   sanma: false,
@@ -263,6 +263,7 @@ function playWithDefense(seed: string) {
   let sawExtraRiichi = false
   let foldingDiscards = 0
   let mismatches = 0
+  let sawWinByDefendingSeat = false
 
   for (let guard = 0; guard < 400 && !state.ended; guard++) {
     const acting = state.seat
@@ -295,6 +296,7 @@ function playWithDefense(seed: string) {
         foldingDiscards++
         if (event.tile.id !== expected) mismatches++
       }
+      if (event.kind === 'win' && switchedBefore) sawWinByDefendingSeat ||= event.win.seat !== declarer
     }
 
     if (declarer >= 0 && !switched) {
@@ -304,7 +306,7 @@ function playWithDefense(seed: string) {
       switched = true
     }
   }
-  return { state, declarer, sawCall, sawExtraRiichi, foldingDiscards, mismatches }
+  return { state, declarer, sawCall, sawExtraRiichi, foldingDiscards, mismatches, sawWinByDefendingSeat }
 }
 
 describe('defensive policy', () => {
@@ -317,6 +319,7 @@ describe('defensive policy', () => {
       let totalMismatches = 0
       let sawCall = false
       let sawExtraRiichi = false
+      let sawWinByDefendingSeat = false
 
       for (let i = 0; i < 30; i++) {
         const result = playWithDefense(`defense-${i}`)
@@ -326,6 +329,7 @@ describe('defensive policy', () => {
         totalMismatches += result.mismatches
         sawCall = sawCall || result.sawCall
         sawExtraRiichi = sawExtraRiichi || result.sawExtraRiichi
+        sawWinByDefendingSeat = sawWinByDefendingSeat || result.sawWinByDefendingSeat
 
         const counts = census(result.state)
         for (let id = 0; id < NUM_TILE_TYPES; id++) {
@@ -339,6 +343,26 @@ describe('defensive policy', () => {
       expect(totalMismatches).toBe(0)
       expect(sawCall).toBe(false)
       expect(sawExtraRiichi).toBe(false)
+      // a folding seat is trying to leave the hand, not win it — same reasoning tryWin applies
+      expect(sawWinByDefendingSeat).toBe(false)
     },
   )
+
+  it('never tsumos for a defense-policy seat, but does for the same tenpai hand under efficiency', () => {
+    // shanpon tenpai on 1p/2p, drawing either completes it
+    const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'tryWin-defense')
+    wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
+
+    const pushing = createMatch(wall, 4, YONMA)
+    beginTurn(pushing, YONMA)
+    expect(pushing.ended).toBe('win')
+    expect(pushing.win?.seat).toBe(0)
+
+    const folding = createMatch(wall, 4, YONMA)
+    folding.players[0].policy = 'defense'
+    beginTurn(folding, YONMA)
+    expect(folding.ended).toBeUndefined()
+    expect(folding.win).toBeUndefined()
+    expect(tileCount(folding.players[0].hand)).toBe(14) // drawn tile still sitting in hand, ungraded
+  })
 })
