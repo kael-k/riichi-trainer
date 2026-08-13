@@ -70,6 +70,15 @@ const LANGUAGE_NAMES: Record<(typeof LOCALES)[number], string> = {
   it: 'Italiano',
 }
 
+// GB rather than US for English — the flag names a language here, not a country, and there is no
+// neutral "English" flag to reach for instead
+const LANGUAGE_FLAGS: Record<(typeof LOCALES)[number], string> = {
+  en: '🇬🇧',
+  ja: '🇯🇵',
+  zh: '🇨🇳',
+  it: '🇮🇹',
+}
+
 /** Settings shared by every trainer (and available on the home screen): theme, tile size,
  *  ruleset, language, tile numbers. Persisted in the top-level settings store, not a section. */
 export function GlobalSettings() {
@@ -156,10 +165,14 @@ export function GlobalSettings() {
           onChange={(e) => setLocale(e.target.value as Locale)}
           className="min-h-11 rounded-lg border border-neutral-300 bg-white px-2 text-neutral-900 [color-scheme:light] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:[color-scheme:dark]"
         >
-          <option value="auto">{t('settings.languageAuto')}</option>
+          {/* "Auto" carries the flag of whichever language it actually resolves to, so the row
+              reads as a real choice rather than a blank one */}
+          <option value="auto">
+            {LANGUAGE_FLAGS[resolveLocale('auto')]} {t('settings.languageAuto')}
+          </option>
           {LOCALES.map((code) => (
             <option key={code} value={code}>
-              {LANGUAGE_NAMES[code]}
+              {LANGUAGE_FLAGS[code]} {LANGUAGE_NAMES[code]}
             </option>
           ))}
         </select>
