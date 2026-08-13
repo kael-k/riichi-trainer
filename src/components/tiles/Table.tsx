@@ -35,10 +35,6 @@ interface TableProps {
   /** Ura indicators; pass only once they should be visible. */
   uraIndicators?: ParsedTile[]
   wallCount?: number
-  /** Tiles the live wall started with (before any draw) — shown as the bar's fixed width, so it
-   *  reads as "the whole wall, greying as it's drawn" instead of shrinking away as `wallCount`
-   *  drops. Omit to fall back to the bare count (no bar). */
-  wallTotal?: number
   honba?: number
   /** Extra centre content — the scoring trainer's win-condition badges. */
   children?: ReactNode
@@ -162,7 +158,6 @@ export function Table({
   doraIndicators = [],
   uraIndicators = [],
   wallCount,
-  wallTotal,
   honba,
   children,
 }: TableProps) {
@@ -305,21 +300,6 @@ export function Table({
                   className="flex items-center gap-[0.5cqw] whitespace-nowrap"
                 >
                   <Tile />
-                  {wallTotal !== undefined && (
-                    <span className="flex h-[calc(var(--tile-w)*0.4)] w-[calc(var(--tile-w)*4)] overflow-hidden rounded-full ring-1 ring-black/10 dark:ring-white/10">
-                      {/* fixed-width bar sized to the whole starting wall, not the shrinking
-                          remainder — drawn tiles stay represented, just greyed, rather than the
-                          bar (and the felt's sense of "how much wall is left") shrinking away */}
-                      <span
-                        className="h-full bg-neutral-300 dark:bg-neutral-700"
-                        style={{ flex: `${wallTotal - wallCount} 1 0%` }}
-                      />
-                      <span
-                        className="h-full bg-neutral-600 dark:bg-neutral-300"
-                        style={{ flex: `${wallCount} 1 0%` }}
-                      />
-                    </span>
-                  )}
                   {wallCount}
                 </span>
               )}

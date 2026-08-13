@@ -156,7 +156,6 @@ export function EfficiencyPage() {
             round={situation.round}
             doraIndicators={round.doraIndicators}
             wallCount={round.liveWall.length}
-            wallTotal={round.liveWallSnapshot.length}
           />
 
           <div className="flex min-w-0 flex-1 flex-col gap-4">
