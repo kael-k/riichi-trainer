@@ -20,6 +20,7 @@
     "title": "{{title}}设置",
     "titleFallback": "设置",
     "global": "通用设置",
+    "table": "对局",
     "theme": "主题",
     "themeSystem": "跟随系统",
     "themeLight": "浅色模式",

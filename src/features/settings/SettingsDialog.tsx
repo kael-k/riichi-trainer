@@ -101,21 +101,6 @@ export function GlobalSettings() {
   const setAka = useSettings((s) => s.setAka)
   const advanced = useSettings((s) => s.advanced)
   const setAdvanced = useSettings((s) => s.setAdvanced)
-  // this panel edits the *global* layer of the table settings; the per-app override layer has no
-  // UI this phase (absent key means inherit — a three-state control is not needed). `'efficiency'`
-  // is an arbitrary representative app id: every field read here is resolved off `global` alone,
-  // so which app id is passed only matters for a field that had a per-app override, and none does.
-  const table = useSettings((s) => s.table)
-  const update = useSettings((s) => s.update)
-  const { showWall, showOpponentHands, hideConcealedHands } = resolveTableSettings(
-    'efficiency',
-    table,
-  )
-  // `update` only merges at the section level, so a patch of `{ global: {...} }` would otherwise
-  // replace the whole global layer instead of adding one key to it — merge the existing layer in
-  // first, same as every per-app write site does with its own `apps[app]` slice.
-  const updateGlobal = (patch: Partial<TableSettings>) =>
-    update('table', { global: { ...table.global, ...patch } })
 
   return (
     <div className="flex flex-col gap-4">
@@ -196,25 +181,6 @@ export function GlobalSettings() {
           className="size-5"
         />
       </SettingRow>
-      <SettingRow label={t('settings.showOpponentHands')}>
-        <input
-          type="checkbox"
-          checked={showOpponentHands}
-          onChange={(e) => updateGlobal({ showOpponentHands: e.target.checked })}
-          className="size-5"
-        />
-      </SettingRow>
-      {/* moot once opponent hands are revealed outright */}
-      {!showOpponentHands && (
-        <SettingRow label={t('settings.hideConcealedHands')}>
-          <input
-            type="checkbox"
-            checked={hideConcealedHands}
-            onChange={(e) => updateGlobal({ hideConcealedHands: e.target.checked })}
-            className="size-5"
-          />
-        </SettingRow>
-      )}
       <SettingRow label={t('settings.advanced')}>
         <input
           type="checkbox"
@@ -249,15 +215,69 @@ export function GlobalSettings() {
               className="size-5"
             />
           </SettingRow>
-          <SettingRow label={t('settings.showWall')}>
-            <input
-              type="checkbox"
-              checked={showWall}
-              onChange={(e) => updateGlobal({ showWall: e.target.checked })}
-              className="size-5"
-            />
-          </SettingRow>
         </>
+      )}
+    </div>
+  )
+}
+
+/** The board-rendering settings shared by every trainer that draws a `Table` (efficiency, scoring,
+ *  folding, the lab): whether opponent hands and the wall are shown. Its own section, separate
+ *  from Global — these are about what the board shows, not the app as a whole. Edits the *global*
+ *  layer of `table` (`tableSettings.ts`, D-13); the per-app override layer has no UI this phase
+ *  (absent key means inherit — a three-state control is not needed). `'efficiency'` is an
+ *  arbitrary representative app id: every field read here resolves off `global` alone, so which
+ *  app id is passed only matters for a field that had a per-app override, and none does. */
+export function BoardSettings() {
+  const { t } = useTranslation()
+  const advanced = useSettings((s) => s.advanced)
+  const table = useSettings((s) => s.table)
+  const update = useSettings((s) => s.update)
+  const { showWall, showOpponentHands, hideConcealedHands } = resolveTableSettings(
+    'efficiency',
+    table,
+  )
+  // `update` only merges at the section level, so a patch of `{ global: {...} }` would otherwise
+  // replace the whole global layer instead of adding one key to it — merge the existing layer in
+  // first, same as every per-app write site does with its own `apps[app]` slice.
+  const updateGlobal = (patch: Partial<TableSettings>) =>
+    update('table', { global: { ...table.global, ...patch } })
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h3 className="text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+        {t('settings.table')}
+      </h3>
+      <SettingRow label={t('settings.showOpponentHands')}>
+        <input
+          type="checkbox"
+          checked={showOpponentHands}
+          onChange={(e) => updateGlobal({ showOpponentHands: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
+      {/* moot once opponent hands are revealed outright */}
+      {!showOpponentHands && (
+        <SettingRow label={t('settings.hideConcealedHands')}>
+          <input
+            type="checkbox"
+            checked={hideConcealedHands}
+            onChange={(e) => updateGlobal({ hideConcealedHands: e.target.checked })}
+            className="size-5"
+          />
+        </SettingRow>
+      )}
+      {/* stays behind the Advanced gate on GlobalSettings: a hidden row must not mean a live
+          value, and the stored choice comes straight back once Advanced is re-enabled */}
+      {advanced && (
+        <SettingRow label={t('settings.showWall')}>
+          <input
+            type="checkbox"
+            checked={showWall}
+            onChange={(e) => updateGlobal({ showWall: e.target.checked })}
+            className="size-5"
+          />
+        </SettingRow>
       )}
     </div>
   )
@@ -334,6 +354,8 @@ export function SettingsButton({ title, children }: SettingsButtonProps) {
               <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
                 {children}
                 {children && <hr className="border-neutral-200 dark:border-neutral-800" />}
+                <BoardSettings />
+                <hr className="border-neutral-200 dark:border-neutral-800" />
                 <GlobalSettings />
               </div>
             </div>

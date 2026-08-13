@@ -24,6 +24,7 @@
     "title": "Impostazioni — {{title}}",
     "titleFallback": "Impostazioni",
     "global": "Generali",
+    "table": "Tavolo",
     "theme": "Tema",
     "themeSystem": "Tema di sistema",
     "themeLight": "Tema chiaro",

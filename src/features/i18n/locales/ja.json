@@ -20,6 +20,7 @@
     "title": "{{title}}の設定",
     "titleFallback": "設定",
     "global": "共通設定",
+    "table": "対戦卓",
     "theme": "テーマ",
     "themeSystem": "システムに合わせる",
     "themeLight": "ライトモード",

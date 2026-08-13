@@ -24,6 +24,7 @@
     "title": "{{title}} settings",
     "titleFallback": "Settings",
     "global": "Global",
+    "table": "Table",
     "theme": "Theme",
     "themeSystem": "System theme",
     "themeLight": "Light theme",
