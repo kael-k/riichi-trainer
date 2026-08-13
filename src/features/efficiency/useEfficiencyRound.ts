@@ -173,7 +173,11 @@ export function useEfficiencyRound(
     rivers: table.rivers,
     hands: table.hands,
     riichi: table.riichi,
-    nuki: table.nuki[table.seatIndex],
+    /** Per-seat melds/nuki (calls included), so the table can show every seat's — not just your
+     *  own — pon/chi/kan and nukidora. `kans` below stays the narrower, ankan-only view your own
+     *  seat's corner already used. */
+    melds: table.melds,
+    nuki: table.nuki,
     kans: table.melds[table.seatIndex].filter((m) => m.kind === 'ankan').map((m) => m.tiles),
     seatIndex: table.seatIndex,
     liveWall: table.liveWall,

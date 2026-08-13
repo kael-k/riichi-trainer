@@ -343,11 +343,11 @@ describe('useEfficiencyRound', () => {
     )
 
     expect(result.current.hand.some((t) => t.id === NORTH)).toBe(true)
-    expect(result.current.nuki).toHaveLength(0)
+    expect(result.current.nuki[result.current.seatIndex]).toHaveLength(0)
 
     act(() => result.current.kita())
 
-    expect(result.current.nuki).toEqual([{ id: NORTH, red: false }])
+    expect(result.current.nuki[result.current.seatIndex]).toEqual([{ id: NORTH, red: false }])
     expect(result.current.hand.some((t) => t.id === NORTH)).toBe(false)
     expect(result.current.drawn).toEqual(parseTenhou('5p')[0])
     expect(result.current.hand).toHaveLength(13) // drawn shown separately, 13+1 = 14
@@ -355,7 +355,7 @@ describe('useEfficiencyRound', () => {
     expect(result.current.lastResult?.kind).toBe('kita')
 
     act(() => result.current.kita()) // no north left — no-op
-    expect(result.current.nuki).toHaveLength(1)
+    expect(result.current.nuki[result.current.seatIndex]).toHaveLength(1)
   })
 
   it('kita is a no-op outside sanma', () => {
@@ -363,7 +363,7 @@ describe('useEfficiencyRound', () => {
     situation.wall = parseTenhou('123456789p1224z')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
     act(() => result.current.kita())
-    expect(result.current.nuki).toHaveLength(0)
+    expect(result.current.nuki[result.current.seatIndex]).toHaveLength(0)
     expect(result.current.hand.some((t) => t.id === NORTH)).toBe(true)
   })
 

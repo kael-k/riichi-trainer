@@ -63,11 +63,13 @@ export function EfficiencyPage() {
       ? {
           river,
           melds: round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles })),
-          nuki: round.nuki,
+          nuki: round.nuki[seat],
           riichi: round.riichi[seat],
         }
       : {
           river,
+          melds: round.melds[seat],
+          nuki: round.nuki[seat],
           riichi: round.riichi[seat],
           hand: showOpponentHands || !hideConcealedHands ? round.hands[seat] : undefined,
           concealed: !showOpponentHands,
