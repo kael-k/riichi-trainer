@@ -305,14 +305,25 @@ describe('useFoldingRound', () => {
 })
 
 describe('boardHands (the D-14 reveal gate)', () => {
-  it('gives every other seat face-down filler at the right count, mid-hand', async () => {
+  it('gives every threat face-down filler at the right count, mid-hand', async () => {
     const result = await deal({ wall: wall('boardhands-seed') })
-    for (let seat = 0; seat < result.current.hands.length; seat++) {
-      if (seat === result.current.seatIndex) continue
+    expect(result.current.threatSeats.length).toBeGreaterThan(0)
+    for (const seat of result.current.threatSeats) {
       const real = result.current.hands[seat]
       expect(result.current.boardHands[seat]).toHaveLength(real.length)
       // every filler entry is the same identity-free tile — no real tile id leaks through
       expect(new Set(result.current.boardHands[seat].map((t) => t.id)).size).toBe(1)
+    }
+  })
+
+  it('gives a bystander seat real tiles mid-hand — it is not the answer being graded', async () => {
+    const result = await deal({ wall: wall('boardhands-seed') })
+    const bystanders = result.current.hands
+      .map((_, seat) => seat)
+      .filter((seat) => seat !== result.current.seatIndex && !result.current.threatSeats.includes(seat))
+    expect(bystanders.length).toBeGreaterThan(0)
+    for (const seat of bystanders) {
+      expect(result.current.boardHands[seat]).toEqual(result.current.hands[seat])
     }
   })
 

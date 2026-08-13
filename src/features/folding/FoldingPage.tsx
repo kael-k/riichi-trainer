@@ -164,10 +164,15 @@ export function FoldingPage() {
     melds: round.melds[seat],
     nuki: round.nuki[seat],
     riichi: round.riichi[seat],
-    // `round.boardHands` is already the D-14 gate: face-down filler at the right count until
-    // `round.finished`, real tiles after — no setting decides whether real ids reach this prop
+    // `round.boardHands` is already the D-14 gate for a threat: face-down filler at the right
+    // count until `round.finished`, real tiles after — no setting decides whether a threat's real
+    // ids reach this prop. A bystander's tiles are real throughout, same as `hideConcealedHands`
+    // never withholds an ordinary opponent elsewhere — showOpponentHands alone decides whether
+    // this seat actually draws them, live for a bystander, only once finished for a threat
     hand: seat !== round.seatIndex ? round.boardHands[seat] : undefined,
-    concealed: !(showOpponentHands && round.finished),
+    concealed: round.threatSeats.includes(seat)
+      ? !(showOpponentHands && round.finished)
+      : !showOpponentHands,
   }))
   const threatWinds = round.threatSeats.map((seat) => t(`wind.${WINDS[seat]}`)).join(' · ')
   // everything that would tell you how the fold is going so far, held back mid-hand when asked

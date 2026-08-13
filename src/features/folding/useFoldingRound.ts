@@ -124,12 +124,16 @@ interface RoundState extends TableSnapshot {
  *  redefining it — one definition of "no identity" for both trainers. */
 export const BACK_TILE: ParsedTile = { id: 0, red: false }
 
-/** Gating only a `concealed` display flag would leave the real tile ids sitting in the component
- *  props (inspectable via devtools) the moment the hand is dealt — the reveal has to be withheld
- *  from the data itself, not just from how it is drawn. */
+/** Gating only a `concealed` display flag would leave a threat's real tile ids sitting in the
+ *  component props (inspectable via devtools) the moment the hand is dealt — that reveal has to
+ *  be withheld from the data itself, not just from how it is drawn, since it is the drill's own
+ *  answer key. A bystander (any seat that never declared) isn't part of the answer being graded,
+ *  so it carries real data like every other trainer's opponents do — `showOpponentHands` alone
+ *  decides whether the page actually draws it, same as `concealed` everywhere else. */
 function boardHandsOf(core: RoundCore, finished: boolean): ParsedTile[][] {
+  const threats = new Set(riichiSeats(core.match))
   return core.match.players.map((player, seat) => {
-    if (seat === core.seatIndex || finished) return concealedTiles(player)
+    if (seat === core.seatIndex || finished || !threats.has(seat)) return concealedTiles(player)
     return concealedTiles(player).map(() => BACK_TILE)
   })
 }
@@ -568,7 +572,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       win: undefined,
       wall: [],
       round: HONOR,
-      threatSeats: [],
+      threatSeats: [] as number[],
       lastResult: null,
       results: [],
       finished: false,
