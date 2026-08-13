@@ -1,8 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "copy-link-button-broken-lan: The app's \"Copy Link\" button (CopyLinkButton) does not work when the dev server is run with `npm run dev -- --host` and accessed from a LAN IP instead of localhost. Reported twice in UAT (G-01-6 generic, G-01-8 on /lab page) — likely same root cause."
 created: 2026-08-13T00:00:00Z
-updated: 2026-08-13T00:00:00Z
+updated: 2026-08-13T13:15:00Z
+resolved_by: src/lib/clipboard.ts (shared copyText() helper with execCommand fallback); commit 6cdc44f
 ---
 
 ## Current Focus

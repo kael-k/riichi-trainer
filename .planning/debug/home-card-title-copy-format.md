@@ -1,8 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "UAT feedback (phase 01-table-architecture-centralization, test 2) asked for a small copy tweak to the two efficiency trainer cards on the home page. Locate exact current strings and confirm exactly what needs to change and where (all four locale files)."
 created: 2026-08-13T00:00:00Z
-updated: 2026-08-13T00:00:00Z
+updated: 2026-08-13T13:15:00Z
+resolved_by: en/it/ja/zh.json trainer.efficiency*.title dash-suffix edits; commit bac6198
 ---
 
 ## Current Focus
