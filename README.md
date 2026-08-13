@@ -6,13 +6,13 @@ Mobile-first riichi mahjong trainer: efficiency (discard/ukeire), shanten, scori
 
 [Euophrys/Riichi-Trainer](https://github.com/Euophrys/Riichi-Trainer) is a good existing tool but unmaintained, and has concrete gaps this project targets:
 
-1. Not responsive — hard to use on phone — _addressed: mobile-first layout_
-2. Clunky settings UI — _addressed: per-trainer settings dialog_
-3. Efficiency trainer can load a hand but not the wall/river, so specific situations aren't reproducible — _addressed: situation URLs pin hand, wall and rivers (see below)_
-4. Ukeire is shown as a number, not as the actual improving tiles — _addressed: improving tiles shown with remaining counts_
-5. Shanten trainer's number input doesn't submit on Enter — _addressed_
-6. Shanten trainer timer starts on first guess instead of on reveal — _addressed: starts on reveal, millisecond precision, with a running average_
-7. No integrated scoring trainer (cf. [scoringtrainer.konbamwa.net](https://scoringtrainer.konbamwa.net/)) — _addressed: han/fu/points drills with a timer and running average, an exact-fu grading option, opt-in yaku/fu breakdowns, open hands, sanma, and situation links (alpha — see below)_
+1. Not responsive
+2. Clunky settings UI
+3. Efficiency trainer can load a hand but not the wall/river, so specific situations aren't reproducible
+4. Ukeire is shown as a number, not as the actual improving tiles
+5. Shanten trainer's number input doesn't submit on Enter
+6. Shanten trainer timer starts on first guess instead of on reveal
+7. No integrated scoring trainer (cf. [scoringtrainer.konbamwa.net](https://scoringtrainer.konbamwa.net/))
 
 ## Modes
 
