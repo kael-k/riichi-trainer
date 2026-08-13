@@ -102,12 +102,15 @@ pass/fail score the session carries partial credit per throw, `(worst - yours) /
 `dangerScore` (`danger.ts`) across the tiles that hand held — `useSessionStats.record` takes it as
 an optional third argument and averages it into `averageQuality`.
 
-Two rules the UI must keep: the threat's hand is revealed **only once the hand is over** (showing it
-after turn one hands over every turn still to come), and no tier below `genbutsu` may ever read as
-"safe" — suji only ever spoke about ryanmen, and a wall only about runs. Both are why
-`folding.caveat.*` exists. Per §8 decisions: fold-only (no push control — grading push/fold needs an
-EV model this codebase does not have), no danger markers before the answer, threats configurable up
-to `players - 1`.
+Two rules the UI must keep: a *threat's* hand is revealed **only once the hand is over** (showing it
+after turn one hands over every turn still to come) — a non-threat bystander isn't the drill's
+answer key, so it carries real tiles throughout and follows `showOpponentHands` live like any other
+trainer's opponents — and no tier below `genbutsu` may ever read as "safe": suji only ever spoke
+about ryanmen, and a wall only about runs. The per-discard feedback (`FoldFeedback.tsx`) names only
+the tier (with a glossary popover on genbutsu/suji) — it does not spell out why in a sentence of its
+own, trusting the glossary entry to carry that instead. Per §8 decisions: fold-only (no push
+control — grading push/fold needs an EV model this codebase does not have), no danger markers before
+the answer, threats configurable up to `players - 1`.
 
 ### Tenhou notation + situation URLs (the shared DSL)
 
