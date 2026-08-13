@@ -1,35 +1,44 @@
 ---
 phase: 01-table-architecture-centralization
 verified: 2026-08-13T09:35:40Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Start a folding drill with every reveal setting (show opponent hands / hide concealed hands / show wall) turned on."
     expected: "Threats' seats show face-down backs of the correct tile count and no real faces until the hand ends; the reveal panel then shows the real hands."
     why_human: "Visual/interaction confirmation of the rendered board — the data-layer gate (`boardHands`) is behaviorally tested, but the plan itself (01-04) calls out the on-screen result as a human-check item."
+
   - test: "Open the home page and visually confirm the Solitaire heading over two cards (efficiency-solo, shanten) and the Table heading over four cards (efficiency, folding, scoring, lab); open `/efficiency-solo` and confirm no board renders, open `/efficiency` and confirm the board renders."
     expected: "Two-heading layout with the correct card counts; efficiency-solo shows a flat hand-only layout, efficiency shows the table board."
     why_human: "Layout/copy legibility — plan 01-05's own acceptance criteria mark this a human-check item."
+
   - test: "On a phone-width viewport, open `/efficiency-solo`."
     expected: "Hand, river and controls fit without a board; every interactive control is at least 44px tall."
     why_human: "Responsive layout at a specific viewport width — not assertable from a unit test."
+
   - test: "Toggle the global 'show opponent hands' setting on; check the efficiency board, the scoring board, and a folding board mid-drill."
     expected: "Efficiency and scoring boards reveal opponents' tiles; the folding board still shows only face-down backs until the hand ends."
     why_human: "Cross-page visual confirmation that the settings resolver's per-page wiring behaves as the data-level tests predict."
+
   - test: "Open the settings panel from the home page and from each trainer."
     expected: "Every row still works; nothing asks for a third 'inherit' state; the wall-reveal row appears only when Advanced is on."
     why_human: "UI/UX confirmation of the settings dialog after the schema migration — plan 01-06's own human-check item."
+
   - test: "In the statistical lab, paste/load a wall string that fails validation (e.g. `wall=11111m`)."
     expected: "One inline red sentence names the offending zone and tile; the board stays empty; nothing is silently loaded."
     why_human: "Rendered error text and layout — plan 01-07's own human-check item."
+
   - test: "In the statistical lab, load a full wall on a phone-width viewport."
     expected: "The 30-plus ranking rows scroll inside their own height-capped box; the board and hand stay on screen."
     why_human: "Responsive/scroll behavior at a specific viewport — not assertable from a unit test."
+
   - test: "Copy a wall link out of the table efficiency trainer (`/efficiency`) and open it in the statistical lab (`/lab`)."
     expected: "The identical board appears in the lab, with the full ranking and full danger-tier list for the same hand."
     why_human: "This is the literal wording of ROADMAP Success Criterion #2. The shared `decodeSituation`/`encodeSituation` codec and `situationQuery()` wiring are confirmed by code trace and unit tests (both consumers round-trip through the same `Situation.wall` field), but no automated cross-page browser test exercises the actual link-copy-and-paste flow between the two routes."
+
   - test: "Switch the app to dark mode and reload the lab."
     expected: "The error sentence, the two lists, and the board all read correctly with no new colour introduced."
     why_human: "Visual theme check — plan 01-07's own human-check item."
@@ -120,6 +129,7 @@ than gaps:
   theoretical first-paint flash if React yields between commit and the passive effect. Does not
   affect any tested behavior (every existing assertion runs after the effect settles) and does not
   violate D-06 (replay-callback suppression, which is a separate, correctly-guarded path).
+
 - **WR-02 (reproduced by direct probe):** `wallWithHand(seat, hand, sanma, aka, seed)` can silently
   drop a promised red five. Probed directly: `wallWithHand(0, parseTenhou('55p123456789m11z'),
   false, true, seed)` across 20 seeds produced exactly 1 red tile instead of the 3 `aka: true`
@@ -156,6 +166,19 @@ explicitly called out across 4 of the 7 plans (01-04, 01-05, 01-06, 01-07) and n
 resolved in any SUMMARY, remain open — including the literal wording of Success Criterion #2
 (lab-to-efficiency link round trip), which this verification confirmed at the code/wiring level
 but did not exercise as a live browser flow.
+
+## UAT Follow-Up (2026-08-13)
+
+8 of 9 human-verification items ran as UAT (`01-UAT.md`). 3 gaps found (G-01-2 title copy,
+G-01-6/G-01-8 clipboard-broken-on-insecure-context), fixed and re-tested — all now pass. Status
+updated to `passed` above.
+
+## Acknowledged Gaps
+
+- **Test 7 — lab phone-width scroll behavior**: skipped, not tested. User call: statistical lab's
+  UI/UX is out of scope for this phase (the core deliverable is `core/table.ts` + `Table`
+  component); lab refinement deferred to a future sprint. Does not block phase 1 completion.
+  Tracked in `01-UAT.md` Deferred Follow-Ups and `ROADMAP.md` backlog if promoted.
 
 ---
 
