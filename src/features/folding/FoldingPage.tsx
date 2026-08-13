@@ -223,6 +223,7 @@ export function FoldingPage() {
             round={WINDS[round.round - HONOR]}
             doraIndicators={round.doraIndicators}
             wallCount={round.liveWall.length}
+            wallTotal={round.liveWallSnapshot.length}
           />
 
           <div className="flex min-w-0 flex-1 flex-col gap-4">

@@ -297,6 +297,7 @@ export function ScoringPage() {
               doraIndicators={round.situation.doraIndicators.map((id) => ({ id, red: false }))}
               uraIndicators={round.situation.uraIndicators.map((id) => ({ id, red: false }))}
               wallCount={round.match?.liveWall.length}
+              wallTotal={round.match?.liveWallSnapshot.length}
               honba={round.situation.honba}
             >
               {tableFlagBadges.length > 0 && (
