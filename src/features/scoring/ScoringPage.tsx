@@ -15,6 +15,7 @@ import { useTermName } from '../i18n/useTermName'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
+import { useTableSettings } from '../settings/tableSettings'
 import { ScoreBreakdown } from './ScoreBreakdown'
 import { decodeScoringUrl } from './scoringUrl'
 import { useUrlData } from '../situation/useUrlData'
@@ -100,9 +101,8 @@ export function ScoringPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const advanced = useSettings((s) => s.advanced)
-  const { aka, showWall, exactFu } = useAdvancedSettings()
-  const showOpponentHands = useSettings((s) => s.showOpponentHands)
-  const hideConcealedHands = useSettings((s) => s.hideConcealedHands)
+  const { aka, exactFu } = useAdvancedSettings()
+  const { showWall, showOpponentHands, hideConcealedHands } = useTableSettings('scoring')
 
   // the scoring section supplies the round's options, but a link can pin the rules the match was
   // simulated under — without them the same seed would replay into a different hand. exactFu is

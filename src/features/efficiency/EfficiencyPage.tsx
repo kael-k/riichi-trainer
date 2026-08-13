@@ -11,6 +11,7 @@ import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
+import { useTableSettings, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { DiscardFeedback } from './DiscardFeedback'
@@ -25,20 +26,28 @@ export function EfficiencyPage() {
   const { t } = useTranslation()
   const situation = useUrlData(decodeSituation)
   const settings = useSettings((s) => s.efficiency)
+  const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const { aka, showWall } = useAdvancedSettings()
-  const showOpponentHands = useSettings((s) => s.showOpponentHands)
-  const hideConcealedHands = useSettings((s) => s.hideConcealedHands)
+  const { aka } = useAdvancedSettings()
+  const { deadWall, showWall, showOpponentHands, hideConcealedHands } =
+    useTableSettings('efficiency')
+  // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
+  // replace the whole apps layer instead of adding one app's key to it — merge the existing
+  // `apps.efficiency` slice in first.
+  const updateTable = (patch: Partial<TableSettings>) =>
+    update('table', {
+      apps: { ...rawTable.apps, efficiency: { ...rawTable.apps.efficiency, ...patch } },
+    })
 
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<RoundOptions>(
     () => ({
-      deadWall: situation.deadWall ?? settings.deadWall,
+      deadWall: situation.deadWall ?? deadWall,
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
     }),
-    [situation, settings.deadWall, aka, sanma],
+    [situation, deadWall, aka, sanma],
   )
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
@@ -97,7 +106,14 @@ export function EfficiencyPage() {
               components={{ term: <GlossaryTerm id="ukeire" /> }}
             />,
           )}
-          {toggle('deadWall', t('efficiency.settings.deadWall'))}
+          <SettingRow label={t('efficiency.settings.deadWall')}>
+            <input
+              type="checkbox"
+              checked={deadWall}
+              onChange={(e) => updateTable({ deadWall: e.target.checked })}
+              className="size-5"
+            />
+          </SettingRow>
         </>
       }
     >

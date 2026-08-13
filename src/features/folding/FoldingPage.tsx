@@ -8,8 +8,8 @@ import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
-import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
+import { useTableSettings, type TableSettings } from '../settings/tableSettings'
 import { WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { FoldFeedback } from './FoldFeedback'
@@ -61,24 +61,29 @@ export function FoldingPage() {
   const { t } = useTranslation()
   const urlData = useUrlData(decodeFoldingUrl)
   const settings = useSettings((s) => s.folding)
+  const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const { showWall } = useAdvancedSettings()
   // no hideConcealedHands here: folding always shows the board (reading it is the drill), and the
   // D-14 reveal gate below already withholds real tile ids until `round.finished` regardless of
   // any setting
-  const showOpponentHands = useSettings((s) => s.showOpponentHands)
+  const { showWall, showOpponentHands, threats, opponentWins } = useTableSettings('folding')
+  // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
+  // replace the whole apps layer instead of adding one app's key to it — merge the existing
+  // `apps.folding` slice in first.
+  const updateTable = (patch: Partial<TableSettings>) =>
+    update('table', { apps: { ...rawTable.apps, folding: { ...rawTable.apps.folding, ...patch } } })
 
   const options = useMemo<RoundOptions>(() => {
     const isSanma = urlData.sanma ?? sanma
     return {
       ...settings,
       sanma: isSanma,
-      opponentWins: urlData.wins ?? settings.opponentWins,
+      opponentWins: urlData.wins ?? opponentWins,
       // one seat has to be left to fold; a link can pin a count this table cannot seat
-      threats: Math.min(urlData.threats ?? settings.threats, (isSanma ? 3 : 4) - 1),
+      threats: Math.min(urlData.threats ?? threats, (isSanma ? 3 : 4) - 1),
     }
-  }, [urlData, sanma, settings])
+  }, [urlData, sanma, settings, threats, opponentWins])
 
   const round = useFoldingRound(urlData, options)
   const players = options.sanma ? 3 : 4
@@ -112,15 +117,15 @@ export function FoldingPage() {
       <SettingRow label={t('folding.settings.opponentWins')}>
         <input
           type="checkbox"
-          checked={settings.opponentWins}
-          onChange={(e) => update('folding', { opponentWins: e.target.checked })}
+          checked={opponentWins}
+          onChange={(e) => updateTable({ opponentWins: e.target.checked })}
           className="size-5"
         />
       </SettingRow>
       <SettingRow label={t('folding.settings.threats')}>
         <select
-          value={Math.min(settings.threats, players - 1)}
-          onChange={(e) => update('folding', { threats: Number(e.target.value) })}
+          value={Math.min(threats, players - 1)}
+          onChange={(e) => updateTable({ threats: Number(e.target.value) })}
           className="min-h-11 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
         >
           {Array.from({ length: players - 1 }, (_, i) => i + 1).map((n) => (

@@ -35,8 +35,14 @@ import { resolveSanma } from '../situation/urlCodec'
 import type { Settings } from '../settings/settingsStore'
 
 /** The folding settings section plus the ruleset the round runs under (which a link can pin, so
- *  it is not a plain setting). */
-export type RoundOptions = Settings['folding'] & { sanma: boolean }
+ *  it is not a plain setting) and the two table settings (`threats`, `opponentWins`) that moved
+ *  out of `Settings['folding']` into the shared `table` section (`tableSettings.ts`, REQ-04) but
+ *  are still resolved per-round here, same as before the move. */
+export type RoundOptions = Settings['folding'] & {
+  sanma: boolean
+  threats: number
+  opponentWins: boolean
+}
 
 export interface FoldingUrl {
   /** Explicit wall in draw order, same format as the situation codec's — the board a link shares
