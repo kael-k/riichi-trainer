@@ -87,6 +87,11 @@
     "folding": {
       "title": "防守（betaori）训练",
       "desc": "有人立直了。选出最不容易放铳的牌。"
+    },
+    "lab": {
+      "title": "统计实验室",
+      "desc": "载入或搭建任意手牌，查看完整排行——每种出牌的上听数与进张，以及每张牌的危险等级。",
+      "intro": "载入共享牌山，或自己逐张搭建手牌。只操作自己的出牌，对手始终自动行动。不计分——显示每种出牌的完整进张排行，以及每张牌的完整危险等级明细，正是其他训练器只展示一小部分的那些数据。"
     }
   },
   "efficiency": {
@@ -327,9 +332,33 @@
       "threats": "要防守的立直数"
     }
   },
+  "lab": {
+    "wallInputLabel": "牌山(天凤记法)",
+    "loadWall": "载入牌山",
+    "buildWall": "生成牌山",
+    "resetWall": "重置牌山",
+    "empty": "尚未载入手牌。载入共享链接或生成一个牌山即可查看完整分析。",
+    "error": "此牌山链接无效：{{zone}}存在{{detail}}。",
+    "zone": {
+      "hand": "某位玩家的手牌",
+      "wall": "牌山",
+      "deadWall": "死墙"
+    },
+    "reason": {
+      "length": "牌数过多",
+      "copies": "{{tile}}的张数不正确",
+      "red": "{{tile}}的赤宝牌标记无效",
+      "tileSet": "不属于当前规则的牌({{tile}})"
+    },
+    "ranking": "出牌排行",
+    "danger": "危险等级"
+  },
   "log": {
     "rewound": "已撤回到第 {{number}} 条记录",
     "replay": "回放：打出 {{tile}}",
+    "lab": {
+      "discard": "第{{turn}}巡: 打出{{tile}}"
+    },
     "folding": {
       "safe": "第 {{turn}} 巡: 打出 {{tile}}——{{tier}}，当前最安全",
       "risky": "第 {{turn}} 巡: 打出 {{tile}}（{{tier}}）; {{best}} 更安全（{{bestTier}}）",

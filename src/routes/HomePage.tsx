@@ -50,6 +50,13 @@ const TABLE_MODES = [
     introKey: 'trainer.scoring.intro',
     wikiUrl: TRAINER_WIKI.scoring,
   },
+  {
+    to: '/lab',
+    titleKey: 'trainer.lab.title',
+    descKey: 'trainer.lab.desc',
+    introKey: 'trainer.lab.intro',
+    wikiUrl: TRAINER_WIKI.lab,
+  },
 ] as const
 
 type Mode = (typeof SOLITAIRE_MODES)[number] | (typeof TABLE_MODES)[number]

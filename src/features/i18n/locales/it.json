@@ -131,6 +131,11 @@
       "title": "Trainer difensivo",
       "desc": "Qualcuno ha dichiarato riichi. Scegli il tile più sicuro da scartare.",
       "intro": "Un avversario ha dichiarato riichi e non sei in condizione di attaccare. Scegli lo scarto con minor probabilità di entrare nella sua mano, usando solo informazioni pubbliche (i suoi scarti e quelli di tutti gli altri) — mai quello che sta davvero tenendo in mano."
+    },
+    "lab": {
+      "title": "Laboratorio statistico",
+      "desc": "Carica o costruisci qualsiasi mano e guarda la classifica completa — shanten e ukeire di ogni scarto, livello di pericolo di ogni tessera.",
+      "intro": "Carica un muro condiviso o costruisci la tua mano, tessera per tessera. Giochi solo i tuoi scarti — gli avversari giocano sempre da soli. Niente viene valutato: vengono mostrate la classifica ukeire completa di ogni scarto e la scomposizione completa del livello di pericolo di ogni tessera, gli stessi numeri che gli altri trainer calcolano e ti mostrano solo in parte."
     }
   },
   "efficiency": {
@@ -426,9 +431,33 @@
       "threats": "Riichi contro cui difendersi"
     }
   },
+  "lab": {
+    "wallInputLabel": "Muro (notazione tenhou)",
+    "loadWall": "Carica muro",
+    "buildWall": "Costruisci muro",
+    "resetWall": "Azzera muro",
+    "empty": "Nessuna mano caricata. Carica un link con un muro condiviso o costruiscine uno per vedere l'analisi completa.",
+    "error": "Quel link del muro non è valido: {{zone}} ha {{detail}}.",
+    "zone": {
+      "hand": "la mano di un giocatore",
+      "wall": "il muro",
+      "deadWall": "il muro morto"
+    },
+    "reason": {
+      "length": "troppe tessere",
+      "copies": "un numero di copie non valido di {{tile}}",
+      "red": "un contrassegno di cinque rosso non valido su {{tile}}",
+      "tileSet": "una tessera che non fa parte di questo regolamento ({{tile}})"
+    },
+    "ranking": "Classifica scarti",
+    "danger": "Livelli di pericolo"
+  },
   "log": {
     "rewound": "Tornato indietro alla voce {{number}}",
     "replay": "Scarto ripetuto {{tile}}",
+    "lab": {
+      "discard": "Turno {{turn}}: scartato {{tile}}"
+    },
     "folding": {
       "safe": "Turno {{turn}}: scartato {{tile}} — {{tier}}, il più sicuro disponibile",
       "risky": "Turno {{turn}}: scartato {{tile}} ({{tier}}); {{best}} era più sicuro ({{bestTier}})",

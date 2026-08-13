@@ -131,6 +131,11 @@
       "title": "Folding trainer",
       "desc": "Someone declared riichi. Pick the safest tile to throw.",
       "intro": "An opponent has declared riichi and you're not in a position to push. Pick the discard least likely to deal into their hand, using only public information (their discards and everyone else's) — never what they're actually holding."
+    },
+    "lab": {
+      "title": "Statistical lab",
+      "desc": "Load or build any hand and see the full ranking — every discard's shanten and ukeire, every tile's danger tier.",
+      "intro": "Load a shared wall or build your own hand, tile by tile. Play only your own discards — opponents always play themselves. Nothing is graded: every discard's full ukeire ranking and every tile's full danger-tier breakdown are shown, the same numbers the other trainers compute and only show you a sliver of."
     }
   },
   "efficiency": {
@@ -426,9 +431,33 @@
       "threats": "Riichi to fold against"
     }
   },
+  "lab": {
+    "wallInputLabel": "Wall (tenhou notation)",
+    "loadWall": "Load wall",
+    "buildWall": "Build wall",
+    "resetWall": "Reset wall",
+    "empty": "No hand loaded. Load a shared wall link or build one to see its full analysis.",
+    "error": "That wall link isn't valid: {{zone}} has {{detail}}.",
+    "zone": {
+      "hand": "a seat's hand",
+      "wall": "the wall",
+      "deadWall": "the dead wall"
+    },
+    "reason": {
+      "length": "too many tiles",
+      "copies": "an invalid number of copies of {{tile}}",
+      "red": "an invalid red-five marking on {{tile}}",
+      "tileSet": "a tile that isn't part of this ruleset ({{tile}})"
+    },
+    "ranking": "Discard ranking",
+    "danger": "Danger tiers"
+  },
   "log": {
     "rewound": "Rewound to entry {{number}}",
     "replay": "Replayed discard {{tile}}",
+    "lab": {
+      "discard": "Turn {{turn}}: discarded {{tile}}"
+    },
     "folding": {
       "safe": "Turn {{turn}}: threw {{tile}} — {{tier}}, the safest available",
       "risky": "Turn {{turn}}: threw {{tile}} ({{tier}}); {{best}} was safer ({{bestTier}})",
