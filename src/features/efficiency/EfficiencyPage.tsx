@@ -5,13 +5,13 @@ import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerLayout } from '../../components/TrainerLayout'
-import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Tile'
+import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsed, formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
-import { decodeSituation, WINDS } from '../situation/urlCodec'
+import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { DiscardFeedback } from './DiscardFeedback'
 import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
@@ -34,12 +34,11 @@ export function EfficiencyPage() {
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<RoundOptions>(
     () => ({
-      opponents: situation.opponents ?? settings.opponents,
       deadWall: situation.deadWall ?? settings.deadWall,
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
     }),
-    [situation, settings.opponents, settings.deadWall, aka, sanma],
+    [situation, settings.deadWall, aka, sanma],
   )
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
@@ -50,9 +49,6 @@ export function EfficiencyPage() {
   if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
   const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
 
-  // the table only earns its space once there are other rivers to read; without opponents the
-  // round is a solo drill and the flat layout says the same thing in a fraction of the height
-  const showTable = options.opponents
   const seats: SeatView[] = round.rivers.map((river, seat) =>
     seat === round.seatIndex
       ? {
@@ -101,7 +97,6 @@ export function EfficiencyPage() {
               components={{ term: <GlossaryTerm id="ukeire" /> }}
             />,
           )}
-          {toggle('opponents', t('efficiency.settings.opponents'))}
           {toggle('deadWall', t('efficiency.settings.deadWall'))}
         </>
       }
@@ -124,18 +119,7 @@ export function EfficiencyPage() {
               </button>
             </span>
           )}
-          {/* both live in the table's centre panel when it is up */}
-          {!showTable && (
-            <span>{t('efficiency.wallStatus', { count: round.liveWall.length })}</span>
-          )}
-          {!showTable && round.doraIndicators.length > 0 && (
-            <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-              <GlossaryTerm id="dora">{t('efficiency.doraIndicator')}</GlossaryTerm>{' '}
-              {round.doraIndicators.map((indicator, i) => (
-                <Tile key={i} id={indicator.id} red={indicator.red} />
-              ))}
-            </span>
-          )}
+          {/* both live in the table's own centre panel */}
           <span className="ml-auto flex flex-col items-end">
             <span>
               <Trans
@@ -157,15 +141,13 @@ export function EfficiencyPage() {
         {/* stacked normally; beside the board when the viewport is too short to stack, which is
             what makes turning the phone sideways actually pay off */}
         <div className="flex flex-col gap-4 short:flex-row short:items-start">
-          {showTable && (
-            <Table
-              seats={seats}
-              seatIndex={round.seatIndex}
-              round={situation.round}
-              doraIndicators={round.doraIndicators}
-              wallCount={round.liveWall.length}
-            />
-          )}
+          <Table
+            seats={seats}
+            seatIndex={round.seatIndex}
+            round={situation.round}
+            doraIndicators={round.doraIndicators}
+            wallCount={round.liveWall.length}
+          />
 
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <HandDisplay
@@ -231,34 +213,6 @@ export function EfficiencyPage() {
                 >
                   {t('common.newRound')}
                 </button>
-              </div>
-            )}
-
-            {/* no opponents means every other river is empty, so only yours is worth the space */}
-            {!showTable && (
-              <div className="flex flex-wrap gap-4 [--tile-w:calc(var(--tile-w-base)*0.8)]">
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-neutral-500">
-                    {t(`wind.${WINDS[round.seatIndex]}`)} {t('efficiency.you')}
-                  </span>
-                  {round.rivers[round.seatIndex].length > 0 ? (
-                    <River tiles={round.rivers[round.seatIndex]} />
-                  ) : (
-                    <span className="text-xs text-neutral-400">{t('efficiency.emptyRiver')}</span>
-                  )}
-                </div>
-                {options.sanma && round.nuki.length > 0 && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-neutral-500">{t('efficiency.nukiPile')}</span>
-                    <River tiles={round.nuki} />
-                  </div>
-                )}
-                {round.kans.length > 0 && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-neutral-500">{t('efficiency.kanPile')}</span>
-                    <River tiles={round.kans.flat()} />
-                  </div>
-                )}
               </div>
             )}
 
