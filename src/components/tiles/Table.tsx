@@ -53,12 +53,15 @@ const SLOTS = [
 /** Sanma seats the third player on your left, not opposite: there is no toimen. */
 const SEAT_SLOTS: Record<number, number[]> = { 3: [0, 1, 3], 4: [0, 1, 2, 3] }
 
-/** Where each seat's wind mark sits on the centre box — against the edge facing that seat. */
+/** Where each seat's wind mark sits on the centre box — near the edge facing that seat, but
+ *  pulled in a little rather than flush against it: a declaring seat's riichi stick sits just
+ *  outside that same edge (nearest the centre, by design), and flush-against-the-edge collided
+ *  with it. */
 const WIND_MARKS = [
-  'bottom-0 left-1/2 -translate-x-1/2',
-  'right-0 top-1/2 -translate-y-1/2',
-  'top-0 left-1/2 -translate-x-1/2',
-  'left-0 top-1/2 -translate-y-1/2',
+  'bottom-[6%] left-1/2 -translate-x-1/2',
+  'right-[6%] top-1/2 -translate-y-1/2',
+  'top-[6%] left-1/2 -translate-x-1/2',
+  'left-[6%] top-1/2 -translate-y-1/2',
 ]
 
 /** A real dead wall always shows five indicator slots; a kan flips the next one. The unflipped
