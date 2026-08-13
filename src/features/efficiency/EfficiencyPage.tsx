@@ -224,6 +224,11 @@ export function EfficiencyPage() {
                     accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
                   })}
                 </p>
+                {settings.timerEnabled && (
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    {t('efficiency.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={round.restart}

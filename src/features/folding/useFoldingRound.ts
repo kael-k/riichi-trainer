@@ -405,6 +405,10 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   const loggedReplay = useRef<FoldingUrl>(undefined)
   // rows waiting for the hand to end, under `feedbackAtEnd`; see `writeLog`
   const held = useRef<[string, Record<string, unknown>, ParsedTile[], string][]>([])
+  // graded discards made in *this* hand, for the end-of-hand panel's own average — distinct from
+  // `stats.averageTime`, which keeps running across every hand until the log is cleared
+  const roundActionCount = useRef(0)
+  const roundTotalMs = useRef(0)
 
   useEffect(() => {
     const id = ++request.current
@@ -442,6 +446,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       roundBoard.current = { ...board, threats: result.threats }
       logReplay(result.core)
       stats.startClock()
+      roundActionCount.current = 0
+      roundTotalMs.current = 0
       setState(snapshot(result.core, options.sanma))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -514,6 +520,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       situationBefore,
     )
     stats.record(correct, elapsed, quality)
+    roundActionCount.current++
+    roundTotalMs.current += elapsed
 
     advanceAfterDiscard(r, tile)
     const next = snapshot(r, options.sanma, state)
@@ -586,6 +594,10 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     correctCount: stats.correctCount,
     totalCount: stats.totalCount,
     averageTime: stats.averageTime,
+    /** Mean time per graded discard in *this* hand alone, ms — what the end-of-hand panel shows,
+     *  as opposed to `averageTime`'s running session mean. */
+    roundAverageTime:
+      roundActionCount.current > 0 ? roundTotalMs.current / roundActionCount.current : 0,
     /** Mean partial credit across the session's throws, 0-1 — how safe your discards were
      *  relative to the safest and the most dangerous tile each hand actually held. */
     accuracy: stats.averageQuality,

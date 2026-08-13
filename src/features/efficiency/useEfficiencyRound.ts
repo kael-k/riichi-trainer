@@ -67,10 +67,14 @@ export function useEfficiencyRound(
   )
   // the situation whose replayed river is already on the log; see `logReplay`
   const loggedReplay = useRef<Situation>(undefined)
+  // graded choices made in *this* round, for the round-complete panel's own average — distinct
+  // from `stats.averageTime`, which keeps running across every round until the log is cleared
+  const roundActionCount = useRef(0)
 
   function recordChoice(result: TurnResult) {
     stats.record(result.grade !== 'error', (elapsed - lastChoiceElapsed.current) * 1000)
     lastChoiceElapsed.current = elapsed
+    roundActionCount.current++
   }
 
   function writeRows(
@@ -147,6 +151,7 @@ export function useEfficiencyRound(
     setElapsed(0)
     setPaused(false)
     lastChoiceElapsed.current = 0
+    roundActionCount.current = 0
     pending.current = undefined
     logReplay()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,6 +199,10 @@ export function useEfficiencyRound(
     elapsed,
     paused,
     averageTime: stats.averageTime,
+    /** Mean time per graded choice in *this* round alone, ms — what the round-complete panel
+     *  shows, as opposed to `averageTime`'s running session mean. */
+    roundAverageTime:
+      roundActionCount.current > 0 ? (elapsed * 1000) / roundActionCount.current : 0,
     discard: table.discard,
     kita: table.kita,
     kan: table.kan,
