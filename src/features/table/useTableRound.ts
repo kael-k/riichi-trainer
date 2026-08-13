@@ -143,10 +143,15 @@ export function useTableRound(input: TableRoundInput) {
     setRestartCount(0)
   }
 
-  /** Stashes `analysisOf(core)` for the seat's current 14-tile hand and fires `onUserDraw` (unless
-   *  replaying). A no-op past the end of the hand or mid-tenpai-stop, where the seat never reaches
-   *  14 tiles again. */
-  function fireDraw(c: TableCore): void {
+  /** Stashes `analysisOf(core)` for the seat's current 14-tile hand — always, regardless of
+   *  `notify` — and fires `onUserDraw` only when both `notify` and not replaying. The two are
+   *  split because StrictMode double-invokes the mount effect below: its second, redundant
+   *  `buildRound()` call still moves `core.current` on to a fresh (possibly differently-dealt)
+   *  match, and `drawAnalysis.current` has to move with it every time or a discard grades against
+   *  the wrong hand's analysis — only the external callback itself may be deduped to one firing
+   *  per distinct build. A no-op past the end of the hand or mid-tenpai-stop, where the seat never
+   *  reaches 14 tiles again. */
+  function fireDraw(c: TableCore, notify = true): void {
     const player = you(c)
     if (c.match.ended || tileCount(player.hand) !== 14) {
       drawAnalysis.current = undefined
@@ -154,7 +159,7 @@ export function useTableRound(input: TableRoundInput) {
     }
     const analysis = analysisOf(c)
     drawAnalysis.current = analysis
-    if (!replaying.current) {
+    if (notify && !replaying.current) {
       input.onUserDraw?.({ turn: c.match.turn, drawn: c.match.drawn, analysis })
     }
   }
@@ -226,10 +231,13 @@ export function useTableRound(input: TableRoundInput) {
     setSnapshot(snap)
     const c = core.current!
     const already = builtFor.current?.wall === input.wall && builtFor.current?.count === restartCount
-    if (!already) {
-      builtFor.current = { wall: input.wall, count: restartCount }
-      if (c.match.win) input.onAgariCall?.(c.match.win)
-      else fireDraw(c)
+    if (!already) builtFor.current = { wall: input.wall, count: restartCount }
+    // fireDraw's analysis cache has to track *this* call's build every time, even on the
+    // deduped repeat: only the external onAgariCall/onUserDraw callback itself is skipped there
+    if (c.match.win) {
+      if (!already) input.onAgariCall?.(c.match.win)
+    } else {
+      fireDraw(c, !already)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
