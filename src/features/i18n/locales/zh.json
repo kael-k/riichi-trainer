@@ -274,7 +274,6 @@
   "folding": {
     "dealing": "正在寻找牌局…",
     "noHand": "没有找到适合练习的牌局。请再发一局。",
-    "prompt_other": "{{winds}}已立直。打出最不容易放铳的牌。是否该防守不计分——只看你用哪张牌防守。",
     "turnStatus": "第 {{turn}} 巡",
     "score": "最安全: {{correct}} / {{total}}",
     "accuracy": "准确率 {{percent}}%",

@@ -274,7 +274,6 @@
   "folding": {
     "dealing": "局面を探しています…",
     "noHand": "練習になる局面が見つかりませんでした。もう一度配牌してください。",
-    "prompt_other": "{{winds}}がリーチ。放銃しにくい牌を切ろう。オリるべきかどうかは採点しない——どの牌でオリるかだけを見る。",
     "turnStatus": "{{turn}}巡目",
     "score": "最安全: {{correct}} / {{total}}",
     "accuracy": "精度 {{percent}}%",

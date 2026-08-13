@@ -371,8 +371,6 @@
   "folding": {
     "dealing": "Looking for a hand…",
     "noHand": "No hand came up that was worth drilling. Try another deal.",
-    "prompt_one": "{{winds}} is in riichi. Fold: throw the tile least likely to deal in. Whether folding is right is not graded — only which tile you fold with.",
-    "prompt_other": "{{winds}} are in riichi. Fold: throw the tile least likely to deal in. Whether folding is right is not graded — only which tile you fold with.",
     "turnStatus": "Turn {{turn}}",
     "score": "Safest: {{correct}} / {{total}}",
     "accuracy": "accuracy {{percent}}%",

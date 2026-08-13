@@ -371,8 +371,6 @@
   "folding": {
     "dealing": "Cerco una mano…",
     "noHand": "Nessuna mano adatta all’esercizio. Prova un altro giro.",
-    "prompt_one": "{{winds}} è in riichi. Scarta il tile con meno probabilità di dare ron. Non viene valutato *se* difendersi sia giusto: solo con quale tile lo fai.",
-    "prompt_other": "{{winds}} sono in riichi. Scarta il tile con meno probabilità di dare ron. Non viene valutato *se* difendersi sia giusto: solo con quale tile lo fai.",
     "turnStatus": "Turno {{turn}}",
     "score": "Più sicuro: {{correct}} / {{total}}",
     "accuracy": "precisione {{percent}}%",

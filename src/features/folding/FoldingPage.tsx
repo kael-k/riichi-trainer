@@ -174,7 +174,6 @@ export function FoldingPage() {
       ? !(showOpponentHands && round.finished)
       : !showOpponentHands,
   }))
-  const threatWinds = round.threatSeats.map((seat) => t(`wind.${WINDS[seat]}`)).join(' · ')
   // everything that would tell you how the fold is going so far, held back mid-hand when asked
   const answersHeld = settings.feedbackAtEnd && !round.finished
 
@@ -212,12 +211,6 @@ export function FoldingPage() {
             )}
           </span>
         </div>
-
-        {/* says plainly what is being asked: this is a folding drill, and it grades the tile, not
-            the decision to fold. Anything vaguer invites the reader to think push/fold is scored */}
-        <p className="rounded-lg border border-amber-400 p-3 text-sm text-amber-700 dark:text-amber-400">
-          {t('folding.prompt', { count: round.threatSeats.length, winds: threatWinds })}
-        </p>
 
         {/* stacked normally; beside the board when the viewport is too short to stack, which is
             what makes turning the phone sideways actually pay off */}
