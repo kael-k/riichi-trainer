@@ -119,8 +119,10 @@ interface RoundState extends TableSnapshot {
   boardHands: ParsedTile[][]
 }
 
-/** Face-down filler: a back has no identity, and mid-hand the board must not be holding one. */
-const BACK_TILE: ParsedTile = { id: 0, red: false }
+/** Face-down filler: a back has no identity, and mid-hand the board must not be holding one.
+ *  Exported so the lab's own reveal gate (`useLabRound.ts`) reuses this exact filler rather than
+ *  redefining it — one definition of "no identity" for both trainers. */
+export const BACK_TILE: ParsedTile = { id: 0, red: false }
 
 /** Gating only a `concealed` display flag would leave the real tile ids sitting in the component
  *  props (inspectable via devtools) the moment the hand is dealt — the reveal has to be withheld
