@@ -12,6 +12,7 @@ import {
   type Locale,
   type Theme,
 } from './settingsStore'
+import { resolveTableSettings, type TableSettings } from './tableSettings'
 import { useShowTileNumbers } from './useShowTileNumbers'
 
 /** Labeled toggle row for settings dialogs. `label` takes a GlossaryTerm alongside its text on
@@ -89,14 +90,23 @@ export function GlobalSettings() {
   const setShowTsumogiri = useSettings((s) => s.setShowTsumogiri)
   const aka = useSettings((s) => s.aka)
   const setAka = useSettings((s) => s.setAka)
-  const showWall = useSettings((s) => s.showWall)
-  const setShowWall = useSettings((s) => s.setShowWall)
-  const showOpponentHands = useSettings((s) => s.showOpponentHands)
-  const setShowOpponentHands = useSettings((s) => s.setShowOpponentHands)
-  const hideConcealedHands = useSettings((s) => s.hideConcealedHands)
-  const setHideConcealedHands = useSettings((s) => s.setHideConcealedHands)
   const advanced = useSettings((s) => s.advanced)
   const setAdvanced = useSettings((s) => s.setAdvanced)
+  // this panel edits the *global* layer of the table settings; the per-app override layer has no
+  // UI this phase (absent key means inherit — a three-state control is not needed). `'efficiency'`
+  // is an arbitrary representative app id: every field read here is resolved off `global` alone,
+  // so which app id is passed only matters for a field that had a per-app override, and none does.
+  const table = useSettings((s) => s.table)
+  const update = useSettings((s) => s.update)
+  const { showWall, showOpponentHands, hideConcealedHands } = resolveTableSettings(
+    'efficiency',
+    table,
+  )
+  // `update` only merges at the section level, so a patch of `{ global: {...} }` would otherwise
+  // replace the whole global layer instead of adding one key to it — merge the existing layer in
+  // first, same as every per-app write site does with its own `apps[app]` slice.
+  const updateGlobal = (patch: Partial<TableSettings>) =>
+    update('table', { global: { ...table.global, ...patch } })
 
   return (
     <div className="flex flex-col gap-4">
@@ -177,7 +187,7 @@ export function GlobalSettings() {
         <input
           type="checkbox"
           checked={showOpponentHands}
-          onChange={(e) => setShowOpponentHands(e.target.checked)}
+          onChange={(e) => updateGlobal({ showOpponentHands: e.target.checked })}
           className="size-5"
         />
       </SettingRow>
@@ -187,7 +197,7 @@ export function GlobalSettings() {
           <input
             type="checkbox"
             checked={hideConcealedHands}
-            onChange={(e) => setHideConcealedHands(e.target.checked)}
+            onChange={(e) => updateGlobal({ hideConcealedHands: e.target.checked })}
             className="size-5"
           />
         </SettingRow>
@@ -230,7 +240,7 @@ export function GlobalSettings() {
             <input
               type="checkbox"
               checked={showWall}
-              onChange={(e) => setShowWall(e.target.checked)}
+              onChange={(e) => updateGlobal({ showWall: e.target.checked })}
               className="size-5"
             />
           </SettingRow>

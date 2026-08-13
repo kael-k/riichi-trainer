@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { TableApp, TableSettings } from './tableSettings'
 
 export type Theme = 'system' | 'light' | 'dark'
 
@@ -13,8 +14,6 @@ export interface Settings {
     timerEnabled: boolean
     /** Show the improving tiles under discard feedback, not just the count. */
     showUkeire: boolean
-    /** Reserve a dead wall and show its dora indicator. */
-    deadWall: boolean
   }
   shanten: { timerEnabled: boolean }
   scoring: {
@@ -43,14 +42,6 @@ export interface Settings {
   }
   folding: {
     timerEnabled: boolean
-    /** Seats that must already be in riichi when the drill starts. Capped at one fewer than the
-     *  player count; generation falls back to fewer rather than failing when a seed search cannot
-     *  find that many. */
-    threats: number
-    /** Let the threats ron and tsumo. Off makes the drill a rehearsal — the same ranking and the
-     *  same grading, but the hand plays to the wall instead of ending on a deal-in. On by
-     *  default: a fold you can't lose teaches the tiles but not the stakes. */
-    opponentWins: boolean
     /** After a correct discard, also list the other tiles that tied it. Off by default: the
      *  answer was already right, and naming the alternatives hands over part of next turn's
      *  reading for free. */
@@ -60,6 +51,14 @@ export interface Settings {
      *  is how the trainer teaches; on, it stops the panel naming safe tiles that are still safe
      *  next turn, so the whole fold is read from the board. */
     feedbackAtEnd: boolean
+  }
+  /** The six table settings shared by every board-rendering app (REQ-04, D-13): a global default
+   *  layer plus a per-app override layer, both `Partial` since an absent key means inherit —
+   *  resolved by `resolveTableSettings`/`useTableSettings` (`tableSettings.ts`), never read
+   *  straight off this section. */
+  table: {
+    global: Partial<TableSettings>
+    apps: Partial<Record<TableApp, Partial<TableSettings>>>
   }
 }
 
@@ -97,22 +96,6 @@ interface SettingsState extends Settings {
    *  wall built for one trainer isn't seeded differently from the other. */
   aka: boolean
   setAka: (aka: boolean) => void
-  /** Reveal the live (and, where applicable, dead) wall in draw order. */
-  showWall: boolean
-  setShowWall: (show: boolean) => void
-  /** Reveal every opponent's (and, in the folding trainer, every threat's) concealed hand on the
-   *  shared table, as real tile faces. Off by default: it turns a "read the board" drill into
-   *  "read the answer key" — useful for demos and debugging, not for the drill itself. A global,
-   *  non-advanced setting: unlike the advanced-gated rows, opponents' hands being *present* (see
-   *  `hideConcealedHands`) is basic table reading, not a jargon-gated extra. */
-  showOpponentHands: boolean
-  setShowOpponentHands: (show: boolean) => void
-  /** Hide opponents' hands from the table entirely, instead of the default face-down tile backs
-   *  (which show the shape — tile count, melds — without revealing faces). Off by default: showing
-   *  the concealed backs is what makes the table read as a real board. Moot when
-   *  `showOpponentHands` is on. */
-  hideConcealedHands: boolean
-  setHideConcealedHands: (hide: boolean) => void
   /** Surfaces options that only make sense once the reader already knows the terms involved
    *  (tsumogiri/tedashi, exact fu, wall reveal, red fives). Off by default so a first-time
    *  player's settings panel stays short. */
@@ -135,7 +118,6 @@ export const useSettings = create<SettingsState>()(
         showShanten: true,
         timerEnabled: true,
         showUkeire: true,
-        deadWall: true,
       },
       shanten: { timerEnabled: true },
       scoring: {
@@ -154,11 +136,10 @@ export const useSettings = create<SettingsState>()(
       },
       folding: {
         timerEnabled: true,
-        threats: 1,
-        opponentWins: true,
         showEquallySafe: false,
         feedbackAtEnd: false,
       },
+      table: { global: {}, apps: {} },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       showTileNumbers: null,
@@ -173,12 +154,6 @@ export const useSettings = create<SettingsState>()(
       setShowTsumogiri: (showTsumogiri) => set({ showTsumogiri }),
       aka: true,
       setAka: (aka) => set({ aka }),
-      showWall: false,
-      setShowWall: (showWall) => set({ showWall }),
-      showOpponentHands: false,
-      setShowOpponentHands: (showOpponentHands) => set({ showOpponentHands }),
-      hideConcealedHands: false,
-      setHideConcealedHands: (hideConcealedHands) => set({ hideConcealedHands }),
       advanced: false,
       setAdvanced: (advanced) => set({ advanced }),
       locale: 'auto',
@@ -189,8 +164,12 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'riichi-trainer-settings',
-      // pre-v2 schemas are dropped, not migrated: those installs fall back to defaults
-      version: 2,
+      // pre-v2 schemas are dropped, not migrated: those installs fall back to defaults. v3 did
+      // the same again — the six table settings moved out of `efficiency`/`folding` and the old
+      // top-level `showWall`/`showOpponentHands`/`hideConcealedHands` into the new `table`
+      // section, so an old blob's now-removed keys are dropped rather than merged into a schema
+      // that no longer has anywhere to put them
+      version: 3,
       // zustand's default merge is shallow at the top level, so a persisted `efficiency`/
       // `shanten` object from an older schema would wholesale overwrite (not fill in
       // defaults for) new fields added to those sections later — merge each section too
@@ -203,6 +182,7 @@ export const useSettings = create<SettingsState>()(
           shanten: { ...current.shanten, ...p.shanten },
           scoring: { ...current.scoring, ...p.scoring },
           folding: { ...current.folding, ...p.folding },
+          table: { ...current.table, ...p.table },
         }
       },
     },
