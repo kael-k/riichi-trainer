@@ -6,4 +6,6 @@ export const TRAINER_WIKI = {
   shanten: 'https://riichi.wiki/Shanten',
   scoring: 'https://riichi.wiki/Japanese_mahjong_scoring_rules',
   folding: 'https://riichi.wiki/Defense',
+  // hand-picked, not derived from the key name: the lab's headline surface is the ukeire ranking
+  lab: 'https://riichi.wiki/Tile_efficiency',
 } as const satisfies Record<string, string>
