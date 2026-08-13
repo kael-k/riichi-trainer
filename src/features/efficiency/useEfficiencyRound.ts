@@ -1,622 +1,203 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Meld } from '../../core/agari'
-import {
-  evaluateDiscards,
-  evaluateKan,
-  isBestDiscard,
-  type DiscardOption,
-} from '../../core/efficiency'
-import { removeTile, tileCount } from '../../core/hand'
-import {
-  beginTurn,
-  concealedTiles,
-  createMatch,
-  drawReplacement,
-  finishTurn,
-  NORTH,
-  wallDrawnCount,
-  type MatchOptions,
-  type MatchState,
-} from '../../core/match'
+import { NORTH, type MatchOptions } from '../../core/match'
 import { shanten } from '../../core/shanten'
-import {
-  HONOR,
-  NUM_TILE_TYPES,
-  tileCode,
-  type ParsedTile,
-  type RiverTile,
-  type TileId,
-} from '../../core/tiles'
+import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
+import { useTableRound, type DiscardStats, type UserDrawContext } from '../table/useTableRound'
 import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
+import { efficiencyLogRows, gradeAction, handFromSnapshot, lostVs, type TurnResult } from './grade'
 
 export { NORTH }
+export type { TurnResult } from './grade'
 
-/** Options that change how a round plays out; resolved from settings with
- *  per-situation overrides so shared links reproduce exactly. */
+/** Options that change how a round plays out; resolved from settings with per-situation
+ *  overrides so shared links reproduce exactly. */
 export interface RoundOptions {
-  opponents: boolean
   deadWall: boolean
   aka: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma: boolean
 }
 
-export interface TurnResult {
-  turn: number
-  yours: DiscardOption
-  best: DiscardOption
-  /** 'kita' / 'kan' when this grades a nukidora pull or an ankan rather than a discard; it only
-   *  changes the DiscardFeedback labels, since both reuse the `DiscardOption` shape. */
-  kind: 'discard' | 'kita' | 'kan'
-  /** 'error' when the chosen action itself loses shanten/ukeire vs. the true best.
-   *  'warning' only applies to a plain discard that ties the best line while passing up a
-   *  same-value kan/kita call — no ukeire is lost, so it's a softer nudge than 'error'. */
-  grade: 'ok' | 'warning' | 'error'
-  /** Set alongside a 'warning' grade: which call was available for free and skipped. */
-  missed?: { kind: 'kan' | 'kita'; tile: TileId }
-}
-
-/** The round is a real hand of mahjong from `core/match`; this is just which seat is yours. */
-interface RoundCore {
-  match: MatchState
-  options: MatchOptions
-  seatIndex: number
-}
-
-interface RoundState {
-  /** Sorted hand without the separated drawn tile (all 14 when `drawn` is unset). */
-  hand: ParsedTile[]
-  drawn: ParsedTile | undefined
-  turn: number
-  doraIndicators: ParsedTile[]
-  rivers: RiverTile[][]
-  /** Every seat's concealed hand, by seat index — mirrored unconditionally like `rivers`; the
-   *  page decides whether to pass any of it to the table (the `showOpponentHands` setting). */
-  hands: ParsedTile[][]
-  /** Seats currently in riichi, by seat index — for the table's bet stick. */
-  riichi: boolean[]
-  nuki: ParsedTile[]
-  kans: ParsedTile[][]
-  seatIndex: number
-  liveWall: ParsedTile[]
-  deadWall: ParsedTile[]
-  /** Whole live wall as dealt, plus how much of it (front) is already drawn — the wall-reveal
-   *  display's data; `liveWall` above stays "what's left", since it also feeds the board's tile
-   *  count. See `wallDrawnCount`. */
-  liveWallSnapshot: ParsedTile[]
-  liveWallDrawn: number
-  /** All 14 dead-wall tiles in build order, for the same display; empty when the dead wall is off. */
-  deadWallSnapshot: ParsedTile[]
-  /** Replacement (rinshan) draws taken so far — greys the tail of both snapshots above. */
-  replacements: number
-  lastResult: TurnResult | null
-  cumulativeLost: number
-  /** Sum of best.ukeireCount across every graded choice — the ceiling cumulativeLost is measured against. */
-  cumulativeTotal: number
-  finished: boolean
-  /** Finished because the hand reached tenpai (rather than the wall drying up). */
-  tenpai: boolean
-  elapsed: number
-  paused: boolean
-}
-
-function you(core: RoundCore) {
-  return core.match.players[core.seatIndex]
-}
-
-/** Every tile you have thrown, in order — from `match.discards`, not your river: `finishTurn`
- *  pops a called discard out of the river, and a replay that skipped it would deal a different
- *  hand from the one the link was captured on. */
-function yourDiscards(core: RoundCore): ParsedTile[] {
-  return core.match.discards
-    .filter((d) => d.seat === core.seatIndex)
-    .map((d) => ({ id: d.tile.id, red: d.tile.red }))
-}
-
-/** Ranked discards for the hand as it stands, counting the hand itself plus every face-up tile
- *  as seen. `seen` comes back too, for the kan comparison that needs the same visibility. */
-function rankDiscards(core: RoundCore, sanma: boolean) {
-  const player = you(core)
-  const seen = new Uint8Array(NUM_TILE_TYPES)
-  for (let i = 0; i < NUM_TILE_TYPES; i++) {
-    seen[i] = player.hand.counts[i] + core.match.visible[i]
-  }
-  return { seen, ranked: evaluateDiscards(player.hand, seen, sanma) }
-}
-
-/** Ukeire given up by playing `yours` instead of `best`. Counts only compare directly at the
- *  same shanten (options are sorted shanten-first), so a worse shanten forfeits the whole gap. */
-function lostVs(yours: DiscardOption, best: DiscardOption): number {
-  return yours.shanten > best.shanten ? best.ukeireCount : best.ukeireCount - yours.ukeireCount
-}
-
-/** Runs every seat between you and your next turn. With opponents off they are simply skipped:
- *  their hands still exist and still hold tiles, they just never act. */
-function runOpponents(core: RoundCore, opponents: boolean): void {
-  const { match, options, seatIndex } = core
-  if (!opponents) {
-    match.seat = seatIndex
-    match.pendingDraw = true
-    return
-  }
-  // one full go-round is the bound; a call hands the turn sideways but never backwards
-  for (let guard = 0; guard < 8 && match.seat !== seatIndex && !match.ended; guard++) {
-    beginTurn(match, options)
-    finishTurn(match, options)
-  }
-}
-
-/** Discards `tile` for you, lets the table play round to you, and draws your next tile. Returns
- *  false when the drill is over instead — either the discard reached tenpai or the wall ran dry. */
-function advanceAfterDiscard(core: RoundCore, tile: ParsedTile, opponents: boolean): boolean {
-  const { match, options } = core
-  finishTurn(match, options, tile)
-
-  // tenpai is the goal, so stop here: the hand stays at 13 tiles, which is what "finished" is
-  // derived from, and the opponents and wall are left untouched
-  if (shanten(you(core).hand) <= 0) {
-    match.drawn = undefined
-    return false
-  }
-  runOpponents(core, opponents)
-  if (match.liveWall.length === 0 || match.ended) {
-    match.drawn = undefined
-    return false
-  }
-  if (match.seat === 0) match.turn++
-  beginTurn(match, options)
-  return true
-}
-
-function matchOptions(options: RoundOptions, round: TileId, seatIndex: number): MatchOptions {
-  return {
-    sanma: options.sanma,
-    aka: options.aka,
-    round,
-    deadWall: options.deadWall,
-    // opponents may open their hands, but nobody wins: a hand that ended on someone else's tsumo
-    // would cut this per-turn drill short on a result you did not cause
-    calls: options.opponents,
-    riichi: options.opponents,
-    wins: false,
-    human: seatIndex,
-  }
-}
-
-/** Builds the round: a real deal off the situation's own wall (empty deals a fresh random board),
- *  the seats before yours acting first, then a replay of the situation's river to fast-forward to
- *  its decision point. */
-function createRound(situation: Situation, options: RoundOptions): RoundCore {
-  const players = options.sanma ? 3 : 4
-  // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
-  const seatIndex = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
-  const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
-  const opts = matchOptions(options, round, seatIndex)
-  const match = createMatch(situation.wall, players, opts)
-  const core: RoundCore = { match, options: opts, seatIndex }
-
-  // a situation that pins all fourteen tiles has already had its draw; anything else starts the
-  // hand normally, with the seats before yours acting first (East leads)
-  if (tileCount(match.players[seatIndex].hand) < 14) {
-    runOpponents(core, options.opponents)
-    beginTurn(match, opts)
-  } else {
-    match.seat = seatIndex
-    match.pendingDraw = false
-  }
-
-  // fast-forward the recorded discards; stops quietly on an impossible one
-  for (const t of situation.river) {
-    const counts = you(core).hand.counts
-    if (counts[t.id] === 0) break
-    const red = you(core).reds.has(t.id) && (t.red || counts[t.id] === 1)
-    if (!advanceAfterDiscard(core, { id: t.id, red }, options.opponents)) break
-  }
-  return core
-}
-
-function snapshot(core: RoundCore, prev?: RoundState): RoundState {
-  const { match, seatIndex } = core
-  const player = you(core)
-  const finished = tileCount(player.hand) < 14
-  let hand = concealedTiles(player)
-  if (match.drawn) {
-    const i = hand.findIndex((t) => t.id === match.drawn!.id && t.red === match.drawn!.red)
-    if (i >= 0) hand = [...hand.slice(0, i), ...hand.slice(i + 1)]
-  }
-  return {
-    hand,
-    drawn: match.drawn,
-    turn: match.turn,
-    doraIndicators: [...match.doraIndicators],
-    rivers: match.players.map((p) => [...p.river]),
-    hands: match.players.map((p) => concealedTiles(p)),
-    riichi: match.players.map((p) => p.riichiAt !== undefined),
-    nuki: [...player.nuki],
-    kans: player.melds.filter((m) => m.kind === 'ankan').map((m) => [...m.tiles]),
-    seatIndex,
-    liveWall: [...match.liveWall],
-    deadWall: [...match.deadWall],
-    liveWallSnapshot: match.liveWallSnapshot,
-    liveWallDrawn: wallDrawnCount(match),
-    deadWallSnapshot: match.deadWallSnapshot,
-    replacements: match.replacements,
-    finished,
-    tenpai: finished && shanten(player.hand) <= 0,
-    lastResult: prev?.lastResult ?? null,
-    cumulativeLost: prev?.cumulativeLost ?? 0,
-    cumulativeTotal: prev?.cumulativeTotal ?? 0,
-    elapsed: prev?.elapsed ?? 0,
-    paused: prev?.paused ?? false,
-  }
-}
-
-/** Drives one efficiency round: deal, discard, draw, repeat, until the wall runs dry. */
+/** Drives one efficiency round on top of `useTableRound`: dealing, replay, opponents and the
+ *  go-round loop all live there now — this hook only grades, logs and carries session state
+ *  (`cumulativeLost`/`cumulativeTotal`/`lastResult`/the clock) that `useTableRound` itself has no
+ *  opinion about. */
 export function useEfficiencyRound(
   situation: Situation,
   options: RoundOptions,
   timerEnabled: boolean,
 ) {
-  const [restartCount, setRestartCount] = useState(0)
-  const core = useRef<RoundCore>(undefined)
-  // the situation whose replayed river is already on the log; see `logReplay`
-  const loggedReplay = useRef<Situation>(undefined)
-
-  // A rewind hands in a brand-new `situation` object naming its own wall (situationQuery() dumps
-  // the wall actually dealt). restartCount itself is per-mount React state that a rewind does not
-  // and should not reset on its own, so left alone it would keep counting from the old situation
-  // and startRound() below would treat the rewound situation's own wall as already-restarted-past
-  // (empty), dealing a fresh random board instead of the one the log entry named. Resetting it
-  // here whenever `situation` changes identity (rewind, or a fresh URL load) — the "adjust state
-  // while rendering" pattern — keeps restartCount scoped to whichever situation is current.
-  const [lastSituation, setLastSituation] = useState(situation)
-  if (situation !== lastSituation) {
-    setLastSituation(situation)
-    setRestartCount(0)
+  const players = options.sanma ? 3 : 4
+  // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
+  const seatIndex = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
+  const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
+  const matchOptions: MatchOptions = {
+    sanma: options.sanma,
+    aka: options.aka,
+    round,
+    deadWall: options.deadWall,
+    // opponents may open their hands and call, but nobody wins: a hand that ended on someone
+    // else's tsumo would cut this per-turn drill short on a result the player did not cause
+    calls: true,
+    riichi: true,
+    wins: false,
+    human: seatIndex,
   }
-  // round.elapsed at the last choice, so each choice's time is a delta of the same
-  // pause-aware clock rather than a second, unpaused one
-  const lastChoiceElapsed = useRef(0)
-  const [state, setState] = useState<RoundState>(() => startRound())
+
   const log = useLog((s) => s.log)
   const stats = useSessionStats()
 
-  function startRound(): RoundState {
-    // a restart deals a fresh random board rather than replaying the situation's own wall — an
-    // unspecified wall (the common case) already deals randomly, since `createMatch` fills an
-    // empty/short wall itself
-    const wall = restartCount === 0 ? situation.wall : []
-    core.current = createRound({ ...situation, wall }, options)
-    lastChoiceElapsed.current = 0
-    return snapshot(core.current)
+  const [restartCount, setRestartCount] = useState(0)
+  const [elapsed, setElapsed] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [cumulativeLost, setCumulativeLost] = useState(0)
+  const [cumulativeTotal, setCumulativeTotal] = useState(0)
+  const [lastResult, setLastResult] = useState<TurnResult | null>(null)
+
+  // round.elapsed at the last graded choice, so each choice's time is a delta of the same
+  // pause-aware clock rather than a second, unpaused one
+  const lastChoiceElapsed = useRef(0)
+  // a kita/kan's grading happens in onUserDiscard, before its replacement (rinshan) draw is
+  // known — stashed here until the onUserDraw that immediately follows resolves it with that
+  // draw. A plain discard already knows its "drawn" tile, so it never touches this.
+  const pending = useRef<{ result: TurnResult; tile: ParsedTile; situationBefore: string } | undefined>(
+    undefined,
+  )
+  // the situation whose replayed river is already on the log; see `logReplay`
+  const loggedReplay = useRef<Situation>(undefined)
+
+  function recordChoice(result: TurnResult) {
+    stats.record(result.grade !== 'error', (elapsed - lastChoiceElapsed.current) * 1000)
+    lastChoiceElapsed.current = elapsed
   }
 
-  /** Records one choice (discard/kita/kan) toward the session's average decision time. */
-  function recordChoice(isBest: boolean) {
-    stats.record(isBest, (state.elapsed - lastChoiceElapsed.current) * 1000)
-    lastChoiceElapsed.current = state.elapsed
+  function writeRows(
+    result: TurnResult,
+    drawn: ParsedTile | undefined,
+    tile: ParsedTile,
+    situationBefore: string,
+  ) {
+    for (const [key, params, tiles] of efficiencyLogRows(result, drawn, tile)) {
+      log(key, params, tiles, undefined, situationBefore)
+    }
   }
 
-  useEffect(() => {
-    setState(startRound())
-    logReplay()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [situation, options.opponents, options.deadWall, options.aka, options.sanma, restartCount])
+  const table = useTableRound({
+    wall: situation.wall,
+    players,
+    seatIndex,
+    options: matchOptions,
+    replay: situation.river,
+    stopAtTenpai: true,
+    onUserDraw(ctx: UserDrawContext) {
+      if (!pending.current) return
+      const { result, tile, situationBefore } = pending.current
+      pending.current = undefined
+      writeRows(result, ctx.drawn, tile, situationBefore)
+      setCumulativeLost((n) => n + lostVs(result.yours, result.best))
+      setCumulativeTotal((n) => n + result.best.ukeireCount)
+      setLastResult(result)
+      recordChoice(result)
+    },
+    onUserDiscard(tile: ParsedTile, discardStats: DiscardStats) {
+      // captured before anything below mutates match/hand state, so it reproduces the situation
+      // exactly as it stood right before this action
+      const situationBefore = encodeSituation(table.situation())
+      const hand = handFromSnapshot(table.hand, table.drawn, table.melds[table.seatIndex].length)
+      const result = gradeAction(discardStats, table.turn, hand, options.sanma)
+
+      if (discardStats.kind !== 'discard') {
+        // kita/kan: the replacement draw isn't known yet — resolved by the onUserDraw above
+        pending.current = { result, tile, situationBefore }
+        return
+      }
+      writeRows(result, table.drawn, tile, situationBefore)
+      setCumulativeLost((n) => n + lostVs(result.yours, result.best))
+      setCumulativeTotal((n) => n + result.best.ukeireCount)
+      setLastResult(result)
+      recordChoice(result)
+    },
+  })
 
   /** Writes one log row per discard the round was fast-forwarded through, so a shared link (or a
-   *  rewind) arrives with the turns behind it on the record instead of a blank log. Logged from
-   *  the discards the replay actually made, which is also what stops short of a river the deal
-   *  could not honour. Keyed on the situation's identity: the effect above runs twice per mount
-   *  (initial state, then mount) and four times under StrictMode, all for the same round. */
+   *  rewind) arrives with the turns behind it on the record instead of a blank log. Keyed on the
+   *  situation's identity: this effect runs twice per mount (initial state, then mount) and four
+   *  times under StrictMode, all for the same round. */
   function logReplay() {
-    const r = core.current
-    if (!r || loggedReplay.current === situation) return
+    if (loggedReplay.current === situation) return
     loggedReplay.current = situation
-    const played = yourDiscards(r)
-    played.forEach((tile, i) =>
+    const base = table.situation()
+    table.replayed.forEach((tile, i) =>
       log(
         'log.replay',
         { tile: tileCode(tile.id, tile.red) },
         [tile],
         undefined,
-        encodeSituation({
-          ...situation,
-          wall: [...r.match.wall],
-          river: played.slice(0, i),
-          ...options,
-        }),
+        encodeSituation({ ...base, river: table.replayed.slice(0, i) }),
       ),
     )
   }
 
   useEffect(() => {
-    if (state.finished || state.paused || !timerEnabled) return
-    const id = setInterval(() => setState((s) => ({ ...s, elapsed: s.elapsed + 1 })), 1000)
+    setCumulativeLost(0)
+    setCumulativeTotal(0)
+    setLastResult(null)
+    setElapsed(0)
+    setPaused(false)
+    lastChoiceElapsed.current = 0
+    pending.current = undefined
+    logReplay()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [situation, restartCount])
+
+  // a fixed meld (ankan) counts as 3 tiles toward the 14 even though it isn't in `hand`/`drawn`
+  const finished =
+    table.hand.length + (table.drawn ? 1 : 0) + table.melds[table.seatIndex].length * 3 < 14
+  const tenpai =
+    finished &&
+    shanten(handFromSnapshot(table.hand, table.drawn, table.melds[table.seatIndex].length)) <= 0
+
+  useEffect(() => {
+    if (finished || paused || !timerEnabled) return
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000)
     return () => clearInterval(id)
-  }, [state.finished, state.paused, timerEnabled])
-
-  function discard(index: number) {
-    const r = core.current
-    if (!r || state.finished) return
-    const tile = index === state.hand.length ? state.drawn : state.hand[index]
-    if (!tile) return
-    // captured before anything below mutates match/hand state, so it reproduces the situation
-    // exactly as it stood right before this discard
-    const situationBefore = situationQuery()
-
-    const { seen, ranked } = rankDiscards(r, options.sanma)
-    const yours = ranked.find((o) => o.discard === tile.id)!
-    const best = ranked[0]
-    const lost = lostVs(yours, best)
-    const isBest = isBestDiscard(yours, best)
-
-    // isBest doesn't mean nothing was left on the table: a kan/kita tied for best too, and
-    // was passed up for a plain discard — no ukeire lost, so it's a warning, not an error.
-    let missed: TurnResult['missed']
-    if (isBest) {
-      const northOption = options.sanma ? ranked.find((o) => o.discard === NORTH) : undefined
-      if (northOption && isBestDiscard(northOption, best)) {
-        missed = { kind: 'kita', tile: NORTH }
-      } else {
-        const kanOption = evaluateKan(you(r).hand, seen, options.sanma).find((o) =>
-          isBestDiscard(o, best),
-        )
-        if (kanOption) missed = { kind: 'kan', tile: kanOption.discard }
-      }
-    }
-    const grade: TurnResult['grade'] = !isBest ? 'error' : missed ? 'warning' : 'ok'
-    const lastResult: TurnResult = {
-      turn: r.match.turn,
-      yours,
-      best,
-      kind: 'discard',
-      grade,
-      missed,
-    }
-
-    // one entry per turn, logged here (not from a page effect) so entries stay in play order.
-    // Keys carry raw params (tile notation is locale-invariant) rather than formatted text, so
-    // a later language switch re-translates the whole log instead of leaving stale fragments.
-    const drewCode = state.drawn ? tileCode(state.drawn.id, state.drawn.red) : undefined
-    const drewTiles = state.drawn ? [state.drawn] : []
-    if (isBest) {
-      log(
-        drewCode ? 'log.efficiency.discardBestDrew' : 'log.efficiency.discardBest',
-        {
-          turn: r.match.turn,
-          drawn: drewCode,
-          tile: tileCode(tile.id, tile.red),
-          ukeire: yours.ukeireCount,
-          shanten: yours.shanten,
-        },
-        [...drewTiles, tile],
-        undefined,
-        situationBefore,
-      )
-    } else {
-      log(
-        drewCode ? 'log.efficiency.discardMistakeDrew' : 'log.efficiency.discardMistake',
-        {
-          turn: r.match.turn,
-          drawn: drewCode,
-          tile: tileCode(tile.id, tile.red),
-          yours: yours.ukeireCount,
-          best: tileCode(best.discard),
-          bestUkeire: best.ukeireCount,
-          shanten: yours.shanten,
-        },
-        [...drewTiles, tile, { id: best.discard, red: false }],
-        undefined,
-        situationBefore,
-      )
-    }
-    if (missed) {
-      log(
-        missed.kind === 'kita' ? 'log.efficiency.missedKita' : 'log.efficiency.missedKan',
-        { turn: r.match.turn, tile: tileCode(missed.tile) },
-        [{ id: missed.tile, red: false }],
-        undefined,
-        situationBefore,
-      )
-    }
-    if (yours.shanten <= 0) {
-      log(
-        'log.efficiency.tenpai',
-        { turn: r.match.turn },
-        yours.ukeireTiles.map((t) => ({ id: t.tile, red: false })),
-        undefined,
-        situationBefore,
-      )
-    }
-
-    recordChoice(isBest)
-    advanceAfterDiscard(r, tile, options.opponents)
-    setState((s) => ({
-      ...snapshot(r, s),
-      lastResult,
-      cumulativeLost: s.cumulativeLost + lost,
-      cumulativeTotal: s.cumulativeTotal + best.ukeireCount,
-    }))
-  }
-
-  /** Pulls a held north (sanma only). Graded like a discard by reusing north's own
-   *  evaluateDiscards entry (id `NORTH`) — that entry already IS "shanten/ukeire with this
-   *  north removed", which is exactly what pulling it costs. A pair of norths serving as the
-   *  hand's head costs shanten/ukeire in that entry the same way a bad discard would, so it's
-   *  correctly graded a mistake rather than always recommending the pull. */
-  function kita() {
-    const r = core.current
-    if (!r || state.finished || !options.sanma || you(r).hand.counts[NORTH] === 0) return
-    // captured before the pull below mutates hand/nuki/visible state
-    const situationBefore = situationQuery()
-
-    const { ranked } = rankDiscards(r, options.sanma)
-    const yours = ranked.find((o) => o.discard === NORTH)!
-    const best = ranked[0]
-    const lost = lostVs(yours, best)
-    const isBest = isBestDiscard(yours, best)
-    const lastResult: TurnResult = {
-      turn: r.match.turn,
-      yours,
-      best,
-      kind: 'kita',
-      grade: isBest ? 'ok' : 'error',
-    }
-
-    const player = you(r)
-    const northTile: ParsedTile = { id: NORTH, red: false }
-    removeTile(player.hand, NORTH)
-    player.nuki.push(northTile)
-    r.match.visible[NORTH]++
-    const drawn = drawReplacement(r.match, player)
-    r.match.drawn = drawn
-    const tiles = drawn ? [northTile, drawn] : [northTile]
-
-    if (isBest) {
-      log(
-        'log.efficiency.kitaBest',
-        { turn: r.match.turn, ukeire: yours.ukeireCount, shanten: yours.shanten },
-        tiles,
-        undefined,
-        situationBefore,
-      )
-    } else {
-      log(
-        'log.efficiency.kitaMistake',
-        {
-          turn: r.match.turn,
-          yours: yours.ukeireCount,
-          best: tileCode(best.discard),
-          bestUkeire: best.ukeireCount,
-          shanten: yours.shanten,
-        },
-        tiles,
-        undefined,
-        situationBefore,
-      )
-    }
-
-    recordChoice(isBest)
-    setState((s) => ({
-      ...snapshot(r, s),
-      lastResult,
-      cumulativeLost: s.cumulativeLost + lost,
-      cumulativeTotal: s.cumulativeTotal + best.ukeireCount,
-    }))
-  }
-
-  /** Calls a closed kan on a held quad. Graded by comparing `evaluateKan`'s entry for `id`
-   *  (the hand shape with that quad locked as a meld) against the same best discard `discard`
-   *  uses — shapes that only decompose losslessly by keeping the quad flexible (e.g. `788889s`,
-   *  where kanning the 8s stray the 7s/9s into a dead kanchan) come out worse there and are
-   *  correctly graded an error rather than a free call. */
-  function kan(id: TileId) {
-    const r = core.current
-    if (!r || state.finished || you(r).hand.counts[id] !== 4) return
-    // captured before the call below mutates hand/melds/visible/dora state
-    const situationBefore = situationQuery()
-
-    const { seen, ranked } = rankDiscards(r, options.sanma)
-    const best = ranked[0]
-    const player = you(r)
-    const yours = evaluateKan(player.hand, seen, options.sanma).find((o) => o.discard === id)!
-    const lost = lostVs(yours, best)
-    const isBest = isBestDiscard(yours, best)
-    const lastResult: TurnResult = {
-      turn: r.match.turn,
-      yours,
-      best,
-      kind: 'kan',
-      grade: isBest ? 'ok' : 'error',
-    }
-
-    const red = player.reds.has(id)
-    const kanTile: ParsedTile = { id, red }
-    for (let k = 0; k < 4; k++) removeTile(player.hand, id)
-    player.hand.melds++
-    player.reds.delete(id)
-    r.match.visible[id] += 4
-    const meld: Meld = {
-      kind: 'ankan',
-      tiles: [
-        { id, red },
-        { id, red: false },
-        { id, red: false },
-        { id, red: false },
-      ],
-    }
-    player.melds.push(meld)
-
-    const indicator = r.match.doraStack.shift()
-    if (indicator) {
-      r.match.doraIndicators.push(indicator)
-      r.match.visible[indicator.id]++
-    }
-    const drawn = drawReplacement(r.match, player)
-    r.match.drawn = drawn
-    const tiles = drawn ? [kanTile, drawn] : [kanTile]
-
-    if (isBest) {
-      log(
-        'log.efficiency.kanBest',
-        {
-          turn: r.match.turn,
-          tile: tileCode(id),
-          ukeire: yours.ukeireCount,
-          shanten: yours.shanten,
-        },
-        tiles,
-        undefined,
-        situationBefore,
-      )
-    } else {
-      log(
-        'log.efficiency.kanMistake',
-        {
-          turn: r.match.turn,
-          tile: tileCode(id),
-          yours: yours.ukeireCount,
-          best: tileCode(best.discard),
-          bestUkeire: best.ukeireCount,
-          shanten: yours.shanten,
-        },
-        tiles,
-        undefined,
-        situationBefore,
-      )
-    }
-
-    recordChoice(isBest)
-    setState((s) => ({
-      ...snapshot(r, s),
-      lastResult,
-      cumulativeLost: s.cumulativeLost + lost,
-      cumulativeTotal: s.cumulativeTotal + best.ukeireCount,
-    }))
-  }
-
-  /** Current round as a shareable query string: the wall actually dealt, the
-   *  user's discards so far as the replay river, and the round options pinned. */
-  function situationQuery(): string {
-    const r = core.current
-    return encodeSituation({
-      ...situation,
-      wall: r ? [...r.match.wall] : situation.wall,
-      river: r ? yourDiscards(r) : [],
-      ...options,
-    })
-  }
+  }, [finished, paused, timerEnabled])
 
   return {
-    ...state,
+    hand: table.hand,
+    drawn: table.drawn,
+    turn: table.turn,
+    doraIndicators: table.doraIndicators,
+    rivers: table.rivers,
+    hands: table.hands,
+    riichi: table.riichi,
+    nuki: table.nuki[table.seatIndex],
+    kans: table.melds[table.seatIndex].filter((m) => m.kind === 'ankan').map((m) => m.tiles),
+    seatIndex: table.seatIndex,
+    liveWall: table.liveWall,
+    deadWall: table.deadWall,
+    liveWallSnapshot: table.liveWallSnapshot,
+    liveWallDrawn: table.liveWallDrawn,
+    deadWallSnapshot: table.deadWallSnapshot,
+    replacements: table.replacements,
+    finished,
+    tenpai,
+    lastResult,
+    cumulativeLost,
+    cumulativeTotal,
+    elapsed,
+    paused,
     averageTime: stats.averageTime,
-    discard,
-    kita,
-    kan,
-    situationQuery,
-    togglePause: () => setState((s) => ({ ...s, paused: !s.paused })),
-    restart: () => setRestartCount((n) => n + 1),
+    discard: table.discard,
+    kita: table.kita,
+    kan: table.kan,
+    situationQuery: () => encodeSituation(table.situation()),
+    togglePause: () => setPaused((p) => !p),
+    restart: () => {
+      table.restart()
+      setRestartCount((n) => n + 1)
+    },
   }
 }

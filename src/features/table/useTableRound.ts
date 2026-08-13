@@ -126,6 +126,11 @@ export function useTableRound(input: TableRoundInput) {
   // same identity-keyed guard `logReplay` uses for its own log rows
   const builtFor = useRef<{ wall: ParsedTile[]; count: number } | undefined>(undefined)
 
+  // discards actually replayed on the last build (may fall short of `input.replay` when a
+  // recorded tile no longer matches the hand) — exposed so a consumer's own `logReplay` can put
+  // one log row per replayed discard without reaching back into `core/table.ts` itself
+  const replayed = useRef<ParsedTile[]>([])
+
   const [restartCount, setRestartCount] = useState(0)
   // a rewind/new-link hands in a brand-new `input.wall` naming its own board; restartCount is
   // per-mount React state a wall swap does not and should not reset on its own, so left alone
@@ -208,7 +213,7 @@ export function useTableRound(input: TableRoundInput) {
     beginTurn(c.match, c.options) // no-op when goRound already ended the match
 
     replaying.current = true
-    replayDiscards(c, input.replay ?? [], (rc, tile) => advance(rc, tile))
+    replayed.current = replayDiscards(c, input.replay ?? [], (rc, tile) => advance(rc, tile))
     replaying.current = false
 
     return snapshotTable(c)
@@ -317,7 +322,6 @@ export function useTableRound(input: TableRoundInput) {
       river: c ? yourDiscards(c) : [],
       round: WINDS[input.options.round - HONOR] ?? 'E',
       seat: WINDS[input.seatIndex] ?? 'E',
-      opponents: input.options.calls,
       deadWall: input.options.deadWall,
       aka: input.options.aka,
       sanma: input.options.sanma,
@@ -331,6 +335,7 @@ export function useTableRound(input: TableRoundInput) {
     kan,
     restart: () => setRestartCount((n) => n + 1),
     replaying: replaying.current,
+    replayed: replayed.current,
     situation,
   }
 }
