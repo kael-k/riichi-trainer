@@ -10,6 +10,9 @@
     "faceDownTile": "裏向きの牌",
     "log": "ログ ({{count}})",
     "newRound": "次の局へ",
+    "resetHand": "配り直す",
+    "pauseTimer": "タイマーを一時停止",
+    "resumeTimer": "タイマーを再開",
     "submit": "決定",
     "wallDetails_other": "山(残り{{count}}枚)",
     "deadWallMarker": "王牌",
@@ -102,10 +105,7 @@
       "showUkeire": "<term>受け入れ</term>牌を表示",
       "deadWall": "王牌とドラ"
     },
-    "roundStatus": "{{round}}場・{{turn}}巡目",
     "avgTime": "平均 {{time}}",
-    "resumeTimer": "タイマーを再開",
-    "pauseTimer": "タイマーを一時停止",
     "wallStatus_other": "山: 残り{{count}}枚",
     "doraIndicator": "ドラ表示牌",
     "ukeireLost": "失った<term>受け入れ</term>: {{lost}} / {{total}}(正解率{{accuracy}}%)",
@@ -136,7 +136,6 @@
     "settings": {
       "timer": "タイマー"
     },
-    "handNumber": "{{count}}問目",
     "correctScore": "正解数: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
     "placeholder": "シャンテン数?",
@@ -147,7 +146,6 @@
     "previousHand": "前の手牌 — 正しいシャンテン数: {{value}}",
     "via": "({{paths}})",
     "inTime": "{{time}}",
-    "stopHand": "中断して次の手牌へ",
     "revealHand": "手牌を表示",
     "path": {
       "standard": "通常形",
@@ -170,7 +168,6 @@
       "ignoreFuOnLimit": "満貫以上は符を採点しない",
       "openHands": "副露あり"
     },
-    "handNumber": "{{count}}問目",
     "dealing": "配牌中…",
     "correctScore": "正解数: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
@@ -275,7 +272,6 @@
   "folding": {
     "dealing": "局面を探しています…",
     "noHand": "練習になる局面が見つかりませんでした。もう一度配牌してください。",
-    "turnStatus": "{{turn}}巡目",
     "score": "最安全: {{correct}} / {{total}}",
     "accuracy": "精度 {{percent}}%",
     "avgTime": "平均 {{time}}",

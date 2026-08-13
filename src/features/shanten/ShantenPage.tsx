@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { TrainerStatusBar } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -10,7 +11,6 @@ import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
-import { RevealTimer } from './RevealTimer'
 import { useShantenRound, type ShantenBreakdown } from './useShantenRound'
 
 const QUICK_GUESSES = [0, 1, 2, 3, 4, 5, 6]
@@ -40,13 +40,13 @@ export function ShantenPage() {
       const tag = (e.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return
       e.preventDefault()
-      if (round.running) round.stop()
-      else round.reveal()
+      if (!round.revealed) round.reveal()
+      else round.togglePause()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round.running, round.stop, round.reveal])
+  }, [round.revealed, round.togglePause, round.reveal])
 
   const submitGuess = (value: number) => {
     if (Number.isNaN(value) || value < 0) return
@@ -71,25 +71,27 @@ export function ShantenPage() {
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between text-sm text-neutral-500">
-          <span>{t('shanten.handNumber', { count: round.totalCount + 1 })}</span>
-          <span className="flex flex-col items-end">
-            <span>
-              {t('shanten.correctScore', { correct: round.correctCount, total: round.totalCount })}
-            </span>
-            {settings.timerEnabled && (
-              <span>{t('shanten.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-            )}
-          </span>
-        </div>
-
-        <RevealTimer
-          running={round.running}
+        <TrainerStatusBar
+          showToggle
+          paused={!round.revealed || round.paused}
+          onToggle={round.revealed ? round.togglePause : round.reveal}
+          toggleLabel={
+            !round.revealed
+              ? t('shanten.revealHand')
+              : t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')
+          }
+          onReset={round.stop}
+          resetLabel={t('common.resetHand')}
           elapsed={round.elapsed}
           timerEnabled={settings.timerEnabled}
-          onPlay={round.reveal}
-          onStop={round.stop}
-        />
+        >
+          <span>
+            {t('shanten.correctScore', { correct: round.correctCount, total: round.totalCount })}
+          </span>
+          {settings.timerEnabled && (
+            <span>{t('shanten.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
+          )}
+        </TrainerStatusBar>
 
         <HandDisplay tiles={round.hand} concealed={round.concealed} />
 

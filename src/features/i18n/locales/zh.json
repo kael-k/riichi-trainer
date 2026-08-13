@@ -10,6 +10,9 @@
     "faceDownTile": "扣牌",
     "log": "记录 ({{count}})",
     "newRound": "下一局",
+    "resetHand": "重新开局",
+    "pauseTimer": "暂停计时",
+    "resumeTimer": "恢复计时",
     "submit": "提交",
     "wallDetails_other": "牌山(剩余{{count}}张)",
     "deadWallMarker": "死墙",
@@ -102,10 +105,7 @@
       "showUkeire": "显示<term>进张</term>",
       "deadWall": "死墙与宝牌"
     },
-    "roundStatus": "{{round}}场 · 第{{turn}}巡",
     "avgTime": "平均 {{time}}",
-    "resumeTimer": "恢复计时",
-    "pauseTimer": "暂停计时",
     "wallStatus_other": "牌山: 剩余{{count}}张",
     "doraIndicator": "宝牌指示牌",
     "ukeireLost": "损失的<term>进张</term>: {{lost}} / {{total}}(正确率{{accuracy}}%)",
@@ -136,7 +136,6 @@
     "settings": {
       "timer": "计时器"
     },
-    "handNumber": "第{{count}}题",
     "correctScore": "正确: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
     "placeholder": "上听数?",
@@ -147,7 +146,6 @@
     "previousHand": "上一手牌 — 正确上听数: {{value}}",
     "via": "({{paths}})",
     "inTime": "{{time}}",
-    "stopHand": "中断并换下一手牌",
     "revealHand": "显示手牌",
     "path": {
       "standard": "标准型",
@@ -170,7 +168,6 @@
       "ignoreFuOnLimit": "满贯以上不计符数",
       "openHands": "允许副露"
     },
-    "handNumber": "第{{count}}题",
     "dealing": "发牌中…",
     "correctScore": "正确: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
@@ -275,7 +272,6 @@
   "folding": {
     "dealing": "正在寻找牌局…",
     "noHand": "没有找到适合练习的牌局。请再发一局。",
-    "turnStatus": "第 {{turn}} 巡",
     "score": "最安全: {{correct}} / {{total}}",
     "accuracy": "准确率 {{percent}}%",
     "avgTime": "平均 {{time}}",

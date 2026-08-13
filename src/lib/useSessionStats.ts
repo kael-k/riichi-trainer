@@ -12,7 +12,13 @@ export function useSessionStats() {
   const [totalCount, setTotalCount] = useState(0)
   const [totalTime, setTotalTime] = useState(0)
   const [totalQuality, setTotalQuality] = useState(0)
+  const [paused, setPaused] = useState(false)
   const startedAt = useRef(0)
+  // total time spent paused so far on the current clock, plus (while currently paused) when the
+  // current pause began — both subtracted out of `elapsedNow`, which is what makes a paused stretch
+  // not count against the graded time or the displayed clock
+  const pausedMs = useRef(0)
+  const pauseStartedAt = useRef<number | undefined>(undefined)
   const entryCount = useLog((s) => s.entries.length)
 
   useEffect(() => {
@@ -22,6 +28,11 @@ export function useSessionStats() {
     setTotalTime(0)
     setTotalQuality(0)
   }, [entryCount])
+
+  function elapsedNow(): number {
+    const pausedNow = pauseStartedAt.current === undefined ? 0 : performance.now() - pauseStartedAt.current
+    return performance.now() - startedAt.current - pausedMs.current - pausedNow
+  }
 
   return {
     randomSeed,
@@ -34,11 +45,28 @@ export function useSessionStats() {
      *  same mistake as throwing the most dangerous tile in hand); trainers that can say how close
      *  a choice was pass it, the rest leave it at right = 1, wrong = 0. */
     averageQuality: totalCount > 0 ? totalQuality / totalCount : 0,
-    /** (Re)starts the clock for the hand now on screen. */
+    /** (Re)starts the clock for the hand now on screen, unpaused. */
     startClock: () => {
       startedAt.current = performance.now()
+      pausedMs.current = 0
+      pauseStartedAt.current = undefined
+      setPaused(false)
     },
-    elapsedNow: () => performance.now() - startedAt.current,
+    elapsedNow,
+    paused,
+    /** Freezes `elapsedNow` (and whatever a caller times against it) without losing the clock's
+     *  start — resuming picks the same clock back up rather than restarting it. */
+    pause: () => {
+      if (pauseStartedAt.current !== undefined) return
+      pauseStartedAt.current = performance.now()
+      setPaused(true)
+    },
+    resume: () => {
+      if (pauseStartedAt.current === undefined) return
+      pausedMs.current += performance.now() - pauseStartedAt.current
+      pauseStartedAt.current = undefined
+      setPaused(false)
+    },
     record: (correct: boolean, elapsed: number, quality = correct ? 1 : 0) => {
       setTotalCount((n) => n + 1)
       setTotalTime((t) => t + elapsed)

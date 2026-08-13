@@ -32,6 +32,27 @@ describe('useShantenRound', () => {
     expect(result.current.totalCount).toBe(0) // abandoned, not graded
   })
 
+  it('pausing freezes the clock without re-concealing an already-revealed hand', () => {
+    const situation = emptySituation()
+    situation.seed = 'pause-seed'
+    const { result } = renderHook(() => useShantenRound(situation, true, false))
+    act(() => result.current.reveal())
+    const revealed = result.current.hand
+    expect(result.current.paused).toBe(false)
+
+    act(() => result.current.togglePause())
+    expect(result.current.paused).toBe(true)
+    expect(result.current.running).toBe(false)
+    expect(result.current.concealed).toBe(false) // still shown — a pause is not a stop
+    expect(result.current.hand).toEqual(revealed)
+
+    act(() => result.current.togglePause())
+    expect(result.current.paused).toBe(false)
+    expect(result.current.running).toBe(true)
+    expect(result.current.concealed).toBe(false)
+    expect(result.current.hand).toEqual(revealed) // resuming never re-deals
+  })
+
   it('grades a submitted guess and names non-standard paths', () => {
     const situation = emptySituation()
     // seven distinct pairs: tenpai (0-shanten) via chiitoitsu, worse via standard

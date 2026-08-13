@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
+import { TrainerStatusBar } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { concealedTiles, wallDrawnCount } from '../../core/match'
@@ -258,23 +259,23 @@ export function ScoringPage() {
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between text-sm text-neutral-500">
-          <span>{t('scoring.handNumber', { count: round.handNumber })}</span>
-          <span className="flex flex-col items-end">
-            <span>
-              {t('scoring.correctScore', { correct: round.correctCount, total: round.totalCount })}
-            </span>
-            {settings.timerEnabled && (
-              <span>{t('scoring.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-            )}
+        <TrainerStatusBar
+          showToggle={settings.timerEnabled}
+          paused={round.paused}
+          onToggle={round.togglePause}
+          toggleLabel={t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')}
+          onReset={round.next}
+          resetLabel={t('common.resetHand')}
+          elapsed={round.elapsed}
+          timerEnabled={settings.timerEnabled}
+        >
+          <span>
+            {t('scoring.correctScore', { correct: round.correctCount, total: round.totalCount })}
           </span>
-        </div>
-
-        {settings.timerEnabled && (
-          <span className="self-end font-mono text-sm tabular-nums text-neutral-500">
-            {formatElapsedMs(round.elapsed)}
-          </span>
-        )}
+          {settings.timerEnabled && (
+            <span>{t('scoring.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
+          )}
+        </TrainerStatusBar>
 
         {round.invalidLink && (
           <p className="rounded-lg border border-amber-400 p-3 text-sm text-amber-700 dark:text-amber-400">

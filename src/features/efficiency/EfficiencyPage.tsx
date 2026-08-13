@@ -1,12 +1,12 @@
-import { Pause, Play } from 'lucide-react'
 import { useMemo, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
+import { TrainerStatusBar } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
-import { formatElapsed, formatElapsedMs } from '../../lib/formatElapsed'
+import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow } from '../settings/SettingsDialog'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
@@ -120,41 +120,32 @@ export function EfficiencyPage() {
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
+        <TrainerStatusBar
+          showToggle={settings.timerEnabled}
+          paused={round.paused}
+          onToggle={round.togglePause}
+          toggleLabel={t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')}
+          onReset={round.restart}
+          resetLabel={t('common.resetHand')}
+          elapsed={round.elapsed * 1000}
+          timerEnabled={settings.timerEnabled}
+        >
+          {/* also lives in the table's own centre panel */}
           <span>
-            {t('efficiency.roundStatus', { round: t(`wind.${situation.round}`), turn: round.turn })}
+            <Trans
+              i18nKey="efficiency.ukeireLost"
+              values={{
+                lost: round.cumulativeLost,
+                total: round.cumulativeTotal,
+                accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+              }}
+              components={{ term: <GlossaryTerm id="ukeire" /> }}
+            />
           </span>
           {settings.timerEnabled && (
-            <span className="flex items-center gap-1">
-              <span className="font-mono tabular-nums">{formatElapsed(round.elapsed)}</span>
-              <button
-                type="button"
-                aria-label={t(round.paused ? 'efficiency.resumeTimer' : 'efficiency.pauseTimer')}
-                onClick={round.togglePause}
-                className="flex size-6 items-center justify-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-              >
-                {round.paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
-              </button>
-            </span>
+            <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
           )}
-          {/* both live in the table's own centre panel */}
-          <span className="ml-auto flex flex-col items-end">
-            <span>
-              <Trans
-                i18nKey="efficiency.ukeireLost"
-                values={{
-                  lost: round.cumulativeLost,
-                  total: round.cumulativeTotal,
-                  accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
-                }}
-                components={{ term: <GlossaryTerm id="ukeire" /> }}
-              />
-            </span>
-            {settings.timerEnabled && (
-              <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-            )}
-          </span>
-        </div>
+        </TrainerStatusBar>
 
         {/* stacked normally; beside the board when the viewport is too short to stack, which is
             what makes turning the phone sideways actually pay off */}

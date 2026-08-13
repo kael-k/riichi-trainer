@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
+import { TrainerStatusBar } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -184,33 +185,34 @@ export function FoldingPage() {
       settings={settingsRows}
     >
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
-          <span>{t('folding.turnStatus', { turn: round.turn })}</span>
-          {settings.timerEnabled && (
-            <span className="font-mono tabular-nums">{formatElapsedMs(round.elapsed)}</span>
+        <TrainerStatusBar
+          showToggle={settings.timerEnabled}
+          paused={round.paused}
+          onToggle={round.togglePause}
+          toggleLabel={t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')}
+          onReset={round.next}
+          resetLabel={t('common.resetHand')}
+          elapsed={round.elapsed}
+          timerEnabled={settings.timerEnabled}
+        >
+          {/* the running score says "that last one was wrong" as loudly as the panel does, so it
+              waits with it — the clock is not an answer and keeps running either way */}
+          {!answersHeld && (
+            <>
+              <span>
+                {t('folding.score', { correct: round.correctCount, total: round.totalCount })}
+              </span>
+              {/* safest-or-not is pass/fail; this says how close the rest were, measured against
+                  the most dangerous tile each hand actually held */}
+              {round.totalCount > 0 && (
+                <span>{t('folding.accuracy', { percent: Math.round(round.accuracy * 100) })}</span>
+              )}
+            </>
           )}
-          <span className="ml-auto flex flex-col items-end">
-            {/* the running score says "that last one was wrong" as loudly as the panel does, so it
-                waits with it — the clock is not an answer and keeps running either way */}
-            {!answersHeld && (
-              <>
-                <span>
-                  {t('folding.score', { correct: round.correctCount, total: round.totalCount })}
-                </span>
-                {/* safest-or-not is pass/fail; this says how close the rest were, measured against
-                    the most dangerous tile each hand actually held */}
-                {round.totalCount > 0 && (
-                  <span>
-                    {t('folding.accuracy', { percent: Math.round(round.accuracy * 100) })}
-                  </span>
-                )}
-              </>
-            )}
-            {settings.timerEnabled && (
-              <span>{t('folding.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-            )}
-          </span>
-        </div>
+          {settings.timerEnabled && (
+            <span>{t('folding.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
+          )}
+        </TrainerStatusBar>
 
         {/* stacked normally; beside the board when the viewport is too short to stack, which is
             what makes turning the phone sideways actually pay off */}

@@ -260,14 +260,14 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
   ])
 
   useEffect(() => {
-    if (!state || state.checked || state.loading || !options.timerEnabled) return
+    if (!state || state.checked || state.loading || !options.timerEnabled || stats.paused) return
     const id = setInterval(
       () => setState((s) => (s ? { ...s, elapsed: stats.elapsedNow() } : s)),
       TICK_MS,
     )
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state?.checked, state?.loading, options.timerEnabled])
+  }, [state?.checked, state?.loading, options.timerEnabled, stats.paused])
 
   /** Current hand as a shareable query string. A match reproduces from its wall, rivers and all,
    *  so that is the better link; a pinned or constructed hand has no match behind it and ships
@@ -342,13 +342,11 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     lastResult: state?.lastResult ?? null,
     invalidLink: state?.invalidLink ?? false,
     loading: state === null || state.loading,
-    /** Which hand is on screen right now — distinct from `totalCount`, which only bumps once
-     *  a hand is checked, so it would otherwise jump ahead while the graded hand is still
-     *  showing and "New Hand" hasn't been pressed yet. */
-    handNumber: handIndex + 1,
     correctCount: stats.correctCount,
     totalCount: stats.totalCount,
     averageTime: stats.averageTime,
+    paused: stats.paused,
+    togglePause: () => (stats.paused ? stats.resume() : stats.pause()),
     check,
     next: () => setHandIndex((n) => n + 1),
     situationQuery,

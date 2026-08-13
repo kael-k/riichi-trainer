@@ -10,6 +10,9 @@
     "faceDownTile": "face-down tile",
     "log": "Log ({{count}})",
     "newRound": "New round",
+    "resetHand": "New hand",
+    "pauseTimer": "Pause timer",
+    "resumeTimer": "Resume timer",
     "submit": "Submit",
     "wallDetails_one": "Wall ({{count}} tile left)",
     "wallDetails_other": "Wall ({{count}} tiles left)",
@@ -146,10 +149,7 @@
       "showUkeire": "Show <term>ukeire</term> tiles",
       "deadWall": "Dead wall & dora"
     },
-    "roundStatus": "{{round}} round · turn {{turn}}",
     "avgTime": "avg {{time}}",
-    "resumeTimer": "Resume timer",
-    "pauseTimer": "Pause timer",
     "wallStatus_one": "Wall: {{count}} tile",
     "wallStatus_other": "Wall: {{count}} tiles",
     "doraIndicator": "Dora indicator",
@@ -184,7 +184,6 @@
     "settings": {
       "timer": "Timer"
     },
-    "handNumber": "Hand {{count}}",
     "correctScore": "Correct: {{correct}} / {{total}}",
     "avgTime": "avg {{time}}",
     "placeholder": "shanten?",
@@ -195,7 +194,6 @@
     "previousHand": "Previous hand — actual shanten: {{value}}",
     "via": "(via {{paths}})",
     "inTime": "in {{time}}",
-    "stopHand": "Stop and deal a new hand",
     "revealHand": "Reveal hand",
     "path": {
       "standard": "standard",
@@ -218,7 +216,6 @@
       "ignoreFuOnLimit": "Ignore fu on limit hands",
       "openHands": "Open hands"
     },
-    "handNumber": "Hand {{count}}",
     "dealing": "Dealing…",
     "correctScore": "Correct: {{correct}} / {{total}}",
     "avgTime": "avg {{time}}",
@@ -372,7 +369,6 @@
   "folding": {
     "dealing": "Looking for a hand…",
     "noHand": "No hand came up that was worth drilling. Try another deal.",
-    "turnStatus": "Turn {{turn}}",
     "score": "Safest: {{correct}} / {{total}}",
     "accuracy": "accuracy {{percent}}%",
     "avgTime": "avg {{time}}",

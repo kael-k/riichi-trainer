@@ -473,14 +473,14 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   }
 
   useEffect(() => {
-    if (!state || state.finished || state.loading || !options.timerEnabled) return
+    if (!state || state.finished || state.loading || !options.timerEnabled || stats.paused) return
     const id = setInterval(
       () => setState((s) => (s ? { ...s, elapsed: stats.elapsedNow() } : s)),
       TICK_MS,
     )
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state?.finished, state?.loading, options.timerEnabled])
+  }, [state?.finished, state?.loading, options.timerEnabled, stats.paused])
 
   function discard(index: number) {
     const r = core.current
@@ -606,6 +606,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     ranked: (): TileDanger[] => (core.current ? analysisOf(core.current).danger : []),
     discard,
     next: () => setHandIndex((n) => n + 1),
+    paused: stats.paused,
+    togglePause: () => (stats.paused ? stats.resume() : stats.pause()),
     situationQuery,
   }
 

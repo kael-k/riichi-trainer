@@ -25,7 +25,9 @@ export interface RoundResult {
 
 interface State {
   hand: ParsedTile[]
-  running: boolean
+  /** Has this hand been shown yet — distinct from whether the clock is currently ticking, since
+   *  pausing must not re-conceal a hand already peeked at. */
+  revealed: boolean
   /** Time on the current hand, in milliseconds. */
   elapsed: number
   /** Feedback for the previous guess; never blocks the current hand. */
@@ -66,12 +68,11 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
   const log = useLog((s) => s.log)
 
   /** Deals the hand for the current `handIndex`, carrying over whether the stream is
-   *  running and the pending feedback so an answered hand rolls straight into the next. */
+   *  revealed and the pending feedback so an answered hand rolls straight into the next. */
   function nextHand(prev?: State): State {
-    // there is no pause, so one clock reading is the whole timer
     stats.startClock()
     const carry = {
-      running: prev?.running ?? false,
+      revealed: prev?.revealed ?? false,
       elapsed: 0,
       lastResult: prev?.lastResult ?? null,
     }
@@ -96,32 +97,39 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
   }, [situation, handIndex, sanma])
 
   useEffect(() => {
-    if (!state.running || !timerEnabled) return
+    if (!state.revealed || stats.paused || !timerEnabled) return
     const id = setInterval(() => setState((s) => ({ ...s, elapsed: stats.elapsedNow() })), TICK_MS)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.running, timerEnabled])
+  }, [state.revealed, stats.paused, timerEnabled])
 
   return {
     ...state,
-    concealed: !state.running,
+    /** Whether the clock is actively ticking right now — false both before the first reveal and
+     *  while paused, true only once revealed and running. */
+    running: state.revealed && !stats.paused,
+    concealed: !state.revealed,
+    paused: stats.paused,
     correctCount: stats.correctCount,
     totalCount: stats.totalCount,
     averageTime: stats.averageTime,
     reveal: () =>
       setState((s) => {
-        if (s.running) return s
+        if (s.revealed) return s
         stats.startClock()
-        return { ...s, running: true }
+        return { ...s, revealed: true }
       }),
-    /** Abandons the current hand: re-conceals, drops the timer, deals a fresh one —
-     *  a peeked hand can't be timed again, so there is nothing to resume. */
+    /** Pauses/resumes the clock without re-conceal — the hand stays exactly as shown, since it
+     *  was already peeked at either way; only the clock freezes. */
+    togglePause: () => (stats.paused ? stats.resume() : stats.pause()),
+    /** Abandons the current hand: re-conceals, drops the timer, deals a fresh one — distinct from
+     *  a pause, which keeps the same hand and clock and can resume. */
     stop: () => {
-      setState((s) => ({ ...s, running: false, elapsed: 0 }))
+      setState((s) => ({ ...s, revealed: false, elapsed: 0 }))
       setHandIndex((n) => n + 1)
     },
     submit: (guess: number) => {
-      if (!state.running || !handRef.current) return
+      if (!state.revealed || !handRef.current) return
       const actual = computeBreakdown(handRef.current)
       const correct = guess === actual.value
       const elapsed = stats.elapsedNow()

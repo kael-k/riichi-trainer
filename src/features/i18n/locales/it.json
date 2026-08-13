@@ -10,6 +10,9 @@
     "faceDownTile": "tessera coperta",
     "log": "Registro ({{count}})",
     "newRound": "Nuova mano",
+    "resetHand": "Ricomincia mano",
+    "pauseTimer": "Metti in pausa il timer",
+    "resumeTimer": "Riprendi il timer",
     "submit": "Conferma",
     "wallDetails_one": "Muro ({{count}} tessera rimasta)",
     "wallDetails_other": "Muro ({{count}} tessere rimaste)",
@@ -146,10 +149,7 @@
       "showUkeire": "Mostra tessere di <term>ukeire</term>",
       "deadWall": "Muro morto e dora"
     },
-    "roundStatus": "vento {{round}} · turno {{turn}}",
     "avgTime": "media {{time}}",
-    "resumeTimer": "Riprendi il timer",
-    "pauseTimer": "Metti in pausa il timer",
     "wallStatus_one": "Muro: {{count}} tessera",
     "wallStatus_other": "Muro: {{count}} tessere",
     "doraIndicator": "Indicatore dora",
@@ -184,7 +184,6 @@
     "settings": {
       "timer": "Timer"
     },
-    "handNumber": "Mano {{count}}",
     "correctScore": "Corrette: {{correct}} / {{total}}",
     "avgTime": "media {{time}}",
     "placeholder": "shanten?",
@@ -195,7 +194,6 @@
     "previousHand": "Mano precedente — shanten reale: {{value}}",
     "via": "(via {{paths}})",
     "inTime": "in {{time}}",
-    "stopHand": "Interrompi e passa a una nuova mano",
     "revealHand": "Rivela la mano",
     "path": {
       "standard": "standard",
@@ -218,7 +216,6 @@
       "ignoreFuOnLimit": "Ignora il fu nelle mani limite",
       "openHands": "Mani aperte"
     },
-    "handNumber": "Mano {{count}}",
     "dealing": "Distribuzione…",
     "correctScore": "Corrette: {{correct}} / {{total}}",
     "avgTime": "media {{time}}",
@@ -372,7 +369,6 @@
   "folding": {
     "dealing": "Cerco una mano…",
     "noHand": "Nessuna mano adatta all’esercizio. Prova un altro giro.",
-    "turnStatus": "Turno {{turn}}",
     "score": "Più sicuro: {{correct}} / {{total}}",
     "accuracy": "precisione {{percent}}%",
     "avgTime": "media {{time}}",
