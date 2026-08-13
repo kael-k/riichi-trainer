@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 01-table-architecture-centralization
 source: [01-VERIFICATION.md]
 started: 2026-08-13T09:37:13Z
-updated: 2026-08-13T09:57:00Z
+updated: 2026-08-13T10:05:00Z
 ---
 
 ## Current Test
@@ -95,8 +95,19 @@ blocked: 0
   reason: "User reported: lgtm, just small change replace (solo) with `- solo` and the table versio with `- with opponents`"
   severity: minor
   test: 2
-  artifacts: []
-  missing: []
+  root_cause: "Not a bug — pure locale-JSON wording. trainer.efficiency.title / trainer.efficiencySolo.title in all four locale files hold the display text verbatim, consumed by HomePage.tsx (card heading + aria-label) and by EfficiencyPage.tsx / EfficiencySoloPage.tsx (page header via TrainerLayout's title prop). No test or other file duplicates the literal string."
+  artifacts:
+    - path: "src/features/i18n/locales/en.json"
+      issue: "trainer.efficiency.title = \"Efficiency trainer\" -> \"Efficiency trainer - with opponents\"; trainer.efficiencySolo.title = \"Efficiency trainer (solo)\" -> \"Efficiency trainer - solo\""
+    - path: "src/features/i18n/locales/ja.json"
+      issue: "trainer.efficiency.title / trainer.efficiencySolo.title need translated dash-suffix equivalents (drop parenthetical form)"
+    - path: "src/features/i18n/locales/zh.json"
+      issue: "trainer.efficiency.title / trainer.efficiencySolo.title need translated dash-suffix equivalents (drop parenthetical form)"
+    - path: "src/features/i18n/locales/it.json"
+      issue: "trainer.efficiency.title / trainer.efficiencySolo.title need translated dash-suffix equivalents (drop parenthetical form)"
+  missing:
+    - "Edit 8 title strings (2 keys x 4 locales) to the dash-suffix form, translated meaningfully per language, not transliterated"
+  debug_session: .planning/debug/home-card-title-copy-format.md
 
 - gap_id: G-01-6
   truth: "Copy Link button copies the current situation link to the clipboard on any trainer page"
@@ -104,8 +115,16 @@ blocked: 0
   reason: "User reported: copy link buttons are broken (at least, by running the project with `npm run dev -- --host` and accessing with LAN ip"
   severity: blocker
   test: 6
-  artifacts: []
-  missing: []
+  root_cause: "CopyLinkButton.tsx and TrainerLayout.tsx's CopyButton both call navigator.clipboard.writeText(...) unconditionally, with no isSecureContext check and no try/catch. The Clipboard API is spec-restricted to secure contexts (HTTPS, or the localhost/127.0.0.1 special case) — npm run dev -- --host serves plain HTTP, so a LAN-IP origin is not a secure context and navigator.clipboard is undefined there. The call throws inside an async handler (unhandled rejection, invisible without devtools open) and the button gives no visual feedback either, since the post-copy state update never runs."
+  artifacts:
+    - path: "src/components/CopyLinkButton.tsx"
+      issue: "Unguarded navigator.clipboard.writeText call (~line 12), no try/catch, no fallback"
+    - path: "src/components/TrainerLayout.tsx"
+      issue: "CopyButton (~line 129-145) has the identical unguarded pattern — second independent caller of the same broken shape"
+  missing:
+    - "Shared clipboard helper/hook both components route through: check navigator.clipboard exists / window.isSecureContext, wrap writeText in try/catch"
+    - "Fallback path (e.g. document.execCommand('copy') via hidden textarea) or an explicit failure state when the Clipboard API is unavailable, instead of silently doing nothing"
+  debug_session: .planning/debug/copy-link-button-broken-lan.md
 
 - gap_id: G-01-8
   truth: "Copy a wall link out of `/efficiency` and open it in `/lab`: the identical board appears in the lab, with the full ranking and full danger-tier list for the same hand"
@@ -113,8 +132,13 @@ blocked: 0
   reason: "User reported: copy button doesn't work, (same symptom as G-01-6 — likely one root cause, the app's Clipboard-API-based CopyLinkButton, reported broken again here)"
   severity: major
   test: 8
-  artifacts: []
-  missing: []
+  root_cause: "Same root cause as G-01-6 — CopyLinkButton is shared by every trainer page including /lab; confirmed as one bug, not two, by the same debug investigation."
+  artifacts:
+    - path: "src/components/CopyLinkButton.tsx"
+      issue: "Same unguarded navigator.clipboard.writeText call used by LabPage"
+  missing:
+    - "Resolved by the same fix as G-01-6 — no separate fix plan needed"
+  debug_session: .planning/debug/copy-link-button-broken-lan.md
 
 ## Deferred Follow-Ups
 
