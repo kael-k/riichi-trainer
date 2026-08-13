@@ -30,14 +30,13 @@ export interface Situation {
   seat: Wind
   /** Per-round overrides of the corresponding settings, pinned so a shared link
    *  reproduces the same round regardless of the receiver's preferences. */
-  opponents?: boolean
   deadWall?: boolean
   aka?: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma?: boolean
 }
 
-const FLAGS = ['opponents', 'deadWall', 'aka', 'sanma'] as const
+const FLAGS = ['deadWall', 'aka', 'sanma'] as const
 
 export function emptySituation(): Situation {
   return {

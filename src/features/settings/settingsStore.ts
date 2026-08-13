@@ -13,8 +13,6 @@ export interface Settings {
     timerEnabled: boolean
     /** Show the improving tiles under discard feedback, not just the count. */
     showUkeire: boolean
-    /** Simulated opponents that draw and tsumogiri every turn. */
-    opponents: boolean
     /** Reserve a dead wall and show its dora indicator. */
     deadWall: boolean
   }
@@ -137,7 +135,6 @@ export const useSettings = create<SettingsState>()(
         showShanten: true,
         timerEnabled: true,
         showUkeire: true,
-        opponents: false,
         deadWall: true,
       },
       shanten: { timerEnabled: true },

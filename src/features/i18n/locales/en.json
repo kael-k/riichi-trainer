@@ -100,13 +100,22 @@
     "title": "Riichi Trainer",
     "license": "Free and open-source software, released under the GPLv3.",
     "sourceLink": "Source on GitHub",
-    "buildCommit": "build commit: {{sha}}"
+    "buildCommit": "build commit: {{sha}}",
+    "section": {
+      "solitaire": "Solitaire",
+      "table": "Table"
+    }
   },
   "trainer": {
     "efficiency": {
       "title": "Efficiency trainer",
-      "desc": "Pick the best discard; see the tiles that improve your hand.",
+      "desc": "Pick the best discard against real opponents at a full table.",
       "intro": "Each round deals you a real hand mid-match. Discard the tile that keeps your hand closest to tenpai and keeps the most ways to improve it (its ukeire). After you discard, the trainer shows whether it was the best choice and how many tiles you left on the table."
+    },
+    "efficiencySolo": {
+      "title": "Efficiency trainer (solo)",
+      "desc": "Pick the best discard; see the tiles that improve your hand. No opponents — just you and the wall.",
+      "intro": "Each round deals you a real hand mid-match, with no other seats to read. Discard the tile that keeps your hand closest to tenpai and keeps the most ways to improve it (its ukeire). After you discard, the trainer shows whether it was the best choice and how many tiles you left on the table."
     },
     "shanten": {
       "title": "Shanten trainer",
@@ -129,7 +138,6 @@
       "showShanten": "Show <term>shanten</term>",
       "timer": "Timer",
       "showUkeire": "Show <term>ukeire</term> tiles",
-      "opponents": "Opponents",
       "deadWall": "Dead wall & dora"
     },
     "roundStatus": "{{round}} round · turn {{turn}}",

@@ -100,13 +100,22 @@
     "title": "Riichi Trainer",
     "license": "Software libero e open source, rilasciato sotto licenza GPLv3.",
     "sourceLink": "Codice sorgente su GitHub",
-    "buildCommit": "commit della build: {{sha}}"
+    "buildCommit": "commit della build: {{sha}}",
+    "section": {
+      "solitaire": "Solitario",
+      "table": "Tavolo"
+    }
   },
   "trainer": {
     "efficiency": {
       "title": "Allenamento efficienza",
-      "desc": "Scegli lo scarto migliore; guarda le tessere che migliorano la mano.",
+      "desc": "Scegli lo scarto migliore contro avversari reali, a un tavolo completo.",
       "intro": "Ogni mano ti mette a metà di una partita reale. Scarta la tessera che tiene la mano più vicina al tenpai e con più modi per migliorarla (il suo ukeire). Dopo lo scarto, il trainer mostra se era la scelta migliore e quante tessere hai lasciato sul tavolo."
+    },
+    "efficiencySolo": {
+      "title": "Allenamento efficienza (solitario)",
+      "desc": "Scegli lo scarto migliore; guarda le tessere che migliorano la mano. Nessun avversario — solo tu e il muro.",
+      "intro": "Ogni mano ti mette a metà di una partita reale, senza altri posti da leggere. Scarta la tessera che tiene la mano più vicina al tenpai e con più modi per migliorarla (il suo ukeire). Dopo lo scarto, il trainer mostra se era la scelta migliore e quante tessere hai lasciato sul tavolo."
     },
     "shanten": {
       "title": "Allenamento shanten",
@@ -129,7 +138,6 @@
       "showShanten": "Mostra lo <term>shanten</term>",
       "timer": "Timer",
       "showUkeire": "Mostra tessere di <term>ukeire</term>",
-      "opponents": "Avversari",
       "deadWall": "Muro morto e dora"
     },
     "roundStatus": "vento {{round}} · turno {{turn}}",

@@ -34,7 +34,6 @@ describe('urlCodec', () => {
     s.river = parseTenhou('1z9p')
     s.round = 'S'
     s.seat = 'W'
-    s.opponents = true
     s.deadWall = false
     s.aka = true
     s.sanma = true
