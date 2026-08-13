@@ -46,7 +46,7 @@ settings under a global-default-plus-per-app-override schema; ship a standalone 
 
   5. `npm test` (including the tile-census and shanten-equivalence invariants), `npm run lint`, and
      `npm run build` all pass
-**Plans**: 6/7 plans executed, in 6 execution waves — see
+**Plans**: 7/7 plans executed, in 6 execution waves — see
   `.planning/phases/01-table-architecture-centralization/01-CONTEXT.md` for the locked decisions
   they respect
 
@@ -70,7 +70,7 @@ Plans:
 - [x] 01-06-PLAN.md — table settings schema: global default plus per-app override, behind a
   persist version bump (wave 5, REQ-04)
 
-- [ ] 01-07-PLAN.md — statistical lab: load or author a wall, full ukeire ranking and full danger
+- [x] 01-07-PLAN.md — statistical lab: load or author a wall, full ukeire ranking and full danger
   tier list, nothing graded (wave 6, REQ-05)
 
 ## Progress
@@ -82,4 +82,4 @@ own hook, in parallel (3) → the efficiency split (4) → table settings (5) �
 
 | Phase | Plans Complete | Status | Completed |
 |-------|-----------------|--------|-----------|
-| 1. Table architecture centralization | 6/7 | In Progress|  |
+| 1. Table architecture centralization | 7/7 | In Progress|  |
