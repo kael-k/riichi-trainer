@@ -102,11 +102,14 @@ pass/fail score the session carries partial credit per throw, `(worst - yours) /
 `dangerScore` (`danger.ts`) across the tiles that hand held — `useSessionStats.record` takes it as
 an optional third argument and averages it into `averageQuality`.
 
-Two rules the UI must keep: a *threat's* hand is revealed **only once the hand is over** (showing it
-after turn one hands over every turn still to come) — a non-threat bystander isn't the drill's
-answer key, so it carries real tiles throughout and follows `showOpponentHands` live like any other
-trainer's opponents — and no tier below `genbutsu` may ever read as "safe": suji only ever spoke
-about ryanmen, and a wall only about runs. The per-discard feedback (`FoldFeedback.tsx`) names only
+Two rules the UI must keep: a *threat's* hand is revealed once the hand is over **or** once
+`showOpponentHands` is switched on (`boardHandsOf`, `useFoldingRound.ts`) — that setting is a
+board-wide debug switch, not a narrower one that carves the drill's own answer key back out, so it
+reveals the declarer exactly like it reveals every other seat, live, mid-hand. A non-threat
+bystander was never gated on `finished` at all — it carries real tiles throughout and always
+followed `showOpponentHands` live like any other trainer's opponents — and no tier below
+`genbutsu` may ever read as "safe": suji only ever spoke about ryanmen, and a wall only about
+runs. The per-discard feedback (`FoldFeedback.tsx`) names only
 the tier (with a glossary popover on genbutsu/suji) — it does not spell out why in a sentence of its
 own, trusting the glossary entry to carry that instead. Per §8 decisions: fold-only (no push
 control — grading push/fold needs an EV model this codebase does not have), no danger markers before

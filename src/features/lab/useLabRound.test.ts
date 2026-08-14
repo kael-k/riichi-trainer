@@ -7,7 +7,13 @@ import { useLabRound, type RoundOptions } from './useLabRound'
 
 /** Bare-table options: no dead wall, no aka, no sanma, opponents never win — a rehearsal board so
  *  a hand doesn't end on someone else's tsumo out from under a test. */
-const BARE: RoundOptions = { deadWall: false, aka: false, sanma: false, opponentWins: false }
+const BARE: RoundOptions = {
+  deadWall: false,
+  aka: false,
+  sanma: false,
+  opponentWins: false,
+  showOpponentHands: false,
+}
 
 /** Seat 0's pinned 13-tile hand: nine man kinds plus two honor kinds — 11 distinct kinds. */
 const HAND = parseTenhou('123456789m1122z')

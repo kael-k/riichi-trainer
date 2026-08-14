@@ -66,8 +66,8 @@ export function FoldingPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   // no hideConcealedHands here: folding always shows the board (reading it is the drill), and the
-  // D-14 reveal gate below already withholds real tile ids until `round.finished` regardless of
-  // any setting
+  // D-14 reveal gate below already withholds real tile ids until `round.finished` or
+  // `showOpponentHands` regardless of any other setting
   const { showWall, showOpponentHands, threats, opponentWins } = useTableSettings('folding')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
@@ -83,8 +83,9 @@ export function FoldingPage() {
       opponentWins: urlData.wins ?? opponentWins,
       // one seat has to be left to fold; a link can pin a count this table cannot seat
       threats: Math.min(urlData.threats ?? threats, (isSanma ? 3 : 4) - 1),
+      showOpponentHands,
     }
-  }, [urlData, sanma, settings, threats, opponentWins])
+  }, [urlData, sanma, settings, threats, opponentWins, showOpponentHands])
 
   const round = useFoldingRound(urlData, options)
   const players = options.sanma ? 3 : 4
@@ -166,14 +167,12 @@ export function FoldingPage() {
     nuki: round.nuki[seat],
     riichi: round.riichi[seat],
     // `round.boardHands` is already the D-14 gate for a threat: face-down filler at the right
-    // count until `round.finished`, real tiles after — no setting decides whether a threat's real
-    // ids reach this prop. A bystander's tiles are real throughout, same as `hideConcealedHands`
-    // never withholds an ordinary opponent elsewhere — showOpponentHands alone decides whether
-    // this seat actually draws them, live for a bystander, only once finished for a threat
+    // count until `round.finished` or `showOpponentHands`, real tiles after — no setting decides
+    // whether a threat's real ids reach this prop. A bystander's tiles are real throughout, same
+    // as `hideConcealedHands` never withholds an ordinary opponent elsewhere — showOpponentHands
+    // alone decides whether this seat actually draws them, same as every seat here now
     hand: seat !== round.seatIndex ? round.boardHands[seat] : undefined,
-    concealed: round.threatSeats.includes(seat)
-      ? !(showOpponentHands && round.finished)
-      : !showOpponentHands,
+    concealed: !showOpponentHands,
   }))
   // everything that would tell you how the fold is going so far, held back mid-hand when asked
   const answersHeld = settings.feedbackAtEnd && !round.finished

@@ -23,6 +23,9 @@ export interface RoundOptions {
   sanma: boolean
   /** Let the AI opponents actually ron/tsumo — off plays every hand out to the wall instead. */
   opponentWins: boolean
+  /** The board's own debug reveal switch — every seat's hand goes real, mid-hand, not just once
+   *  the hand ends. */
+  showOpponentHands: boolean
 }
 
 /** The full analysis for the current 14-tile hand: `evaluateDiscards`'s whole ranking and
@@ -83,10 +86,11 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
   const finished = table.ended !== undefined
 
   // the reveal gate, exactly like folding's: your own seat's real tiles always, every other
-  // seat's real tiles only once the hand is finished, otherwise face-down filler of the right
-  // length — the lab must not become the screen that leaks what the folding drill hides
+  // seat's real tiles once the hand is finished or the board's own reveal switch is on,
+  // otherwise face-down filler of the right length — the lab must not become the screen that
+  // leaks what the folding drill hides
   const boardHands: ParsedTile[][] = table.hands.map((hand, seat) =>
-    seat === seatIndex || finished ? hand : hand.map(() => BACK_TILE),
+    seat === seatIndex || finished || options.showOpponentHands ? hand : hand.map(() => BACK_TILE),
   )
 
   return {

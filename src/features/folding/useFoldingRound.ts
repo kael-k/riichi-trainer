@@ -42,6 +42,11 @@ export type RoundOptions = Settings['folding'] & {
   sanma: boolean
   threats: number
   opponentWins: boolean
+  /** The board's own debug reveal switch (`useTableSettings`'s `showOpponentHands`): every seat's
+   *  hand goes real, riichi declarer included — same as `finished` already does, just earlier.
+   *  Not a folding-only concept and not a drill mechanic, which is why it lives beside `threats`/
+   *  `opponentWins` here rather than in `Settings['folding']` itself. */
+  showOpponentHands: boolean
 }
 
 export interface FoldingUrl {
@@ -128,12 +133,14 @@ export const BACK_TILE: ParsedTile = { id: 0, red: false }
  *  component props (inspectable via devtools) the moment the hand is dealt — that reveal has to
  *  be withheld from the data itself, not just from how it is drawn, since it is the drill's own
  *  answer key. A bystander (any seat that never declared) isn't part of the answer being graded,
- *  so it carries real data like every other trainer's opponents do — `showOpponentHands` alone
- *  decides whether the page actually draws it, same as `concealed` everywhere else. */
-function boardHandsOf(core: RoundCore, finished: boolean): ParsedTile[][] {
+ *  so it carries real data like every other trainer's opponents do. `reveal` is `finished ||
+ *  showOpponentHands`: the hand ending unlocks it same as always, and so does the board's own
+ *  debug reveal switch — that switch is a "show me everything" toggle, not a "show me everything
+ *  except the answer key" one, so it does not carve the declarer out. */
+function boardHandsOf(core: RoundCore, reveal: boolean): ParsedTile[][] {
   const threats = new Set(riichiSeats(core.match))
   return core.match.players.map((player, seat) => {
-    if (seat === core.seatIndex || finished || !threats.has(seat)) return concealedTiles(player)
+    if (seat === core.seatIndex || reveal || !threats.has(seat)) return concealedTiles(player)
     return concealedTiles(player).map(() => BACK_TILE)
   })
 }
@@ -325,6 +332,9 @@ function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundStat
     end,
     elapsed: 0,
     loading: false,
+    // baked off `finished` alone — the live board's own reveal switch overrides this at the
+    // hook's return below, off `core.current` rather than a stale snapshot, so toggling it
+    // mid-hand doesn't wait for the next discard to take effect
     boardHands: boardHandsOf(core, finished),
   }
 }
@@ -592,6 +602,13 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     loading: !failed && (state === null || state.loading),
     /** No seed in the budget produced a drillable hand — the page offers another deal. */
     failed,
+    // recomputed fresh every render (not baked into `state` above) off `core.current`, so
+    // toggling the board's own reveal switch takes effect immediately rather than waiting for
+    // the next discard to re-snapshot — a debug switch that only sometimes shows the board isn't
+    // one you can trust
+    boardHands: core.current
+      ? boardHandsOf(core.current, (state?.finished ?? false) || options.showOpponentHands)
+      : [],
     correctCount: stats.correctCount,
     totalCount: stats.totalCount,
     averageTime: stats.averageTime,

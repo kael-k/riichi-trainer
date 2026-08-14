@@ -122,7 +122,7 @@ export function LabPage() {
   const { aka } = useAdvancedSettings()
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
-  const { deadWall, showWall, opponentWins } = useTableSettings('lab')
+  const { deadWall, showWall, opponentWins, showOpponentHands } = useTableSettings('lab')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
   // `apps.lab` slice in first.
@@ -167,8 +167,9 @@ export function LabPage() {
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
       opponentWins,
+      showOpponentHands,
     }),
-    [situation, deadWall, aka, sanma, opponentWins],
+    [situation, deadWall, aka, sanma, opponentWins, showOpponentHands],
   )
 
   const round = useLabRound(situation, options)
@@ -180,7 +181,10 @@ export function LabPage() {
     nuki: round.nuki[seat],
     riichi: round.riichi[seat],
     hand: seat !== round.seatIndex ? round.boardHands[seat] : undefined,
-    concealed: !round.finished,
+    // finished alone has always revealed here (a post-game reveal, same as reading a real score
+    // sheet); showOpponentHands now does the same live, mid-hand — previously this page never
+    // read that setting at all, so toggling it did nothing
+    concealed: !(round.finished || showOpponentHands),
   }))
 
   const wallError = situation.wallError

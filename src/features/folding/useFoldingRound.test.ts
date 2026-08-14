@@ -20,6 +20,7 @@ const OPTIONS: RoundOptions = {
   opponentWins: true,
   showEquallySafe: false,
   feedbackAtEnd: false,
+  showOpponentHands: false,
 }
 
 /** A deterministic pseudo-random full wall — not necessarily a worthwhile board on its own (a
@@ -332,6 +333,18 @@ describe('boardHands (the D-14 reveal gate)', () => {
     const own = result.current.boardHands[result.current.seatIndex]
     expect(own).toEqual(result.current.hands[result.current.seatIndex])
     expect(own.length).toBe(result.current.hand.length + (result.current.drawn ? 1 : 0))
+  })
+
+  it('the board reveal switch shows a threat for real too, mid-hand — it is a debug switch, not a narrower answer key', async () => {
+    const result = await deal(
+      { wall: wall('boardhands-seed') },
+      { ...OPTIONS, showOpponentHands: true },
+    )
+    expect(result.current.finished).toBe(false)
+    expect(result.current.threatSeats.length).toBeGreaterThan(0)
+    for (const seat of result.current.threatSeats) {
+      expect(result.current.boardHands[seat]).toEqual(result.current.hands[seat])
+    }
   })
 
   it('reveals real tiles once the hand is over, matching the reveal panel', async () => {
