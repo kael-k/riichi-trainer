@@ -56,7 +56,6 @@
   "seats": {
     "button": "{{wind}}家",
     "title": "{{wind}}家",
-    "yourSide": "自分の席",
     "sitHere": "ここから見る",
     "playedBy": "アルゴリズム",
     "mode": {

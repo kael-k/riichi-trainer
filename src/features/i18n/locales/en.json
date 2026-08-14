@@ -60,7 +60,6 @@
   "seats": {
     "button": "{{wind}} seat",
     "title": "{{wind}} seat",
-    "yourSide": "Your side",
     "sitHere": "Watch from here",
     "playedBy": "Algorithm",
     "mode": {

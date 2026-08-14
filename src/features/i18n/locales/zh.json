@@ -56,7 +56,6 @@
   "seats": {
     "button": "{{wind}}家",
     "title": "{{wind}}家",
-    "yourSide": "你的座位",
     "sitHere": "从这里观战",
     "playedBy": "算法",
     "mode": {

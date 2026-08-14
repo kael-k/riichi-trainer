@@ -114,25 +114,24 @@ export function SeatButton({
                 </button>
               </div>
               <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-                <div className="flex min-h-11 items-center gap-3">
-                  {yours ? (
-                    <span className="text-sm text-neutral-500">{t('seats.yourSide')}</span>
-                  ) : (
-                    <button
-                      type="button"
-                      // the board turns underneath the dialog, and the dialog is what covers it
-                      // — the whole point of the press is to look at the new view. View-only: it
-                      // never touches `onChange`, so it cannot re-search for a new hand or persist
-                      onClick={() => {
-                        onWatch(seat)
-                        setOpen(false)
-                      }}
-                      className="min-h-11 rounded-lg border border-neutral-300 px-3 text-sm font-medium dark:border-neutral-700"
-                    >
-                      {t('seats.sitHere')}
-                    </button>
-                  )}
-                </div>
+                {/* nothing to say about the seat you're already looking at — a "your side" label
+                    read as filler next to every other seat's real "Watch from here" button, so
+                    this seat's row is dropped entirely rather than left empty */}
+                {!yours && (
+                  <button
+                    type="button"
+                    // the board turns underneath the dialog, and the dialog is what covers it
+                    // — the whole point of the press is to look at the new view. View-only: it
+                    // never touches `onChange`, so it cannot re-search for a new hand or persist
+                    onClick={() => {
+                      onWatch(seat)
+                      setOpen(false)
+                    }}
+                    className="min-h-11 w-fit rounded-lg border border-neutral-300 px-3 text-sm font-medium dark:border-neutral-700"
+                  >
+                    {t('seats.sitHere')}
+                  </button>
+                )}
 
                 <div className="flex flex-col gap-2">
                   <span className="text-xs font-medium text-neutral-500">
