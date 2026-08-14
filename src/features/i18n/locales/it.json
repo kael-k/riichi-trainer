@@ -21,7 +21,8 @@
     "aboutTrainer": "Informazioni",
     "aboutTrainerTitle": "Informazioni: {{title}}",
     "learnMoreWiki": "Approfondisci su riichi.wiki",
-    "rewind": "Torna indietro a prima di questa azione"
+    "rewind": "Torna indietro a prima di questa azione",
+    "iosInstallHint": "Aggiungi questa app alla schermata Home per eliminare le barre di Safari: tocca Condividi, poi \"Aggiungi a Home\"."
   },
   "settings": {
     "button": "Impostazioni",

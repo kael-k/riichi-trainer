@@ -7,6 +7,7 @@ import { copyText } from '../lib/clipboard'
 import { DEFAULT_TILE_SCALE, useSettings } from '../features/settings/settingsStore'
 import { SettingsButton } from '../features/settings/SettingsDialog'
 import { useLog, type LogEntry } from '../store/log'
+import { IOSInstallHint } from './IOSInstallHint'
 import { InfoPopover } from './InfoPopover'
 import { Tile } from './tiles/Tile'
 
@@ -54,6 +55,7 @@ export function TrainerLayout({ title, settings, intro, children }: TrainerLayou
         {intro && <InfoButton title={title} intro={intro} />}
         <SettingsButton title={title}>{settings}</SettingsButton>
       </header>
+      <IOSInstallHint />
       <main
         className="flex-1 p-3"
         style={

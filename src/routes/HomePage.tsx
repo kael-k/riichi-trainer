@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
+import { IOSInstallHint } from '../components/IOSInstallHint'
 import { InfoButton } from '../components/TrainerLayout'
 import { Tile } from '../components/tiles/Tile'
 import { parseTenhou } from '../core/tiles'
@@ -87,6 +88,7 @@ export function HomePage() {
   const { t } = useTranslation()
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-4">
+      <IOSInstallHint />
       <div className="flex justify-end">
         <SettingsButton />
       </div>

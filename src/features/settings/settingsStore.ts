@@ -118,6 +118,12 @@ interface SettingsState extends Settings {
    *  the others. */
   mobileFullscreen: boolean
   setMobileFullscreen: (mobileFullscreen: boolean) => void
+  /** Dismissed the "install to Home Screen" hint (`IOSInstallHint.tsx`) — iOS Safari has no
+   *  element fullscreen at all, so a tab there can never lose its own bars; installing to the
+   *  Home Screen is the only real fix, and this is permanent once closed, same as the hint
+   *  itself never coming back for that reader. */
+  iosInstallHintDismissed: boolean
+  setIosInstallHintDismissed: (dismissed: boolean) => void
   update: <K extends keyof Settings>(section: K, patch: Partial<Settings[K]>) => void
 }
 
@@ -172,6 +178,8 @@ export const useSettings = create<SettingsState>()(
       setGlossaryOnClick: (glossaryOnClick) => set({ glossaryOnClick }),
       mobileFullscreen: true,
       setMobileFullscreen: (mobileFullscreen) => set({ mobileFullscreen }),
+      iosInstallHintDismissed: false,
+      setIosInstallHintDismissed: (iosInstallHintDismissed) => set({ iosInstallHintDismissed }),
       update: (section, patch) => set((s) => ({ ...s, [section]: { ...s[section], ...patch } })),
     }),
     {

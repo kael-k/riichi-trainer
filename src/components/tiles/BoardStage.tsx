@@ -196,8 +196,12 @@ export function BoardStage({
     >
       {/* a row above the board normally; standing in the left gutter held sideways, where it
           costs the square no height at all. Everything a hand needs mid-drill is here, so
-          fullscreen is somewhere you can stay rather than somewhere you visit */}
-      <div className="z-10 flex shrink-0 items-center gap-1 px-2 short:absolute short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0">
+          fullscreen is somewhere you can stay rather than somewhere you visit. `viewport-fit=
+          cover` (index.html) puts the whole page under Safari's bars, so this — the topmost row
+          either way — pads itself clear of them: the status bar/notch above in portrait, and
+          whichever physical edge is now "left" (env() tracks the current orientation, not a
+          fixed side) once the row itself has moved there for `short:` */}
+      <div className="z-10 flex shrink-0 items-center gap-1 px-2 pt-[env(safe-area-inset-top)] short:absolute short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
         <Link
           to="/"
           aria-label={t('common.back')}
@@ -219,8 +223,10 @@ export function BoardStage({
         <span className="ml-auto short:ml-0">{fullscreenButton}</span>
       </div>
 
-      {/* padded clear of the gutter chrome, so the square still centres on what is left */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center short:pl-11">
+      {/* padded clear of the gutter chrome, so the square still centres on what is left — widened
+          by the same inset the chrome column itself just grew by, so the reservation still
+          matches its real width */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center short:pl-[calc(2.75rem+env(safe-area-inset-left))]">
         {board?.(null)}
         {notice && noticeShown && (
           // pointer-events-none: a notice must never sit between the reader and a tile they are
@@ -250,8 +256,11 @@ export function BoardStage({
       </div>
 
       {/* capped: the claim prompt and the kita/kan row make this strip taller some turns, and it
-          must take that out of its own scroll rather than out of the board */}
-      <div className="flex max-h-[35svh] shrink-0 justify-center overflow-auto px-2 pb-2">
+          must take that out of its own scroll rather than out of the board. Always the bottom-
+          most (and, held sideways, still the full-width) row regardless of orientation, so it
+          carries the bottom inset (the home indicator) plus the side ones (a landscape notch)
+          rather than the chrome row above, which only ever owns one edge at a time */}
+      <div className="flex max-h-[35svh] shrink-0 justify-center overflow-auto pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))]">
         {hand}
       </div>
     </div>

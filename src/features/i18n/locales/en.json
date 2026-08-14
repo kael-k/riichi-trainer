@@ -21,7 +21,8 @@
     "aboutTrainer": "About",
     "aboutTrainerTitle": "About: {{title}}",
     "learnMoreWiki": "Learn more on riichi.wiki",
-    "rewind": "Rewind to before this action"
+    "rewind": "Rewind to before this action",
+    "iosInstallHint": "Add this to your Home Screen to get rid of Safari's bars — tap Share, then \"Add to Home Screen\"."
   },
   "settings": {
     "button": "Settings",

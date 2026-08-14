@@ -17,7 +17,8 @@
     "wallDetails_other": "山(残り{{count}}枚)",
     "dealtMarker": "配牌",
     "deadWallMarker": "王牌",
-    "rewind": "この操作の前まで巻き戻す"
+    "rewind": "この操作の前まで巻き戻す",
+    "iosInstallHint": "ホーム画面に追加するとSafariのバーが消えます。共有ボタンから「ホーム画面に追加」を選んでください。"
   },
   "settings": {
     "button": "設定",

@@ -17,7 +17,8 @@
     "wallDetails_other": "牌山(剩余{{count}}张)",
     "dealtMarker": "配牌",
     "deadWallMarker": "死墙",
-    "rewind": "撤回到此操作之前"
+    "rewind": "撤回到此操作之前",
+    "iosInstallHint": "将本应用添加到主屏幕即可去掉Safari的工具栏——点击“分享”,然后选择“添加到主屏幕”。"
   },
   "settings": {
     "button": "设置",
