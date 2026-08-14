@@ -195,6 +195,7 @@ export function useEfficiencyRound(
     /** Every seat a person plays: their hands are always face-up, whatever the reveal setting
      *  says, since they are the reader's own. */
     manualSeats: humans,
+    drawnSeat: table.drawnSeat,
     claim: table.claim,
     seatReads: table.seatReads,
     liveWall: table.liveWall,

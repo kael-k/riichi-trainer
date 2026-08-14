@@ -22,6 +22,7 @@ import {
   decodeFoldingUrl,
   FOLDING_VERDICT_TEXT_KEY,
   foldingVerdictSeverity,
+  splitConcealedDrawn,
   useFoldingRound,
   type RoundOptions,
   type ThreatReveal,
@@ -239,6 +240,18 @@ export function FoldingPage() {
   // everything that would tell you how the fold is going so far, held back mid-hand when asked
   const answersHeld = settings.feedbackAtEnd && !round.finished
 
+  // the bottom hand follows perspective, not the drill's own graded seat: rotating to watch
+  // another seat shows that seat's hand — `boardHands` already carries the D-14 reveal gate, so a
+  // threat's tiles stay filler at the data level regardless of where the board is drawn from.
+  // Only when the perspective is genuinely the seat whose turn it is can any of it be acted on
+  const viewingManual = round.manualSeats.includes(perspective)
+  const { tiles: bottomHand, drawn: bottomDrawn } = splitConcealedDrawn(
+    round.boardHands[perspective] ?? [],
+    perspective === round.drawnSeat ? round.drawn : undefined,
+  )
+  const bottomConcealed = !viewingManual && !showOpponentHands
+  const canAct = perspective === round.acting && !round.finished
+
   return (
     <TrainerLayout
       title={t('trainer.folding.title')}
@@ -319,11 +332,14 @@ export function FoldingPage() {
                 riichiArmed={round.riichiArmed}
                 onArmRiichi={round.armRiichi}
                 onAnswer={round.answer}
+                viewSeat={perspective}
+                onReturn={() => setViewSeat(null)}
               />
               <HandDisplay
-                tiles={round.hand}
-                drawn={round.drawn}
-                onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+                tiles={bottomHand}
+                drawn={bottomDrawn}
+                concealed={bottomConcealed}
+                onTileClick={canAct ? (i) => round.discard(i) : undefined}
               />
             </div>
           }

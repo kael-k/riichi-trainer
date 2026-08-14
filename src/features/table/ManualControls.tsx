@@ -15,6 +15,15 @@ interface ManualControlsProps {
   riichiArmed: boolean
   onArmRiichi: (armed: boolean) => void
   onAnswer: (answer: ClaimAnswer) => void
+  /** The seat the board is currently *drawn from* — perspective, not `seatIndex`. Perspective is
+   *  view-only: rotating away from `seatIndex` means spectating, so every other control here
+   *  (claim prompt included) is suspended rather than answered against a hand that is not on
+   *  screen. Omitted by pages that have not adopted perspective at all, where it never differs
+   *  from `seatIndex` and this whole branch is dead code. */
+  viewSeat?: number
+  /** Brings the perspective back to `seatIndex` — the escape valve that keeps a spectated drill
+   *  from silently stalling on an unanswerable claim. */
+  onReturn?: () => void
 }
 
 /**
@@ -33,10 +42,28 @@ export function ManualControls({
   riichiArmed,
   onArmRiichi,
   onAnswer,
+  viewSeat,
+  onReturn,
 }: ManualControlsProps) {
   const { t } = useTranslation()
   const showSeat = acting !== seatIndex
-  if (!claim && riichiTiles.length === 0 && !showSeat) return null
+  const watching = viewSeat !== undefined && viewSeat !== seatIndex
+  if (!claim && riichiTiles.length === 0 && !showSeat && !watching) return null
+
+  if (watching) {
+    return (
+      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
+        {t('seats.watchingSeat', { wind: t(`wind.${WINDS[viewSeat]}`) })}
+        <button
+          type="button"
+          onClick={onReturn}
+          className="min-h-11 rounded-lg border border-amber-400 px-3 text-sm font-medium"
+        >
+          {t('seats.backToYourSeat')}
+        </button>
+      </p>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-2">

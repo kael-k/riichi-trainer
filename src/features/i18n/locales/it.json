@@ -75,6 +75,8 @@
     },
     "claims": "Chiedimi conferma prima di chiamare gli scarti degli altri posti",
     "playingSeat": "Turno di {{wind}}",
+    "watchingSeat": "Stai guardando {{wind}}",
+    "backToYourSeat": "Torna al tuo posto",
     "claimPrompt": "{{wind}}: chiamare lo scarto di {{from}}?",
     "claim": {
       "ron": "Ron",

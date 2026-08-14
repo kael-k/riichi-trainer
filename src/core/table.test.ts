@@ -11,6 +11,7 @@ import {
   seatRead,
   seenBy,
   snapshotTable,
+  splitDrawn,
   yourDiscards,
   type TableCore,
 } from './table'
@@ -181,6 +182,17 @@ describe('snapshotTable', () => {
     expect(snap.hand.some((t) => t.id === match.drawn!.id && t.red === match.drawn!.red)).toBe(
       false,
     )
+    // whoever's turn it is right now — the seat a page must split *its own* hand for when
+    // watching it from another perspective
+    expect(snap.drawnSeat).toBe(match.seat)
+  })
+
+  it('leaves drawnSeat undefined between turns', () => {
+    const match = createMatch([], 4, YONMA, 'table-snap-nodraw')
+    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    const snap = snapshotTable(core)
+    expect(match.drawn).toBeUndefined()
+    expect(snap.drawnSeat).toBeUndefined()
   })
 
   it('mirrors every seat with one entry per player, for both 4-seat and 3-seat tables', () => {
@@ -213,6 +225,27 @@ describe('snapshotTable', () => {
 
     expect(before.rivers).toEqual(riversBefore)
     expect(before.hands).toEqual(handsBefore)
+  })
+})
+
+describe('splitDrawn', () => {
+  const tiles = parseTenhou('123456789m11p').map((t) => ({ id: t.id, red: t.red }))
+
+  it('passes tiles through unchanged when nothing is drawn', () => {
+    expect(splitDrawn(tiles, undefined)).toEqual({ tiles, drawn: undefined })
+  })
+
+  it('splices the matching tile out of tiles, wherever it sits in sort order', () => {
+    const drawn = tiles[3] // a tile mid-array, not the last — the sort order a real hand ships in
+    const { tiles: rest, drawn: split } = splitDrawn(tiles, drawn)
+    expect(split).toEqual(drawn)
+    expect(rest.length).toBe(tiles.length - 1)
+    expect(rest).not.toContainEqual(drawn)
+  })
+
+  it('returns drawn as given, and tiles unchanged, when the tile is not found', () => {
+    const stray = { id: 33, red: false } // outside `tiles`'s own kinds
+    expect(splitDrawn(tiles, stray)).toEqual({ tiles, drawn: stray })
   })
 })
 

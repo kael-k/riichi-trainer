@@ -10,6 +10,7 @@ import type { SafetyTier, TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
 import { parseTenhou, serializeTenhouOrdered, tileCode, type ParsedTile } from '../../core/tiles'
 import { validateWall, wallWithHand, type WallError } from '../../core/wall'
+import { splitConcealedDrawn } from '../folding/useFoldingRound'
 import type { GlossaryTermId } from '../i18n/glossary'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
@@ -226,6 +227,19 @@ export function LabPage() {
     concealed: !(round.finished || showOpponentHands || round.manualSeats.includes(seat)),
   }))
 
+  // the bottom hand follows perspective, not the drill's own graded seat: rotating to watch
+  // another seat shows that seat's hand — `boardHands` already carries the reveal gate above, so
+  // an unrevealed seat's tiles stay filler at the data level regardless of where the board is
+  // drawn from. Only when the perspective is genuinely the seat whose turn it is can any of it be
+  // acted on
+  const viewingManual = round.manualSeats.includes(perspective)
+  const { tiles: bottomHand, drawn: bottomDrawn } = splitConcealedDrawn(
+    round.boardHands[perspective] ?? [],
+    perspective === round.drawnSeat ? round.drawn : undefined,
+  )
+  const bottomConcealed = !(round.finished || showOpponentHands || viewingManual)
+  const canAct = perspective === round.acting && !round.finished
+
   const wallError = situation.wallError
   const loaded = situation.wall.length > 0 && !wallError
 
@@ -338,11 +352,14 @@ export function LabPage() {
                   riichiArmed={round.riichiArmed}
                   onArmRiichi={round.armRiichi}
                   onAnswer={round.answer}
+                  viewSeat={perspective}
+                  onReturn={() => setViewSeat(null)}
                 />
                 <HandDisplay
-                  tiles={round.hand}
-                  drawn={round.drawn}
-                  onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+                  tiles={bottomHand}
+                  drawn={bottomDrawn}
+                  concealed={bottomConcealed}
+                  onTileClick={canAct ? (i) => round.discard(i) : undefined}
                 />
               </div>
             }

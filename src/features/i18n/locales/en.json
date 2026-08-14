@@ -75,6 +75,8 @@
     },
     "claims": "Ask me to call on other seats’ discards",
     "playingSeat": "Playing {{wind}}",
+    "watchingSeat": "Watching {{wind}}",
+    "backToYourSeat": "Back to your seat",
     "claimPrompt": "{{wind}}: call on {{from}}’s discard?",
     "claim": {
       "ron": "Ron",

@@ -22,6 +22,7 @@ import {
   goRound,
   replayDiscards,
   snapshotTable,
+  splitDrawn,
   yourDiscards,
   type TableCore,
   type TableSnapshot,
@@ -162,6 +163,24 @@ interface RoundState extends TableSnapshot {
  *  Exported so the lab's own reveal gate (`useLabRound.ts`) reuses this exact filler rather than
  *  redefining it — one definition of "no identity" for both trainers. */
 export const BACK_TILE: ParsedTile = { id: 0, red: false }
+
+/** `splitDrawn` for a hand that may be `BACK_TILE` filler rather than real tiles (any seat
+ *  `boardHandsOf`/the lab's own reveal gate has not yet revealed): every slot is identical there,
+ *  so identity matching against `drawn` either can't find it or, worse, could false-match a real
+ *  tile id against filler that happens to share it. Detected by reference — `boardHandsOf` maps
+ *  every hidden slot to this exact `BACK_TILE` object, never a copy — rather than a second
+ *  `concealed` flag a caller could pass out of step with which array it actually built. The last
+ *  slot is split off positionally instead there — which of several identical backs it is doesn't
+ *  matter, only that one is. Real hands fall straight through to `splitDrawn`. Exported for the
+ *  lab's own bottom-hand split (`useLabRound.ts`'s `boardHands` uses the same filler). */
+export function splitConcealedDrawn(
+  tiles: ParsedTile[],
+  drawn: ParsedTile | undefined,
+): { tiles: ParsedTile[]; drawn: ParsedTile | undefined } {
+  if (!drawn) return { tiles, drawn: undefined }
+  if (tiles[0] !== BACK_TILE) return splitDrawn(tiles, drawn)
+  return { tiles: tiles.slice(0, -1), drawn: tiles[tiles.length - 1] }
+}
 
 /** Gating only a `concealed` display flag would leave a threat's real tile ids sitting in the
  *  component props (inspectable via devtools) the moment the hand is dealt — that reveal has to
@@ -703,6 +722,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       seatIndex: 0,
       acting: 0,
       claim: undefined,
+      drawnSeat: undefined,
       ended: undefined,
       win: undefined,
       wall: [],

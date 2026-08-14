@@ -4,6 +4,7 @@ import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
+import { splitDrawn } from '../../core/table'
 import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
@@ -85,6 +86,18 @@ export function EfficiencyPage() {
   for (const t of round.hand) counts.set(t.id, (counts.get(t.id) ?? 0) + 1)
   if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
   const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
+
+  // the bottom hand follows perspective, not the acting seat: rotating to watch another seat
+  // shows that seat's hand (face-down unless it's a manual seat or the reveal setting is on),
+  // never yours. Only when the perspective is genuinely the seat whose turn it is can any of it
+  // be acted on — otherwise this is a spectator's read of someone else's tiles
+  const viewingManual = round.manualSeats.includes(perspective)
+  const { tiles: bottomHand, drawn: bottomDrawn } = splitDrawn(
+    round.hands[perspective] ?? [],
+    perspective === round.drawnSeat ? round.drawn : undefined,
+  )
+  const bottomConcealed = !viewingManual && !showOpponentHands
+  const canAct = perspective === round.acting && !round.finished
 
   // a manual seat is the reader's own hand wherever it sits, so it is face-up like your own —
   // the reveal setting only ever governed the seats somebody else is playing
@@ -290,14 +303,17 @@ export function EfficiencyPage() {
                 riichiArmed={round.riichiArmed}
                 onArmRiichi={round.armRiichi}
                 onAnswer={round.answer}
+                viewSeat={perspective}
+                onReturn={() => setViewSeat(null)}
               />
               <HandDisplay
-                tiles={round.hand}
-                drawn={round.drawn}
-                onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+                tiles={bottomHand}
+                drawn={bottomDrawn}
+                concealed={bottomConcealed}
+                onTileClick={canAct ? (i) => round.discard(i) : undefined}
               />
 
-              {(options.sanma || kanEligible.length > 0) && !round.finished && (
+              {(options.sanma || kanEligible.length > 0) && canAct && (
                 <div className="flex flex-wrap gap-2">
                   {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
                     <button

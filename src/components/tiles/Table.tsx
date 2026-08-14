@@ -20,6 +20,10 @@ export interface SeatView {
    *  setting; the caller decides both whether to pass this and whether `concealed` accompanies
    *  it. */
   hand?: ParsedTile[]
+  /** This seat's 14th tile, held apart from `hand` with a small gap — the same tedashi/tsumogiri
+   *  read a real felt gives, for whichever seat is mid-turn. Honours `concealed` exactly like
+   *  `hand`: a concealed seat's draw is still a fresh back, not a spoiler. */
+  drawn?: ParsedTile
   /** Draw `hand` as face-down backs — the tile count and melds still read, faces don't. This is
    *  the default opponent view; pass `false` (real faces) only when `showOpponentHands` is on. */
   concealed?: boolean
@@ -261,7 +265,7 @@ export function Table({
                   )}
                   <River tiles={seat.river ?? []} />
                 </div>
-                {(showsInfo || (seat.hand && seat.hand.length > 0)) && (
+                {(showsInfo || (seat.hand && seat.hand.length > 0) || seat.drawn) && (
                   /* anchored to the *outer* square (the `relative` box two levels up), not to the
                      felt this `contents` group sits in — `display: contents` doesn't generate a
                      box, so an absolutely positioned child here still resolves against that outer
@@ -287,6 +291,14 @@ export function Table({
                               red={tile.red}
                             />
                           ))}
+                          {seat.drawn && (
+                            <div className="ml-[0.5cqw]">
+                              <Tile
+                                id={seat.concealed ? undefined : seat.drawn.id}
+                                red={seat.drawn.red}
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                       {seatInfoNodes?.[index] && (

@@ -7,8 +7,10 @@ import { completeWall } from '../../core/wall'
 import { useLog } from '../../store/log'
 import type { SeatMode } from '../settings/tableSettings'
 import {
+  BACK_TILE,
   decodeFoldingUrl,
   encodeFoldingUrl,
+  splitConcealedDrawn,
   useFoldingRound,
   type FoldingUrl,
   type RoundOptions,
@@ -409,6 +411,30 @@ describe('boardHands (the D-14 reveal gate)', () => {
     for (const threat of result.current.end!.threats) {
       expect(result.current.boardHands[threat.seat]).toEqual(threat.hand)
     }
+  })
+})
+
+describe('splitConcealedDrawn', () => {
+  it('splits a real hand by identity, like splitDrawn', () => {
+    const hand = parseTenhou('123456789m11p').map((t) => ({ id: t.id, red: t.red }))
+    const drawn = hand[2]
+    const { tiles, drawn: split } = splitConcealedDrawn(hand, drawn)
+    expect(split).toEqual(drawn)
+    expect(tiles).not.toContainEqual(drawn)
+    expect(tiles.length).toBe(hand.length - 1)
+  })
+
+  it('splits filler positionally, since every backed slot is the same identity-free tile', () => {
+    const filler = Array.from({ length: 14 }, () => BACK_TILE)
+    const { tiles, drawn } = splitConcealedDrawn(filler, BACK_TILE)
+    expect(drawn).toBe(BACK_TILE)
+    expect(tiles.length).toBe(13)
+    expect(tiles.every((t) => t === BACK_TILE)).toBe(true)
+  })
+
+  it('passes through unchanged when nothing is drawn, filler or not', () => {
+    const filler = Array.from({ length: 13 }, () => BACK_TILE)
+    expect(splitConcealedDrawn(filler, undefined)).toEqual({ tiles: filler, drawn: undefined })
   })
 })
 

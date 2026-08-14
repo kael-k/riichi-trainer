@@ -123,6 +123,11 @@ export interface TableSnapshot {
   /** The claim the board is waiting on, if any: while it is set nothing draws and nothing
    *  discards until it is answered. */
   claim: PendingClaim | undefined
+  /** Whose turn `drawn` belongs to — `undefined` whenever nothing is currently drawn (mid-claim,
+   *  or between hands). A page drawing a seat other than `acting` needs this to know whether
+   *  *that* seat's 14th tile should be shown split out: `hands[seat]` always has it mixed in
+   *  (`concealedTiles`, sorted), since only `hand`/`drawn` above ever get it spliced out. */
+  drawnSeat: number | undefined
   /** Each seat's own tenpai/waits/furiten (`seatRead`). Always present for a seat the reader
    *  plays — a human seat's own furiten is legitimate information a real client shows, and one
    *  more `waits` call is negligible next to the analysis that seat's own turn already pays for
@@ -131,19 +136,29 @@ export interface TableSnapshot {
   seatReads: (SeatRead | undefined)[]
 }
 
+/** Separates a drawn tile out of a hand for display — the 14th tile shown apart from the rest,
+ *  which is how tedashi/tsumogiri reads on a felt. `drawn` is returned exactly as given (even when
+ *  it isn't found in `tiles`, which should not normally happen): only whether `tiles` itself gets
+ *  spliced depends on the lookup. Shared by `snapshotTable` (the acting seat) and any page that
+ *  wants the same split for another seat, keyed off `TableSnapshot.drawnSeat`. */
+export function splitDrawn(
+  tiles: ParsedTile[],
+  drawn: ParsedTile | undefined,
+): { tiles: ParsedTile[]; drawn: ParsedTile | undefined } {
+  if (!drawn) return { tiles, drawn: undefined }
+  const i = tiles.findIndex((t) => t.id === drawn.id && t.red === drawn.red)
+  return { tiles: i >= 0 ? [...tiles.slice(0, i), ...tiles.slice(i + 1)] : tiles, drawn }
+}
+
 /** Builds a `TableSnapshot` for `core` as the match stands right now. */
 export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnapshot {
   const { match, seatIndex, options } = core
   const acting = actingSeat(core)
   const player = match.players[acting]
-  let hand = concealedTiles(player)
-  if (match.drawn) {
-    const i = hand.findIndex((t) => t.id === match.drawn!.id && t.red === match.drawn!.red)
-    if (i >= 0) hand = [...hand.slice(0, i), ...hand.slice(i + 1)]
-  }
+  const { tiles: hand, drawn } = splitDrawn(concealedTiles(player), match.drawn)
   return {
     hand,
-    drawn: match.drawn,
+    drawn,
     turn: match.turn,
     doraIndicators: [...match.doraIndicators],
     rivers: match.players.map((p) => [...p.river]),
@@ -164,6 +179,7 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
     dealtTiles: match.wall.slice(0, match.players.length * INITIAL_HAND_SIZE),
     acting,
     claim: match.claim,
+    drawnSeat: match.drawn ? match.seat : undefined,
     seatReads: match.players.map((_, seat) =>
       showSeatWaits || isHuman(options, seat) ? seatRead(match, seat, options.sanma) : undefined,
     ),

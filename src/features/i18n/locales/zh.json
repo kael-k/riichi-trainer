@@ -71,6 +71,8 @@
     },
     "claims": "他家出牌时，先询问是否鸣牌",
     "playingSeat": "轮到{{wind}}",
+    "watchingSeat": "正在观看{{wind}}",
+    "backToYourSeat": "回到你的座位",
     "claimPrompt": "{{wind}}: 是否鸣{{from}}打出的牌?",
     "claim": {
       "ron": "荣和",
