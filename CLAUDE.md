@@ -109,7 +109,11 @@ directly rather than through `useTableRound`, so it re-derives that one guard ra
 for free. Orientation (which seat `Table` draws at the bottom, `SeatConfig.orientation`) is a pure
 viewing perspective, deliberately kept out of `useFoldingRound`'s own rebuild key (`seatKey` tracks
 only `modes`/`claims`) — changing it must never re-search for a new hand, unlike a `modes`/`claims`
-edit, which legitimately does.
+edit, which legitimately does. Because it can move, the felt hand `FoldingPage` omits is the one
+belonging to the seat the board is _drawn from_, never the drill's own graded seat: the bottom of
+the felt is where `HandDisplay` already sits, so anything drawn there lands on top of it. The graded
+seat, once the perspective has moved off it, is an ordinary seat on the felt — face-up, since
+`boardHands` gives a seat somebody plays real tiles.
 
 Two folding settings are about what the trainer says rather than what it deals, so neither touches
 the link: `showEquallySafe` (off — naming the tiles that tied a correct answer hands over part of

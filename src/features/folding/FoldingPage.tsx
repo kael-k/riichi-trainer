@@ -180,9 +180,13 @@ export function FoldingPage() {
 
   const seats: SeatView[] = round.rivers.map((river, seat) => {
     const mine = round.manualSeats.includes(seat)
-    if (seat === round.seatIndex) {
-      // the drill's own generated seat: its hand is the one below the board (`HandDisplay`),
-      // whether or not it is also the seat `Table` is drawn from right now
+    // the seat the board is drawn from — *not* the drill's own graded seat, which is only the
+    // same thing until someone moves the perspective. The bottom of the felt is where the hand
+    // below the board (`HandDisplay`) already sits, so a hand drawn there too lands on top of it:
+    // watching from another side used to leave a face-down row stacked over your own face-up
+    // tiles, reading as "your hand, concealed from you". The graded seat, once it is elsewhere,
+    // is an ordinary seat on the felt — and a seat you play, so `boardHands` gives it real faces
+    if (seat === viewSeat) {
       return { river, melds: round.melds[seat], nuki: round.nuki[seat], riichi: round.riichi[seat] }
     }
     return {
