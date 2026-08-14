@@ -83,6 +83,14 @@ const WIND_MARKS = [
  *  instead of silently growing. */
 const INDICATOR_SLOTS = 5
 
+/** Fraction of the board's own edge given up to the per-seat hand+strip ring when either is
+ *  shown (`showsHands || showsInfo`) — the single number behind both the felt's own padding
+ *  (`p-[16%]`, hardcoded below since Tailwind's class scanner needs the literal) and the
+ *  `--table-cap` divisor that keeps the felt from shrinking when it's spent. Wide enough for
+ *  `SeatStrip`'s wait-tile row wrapping onto two lines; a bare hand row alone (WAVE 1) fit
+ *  inside the old 12%. */
+const SEAT_RING_FRACTION = 0.16
+
 /** A betting stick, sized off the board's tile width like everything else here: 1000 points
  *  (one red dot) for a riichi bet, 100 points (plain) for an honba counter. It reads as a
  *  counter mark beside the tile icon, so it inherits whatever small `--tile-w` that row sets
@@ -194,7 +202,7 @@ export function Table({
           // Named `--table-cap`, not `--table-max`: this is the desktop "don't balloon" default,
           // and an inline style would otherwise outrank the `--table-max` a caller sets on an
           // ancestor — which is exactly how fullscreen lifts the cap
-          '--table-cap': `${(25.6 * tileScale) / (showsHands || showsInfo ? 0.78 : 1)}rem`,
+          '--table-cap': `${(25.6 * tileScale) / (showsHands || showsInfo ? 1 - 2 * SEAT_RING_FRACTION : 1)}rem`,
         } as CSSProperties
       }
     >
@@ -211,9 +219,10 @@ export function Table({
       {/* the revealed hands and the per-seat strip sit outside the felt, so the square gives up a
           margin's worth of its own width to hold them — only when at least one is actually shown,
           so an ordinary board is exactly as big as it was. The border box stays square either
-          way, which is what keeps each seat's rotation covering it */}
+          way, which is what keeps each seat's rotation covering it. `relative`: the ring below is
+          anchored to *this* box's own edge, not the felt's, so it can never leave the square */}
       <div
-        className={`@container aspect-square w-full ${showsHands || showsInfo ? 'p-[12%]' : ''}`}
+        className={`@container relative aspect-square w-full ${showsHands || showsInfo ? 'p-[16%]' : ''}`}
       >
         {/* minmax(0,…): a seat block is measured before it rotates, so its 6-tile row is wider
             than the 4fr band it sits in — with fr's default auto minimum that would grow the
@@ -253,19 +262,22 @@ export function Table({
                   <River tiles={seat.river ?? []} />
                 </div>
                 {(showsInfo || (seat.hand && seat.hand.length > 0)) && (
-                  /* spans the whole (square) board and rotates with the seat, so the row runs that
-                     seat's entire side as one row instead of wrapping inside the river's six-tile
-                     box — and is then pushed clear of the felt entirely, into the margin the
-                     square gave up above. Nothing about the river moves: the hand (and, one ring
-                     further out, the strip) is beside the table, which is also where a revealed
-                     hand belongs. Stacked in one flex-col rather than two independently-placed
-                     rings: with no hand to show (the bottom seat, whose felt hand is always
-                     omitted) the strip is the only child, so it lands exactly where the hand row
-                     would have sat instead of leaving a gap outboard of nothing */
+                  /* anchored to the *outer* square (the `relative` box two levels up), not to the
+                     felt this `contents` group sits in — `display: contents` doesn't generate a
+                     box, so an absolutely positioned child here still resolves against that outer
+                     box regardless of its own grid-item ancestry. `inset-0` on a padded ancestor
+                     reaches past its own padding to the true border edge, so `items-end` lands
+                     this ring flush against the square's own boundary: the ring can grow into the
+                     padding band it was given, never past it. Nothing about the river moves: the
+                     hand (and, one ring further out, the strip) is beside the table, which is also
+                     where a revealed hand belongs. Stacked in one flex-col rather than two
+                     independently-placed rings: with no hand to show (the bottom seat, whose felt
+                     hand is always omitted) the strip is the only child, so it lands exactly where
+                     the hand row would have sat instead of leaving a gap outboard of nothing */
                   <div
-                    className={`pointer-events-none col-span-3 col-start-1 row-span-3 row-start-1 flex items-end justify-center ${slot.spin}`}
+                    className={`pointer-events-none absolute inset-0 flex items-end justify-center ${slot.spin}`}
                   >
-                    <div className="flex translate-y-[112%] flex-col items-center gap-[1cqw]">
+                    <div className="flex flex-col items-center gap-[1cqw]">
                       {seat.hand && seat.hand.length > 0 && (
                         <div className="flex [--tile-w:calc(100cqw/16)]">
                           {seat.hand.map((tile, i) => (
