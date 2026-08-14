@@ -101,6 +101,8 @@ export function GlobalSettings() {
   const setAka = useSettings((s) => s.setAka)
   const advanced = useSettings((s) => s.advanced)
   const setAdvanced = useSettings((s) => s.setAdvanced)
+  const glossaryOnClick = useSettings((s) => s.glossaryOnClick)
+  const setGlossaryOnClick = useSettings((s) => s.setGlossaryOnClick)
 
   return (
     <div className="flex flex-col gap-4">
@@ -178,6 +180,14 @@ export function GlobalSettings() {
           type="checkbox"
           checked={showTileNumbers}
           onChange={(e) => setShowTileNumbers(e.target.checked)}
+          className="size-5"
+        />
+      </SettingRow>
+      <SettingRow label={t('settings.glossaryOnClick')}>
+        <input
+          type="checkbox"
+          checked={glossaryOnClick}
+          onChange={(e) => setGlossaryOnClick(e.target.checked)}
           className="size-5"
         />
       </SettingRow>

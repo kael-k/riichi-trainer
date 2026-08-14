@@ -38,6 +38,7 @@
     "yonma": "4 players",
     "sanma": "3 players",
     "numbersOnTiles": "Numbers on tiles",
+    "glossaryOnClick": "Open glossary terms on tap only, not hover",
     "advanced": "Advanced options",
     "tsumogiriMarks": "Show tsumogiri/tedashi",
     "redFives": "Red fives",

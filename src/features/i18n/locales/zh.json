@@ -34,6 +34,7 @@
     "yonma": "四人麻将",
     "sanma": "三人麻将",
     "numbersOnTiles": "牌面显示数字",
+    "glossaryOnClick": "术语解释仅在点击时打开，不在悬停时打开",
     "advanced": "高级选项",
     "tsumogiriMarks": "显示摸切/手切标记",
     "redFives": "赤宝牌",

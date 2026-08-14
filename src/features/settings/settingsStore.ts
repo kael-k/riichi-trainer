@@ -108,6 +108,12 @@ interface SettingsState extends Settings {
    *  the settings row hides there. */
   translatedTerms: boolean
   setTranslatedTerms: (translated: boolean) => void
+  /** Force `GlossaryTerm` open on click/tap only. Off by default: on a device that actually
+   *  supports hover (Tailwind's `hover:`/`group-hover:` already compile to `@media (hover:
+   *  hover)`, so this never fires on touch regardless), hovering the term shows the explanation
+   *  inline — click still opens the full popover either way, wiki link included. */
+  glossaryOnClick: boolean
+  setGlossaryOnClick: (onClick: boolean) => void
   update: <K extends keyof Settings>(section: K, patch: Partial<Settings[K]>) => void
 }
 
@@ -160,6 +166,8 @@ export const useSettings = create<SettingsState>()(
       setLocale: (locale) => set({ locale }),
       translatedTerms: true,
       setTranslatedTerms: (translatedTerms) => set({ translatedTerms }),
+      glossaryOnClick: false,
+      setGlossaryOnClick: (glossaryOnClick) => set({ glossaryOnClick }),
       update: (section, patch) => set((s) => ({ ...s, [section]: { ...s[section], ...patch } })),
     }),
     {

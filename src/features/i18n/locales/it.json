@@ -38,6 +38,7 @@
     "yonma": "4 giocatori",
     "sanma": "3 giocatori",
     "numbersOnTiles": "Numeri sulle tessere",
+    "glossaryOnClick": "Apri i termini del glossario solo al tocco, non al passaggio del mouse",
     "advanced": "Opzioni avanzate",
     "tsumogiriMarks": "Mostra tsumogiri/tedashi",
     "redFives": "Cinque rossi",
