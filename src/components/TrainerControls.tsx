@@ -25,7 +25,7 @@ export function Timer({ elapsedNow, running }: { elapsedNow: () => number; runni
   return <span className="font-mono tabular-nums text-neutral-500">{formatElapsedMs(ms)}</span>
 }
 
-interface TrainerStatusBarProps {
+export interface TrainerTogglesProps {
   /** Whether the toggle button (and, when `timerEnabled`, the clock) is shown at all. Every
    *  trainer but shanten ties this straight to its own timer setting — pausing a clock nobody is
    *  showing has nothing to do. Shanten's toggle is also its reveal control, so it stays on
@@ -36,6 +36,46 @@ interface TrainerStatusBarProps {
   toggleLabel: string
   onReset: () => void
   resetLabel: string
+  /** Drawn small enough to sit in the fullscreen board's chrome, where every other button is a
+   *  44px icon rather than the status bar's roomier 48px pair. */
+  compact?: boolean
+}
+
+/** Start/pause and reset, on their own. The status bar draws them beside the clock; the
+ *  fullscreen board draws the same two in its chrome, so a hand can be paused or abandoned
+ *  without leaving the table to do it. */
+export function TrainerToggles({
+  showToggle,
+  paused,
+  onToggle,
+  toggleLabel,
+  onReset,
+  resetLabel,
+  compact = false,
+}: TrainerTogglesProps) {
+  const box = compact
+    ? 'flex size-11 shrink-0 items-center justify-center text-neutral-500'
+    : 'flex size-12 items-center justify-center'
+  const icon = compact ? 'size-5' : 'size-6'
+  return (
+    <>
+      {showToggle && (
+        <button type="button" onClick={onToggle} aria-label={toggleLabel} className={box}>
+          {paused ? (
+            <Play className={`${icon} fill-current`} />
+          ) : (
+            <Pause className={`${icon} fill-current`} />
+          )}
+        </button>
+      )}
+      <button type="button" onClick={onReset} aria-label={resetLabel} className={box}>
+        <RotateCcw className={icon} />
+      </button>
+    </>
+  )
+}
+
+interface TrainerStatusBarProps extends TrainerTogglesProps {
   /** Milliseconds on the trainer's own clock, read per tick — see `Timer`. */
   elapsedNow: () => number
   /** Whether that clock is ticking right now (not finished, not paused, hand in play). */
@@ -51,43 +91,17 @@ interface TrainerStatusBarProps {
  *  never renders "Turn N"/"Hand N" text of its own: the table (where there is one) already shows
  *  that, and the trainer's own score line already implies how many hands have been played. */
 export function TrainerStatusBar({
-  showToggle,
-  paused,
-  onToggle,
-  toggleLabel,
-  onReset,
-  resetLabel,
   elapsedNow,
   running,
   timerEnabled,
   children,
+  ...toggles
 }: TrainerStatusBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       <div className="flex items-center gap-1">
-        {showToggle && (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-label={toggleLabel}
-            className="flex size-12 items-center justify-center"
-          >
-            {paused ? (
-              <Play className="size-6 fill-current" />
-            ) : (
-              <Pause className="size-6 fill-current" />
-            )}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onReset}
-          aria-label={resetLabel}
-          className="flex size-12 items-center justify-center"
-        >
-          <RotateCcw className="size-6" />
-        </button>
-        {showToggle && timerEnabled && <Timer elapsedNow={elapsedNow} running={running} />}
+        <TrainerToggles {...toggles} />
+        {toggles.showToggle && timerEnabled && <Timer elapsedNow={elapsedNow} running={running} />}
       </div>
       {children && (
         <span className="ml-auto flex flex-col items-end text-neutral-500">{children}</span>

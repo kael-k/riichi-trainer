@@ -1,6 +1,7 @@
-import { Maximize2, Minimize2, ScrollText } from 'lucide-react'
+import { ArrowLeft, Maximize2, Minimize2, ScrollText } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { LogList } from '../TrainerLayout'
 
 interface BoardStageProps {
@@ -26,6 +27,10 @@ interface BoardStageProps {
   /** Called with `true` while the fullscreen log drawer is open, so a graded trainer can stop its
    *  clock — reading back over the log is not thinking time. */
   onLogOpen?: (open: boolean) => void
+  /** The page's own buttons for the fullscreen chrome: its settings dialog and its start/stop
+   *  controls, the two things fullscreen used to have no answer for but leaving it. Back-to-home,
+   *  the log drawer and the exit toggle are this component's own — every board has those. */
+  chrome?: ReactNode
 }
 
 /** How long a fullscreen notice stays up. Long enough to read a discard's feedback, short enough
@@ -49,6 +54,7 @@ export function BoardStage({
   end,
   children,
   onLogOpen,
+  chrome,
 }: BoardStageProps) {
   const { t } = useTranslation()
   const [full, setFull] = useState(false)
@@ -122,27 +128,40 @@ export function BoardStage({
     <div
       ref={stage}
       // the board claims the viewport instead of sharing it with the header, status bar and log
-      // panel — `--board-max-h` is what `Table` sizes its square against, so the hand's strip is
-      // reserved here rather than guessed at there
+      // panel — `--board-max-h` is what `Table` sizes its square against, so the strips this
+      // layout keeps for itself are reserved here rather than guessed at there. Held sideways
+      // that is the hand alone: the chrome has moved into the gutter beside the square, and so
+      // has `Table`'s own control row (`--board-controls`, zeroed by the same `short:` variant)
       // `--table-max` is the desktop "don't balloon" cap, which is exactly what fullscreen is
-      // for — lifted out of the way here so `--board-max-h` (the viewport minus this layout's own
-      // two strips) is what actually sizes the square
-      className="fixed inset-0 z-40 flex flex-col bg-white [--board-max-h:calc(100svh-7.5rem)] [--table-max:100svh] dark:bg-neutral-950"
+      // for — lifted out of the way here so `--board-max-h` is what actually sizes the square
+      className="fixed inset-0 z-40 flex flex-col bg-white [--board-max-h:calc(100svh-6rem)] [--table-max:100svh] short:[--board-max-h:calc(100svh-4rem)] dark:bg-neutral-950"
     >
-      <div className="flex shrink-0 items-center gap-1 px-2">
+      {/* a row above the board normally; standing in the left gutter held sideways, where it
+          costs the square no height at all. Everything a hand needs mid-drill is here, so
+          fullscreen is somewhere you can stay rather than somewhere you visit */}
+      <div className="z-10 flex shrink-0 items-center gap-1 px-2 short:absolute short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0">
+        <Link
+          to="/"
+          aria-label={t('common.back')}
+          className="flex size-11 shrink-0 items-center justify-center text-neutral-500"
+        >
+          <ArrowLeft className="size-5" />
+        </Link>
+        {chrome}
         <button
           type="button"
           aria-label={t('table.logDrawer')}
           aria-expanded={logOpen}
           onClick={() => toggleLog(!logOpen)}
-          className="flex size-11 items-center justify-center text-neutral-500"
+          className="flex size-11 shrink-0 items-center justify-center text-neutral-500"
         >
           <ScrollText className="size-5" />
         </button>
-        <span className="ml-auto">{fullscreenButton}</span>
+        <span className="ml-auto short:ml-0">{fullscreenButton}</span>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 items-center justify-center">
+      {/* padded clear of the gutter chrome, so the square still centres on what is left */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center short:pl-11">
         {board(null)}
         {notice && noticeShown && (
           // pointer-events-none: a notice must never sit between the reader and a tile they are

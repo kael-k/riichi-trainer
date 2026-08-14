@@ -190,29 +190,42 @@ export function Table({
     // itself: beside the hand the board is a flex item, where a `w-full` child would have
     // nothing to resolve against and collapse to nothing
     <div
-      className="mx-auto w-full max-w-[min(100%,calc(var(--board-max-h,calc(100svh-8rem))-var(--board-controls,0px)),var(--table-max))] shrink-0"
+      // `--board-controls` is a class, not part of the style object below, so the `short:` variant
+      // can zero it: held sideways the row moves off the top of the board into the gutter beside
+      // it, and a row that costs nothing vertically must not still be charged for
+      className={`relative mx-auto w-full max-w-[min(100%,calc(var(--board-max-h,calc(100svh-8rem))-var(--board-controls,0px)),var(--table-max,var(--table-cap)))] shrink-0 ${
+        controls || seatControl
+          ? '[--board-controls:2.75rem] short:[--board-controls:0px]'
+          : '[--board-controls:0px]'
+      }`}
       style={
         {
           // the revealed hands are paid for out of the board's own footprint (the 8% below), so
           // the cap grows to match: at the same felt size the square needs 1/0.84 of the width.
-          // Without it, turning the setting on shrank the felt by a sixth
-          '--table-max': `${(25.6 * tileScale) / (showsHands ? 0.84 : 1)}rem`,
-          // the control row shares the height budget the square is capped against, so it has to
-          // come out of it — otherwise the board is exactly one button too tall to fit
-          '--board-controls': controls || seatControl ? '2.75rem' : '0px',
+          // Without it, turning the setting on shrank the felt by a sixth.
+          // Named `--table-cap`, not `--table-max`: this is the desktop "don't balloon" default,
+          // and an inline style would otherwise outrank the `--table-max` a caller sets on an
+          // ancestor — which is exactly how fullscreen lifts the cap
+          '--table-cap': `${(25.6 * tileScale) / (showsHands ? 0.84 : 1)}rem`,
         } as CSSProperties
       }
     >
       <RotateHint />
+      {/* a row above the board normally; held sideways, a column standing in the gutter to its
+          left (`right-full`, so it hugs the square's edge whatever the square's size), wrapping
+          into a second column rather than running off the bottom. Height is the only axis a
+          square board is ever short of, and the width beside it is doing nothing */}
       {(controls || seatControl) && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 short:absolute short:top-0 short:right-full short:h-full short:flex-col short:flex-wrap short:content-end short:items-center short:gap-0">
           {/* the seats read left to right in wind order, which is not the order they sit in — the
               board itself says where each one is, and a row that re-orders itself the moment you
               change perspective is a row you have to re-find every time */}
           {seatControl && (
-            <div className="flex items-center">{seats.map((_, i) => seatControl(i))}</div>
+            <div className="flex items-center short:contents">
+              {seats.map((_, i) => seatControl(i))}
+            </div>
           )}
-          <div className="ml-auto flex items-center gap-1">{controls}</div>
+          <div className="ml-auto flex items-center gap-1 short:contents">{controls}</div>
         </div>
       )}
       {/* the revealed hands sit outside the felt, so the square gives up a margin's worth of its

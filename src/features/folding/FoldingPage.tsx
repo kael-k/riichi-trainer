@@ -4,13 +4,13 @@ import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
-import { TrainerStatusBar } from '../../components/TrainerControls'
+import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatButton } from '../settings/SeatPanel'
-import { SettingRow } from '../settings/SettingsDialog'
+import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { resolveSeatConfig, useTableSettings, type TableSettings } from '../settings/tableSettings'
 import { WINDS } from '../situation/urlCodec'
@@ -177,6 +177,17 @@ export function FoldingPage() {
     )
   }
 
+  // the same start/pause and reset the status bar draws, so the fullscreen board can draw them
+  // too rather than sending you back out to the page for them
+  const toggles = {
+    showToggle: settings.timerEnabled,
+    paused: round.paused,
+    onToggle: round.togglePause,
+    toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
+    onReset: round.next,
+    resetLabel: t('common.resetHand'),
+  }
+
   const seats: SeatView[] = round.rivers.map((river, seat) => {
     const mine = round.manualSeats.includes(seat)
     // the seat the board is drawn from — *not* the drill's own graded seat, which is only the
@@ -212,12 +223,7 @@ export function FoldingPage() {
     >
       <div className="flex flex-col gap-4">
         <TrainerStatusBar
-          showToggle={settings.timerEnabled}
-          paused={round.paused}
-          onToggle={round.togglePause}
-          toggleLabel={t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')}
-          onReset={round.next}
-          resetLabel={t('common.resetHand')}
+          {...toggles}
           elapsedNow={round.elapsedNow}
           running={round.running}
           timerEnabled={settings.timerEnabled}
@@ -245,6 +251,12 @@ export function FoldingPage() {
             what makes turning the phone sideways actually pay off */}
         <BoardStage
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
+          chrome={
+            <>
+              <SettingsButton title={t('trainer.folding.title')}>{settingsRows}</SettingsButton>
+              <TrainerToggles {...toggles} compact />
+            </>
+          }
           board={(controls) => (
             <Table
               controls={controls}

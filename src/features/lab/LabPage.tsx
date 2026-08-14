@@ -13,7 +13,7 @@ import { validateWall, wallWithHand, type WallError } from '../../core/wall'
 import type { GlossaryTermId } from '../i18n/glossary'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatButton } from '../settings/SeatPanel'
-import { SettingRow } from '../settings/SettingsDialog'
+import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { ManualControls } from '../table/ManualControls'
 import { useSettings } from '../settings/settingsStore'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
@@ -215,30 +215,32 @@ export function LabPage() {
   const wallError = situation.wallError
   const loaded = situation.wall.length > 0 && !wallError
 
+  const settingsRows = (
+    <>
+      <SettingRow label={t('folding.settings.opponentWins')}>
+        <input
+          type="checkbox"
+          checked={opponentWins}
+          onChange={(e) => updateTable({ opponentWins: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
+      <SettingRow label={t('efficiency.settings.deadWall')}>
+        <input
+          type="checkbox"
+          checked={deadWall}
+          onChange={(e) => updateTable({ deadWall: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
+    </>
+  )
+
   return (
     <TrainerLayout
       title={t('trainer.lab.title')}
       intro={{ text: t('trainer.lab.intro'), wikiUrl: TRAINER_WIKI.lab }}
-      settings={
-        <>
-          <SettingRow label={t('folding.settings.opponentWins')}>
-            <input
-              type="checkbox"
-              checked={opponentWins}
-              onChange={(e) => updateTable({ opponentWins: e.target.checked })}
-              className="size-5"
-            />
-          </SettingRow>
-          <SettingRow label={t('efficiency.settings.deadWall')}>
-            <input
-              type="checkbox"
-              checked={deadWall}
-              onChange={(e) => updateTable({ deadWall: e.target.checked })}
-              className="size-5"
-            />
-          </SettingRow>
-        </>
-      }
+      settings={settingsRows}
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
@@ -284,6 +286,7 @@ export function LabPage() {
 
         {loaded && (
           <BoardStage
+            chrome={<SettingsButton title={t('trainer.lab.title')}>{settingsRows}</SettingsButton>}
             board={(controls) => (
               <Table
                 controls={controls}

@@ -4,13 +4,13 @@ import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
-import { TrainerStatusBar } from '../../components/TrainerControls'
+import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatButton } from '../settings/SeatPanel'
-import { SettingRow } from '../settings/SettingsDialog'
+import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { ManualControls } from '../table/ManualControls'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
@@ -100,46 +100,54 @@ export function EfficiencyPage() {
     </SettingRow>
   )
 
+  const settingsRows = (
+    <>
+      {toggle(
+        'showShanten',
+        <Trans
+          i18nKey="efficiency.settings.showShanten"
+          components={{ term: <GlossaryTerm id="shanten" /> }}
+        />,
+      )}
+      {toggle('timerEnabled', t('efficiency.settings.timer'))}
+      {toggle(
+        'showUkeire',
+        <Trans
+          i18nKey="efficiency.settings.showUkeire"
+          components={{ term: <GlossaryTerm id="ukeire" /> }}
+        />,
+      )}
+      <SettingRow label={t('efficiency.settings.deadWall')}>
+        <input
+          type="checkbox"
+          checked={deadWall}
+          onChange={(e) => updateTable({ deadWall: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
+    </>
+  )
+
+  // the same start/pause and reset the status bar draws, so the fullscreen board can draw them
+  // too rather than sending you back out to the page for them
+  const toggles = {
+    showToggle: settings.timerEnabled,
+    paused: round.paused,
+    onToggle: round.togglePause,
+    toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
+    onReset: round.restart,
+    resetLabel: t('common.resetHand'),
+  }
+
   return (
     <TrainerLayout
       title={t('trainer.efficiency.title')}
       intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
-      settings={
-        <>
-          {toggle(
-            'showShanten',
-            <Trans
-              i18nKey="efficiency.settings.showShanten"
-              components={{ term: <GlossaryTerm id="shanten" /> }}
-            />,
-          )}
-          {toggle('timerEnabled', t('efficiency.settings.timer'))}
-          {toggle(
-            'showUkeire',
-            <Trans
-              i18nKey="efficiency.settings.showUkeire"
-              components={{ term: <GlossaryTerm id="ukeire" /> }}
-            />,
-          )}
-          <SettingRow label={t('efficiency.settings.deadWall')}>
-            <input
-              type="checkbox"
-              checked={deadWall}
-              onChange={(e) => updateTable({ deadWall: e.target.checked })}
-              className="size-5"
-            />
-          </SettingRow>
-        </>
-      }
+      settings={settingsRows}
     >
       <div className="flex flex-col gap-4">
         <TrainerStatusBar
-          showToggle={settings.timerEnabled}
-          paused={round.paused}
-          onToggle={round.togglePause}
-          toggleLabel={t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')}
-          onReset={round.restart}
-          resetLabel={t('common.resetHand')}
+          {...toggles}
           elapsedNow={round.elapsedNow}
           running={round.running}
           timerEnabled={settings.timerEnabled}
@@ -161,10 +169,15 @@ export function EfficiencyPage() {
           )}
         </TrainerStatusBar>
 
-        {/* stacked normally; beside the board when the viewport is too short to stack, and
-            filling the screen outright behind the fullscreen button */}
+        {/* stacked in the page, or filling the screen outright behind the fullscreen button */}
         <BoardStage
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
+          chrome={
+            <>
+              <SettingsButton title={t('trainer.efficiency.title')}>{settingsRows}</SettingsButton>
+              <TrainerToggles {...toggles} compact />
+            </>
+          }
           board={(controls) => (
             <Table
               controls={controls}
