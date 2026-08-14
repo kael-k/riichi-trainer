@@ -125,7 +125,6 @@ interface RoundState extends TableSnapshot {
   results: TurnResult[]
   finished: boolean
   end: RoundEnd | null
-  elapsed: number
   /** Searching for a hand: the board is not up and the clock has not started. */
   loading: boolean
   /** Every seat's hand as the board may show it right now (D-14): your own seat and, once
@@ -157,8 +156,6 @@ function boardHandsOf(core: RoundCore, reveal: boolean): ParsedTile[][] {
     return concealedTiles(player).map(() => BACK_TILE)
   })
 }
-
-const TICK_MS = 50
 
 /** Rules the drill is always simulated under. Fixed rather than settings, so a link carries as
  *  little as possible — change one of these and old links change meaning. */
@@ -372,7 +369,6 @@ function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundStat
     results: prev?.results ?? [],
     finished,
     end,
-    elapsed: 0,
     loading: false,
     // baked off `finished` alone — the live board's own reveal switch overrides this at the
     // hook's return below, off `core.current` rather than a stale snapshot, so toggling it
@@ -535,16 +531,6 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     )
   }
 
-  useEffect(() => {
-    if (!state || state.finished || state.loading || !options.timerEnabled || stats.paused) return
-    const id = setInterval(
-      () => setState((s) => (s ? { ...s, elapsed: stats.elapsedNow() } : s)),
-      TICK_MS,
-    )
-    return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state?.finished, state?.loading, options.timerEnabled, stats.paused])
-
   function discard(index: number, declareRiichi = riichiArmed) {
     const r = core.current
     if (!r || !state || state.finished || state.loading || state.claim) return
@@ -620,8 +606,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   /** Tiles the acting seat could discard *and* declare riichi on — same computation
    *  `useTableRound#riichiTiles` runs, memoised on the turn/seat/claim rather than recomputed on
    *  every render: `evaluateDiscards` is the app's most expensive call, and this hook (unlike
-   *  `useTableRound`) has no draw-time analysis cached to reuse, while a timer tick re-renders
-   *  every 50ms. */
+   *  `useTableRound`) has no draw-time analysis cached to reuse. */
   const riichiTilesMemo = useMemo((): TileId[] => {
     const r = core.current
     if (!r || !state || state.finished || state.claim) return []
@@ -689,7 +674,6 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       results: [],
       finished: false,
       end: null,
-      elapsed: 0,
       boardHands: [],
     }),
     loading: !failed && (state === null || state.loading),
@@ -715,6 +699,9 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
           core.current!.options.humans?.includes(seat) ? 'manual' : p.policy,
         )
       : [],
+    elapsedNow: stats.elapsedNow,
+    /** Whether the clock is ticking: a board is up, unfinished and unpaused. */
+    running: !!state && !state.finished && !state.loading && !stats.paused,
     correctCount: stats.correctCount,
     totalCount: stats.totalCount,
     averageTime: stats.averageTime,

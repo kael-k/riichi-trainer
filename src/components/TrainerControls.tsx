@@ -1,6 +1,29 @@
 import { Pause, Play, RotateCcw } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { formatElapsedMs } from '../lib/formatElapsed'
+
+/** Display refresh of the live clock; the graded time itself is read straight off the trainer's
+ *  own clock at submit, so it never inherits this granularity. */
+const TICK_MS = 50
+
+/** The live clock. It owns its interval so a 20Hz tick re-renders this one span instead of the
+ *  whole trainer behind it — every trainer reports milliseconds, and reading the board is far too
+ *  expensive to redo twenty times a second for a digit. `elapsedNow` is called on each tick rather
+ *  than passed a number, so the trainer's clock (pauses and all) stays the single source of truth
+ *  and this only decides how often it is shown. */
+export function Timer({ elapsedNow, running }: { elapsedNow: () => number; running: boolean }) {
+  const [ms, setMs] = useState(0)
+  useEffect(() => {
+    const tick = () => setMs(elapsedNow())
+    // once immediately, so a stop/pause/reset lands on screen without waiting for a tick that,
+    // when `running` is false, is never coming
+    tick()
+    if (!running) return
+    const id = setInterval(tick, TICK_MS)
+    return () => clearInterval(id)
+  }, [running, elapsedNow])
+  return <span className="font-mono tabular-nums text-neutral-500">{formatElapsedMs(ms)}</span>
+}
 
 interface TrainerStatusBarProps {
   /** Whether the toggle button (and, when `timerEnabled`, the clock) is shown at all. Every
@@ -13,8 +36,10 @@ interface TrainerStatusBarProps {
   toggleLabel: string
   onReset: () => void
   resetLabel: string
-  /** Milliseconds; only rendered as text when `timerEnabled`. */
-  elapsed: number
+  /** Milliseconds on the trainer's own clock, read per tick — see `Timer`. */
+  elapsedNow: () => number
+  /** Whether that clock is ticking right now (not finished, not paused, hand in play). */
+  running: boolean
   timerEnabled: boolean
   /** The trainer's own score/accuracy line(s), right-aligned. */
   children?: ReactNode
@@ -32,7 +57,8 @@ export function TrainerStatusBar({
   toggleLabel,
   onReset,
   resetLabel,
-  elapsed,
+  elapsedNow,
+  running,
   timerEnabled,
   children,
 }: TrainerStatusBarProps) {
@@ -61,11 +87,7 @@ export function TrainerStatusBar({
         >
           <RotateCcw className="size-6" />
         </button>
-        {showToggle && timerEnabled && (
-          <span className="font-mono tabular-nums text-neutral-500">
-            {formatElapsedMs(elapsed)}
-          </span>
-        )}
+        {showToggle && timerEnabled && <Timer elapsedNow={elapsedNow} running={running} />}
       </div>
       {children && (
         <span className="ml-auto flex flex-col items-end text-neutral-500">{children}</span>

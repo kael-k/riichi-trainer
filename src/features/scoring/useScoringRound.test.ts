@@ -139,15 +139,15 @@ describe('useScoringRound', () => {
     const result = await deal(generated())
     const first = result.current.situation
     // let the clock run, so "reset" is something the next hand actually has to undo
-    await waitFor(() => expect(result.current.elapsed).toBeGreaterThan(80))
+    await waitFor(() => expect(result.current.elapsedNow()).toBeGreaterThan(80))
     act(() => result.current.check({ han: 0, fu: 0, points: 0 }))
     expect(result.current.checked).toBe(true)
-    const before = result.current.elapsed
+    const before = result.current.elapsedNow()
 
     act(() => result.current.next())
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.checked).toBe(false)
-    expect(result.current.elapsed).toBeLessThan(before)
+    expect(result.current.elapsedNow()).toBeLessThan(before)
     expect(result.current.situation).not.toEqual(first)
   })
 

@@ -28,15 +28,9 @@ interface State {
   /** Has this hand been shown yet — distinct from whether the clock is currently ticking, since
    *  pausing must not re-conceal a hand already peeked at. */
   revealed: boolean
-  /** Time on the current hand, in milliseconds. */
-  elapsed: number
   /** Feedback for the previous guess; never blocks the current hand. */
   lastResult: RoundResult | null
 }
-
-/** Display refresh of the live timer; the graded time itself is read from the
- *  clock at submit, so it never inherits this granularity. */
-const TICK_MS = 50
 
 function computeBreakdown(hand: Hand): ShantenBreakdown {
   const standard = standardShanten(hand)
@@ -73,7 +67,6 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
     stats.startClock()
     const carry = {
       revealed: prev?.revealed ?? false,
-      elapsed: 0,
       lastResult: prev?.lastResult ?? null,
     }
     const seed = `${situation.seed || stats.randomSeed}:${handIndex}`
@@ -96,15 +89,9 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [situation, handIndex, sanma])
 
-  useEffect(() => {
-    if (!state.revealed || stats.paused || !timerEnabled) return
-    const id = setInterval(() => setState((s) => ({ ...s, elapsed: stats.elapsedNow() })), TICK_MS)
-    return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.revealed, stats.paused, timerEnabled])
-
   return {
     ...state,
+    elapsedNow: stats.elapsedNow,
     /** Whether the clock is actively ticking right now — false both before the first reveal and
      *  while paused, true only once revealed and running. */
     running: state.revealed && !stats.paused,
@@ -125,7 +112,10 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
     /** Abandons the current hand: re-conceals, drops the timer, deals a fresh one — distinct from
      *  a pause, which keeps the same hand and clock and can resume. */
     stop: () => {
-      setState((s) => ({ ...s, revealed: false, elapsed: 0 }))
+      // reset the clock here rather than leaving it to the deal below, so the displayed timer is
+      // already back at zero by the render that conceals the hand
+      stats.startClock()
+      setState((s) => ({ ...s, revealed: false }))
       setHandIndex((n) => n + 1)
     },
     submit: (guess: number) => {

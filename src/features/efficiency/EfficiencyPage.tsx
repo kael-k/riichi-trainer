@@ -141,7 +141,8 @@ export function EfficiencyPage() {
           toggleLabel={t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')}
           onReset={round.restart}
           resetLabel={t('common.resetHand')}
-          elapsed={round.elapsed * 1000}
+          elapsedNow={round.elapsedNow}
+          running={round.running}
           timerEnabled={settings.timerEnabled}
         >
           {/* also lives in the table's own centre panel */}

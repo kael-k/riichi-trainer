@@ -267,7 +267,8 @@ export function ScoringPage() {
           toggleLabel={t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')}
           onReset={round.next}
           resetLabel={t('common.resetHand')}
-          elapsed={round.elapsed}
+          elapsedNow={round.elapsedNow}
+          running={round.running}
           timerEnabled={settings.timerEnabled}
         >
           <span>

@@ -27,7 +27,7 @@ describe('useShantenRound', () => {
     act(() => result.current.stop())
     expect(result.current.running).toBe(false)
     expect(result.current.concealed).toBe(true)
-    expect(result.current.elapsed).toBe(0)
+    expect(result.current.elapsedNow()).toBeLessThan(50) // clock back to zero
     expect(result.current.hand).not.toEqual(revealed) // a peeked hand is never re-served
     expect(result.current.totalCount).toBe(0) // abandoned, not graded
   })
@@ -89,7 +89,7 @@ describe('useShantenRound', () => {
     expect(result.current.lastResult?.hand).toEqual(first) // feedback keeps the graded hand
     expect(result.current.running).toBe(true)
     expect(result.current.concealed).toBe(false)
-    expect(result.current.elapsed).toBe(0) // per-hand timer restarts
+    expect(result.current.elapsedNow()).toBeLessThan(50) // per-hand timer restarts
 
     act(() => result.current.submit(1))
     expect(result.current.totalCount).toBe(2) // no button press in between

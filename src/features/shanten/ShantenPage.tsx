@@ -82,7 +82,8 @@ export function ShantenPage() {
           }
           onReset={round.stop}
           resetLabel={t('common.resetHand')}
-          elapsed={round.elapsed}
+          elapsedNow={round.elapsedNow}
+          running={round.running}
           timerEnabled={settings.timerEnabled}
         >
           <span>

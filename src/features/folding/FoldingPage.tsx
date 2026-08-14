@@ -216,7 +216,8 @@ export function FoldingPage() {
           toggleLabel={t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')}
           onReset={round.next}
           resetLabel={t('common.resetHand')}
-          elapsed={round.elapsed}
+          elapsedNow={round.elapsedNow}
+          running={round.running}
           timerEnabled={settings.timerEnabled}
         >
           {/* the running score says "that last one was wrong" as loudly as the panel does, so it

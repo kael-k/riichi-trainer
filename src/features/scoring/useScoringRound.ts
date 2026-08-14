@@ -52,7 +52,6 @@ interface State {
    *  seed-based record, which searched seed suffixes rather than random walls. */
   matchWall: ParsedTile[] | null
   actual: ScoreResult
-  elapsed: number
   checked: boolean
   lastResult: RoundResult | null
   /** Searching for a match. The board is not up yet, and the clock has not started. */
@@ -62,7 +61,6 @@ interface State {
   invalidLink: boolean
 }
 
-const TICK_MS = 50
 const MAX_ATTEMPTS = 40
 
 function scoreSituation(situation: ScoringSituation, options: RoundOptions): ScoreResult | null {
@@ -167,7 +165,6 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
       matchWall: null,
       // generateHand only ever returns a scoreable situation, so this is non-null
       actual: scoreSituation(situation, options)!,
-      elapsed: 0,
       checked: false,
       lastResult: null,
       loading: false,
@@ -187,7 +184,6 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
       seat: win.seat,
       matchWall: wall,
       actual: scoreSituation(situation, options)!,
-      elapsed: 0,
       checked: false,
       lastResult: prev?.lastResult ?? null,
       loading: false,
@@ -207,7 +203,6 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
         seat: pinned.ctx.seat - HONOR,
         matchWall: null,
         actual: pinnedScore,
-        elapsed: 0,
         checked: false,
         lastResult: prev?.lastResult ?? null,
         loading: false,
@@ -258,16 +253,6 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     options.honba,
     options.kiriageMangan,
   ])
-
-  useEffect(() => {
-    if (!state || state.checked || state.loading || !options.timerEnabled || stats.paused) return
-    const id = setInterval(
-      () => setState((s) => (s ? { ...s, elapsed: stats.elapsedNow() } : s)),
-      TICK_MS,
-    )
-    return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state?.checked, state?.loading, options.timerEnabled, stats.paused])
 
   /** Current hand as a shareable query string. A match reproduces from its wall, rivers and all,
    *  so that is the better link; a pinned or constructed hand has no match behind it and ships
@@ -337,7 +322,9 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     actual: state?.actual,
     match: state?.match ?? null,
     seat: state?.seat ?? 0,
-    elapsed: state?.elapsed ?? 0,
+    elapsedNow: stats.elapsedNow,
+    /** Whether the clock is ticking: a board is up, unanswered and unpaused. */
+    running: !!state && !state.checked && !state.loading && !stats.paused,
     checked: state?.checked ?? false,
     lastResult: state?.lastResult ?? null,
     invalidLink: state?.invalidLink ?? false,

@@ -55,8 +55,6 @@ export function useEfficiencySoloRound(
   const stats = useSessionStats()
 
   const [restartCount, setRestartCount] = useState(0)
-  const [elapsed, setElapsed] = useState(0)
-  const [paused, setPaused] = useState(false)
   const [cumulativeLost, setCumulativeLost] = useState(0)
   const [cumulativeTotal, setCumulativeTotal] = useState(0)
   const [lastResult, setLastResult] = useState<TurnResult | null>(null)
@@ -71,7 +69,8 @@ export function useEfficiencySoloRound(
   const roundActionCount = useRef(0)
 
   function recordChoice(result: TurnResult) {
-    stats.record(result.grade !== 'error', (elapsed - lastChoiceElapsed.current) * 1000)
+    const elapsed = stats.elapsedNow()
+    stats.record(result.grade !== 'error', elapsed - lastChoiceElapsed.current)
     lastChoiceElapsed.current = elapsed
     roundActionCount.current++
   }
@@ -140,8 +139,7 @@ export function useEfficiencySoloRound(
     setCumulativeLost(0)
     setCumulativeTotal(0)
     setLastResult(null)
-    setElapsed(0)
-    setPaused(false)
+    stats.startClock()
     lastChoiceElapsed.current = 0
     roundActionCount.current = 0
     pending.current = undefined
@@ -155,12 +153,6 @@ export function useEfficiencySoloRound(
   const tenpai =
     finished &&
     shanten(handFromSnapshot(table.hand, table.drawn, table.melds[table.seatIndex].length)) <= 0
-
-  useEffect(() => {
-    if (finished || paused || !timerEnabled) return
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000)
-    return () => clearInterval(id)
-  }, [finished, paused, timerEnabled])
 
   return {
     hand: table.hand,
@@ -184,18 +176,20 @@ export function useEfficiencySoloRound(
     lastResult,
     cumulativeLost,
     cumulativeTotal,
-    elapsed,
-    paused,
+    elapsedNow: stats.elapsedNow,
+    /** Whether the clock is ticking: the hand is still in play and unpaused. */
+    running: !finished && !stats.paused && timerEnabled,
+    paused: stats.paused,
     averageTime: stats.averageTime,
     /** Mean time per graded choice in *this* round alone, ms — what the round-complete panel
      *  shows, as opposed to `averageTime`'s running session mean. */
     roundAverageTime:
-      roundActionCount.current > 0 ? (elapsed * 1000) / roundActionCount.current : 0,
+      roundActionCount.current > 0 ? lastChoiceElapsed.current / roundActionCount.current : 0,
     discard: table.discard,
     kita: table.kita,
     kan: table.kan,
     situationQuery: () => encodeSituation(table.situation()),
-    togglePause: () => setPaused((p) => !p),
+    togglePause: () => (stats.paused ? stats.resume() : stats.pause()),
     restart: () => {
       table.restart()
       setRestartCount((n) => n + 1)
