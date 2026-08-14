@@ -66,7 +66,9 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
   function nextHand(prev?: State): State {
     stats.startClock()
     const carry = {
-      revealed: prev?.revealed ?? false,
+      // the stream starts running: every other trainer puts a board up the moment it loads, and a
+      // concealed first hand behind a button reads as "not loaded yet" rather than as a gate
+      revealed: prev?.revealed ?? true,
       lastResult: prev?.lastResult ?? null,
     }
     const seed = `${situation.seed || stats.randomSeed}:${handIndex}`

@@ -6,13 +6,13 @@ import { decodeSituation, emptySituation } from '../situation/urlCodec'
 import { useShantenRound } from './useShantenRound'
 
 describe('useShantenRound', () => {
-  it('deals a concealed 13-tile hand', () => {
+  it('deals a 13-tile hand, revealed and on the clock', () => {
     const situation = emptySituation()
     situation.seed = 'shanten-seed'
     const { result } = renderHook(() => useShantenRound(situation, true, false))
     expect(result.current.hand).toHaveLength(13)
-    expect(result.current.concealed).toBe(true)
-    expect(result.current.running).toBe(false)
+    expect(result.current.concealed).toBe(false)
+    expect(result.current.running).toBe(true)
   })
 
   it('reveal shows the hand; stop re-conceals, resets the timer and deals a new hand', () => {
