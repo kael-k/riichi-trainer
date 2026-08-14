@@ -175,6 +175,7 @@ export function useEfficiencySoloRound(
     liveWallSnapshot: table.liveWallSnapshot,
     liveWallDrawn: table.liveWallDrawn,
     deadWallSnapshot: table.deadWallSnapshot,
+    dealtTiles: table.dealtTiles,
     replacements: table.replacements,
     finished,
     tenpai,

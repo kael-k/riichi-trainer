@@ -9,6 +9,7 @@ import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { concealedTiles, wallDrawnCount } from '../../core/match'
 import { HONOR, serializeTenhou } from '../../core/tiles'
+import { INITIAL_HAND_SIZE } from '../../core/wall'
 import { WINDS } from '../situation/urlCodec'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
@@ -464,6 +465,10 @@ export function ScoringPage() {
 
             {showWall && round.match && (
               <WallDetails
+                dealt={round.match.wall.slice(
+                  0,
+                  round.match.players.length * INITIAL_HAND_SIZE,
+                )}
                 liveWall={round.match.liveWallSnapshot}
                 liveWallDrawn={wallDrawnCount(round.match)}
                 deadWall={round.match.deadWallSnapshot}

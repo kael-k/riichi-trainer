@@ -15,6 +15,7 @@
     "resumeTimer": "恢复计时",
     "submit": "提交",
     "wallDetails_other": "牌山(剩余{{count}}张)",
+    "dealtMarker": "配牌",
     "deadWallMarker": "死墙",
     "rewind": "撤回到此操作之前"
   },

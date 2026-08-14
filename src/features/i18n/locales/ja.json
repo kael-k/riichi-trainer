@@ -15,6 +15,7 @@
     "resumeTimer": "タイマーを再開",
     "submit": "決定",
     "wallDetails_other": "山(残り{{count}}枚)",
+    "dealtMarker": "配牌",
     "deadWallMarker": "王牌",
     "rewind": "この操作の前まで巻き戻す"
   },

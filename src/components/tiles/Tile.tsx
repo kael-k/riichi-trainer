@@ -203,17 +203,22 @@ function WallTile({ tile, drawn }: { tile: ParsedTile; drawn: boolean }) {
   )
 }
 
-/** The whole wall as dealt, live tiles then dead, with a marker at the seam. Collapsed behind a
- *  `<details>` — seeing the wall in draw order is a deliberate peek, not something to show by
- *  default. Every tile it was dealt with is shown, not just what's left: already-drawn live tiles
- *  and already-taken dead-wall tiles are greyed rather than omitted, so the summary count (which
- *  stays the *remaining* count) and the row don't have to agree on length. */
+/** The whole wall as built, dealt hands first, then live tiles, then dead, with a marker at each
+ *  seam. Collapsed behind a `<details>` — seeing the wall in draw order is a deliberate peek, not
+ *  something to show by default. Every tile it was dealt with is shown, not just what's left:
+ *  already-dealt hands, already-drawn live tiles and already-taken dead-wall tiles are all greyed
+ *  rather than omitted, so the summary count (which stays the *remaining* count) and the row don't
+ *  have to agree on length. */
 export function WallDetails({
+  dealt,
   liveWall,
   liveWallDrawn,
   deadWall,
   replacements,
 }: {
+  /** Every seat's starting hand, in dealing order — always face-down/greyed, since it was drawn
+   *  before this display's "already drawn" concept even applies. */
+  dealt: ParsedTile[]
   /** Whole live wall as dealt, draw order — not just what's left. */
   liveWall: ParsedTile[]
   /** How many of `liveWall`, from the front, are genuine draws. `replacements` more, off the
@@ -233,6 +238,14 @@ export function WallDetails({
     <details className="text-sm text-neutral-500">
       <summary className="cursor-pointer">{t('common.wallDetails', { count: remaining })}</summary>
       <div className="mt-2 flex flex-wrap items-center [--tile-w:calc(var(--tile-w-base)*0.55)]">
+        {dealt.map((tile, i) => (
+          <WallTile key={`dealt-${i}`} tile={tile} drawn />
+        ))}
+        {dealt.length > 0 && (
+          <span className="mx-1 self-stretch border-l border-dashed border-neutral-400 pl-1 text-xs whitespace-nowrap text-neutral-400 dark:border-neutral-600">
+            {t('common.dealtMarker')}
+          </span>
+        )}
         {liveWall.map((tile, i) => (
           <WallTile
             key={`live-${i}`}

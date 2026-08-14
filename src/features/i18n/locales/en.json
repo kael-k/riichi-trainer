@@ -16,6 +16,7 @@
     "submit": "Submit",
     "wallDetails_one": "Wall ({{count}} tile left)",
     "wallDetails_other": "Wall ({{count}} tiles left)",
+    "dealtMarker": "Dealt hands",
     "deadWallMarker": "Dead wall",
     "aboutTrainer": "About",
     "aboutTrainerTitle": "About: {{title}}",

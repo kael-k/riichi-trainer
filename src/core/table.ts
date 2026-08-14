@@ -13,6 +13,7 @@ import {
   type WinRecord,
 } from './match'
 import type { ParsedTile, RiverTile } from './tiles'
+import { INITIAL_HAND_SIZE } from './wall'
 
 /**
  * Pure, React-free primitives for stepping a match, reading what a seat can see, and replaying its
@@ -95,6 +96,10 @@ export interface TableSnapshot {
   ended: MatchState['ended']
   win: WinRecord | undefined
   wall: ParsedTile[]
+  /** Every seat's starting 13 tiles, in dealing order — the front slice of `wall` the wall-reveal
+   *  display draws greyed-out ahead of the live pool, so it can show the whole wall as built rather
+   *  than just what is left to draw. */
+  dealtTiles: ParsedTile[]
 }
 
 /** Builds a `TableSnapshot` for `core` as the match stands right now. */
@@ -126,6 +131,7 @@ export function snapshotTable(core: TableCore): TableSnapshot {
     ended: match.ended,
     win: match.win,
     wall: match.wall,
+    dealtTiles: match.wall.slice(0, match.players.length * INITIAL_HAND_SIZE),
   }
 }
 

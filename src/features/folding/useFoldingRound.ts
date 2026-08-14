@@ -579,6 +579,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       ended: undefined,
       win: undefined,
       wall: [],
+      dealtTiles: [],
       round: HONOR,
       threatSeats: [] as number[],
       lastResult: null,

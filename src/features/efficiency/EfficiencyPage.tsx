@@ -232,6 +232,7 @@ export function EfficiencyPage() {
 
             {showWall && (
               <WallDetails
+                dealt={round.dealtTiles}
                 liveWall={round.liveWallSnapshot}
                 liveWallDrawn={round.liveWallDrawn}
                 deadWall={round.deadWallSnapshot}
