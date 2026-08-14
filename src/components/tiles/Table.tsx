@@ -195,8 +195,12 @@ export function Table({
       <div className={`@container aspect-square w-full ${showsHands ? 'p-[8%]' : ''}`}>
         {/* minmax(0,…): a seat block is measured before it rotates, so its 6-tile row is wider
             than the 4fr band it sits in — with fr's default auto minimum that would grow the
-            band and knock the whole board out of square */}
-        <div className="grid h-full w-full grid-cols-[minmax(0,4fr)_minmax(0,6fr)_minmax(0,4fr)] grid-rows-[minmax(0,4fr)_minmax(0,6fr)_minmax(0,4fr)] rounded-xl bg-emerald-800/10 p-[1cqw] [--tile-w:calc(100cqw/14)] dark:bg-emerald-200/5">
+            band and knock the whole board out of square. The centre band is 6.6fr, not 6fr: the
+            felt's own p-[1cqw] eats 2cqw off the 100cqw --tile-w divisor below, so 4fr must stay
+            exactly 4 tile widths for the river bands to fit — that leaves 6.6fr for the centre,
+            which is what actually grows it (the old 6fr/100cqw pairing quietly shorted the river
+            bands by that same 2cqw, which is what let them overlap the panel) */}
+        <div className="grid h-full w-full grid-cols-[minmax(0,4fr)_minmax(0,6.6fr)_minmax(0,4fr)] grid-rows-[minmax(0,4fr)_minmax(0,6.6fr)_minmax(0,4fr)] rounded-xl bg-emerald-800/10 p-[1cqw] [--tile-w:calc((100cqw-2cqw)/14.6)] dark:bg-emerald-200/5">
           {seats.map((seat, index) => {
             const slot = SLOTS[slotOf[(index - seatIndex + players) % players]]
             const wind = t(`wind.${WINDS[index]}`)
