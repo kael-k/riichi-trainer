@@ -13,6 +13,7 @@ const BARE: RoundOptions = {
   sanma: false,
   opponentWins: false,
   showOpponentHands: false,
+  seats: null,
 }
 
 /** Seat 0's pinned 13-tile hand: nine man kinds plus two honor kinds — 11 distinct kinds. */
@@ -24,7 +25,10 @@ function distinctKinds(hand: ParsedTile[], drawn: ParsedTile | undefined): numbe
 
 describe('useLabRound', () => {
   it('ranked holds one entry per distinct tile in the 14-tile hand', () => {
-    const situation: Situation = { ...emptySituation(), wall: wallWithHand(0, HAND, false, false, 'lab-ranked-seed') }
+    const situation: Situation = {
+      ...emptySituation(),
+      wall: wallWithHand(0, HAND, false, false, 'lab-ranked-seed'),
+    }
     const { result } = renderHook(() => useLabRound(situation, BARE))
     expect(result.current.ranked.length).toBe(
       distinctKinds(result.current.hand, result.current.drawn),
@@ -32,7 +36,10 @@ describe('useLabRound', () => {
   })
 
   it('danger holds one entry per distinct tile with nobody in riichi', () => {
-    const situation: Situation = { ...emptySituation(), wall: wallWithHand(0, HAND, false, false, 'lab-danger-seed') }
+    const situation: Situation = {
+      ...emptySituation(),
+      wall: wallWithHand(0, HAND, false, false, 'lab-danger-seed'),
+    }
     const { result } = renderHook(() => useLabRound(situation, BARE))
     expect(result.current.danger.length).toBe(
       distinctKinds(result.current.hand, result.current.drawn),
@@ -40,7 +47,10 @@ describe('useLabRound', () => {
   })
 
   it("every danger entry's against array is present", () => {
-    const situation: Situation = { ...emptySituation(), wall: wallWithHand(0, HAND, false, false, 'lab-against-seed') }
+    const situation: Situation = {
+      ...emptySituation(),
+      wall: wallWithHand(0, HAND, false, false, 'lab-against-seed'),
+    }
     const { result } = renderHook(() => useLabRound(situation, BARE))
     expect(result.current.danger.length).toBeGreaterThan(0)
     for (const entry of result.current.danger) {
@@ -50,7 +60,10 @@ describe('useLabRound', () => {
   })
 
   it('discarding advances the board and produces fresh ranked/danger for the new hand', () => {
-    const situation: Situation = { ...emptySituation(), wall: wallWithHand(0, HAND, false, false, 'lab-advance-seed') }
+    const situation: Situation = {
+      ...emptySituation(),
+      wall: wallWithHand(0, HAND, false, false, 'lab-advance-seed'),
+    }
     const { result } = renderHook(() => useLabRound(situation, BARE))
     const firstRanked = result.current.ranked
     const firstTurn = result.current.turn
@@ -67,14 +80,20 @@ describe('useLabRound', () => {
   it('nothing is filtered out: a board no drill would consider worth posing is still accepted', () => {
     // a wall with nobody tenpai and nothing dangerous — folding's own worthwhile() would reject
     // this outright; the lab must not apply any equivalent filter
-    const situation: Situation = { ...emptySituation(), wall: completeWall([], false, false, 'lab-worthwhile-seed') }
+    const situation: Situation = {
+      ...emptySituation(),
+      wall: completeWall([], false, false, 'lab-worthwhile-seed'),
+    }
     const { result } = renderHook(() => useLabRound(situation, BARE))
     expect(result.current.hand.length + (result.current.drawn ? 1 : 0)).toBe(14)
     expect(result.current.ranked.length).toBeGreaterThan(0)
   })
 
   it("mid-hand, every other seat's boardHands is BACK_TILE filler", () => {
-    const situation: Situation = { ...emptySituation(), wall: wallWithHand(0, HAND, false, false, 'lab-filler-seed') }
+    const situation: Situation = {
+      ...emptySituation(),
+      wall: wallWithHand(0, HAND, false, false, 'lab-filler-seed'),
+    }
     const { result } = renderHook(() => useLabRound(situation, BARE))
     act(() => result.current.discard(result.current.hand.length))
 
@@ -87,7 +106,10 @@ describe('useLabRound', () => {
   })
 
   it("your own seat's boardHands are always the real hand, never filler", () => {
-    const situation: Situation = { ...emptySituation(), wall: wallWithHand(0, HAND, false, false, 'lab-own-seed') }
+    const situation: Situation = {
+      ...emptySituation(),
+      wall: wallWithHand(0, HAND, false, false, 'lab-own-seed'),
+    }
     const { result } = renderHook(() => useLabRound(situation, BARE))
     const own = result.current.boardHands[result.current.seatIndex]
     expect(new Set(own.map((t) => t.id)).size).toBeGreaterThan(1)

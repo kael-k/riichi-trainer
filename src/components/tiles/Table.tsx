@@ -38,6 +38,14 @@ interface TableProps {
   honba?: number
   /** Extra centre content — the scoring trainer's win-condition badges. */
   children?: ReactNode
+  /** Buttons that belong to the board (the seat panel, the fullscreen toggle), drawn in a row
+   *  above it. They live *inside* the width-capped box on purpose: the box is the only element
+   *  that knows how wide the board actually is, and a wrapper around it would have to guess —
+   *  guessing wrong is what collapses the square when the board is a flex item. */
+  controls?: ReactNode
+  /** Per-seat settings icon, drawn beside that seat's own wind mark rather than as one
+   *  table-wide control — a seat's rules are read and changed while looking at that seat. */
+  seatControl?: (seat: number) => ReactNode
 }
 
 /** Where each seat lands, by its distance around the table from you. Slot 0 is the bottom
@@ -160,6 +168,8 @@ export function Table({
   wallCount,
   honba,
   children,
+  controls,
+  seatControl,
 }: TableProps) {
   const { t } = useTranslation()
   const players = seats.length
@@ -172,22 +182,27 @@ export function Table({
 
   return (
     // square, so its size is one number: the narrower of the column it sits in and the height
-    // left after the page chrome (~8rem of header, status line and padding), capped so it does
-    // not balloon on a desktop. The width lives on this outer div, not on the square
+    // left after the page chrome (~8rem of header, status line and padding — the fullscreen
+    // board overrides that with its own `--board-max-h`), capped so it does not balloon on a
+    // desktop. The width lives on this outer div, not on the square
     // itself: beside the hand the board is a flex item, where a `w-full` child would have
     // nothing to resolve against and collapse to nothing
     <div
-      className="mx-auto w-full max-w-[min(100%,calc(100svh-8rem),var(--table-max))] shrink-0"
+      className="mx-auto w-full max-w-[min(100%,calc(var(--board-max-h,calc(100svh-8rem))-var(--board-controls,0px)),var(--table-max))] shrink-0"
       style={
         {
           // the revealed hands are paid for out of the board's own footprint (the 8% below), so
           // the cap grows to match: at the same felt size the square needs 1/0.84 of the width.
           // Without it, turning the setting on shrank the felt by a sixth
           '--table-max': `${(25.6 * tileScale) / (showsHands ? 0.84 : 1)}rem`,
+          // the control row shares the height budget the square is capped against, so it has to
+          // come out of it — otherwise the board is exactly one button too tall to fit
+          '--board-controls': controls ? '2.75rem' : '0px',
         } as CSSProperties
       }
     >
       <RotateHint />
+      {controls && <div className="flex items-center justify-end gap-1">{controls}</div>}
       {/* the revealed hands sit outside the felt, so the square gives up a margin's worth of its
           own width to hold them — only when they are actually shown, so an ordinary board is
           exactly as big as it was. The border box stays square either way, which is what keeps
@@ -275,12 +290,12 @@ export function Table({
               return (
                 <span
                   key={index}
-                  className={`absolute rounded px-[1cqw] text-[2.4cqw] font-semibold ${WIND_MARKS[slot]} ${
+                  className={`absolute flex items-center rounded px-[1cqw] text-[2.4cqw] font-semibold ${WIND_MARKS[slot]} ${
                     you ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
                   }`}
                 >
                   {t(`wind.${WINDS[index]}`)}
-                  {you && <span className="font-normal"> {t('table.you')}</span>}
+                  {seatControl?.(index)}
                 </span>
               )
             })}

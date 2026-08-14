@@ -3,6 +3,7 @@ import type { TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
 import type { MatchOptions } from '../../core/match'
 import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
+import { seatMatchOptions, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { BACK_TILE } from '../folding/useFoldingRound'
 import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
@@ -26,6 +27,9 @@ export interface RoundOptions {
   /** The board's own debug reveal switch — every seat's hand goes real, mid-hand, not just once
    *  the hand ends. */
   showOpponentHands: boolean
+  /** Who plays which seat, from the board's seat panel; `null` is the shipped default (you at
+   *  the link's own seat, every other seat on the efficiency AI). */
+  seats: SeatConfig | null
 }
 
 /** The full analysis for the current 14-tile hand: `evaluateDiscards`'s whole ranking and
@@ -42,7 +46,8 @@ export interface LabAnalysis {
 export function useLabRound(situation: Situation, options: RoundOptions) {
   const players = options.sanma ? 3 : 4
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
-  const seatIndex = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
+  const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
+  const { seatIndex, humans, policies, claims } = seatMatchOptions(options.seats, players, linkSeat)
   const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const matchOptions: MatchOptions = {
     sanma: options.sanma,
@@ -52,7 +57,9 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
     calls: true,
     riichi: true,
     wins: options.opponentWins,
-    human: seatIndex,
+    humans,
+    policies,
+    claims,
   }
 
   const log = useLog((s) => s.log)
@@ -90,7 +97,10 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
   // otherwise face-down filler of the right length — the lab must not become the screen that
   // leaks what the folding drill hides
   const boardHands: ParsedTile[][] = table.hands.map((hand, seat) =>
-    seat === seatIndex || finished || options.showOpponentHands ? hand : hand.map(() => BACK_TILE),
+    // a manual seat is the reader's own, so it is never hidden from them
+    humans.includes(seat) || finished || options.showOpponentHands
+      ? hand
+      : hand.map(() => BACK_TILE),
   )
 
   return {
@@ -99,6 +109,8 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
     danger: analysis.danger,
     finished,
     boardHands,
+    /** Every seat a person plays — face-up on the board and playable in turn. */
+    manualSeats: humans,
     situationQuery: () => encodeSituation(table.situation()),
   }
 }

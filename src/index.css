@@ -17,6 +17,16 @@
   color-scheme: dark;
 }
 
+/* held sideways, width is plentiful and height is scarce — the exact reverse of what the
+   width-keyed clamp above assumes, which is what let the hand take its full 44px and wrap onto
+   two rows while the board collapsed to an unreadable square. Same clamp, keyed to the axis that
+   is actually short. */
+@media (max-height: 520px) {
+  :root {
+    --tile-w-raw: clamp(1.375rem, 5.2vh, 2.75rem);
+  }
+}
+
 body {
   margin: 0;
   @apply bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100;

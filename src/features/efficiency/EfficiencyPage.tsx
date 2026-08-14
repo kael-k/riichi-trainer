@@ -2,13 +2,16 @@ import { useMemo, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
+import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { TrainerStatusBar } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
+import { SeatButton } from '../settings/SeatPanel'
 import { SettingRow } from '../settings/SettingsDialog'
+import { ManualControls } from '../table/ManualControls'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
 import { useTableSettings, type TableSettings } from '../settings/tableSettings'
@@ -30,8 +33,14 @@ export function EfficiencyPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const { aka } = useAdvancedSettings()
-  const { deadWall, showWall, showOpponentHands, hideConcealedHands } =
-    useTableSettings('efficiency')
+  const {
+    deadWall,
+    showWall,
+    showOpponentHands,
+    hideConcealedHands,
+    seats: seatConfig,
+    seatsEnabled,
+  } = useTableSettings('efficiency')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
   // `apps.efficiency` slice in first.
@@ -46,8 +55,9 @@ export function EfficiencyPage() {
       deadWall: situation.deadWall ?? deadWall,
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
+      seats: seatConfig,
     }),
-    [situation, deadWall, aka, sanma],
+    [situation, deadWall, aka, sanma, seatConfig],
   )
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
@@ -58,23 +68,27 @@ export function EfficiencyPage() {
   if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
   const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
 
-  const seats: SeatView[] = round.rivers.map((river, seat) =>
-    seat === round.seatIndex
-      ? {
-          river,
-          melds: round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles })),
-          nuki: round.nuki[seat],
-          riichi: round.riichi[seat],
-        }
-      : {
-          river,
-          melds: round.melds[seat],
-          nuki: round.nuki[seat],
-          riichi: round.riichi[seat],
-          hand: showOpponentHands || !hideConcealedHands ? round.hands[seat] : undefined,
-          concealed: !showOpponentHands,
-        },
-  )
+  // a manual seat is the reader's own hand wherever it sits, so it is face-up like your own —
+  // the reveal setting only ever governed the seats somebody else is playing
+  const seats: SeatView[] = round.rivers.map((river, seat) => {
+    const mine = round.manualSeats.includes(seat)
+    if (seat === round.seatIndex) {
+      return {
+        river,
+        melds: round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles })),
+        nuki: round.nuki[seat],
+        riichi: round.riichi[seat],
+      }
+    }
+    return {
+      river,
+      melds: round.melds[seat],
+      nuki: round.nuki[seat],
+      riichi: round.riichi[seat],
+      hand: mine || showOpponentHands || !hideConcealedHands ? round.hands[seat] : undefined,
+      concealed: !mine && !showOpponentHands,
+    }
+  })
 
   const toggle = (key: keyof typeof settings, label: ReactNode) => (
     <SettingRow label={label}>
@@ -147,61 +161,46 @@ export function EfficiencyPage() {
           )}
         </TrainerStatusBar>
 
-        {/* stacked normally; beside the board when the viewport is too short to stack, which is
-            what makes turning the phone sideways actually pay off */}
-        <div className="flex flex-col gap-4 short:flex-row short:items-start">
-          <Table
-            seats={seats}
-            seatIndex={round.seatIndex}
-            round={situation.round}
-            doraIndicators={round.doraIndicators}
-            wallCount={round.liveWall.length}
-          />
-
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <HandDisplay
-              tiles={round.hand}
-              drawn={round.drawn}
-              onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+        {/* stacked normally; beside the board when the viewport is too short to stack, and
+            filling the screen outright behind the fullscreen button */}
+        <BoardStage
+          onLogOpen={(open) => open !== round.paused && round.togglePause()}
+          board={(controls) => (
+            <Table
+              controls={controls}
+              seatControl={(seat) =>
+                seatsEnabled && (
+                  <SeatButton
+                    seat={seat}
+                    players={round.rivers.length}
+                    defaultOrientation={round.seatIndex}
+                    config={seatConfig}
+                    onChange={(next) => updateTable({ seats: next })}
+                  />
+                )
+              }
+              seats={seats}
+              seatIndex={round.seatIndex}
+              round={situation.round}
+              doraIndicators={round.doraIndicators}
+              wallCount={round.liveWall.length}
             />
-
-            {(options.sanma || kanEligible.length > 0) && !round.finished && (
-              <div className="flex flex-wrap gap-2">
-                {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
-                  <button
-                    type="button"
-                    onClick={round.kita}
-                    className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                  >
-                    {t('efficiency.kitaButton')}
-                  </button>
-                )}
-                {kanEligible.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => round.kan(id)}
-                    className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                  >
-                    <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
-                      <Tile id={id} />
-                    </span>
-                    {t('efficiency.kanButton')}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {round.lastResult && (
+          )}
+          // one graded choice per notice: `cumulativeTotal` counts exactly those, so a re-render
+          // never brings a faded one back and a kita/kan still gets its own
+          noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
+          notice={
+            round.lastResult && (
               <DiscardFeedback
                 result={round.lastResult}
                 showShanten={settings.showShanten}
                 showUkeire={settings.showUkeire}
                 sanma={options.sanma}
               />
-            )}
-
-            {round.finished && (
+            )
+          }
+          end={
+            round.finished && (
               <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
                 <p className="font-semibold">
                   {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
@@ -228,21 +227,66 @@ export function EfficiencyPage() {
                   {t('common.newRound')}
                 </button>
               </div>
-            )}
-
-            {showWall && (
-              <WallDetails
-                dealt={round.dealtTiles}
-                liveWall={round.liveWallSnapshot}
-                liveWallDrawn={round.liveWallDrawn}
-                deadWall={round.deadWallSnapshot}
-                replacements={round.replacements}
+            )
+          }
+          hand={
+            <div className="flex flex-col gap-4">
+              <ManualControls
+                seatIndex={round.seatIndex}
+                acting={round.acting}
+                claim={round.claim}
+                riichiTiles={round.riichiTiles()}
+                riichiArmed={round.riichiArmed}
+                onArmRiichi={round.armRiichi}
+                onAnswer={round.answer}
               />
-            )}
+              <HandDisplay
+                tiles={round.hand}
+                drawn={round.drawn}
+                onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+              />
 
-            <CopyLinkButton query={round.situationQuery} />
-          </div>
-        </div>
+              {(options.sanma || kanEligible.length > 0) && !round.finished && (
+                <div className="flex flex-wrap gap-2">
+                  {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
+                    <button
+                      type="button"
+                      onClick={round.kita}
+                      className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                    >
+                      {t('efficiency.kitaButton')}
+                    </button>
+                  )}
+                  {kanEligible.map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => round.kan(id)}
+                      className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                    >
+                      <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
+                        <Tile id={id} />
+                      </span>
+                      {t('efficiency.kanButton')}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          }
+        >
+          {showWall && (
+            <WallDetails
+              dealt={round.dealtTiles}
+              liveWall={round.liveWallSnapshot}
+              liveWallDrawn={round.liveWallDrawn}
+              deadWall={round.deadWallSnapshot}
+              replacements={round.replacements}
+            />
+          )}
+
+          <CopyLinkButton query={round.situationQuery} />
+        </BoardStage>
       </div>
     </TrainerLayout>
   )

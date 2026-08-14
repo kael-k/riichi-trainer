@@ -1,7 +1,76 @@
+import type { SeatPolicy } from '../../core/policy'
 import { useSettings } from './settingsStore'
 
-/** The six settings every board-rendering trainer shares. One schema instead of each app
- *  growing its own copy of the same six questions (REQ-04, D-13). */
+/** How one seat is played. The two AI values are `PlayerState.policy`'s own (`core/policy.ts`);
+ *  `'manual'` is not a policy at all but the absence of one — the seat goes into
+ *  `MatchOptions.humans` and the engine stops deciding for it. */
+export type SeatMode = SeatPolicy | 'manual'
+
+/** Who plays which seat, and from whose side the board is drawn. Advanced-only, and `null`
+ *  everywhere until someone opens the panel: the shipped behaviour is exactly "you sit where the
+ *  trainer seats you, every other seat is the efficiency AI", which `resolveSeatConfig` below
+ *  reproduces from `null`. */
+export interface SeatConfig {
+  /** The seat you watch from — always drawn at the bottom of the board. Absent means "wherever
+   *  the trainer seats you", which is how a link's own `?seat=` keeps working until someone
+   *  actually picks a side. */
+  orientation?: number
+  /** Indexed by seat; a seat past the end falls back to the default for its position. */
+  modes: SeatMode[]
+  /** Ask the manual seats about pon/chi/ron on other seats' discards (`MatchOptions.claims`).
+   *  Off in the graded drills, which ask one question per turn; on in the free-play lab. */
+  claims: boolean
+}
+
+/** `SeatConfig` filled in for a real table: every seat named, the orientation clamped into the
+ *  seat count (a yonma link opened under sanma can point at North), and at least one manual seat
+ *  guaranteed — with none, nothing would ever stop the go-round loop to let a person act.
+ *
+ *  `fallbackModes` overrides the `'efficiency'` default for an unconfigured seat — the folding
+ *  trainer flips non-declarers to `'defense'` at handover, and the panel must show what the
+ *  board is actually doing rather than a generic guess (see `useFoldingRound`'s `policies`). */
+export function resolveSeatConfig(
+  config: SeatConfig | null,
+  players: number,
+  defaultOrientation: number,
+  fallbackModes?: readonly SeatMode[],
+): SeatConfig & { orientation: number } {
+  const orientation = Math.min(Math.max(0, config?.orientation ?? defaultOrientation), players - 1)
+  const modes = Array.from(
+    { length: players },
+    (_, seat): SeatMode =>
+      config?.modes[seat] ??
+      fallbackModes?.[seat] ??
+      (seat === orientation ? 'manual' : 'efficiency'),
+  )
+  if (!modes.includes('manual')) modes[orientation] = 'manual'
+  return { orientation, modes, claims: config?.claims ?? false }
+}
+
+/** The `MatchOptions` fields a seat configuration decides, plus the orientation seat itself —
+ *  the one place `SeatMode` is translated into what the engine actually reads, so no trainer has
+ *  to know that "manual" means `humans` and "defend" means `policies`. */
+export function seatMatchOptions(
+  config: SeatConfig | null,
+  players: number,
+  defaultOrientation: number,
+): {
+  seatIndex: number
+  humans: number[]
+  policies: SeatPolicy[]
+  claims: boolean
+} {
+  const { orientation, modes, claims } = resolveSeatConfig(config, players, defaultOrientation)
+  return {
+    seatIndex: orientation,
+    humans: modes.flatMap((mode, seat) => (mode === 'manual' ? [seat] : [])),
+    policies: modes.map((mode) => (mode === 'manual' ? 'efficiency' : mode)),
+    claims,
+  }
+}
+
+/** The settings every board-rendering trainer shares. One schema instead of each app growing its
+ *  own copy of the same questions (REQ-04, D-13). */
 export interface TableSettings {
   /** Let the threats ron and tsumo. Off makes the drill a rehearsal — the same ranking and the
    *  same grading, but the hand plays to the wall instead of ending on a deal-in. On by
@@ -26,6 +95,10 @@ export interface TableSettings {
   hideConcealedHands: boolean
   /** Reveal the live (and, where applicable, dead) wall in draw order. */
   showWall: boolean
+  /** Who plays which seat (`SeatConfig`). `null` — the default everywhere — is the shipped
+   *  behaviour, spelled out by `resolveSeatConfig`. Advanced-only outside the lab: it is a
+   *  sandbox control, not something a first-time player should have to find. */
+  seats: SeatConfig | null
 }
 
 /** One id per board-rendering app. `lab` is the statistical lab (plan 01-07); it has no page yet
@@ -44,6 +117,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     hideConcealedHands: false,
     showWall: false,
+    seats: null,
   },
   efficiencySolo: {
     opponentWins: false,
@@ -52,6 +126,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     hideConcealedHands: false,
     showWall: false,
+    seats: null,
   },
   folding: {
     opponentWins: true,
@@ -60,6 +135,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     hideConcealedHands: false,
     showWall: false,
+    seats: null,
   },
   scoring: {
     opponentWins: true,
@@ -68,6 +144,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     hideConcealedHands: false,
     showWall: false,
+    seats: null,
   },
   lab: {
     opponentWins: false,
@@ -76,6 +153,10 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     hideConcealedHands: false,
     showWall: false,
+    // the lab is the free-play board: manual seats are the point there, so it ships with the
+    // claim prompts on. No `orientation`/`modes` — those still come from the link and the
+    // shipped default until someone opens the panel
+    seats: { modes: [], claims: true },
   },
 }
 
@@ -98,9 +179,20 @@ export function resolveTableSettings(
  *  value, and the stored choice comes straight back when Advanced is re-enabled.
  *  `showOpponentHands` and `hideConcealedHands` are explicitly *not* advanced-gated, same as
  *  today. */
-export function useTableSettings(app: TableApp): TableSettings {
+export function useTableSettings(app: TableApp): TableSettings & { seatsEnabled: boolean } {
   const table = useSettings((s) => s.table)
   const advanced = useSettings((s) => s.advanced)
   const resolved = resolveTableSettings(app, table)
-  return { ...resolved, showWall: advanced && resolved.showWall }
+  // the lab is the exception to the Advanced gate — free play *is* what that page is for, so its
+  // seat panel is always available
+  const seatsEnabled = advanced || app === 'lab'
+  return {
+    ...resolved,
+    showWall: advanced && resolved.showWall,
+    /** Whether the seat panel is offered at all. Distinct from `seats` being `null`, which means
+     *  "offered, nobody has configured it yet" — a hidden panel must not leave a live per-seat
+     *  configuration running underneath, so the value is dropped as well as the control. */
+    seatsEnabled,
+    seats: seatsEnabled ? resolved.seats : null,
+  }
 }

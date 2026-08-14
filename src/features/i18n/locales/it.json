@@ -39,7 +39,7 @@
     "sanma": "3 giocatori",
     "numbersOnTiles": "Numeri sulle tessere",
     "glossaryOnClick": "Apri i termini del glossario solo al tocco, non al passaggio del mouse",
-    "advanced": "Opzioni avanzate",
+    "advanced": "Funzionalità avanzate",
     "tsumogiriMarks": "Mostra tsumogiri/tedashi",
     "redFives": "Cinque rossi",
     "showWall": "Mostra il muro",
@@ -55,9 +55,36 @@
     "W": "O",
     "N": "N"
   },
+  "seats": {
+    "button": "Posto {{wind}}",
+    "title": "Posto {{wind}}",
+    "yourSide": "Il tuo lato",
+    "sitHere": "Guarda da qui",
+    "playedBy": "Giocato da",
+    "mode": {
+      "efficiency": "Efficienza",
+      "defense": "Difesa",
+      "manual": "Manuale"
+    },
+    "modeHint": {
+      "efficiency": "Gioca lo scarto più efficiente ad ogni turno.",
+      "defense": "Si difende: scarta la tessera più sicura contro ogni riichi in corso.",
+      "manual": "Giochi tu questo posto: scarti, chiamate e riichi sono una tua scelta."
+    },
+    "claims": "Chiedimi conferma prima di chiamare gli scarti degli altri posti",
+    "playingSeat": "Turno di {{wind}}",
+    "claimPrompt": "{{wind}}: chiamare lo scarto di {{from}}?",
+    "claim": {
+      "ron": "Ron",
+      "pon": "Pon",
+      "chi": "Chi",
+      "pass": "Passa"
+    },
+    "riichi": "Riichi",
+    "riichiHint": "Ora scarta una di queste:"
+  },
   "table": {
     "round": "Mano",
-    "you": "(tu)",
     "wall": "Muro {{count}}",
     "dora": "Dora",
     "ura": "Ura",
@@ -65,7 +92,10 @@
     "riichiSticks": "Bastoncini riichi sul tavolo",
     "honbaSticks": "Contatori honba",
     "rotateHint": "Ruota il telefono in orizzontale per vedere tavolo e mano insieme.",
-    "rotateHintDismiss": "Non mostrare più"
+    "rotateHintDismiss": "Non mostrare più",
+    "fullscreen": "Tavolo a schermo intero",
+    "exitFullscreen": "Esci da schermo intero",
+    "logDrawer": "Mostra il registro"
   },
   "glossary": {
     "ariaLabel": "Spiega: {{term}}",

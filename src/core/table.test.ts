@@ -4,6 +4,7 @@ import { evaluateDiscards } from './efficiency'
 import { beginTurn, createMatch, finishTurn, type MatchOptions } from './match'
 import { HONOR, NUM_TILE_TYPES, parseTenhou } from './tiles'
 import {
+  actingSeat,
   analysisOf,
   goRound,
   replayDiscards,
@@ -48,7 +49,10 @@ describe('seenBy', () => {
         for (let id = 0; id < NUM_TILE_TYPES; id++) {
           const unclamped = match.visible[id] + player.hand.counts[id]
           expect(seen[id], `tile ${id} in seed table-seenby-${i}`).toBe(Math.min(4, unclamped))
-          expect(unclamped, `tile ${id} in seed table-seenby-${i} never exceeds 4`).toBeLessThanOrEqual(4)
+          expect(
+            unclamped,
+            `tile ${id} in seed table-seenby-${i} never exceeds 4`,
+          ).toBeLessThanOrEqual(4)
         }
         expect(Math.max(...seen)).toBeLessThanOrEqual(4)
       }
@@ -56,19 +60,36 @@ describe('seenBy', () => {
   })
 })
 
+// what stops the go-round loop is a *human* seat, not `seatIndex` — the two coincide in every
+// single-manual-seat setup, which is what these fixtures spell out
+const YOU_AT_0: MatchOptions = { ...YONMA, humans: [0] }
+
 describe('goRound', () => {
-  it('leaves match.seat at seatIndex when the hand is still running', () => {
-    const match = createMatch([], 4, YONMA, 'table-goround-1')
-    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
-    beginTurn(match, YONMA)
-    finishTurn(match, YONMA)
+  it('leaves match.seat at the human seat when the hand is still running', () => {
+    const match = createMatch([], 4, YOU_AT_0, 'table-goround-1')
+    const core: TableCore = { match, options: YOU_AT_0, seatIndex: 0 }
+    beginTurn(match, YOU_AT_0)
+    finishTurn(match, YOU_AT_0)
     goRound(core)
     expect(match.ended !== undefined || match.seat === core.seatIndex).toBe(true)
   })
 
+  it('stops at whichever manual seat comes first, not only at seatIndex', () => {
+    // seat 2 is manual and seat 0 is the one the board is drawn from: the loop must hand the
+    // turn over at seat 2 rather than playing straight past it back round to seat 0
+    const options: MatchOptions = { ...YONMA, humans: [0, 2] }
+    const match = createMatch([], 4, options, 'table-goround-multi')
+    const core: TableCore = { match, options, seatIndex: 0 }
+    beginTurn(match, options)
+    finishTurn(match, options)
+    goRound(core)
+    expect(match.ended !== undefined || match.seat === 2).toBe(true)
+  })
+
   it('is a no-op on a one-seat match', () => {
-    const match = createMatch([], 1, { ...YONMA, calls: false, riichi: false }, 'table-goround-solo')
-    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    const options: MatchOptions = { ...YOU_AT_0, calls: false, riichi: false }
+    const match = createMatch([], 1, options, 'table-goround-solo')
+    const core: TableCore = { match, options, seatIndex: 0 }
     const before = match.turn
     goRound(core)
     expect(match.seat).toBe(0)
@@ -77,10 +98,11 @@ describe('goRound', () => {
 
   it('makes at most one full circuit even on a table that never returns the turn', () => {
     // a rule bug that never hands the turn back would spin without the guard; simulate it by
-    // pointing seatIndex at a seat that can never become current (out of range), so the loop
-    // condition never trips false on its own and only the guard stops it
-    const match = createMatch([], 4, YONMA, 'table-goround-guard')
-    const core: TableCore = { match, options: YONMA, seatIndex: 99 }
+    // naming a human seat that can never become current (out of range), so the loop condition
+    // never trips false on its own and only the guard stops it
+    const options: MatchOptions = { ...YONMA, humans: [99] }
+    const match = createMatch([], 4, options, 'table-goround-guard')
+    const core: TableCore = { match, options, seatIndex: 99 }
     const before = match.discards.length
     goRound(core)
     // 8 begin/finish pairs is the bound (4 seats x 2) — at most 8 more discards can land
@@ -91,6 +113,28 @@ describe('goRound', () => {
 // no calls/riichi/wins: isolates seat 0's own discard bookkeeping from opponent behaviour that
 // would otherwise vary the number of turns played per seed
 const NO_WIN: MatchOptions = { ...YONMA, calls: false, riichi: false, wins: false }
+
+describe('actingSeat', () => {
+  it('returns seatIndex when only that seat is human', () => {
+    const match = createMatch([], 4, YOU_AT_0, 'table-acting-1')
+    const core: TableCore = { match, options: YOU_AT_0, seatIndex: 0 }
+    expect(actingSeat(core)).toBe(0)
+  })
+
+  it('returns the other manual seat once the turn reaches it, not seatIndex', () => {
+    // same setup as goRound's "stops at whichever manual seat comes first" case: the board is
+    // drawn from seat 0, but once the turn hands to seat 2 (also human) the acting seat has to
+    // follow the turn, not the board
+    const options: MatchOptions = { ...YONMA, humans: [0, 2] }
+    const match = createMatch([], 4, options, 'table-acting-2')
+    const core: TableCore = { match, options, seatIndex: 0 }
+    beginTurn(match, options)
+    finishTurn(match, options)
+    goRound(core)
+    expect(match.seat).toBe(2)
+    expect(actingSeat(core)).toBe(2)
+  })
+})
 
 describe('yourDiscards', () => {
   it('returns every tile thrown, in order, including one called out of the river', () => {
@@ -127,7 +171,7 @@ describe('yourDiscards', () => {
 })
 
 describe('snapshotTable', () => {
-  it("separates the drawn tile out of hand into .drawn", () => {
+  it('separates the drawn tile out of hand into .drawn', () => {
     const match = createMatch([], 4, YONMA, 'table-snap-1')
     const core: TableCore = { match, options: YONMA, seatIndex: 0 }
     beginTurn(match, YONMA)
@@ -185,7 +229,14 @@ describe('replayDiscards', () => {
       }
       beginTurn(c.match, NO_WIN)
     }
-    const played = replayDiscards(core, [{ id: 0, red: false }, { id: 1, red: false }], step)
+    const played = replayDiscards(
+      core,
+      [
+        { id: 0, red: false },
+        { id: 1, red: false },
+      ],
+      step,
+    )
     expect(played.map((t) => t.id)).toEqual([0, 1])
   })
 

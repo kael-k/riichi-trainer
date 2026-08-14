@@ -2,12 +2,15 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { parseTenhou } from '../../core/tiles'
 import { INITIAL_HAND_SIZE, wallWithHand } from '../../core/wall'
-import { useEfficiencyRound, type RoundOptions as TableRoundOptions } from '../efficiency/useEfficiencyRound'
+import {
+  useEfficiencyRound,
+  type RoundOptions as TableRoundOptions,
+} from '../efficiency/useEfficiencyRound'
 import { emptySituation } from '../situation/urlCodec'
 import { useEfficiencySoloRound, type RoundOptions } from './useEfficiencySoloRound'
 
 const BARE: RoundOptions = { deadWall: false, aka: false, sanma: false }
-const TABLE_BARE: TableRoundOptions = { deadWall: false, aka: false, sanma: false }
+const TABLE_BARE: TableRoundOptions = { deadWall: false, aka: false, sanma: false, seats: null }
 
 describe('useEfficiencySoloRound', () => {
   it('deals exactly one seat', () => {
@@ -33,7 +36,9 @@ describe('useEfficiencySoloRound', () => {
     const solo = renderHook(() => useEfficiencySoloRound(situation, BARE, true))
     const table = renderHook(() => useEfficiencyRound(situation, TABLE_BARE, true))
     // one hand dealt off this wall (solo) leaves far more of it live than four hands (table)
-    expect(solo.result.current.liveWall.length).toBeGreaterThan(table.result.current.liveWall.length)
+    expect(solo.result.current.liveWall.length).toBeGreaterThan(
+      table.result.current.liveWall.length,
+    )
   })
 
   it('grades the same 14-tile hand identically through both hooks', () => {

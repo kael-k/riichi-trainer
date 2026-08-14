@@ -39,7 +39,7 @@
     "sanma": "3 players",
     "numbersOnTiles": "Numbers on tiles",
     "glossaryOnClick": "Open glossary terms on tap only, not hover",
-    "advanced": "Advanced options",
+    "advanced": "Advanced features",
     "tsumogiriMarks": "Show tsumogiri/tedashi",
     "redFives": "Red fives",
     "showWall": "Show wall",
@@ -55,9 +55,36 @@
     "W": "W",
     "N": "N"
   },
+  "seats": {
+    "button": "{{wind}} seat",
+    "title": "{{wind}} seat",
+    "yourSide": "Your side",
+    "sitHere": "Watch from here",
+    "playedBy": "Played by",
+    "mode": {
+      "efficiency": "Efficiency",
+      "defense": "Defend",
+      "manual": "Manual"
+    },
+    "modeHint": {
+      "efficiency": "Plays the most efficient discard every turn.",
+      "defense": "Folds — plays the safest tile against every seat in riichi.",
+      "manual": "You play this seat: discards, calls and riichi are your choice."
+    },
+    "claims": "Ask me to call on other seats’ discards",
+    "playingSeat": "Playing {{wind}}",
+    "claimPrompt": "{{wind}}: call on {{from}}’s discard?",
+    "claim": {
+      "ron": "Ron",
+      "pon": "Pon",
+      "chi": "Chi",
+      "pass": "Pass"
+    },
+    "riichi": "Riichi",
+    "riichiHint": "Now discard one of:"
+  },
   "table": {
     "round": "Round",
-    "you": "(you)",
     "wall": "Wall {{count}}",
     "dora": "Dora",
     "ura": "Ura",
@@ -65,7 +92,10 @@
     "riichiSticks": "Riichi bets on the table",
     "honbaSticks": "Honba counters",
     "rotateHint": "Turn your phone sideways to see the table and your hand at once.",
-    "rotateHintDismiss": "Do not show this again"
+    "rotateHintDismiss": "Do not show this again",
+    "fullscreen": "Full screen table",
+    "exitFullscreen": "Leave full screen",
+    "logDrawer": "Show log"
   },
   "glossary": {
     "ariaLabel": "Explain: {{term}}",

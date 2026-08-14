@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
+import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, UkeireTiles, WallDetails } from '../../components/tiles/Tile'
 import { TrainerLayout } from '../../components/TrainerLayout'
@@ -11,7 +12,9 @@ import { parseTenhou, serializeTenhouOrdered, tileCode, type ParsedTile } from '
 import { validateWall, wallWithHand, type WallError } from '../../core/wall'
 import type { GlossaryTermId } from '../i18n/glossary'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
+import { SeatButton } from '../settings/SeatPanel'
 import { SettingRow } from '../settings/SettingsDialog'
+import { ManualControls } from '../table/ManualControls'
 import { useSettings } from '../settings/settingsStore'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useTableSettings, type TableSettings } from '../settings/tableSettings'
@@ -101,7 +104,10 @@ function DangerRow({ entry, seats }: { entry: TileDanger; seats: number[] }) {
 /** The inline, single-sentence wall-validation error (D-12): names the offending zone and tile,
  *  in the same red the wrong-answer feedback rows already use — never a modal, never a repaired
  *  board. */
-function wallErrorMessage(t: (key: string, opts?: Record<string, unknown>) => string, error: WallError): string {
+function wallErrorMessage(
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  error: WallError,
+): string {
   const zone = t(`lab.zone.${error.zone}`)
   const detail = t(`lab.reason.${error.reason}`, {
     tile: error.tile !== undefined ? tileCode(error.tile) : '',
@@ -122,7 +128,14 @@ export function LabPage() {
   const { aka } = useAdvancedSettings()
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
-  const { deadWall, showWall, opponentWins, showOpponentHands } = useTableSettings('lab')
+  const {
+    deadWall,
+    showWall,
+    opponentWins,
+    showOpponentHands,
+    seats: seatConfig,
+    seatsEnabled,
+  } = useTableSettings('lab')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
   // `apps.lab` slice in first.
@@ -133,15 +146,19 @@ export function LabPage() {
   // null: nothing hand-authored yet, fall back to the URL's own wall. Set once per Load/Build
   // press — `sanma` is resolved from the pasted wall's own length the same way a shared link's
   // is, so a pasted sanma wall doesn't get padded back out to 136 tiles under a stale yonma setting.
-  const [manual, setManual] = useState<{ wall: ParsedTile[]; error?: WallError; sanma: boolean } | null>(
-    null,
-  )
+  const [manual, setManual] = useState<{
+    wall: ParsedTile[]
+    error?: WallError
+    sanma: boolean
+  } | null>(null)
 
   const loadWall = () => {
     const parsed = parseTenhou(wallInput)
     const wallSanma = resolveSanma(parsed, urlSituation.sanma, sanma)
     const error = validateWall(parsed, wallSanma ? 3 : 4, wallSanma)
-    setManual(error ? { wall: EMPTY_WALL, error, sanma: wallSanma } : { wall: parsed, sanma: wallSanma })
+    setManual(
+      error ? { wall: EMPTY_WALL, error, sanma: wallSanma } : { wall: parsed, sanma: wallSanma },
+    )
   }
   // seeds the input from a fresh random wall so the reader edits a real board rather than typing
   // 136 tiles from nothing — parsed and validated only once Load is pressed afterward
@@ -156,7 +173,13 @@ export function LabPage() {
   const situation: Situation = useMemo(
     () =>
       manual
-        ? { ...urlSituation, wall: manual.wall, wallError: manual.error, river: EMPTY_RIVER, sanma: manual.sanma }
+        ? {
+            ...urlSituation,
+            wall: manual.wall,
+            wallError: manual.error,
+            river: EMPTY_RIVER,
+            sanma: manual.sanma,
+          }
         : urlSituation,
     [urlSituation, manual],
   )
@@ -168,8 +191,9 @@ export function LabPage() {
       sanma: situation.sanma ?? sanma,
       opponentWins,
       showOpponentHands,
+      seats: seatConfig,
     }),
-    [situation, deadWall, aka, sanma, opponentWins, showOpponentHands],
+    [situation, deadWall, aka, sanma, opponentWins, showOpponentHands, seatConfig],
   )
 
   const round = useLabRound(situation, options)
@@ -183,8 +207,9 @@ export function LabPage() {
     hand: seat !== round.seatIndex ? round.boardHands[seat] : undefined,
     // finished alone has always revealed here (a post-game reveal, same as reading a real score
     // sheet); showOpponentHands now does the same live, mid-hand — previously this page never
-    // read that setting at all, so toggling it did nothing
-    concealed: !(round.finished || showOpponentHands),
+    // read that setting at all, so toggling it did nothing. A manual seat is the reader's own
+    // hand and never concealed from them, wherever it sits
+    concealed: !(round.finished || showOpponentHands || round.manualSeats.includes(seat)),
   }))
 
   const wallError = situation.wallError
@@ -258,53 +283,77 @@ export function LabPage() {
         {!wallError && !loaded && <p className="text-sm text-neutral-500">{t('lab.empty')}</p>}
 
         {loaded && (
-          <div className="flex flex-col gap-4 short:flex-row short:items-start">
-            <Table
-              seats={seats}
-              seatIndex={round.seatIndex}
-              round={situation.round}
-              doraIndicators={round.doraIndicators}
-              wallCount={round.liveWall.length}
-            />
-
-            <div className="flex min-w-0 flex-1 flex-col gap-4">
-              <HandDisplay
-                tiles={round.hand}
-                drawn={round.drawn}
-                onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+          <BoardStage
+            board={(controls) => (
+              <Table
+                controls={controls}
+                seatControl={(seat) =>
+                  seatsEnabled && (
+                    <SeatButton
+                      seat={seat}
+                      players={round.rivers.length}
+                      defaultOrientation={round.seatIndex}
+                      config={seatConfig}
+                      onChange={(next) => updateTable({ seats: next })}
+                    />
+                  )
+                }
+                seats={seats}
+                seatIndex={round.seatIndex}
+                round={situation.round}
+                doraIndicators={round.doraIndicators}
+                wallCount={round.liveWall.length}
               />
-
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-neutral-500">{t('lab.ranking')}</span>
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
-                  {round.ranked.map((option) => (
-                    <RankedRow key={option.discard} option={option} />
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-neutral-500">{t('lab.danger')}</span>
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
-                  {round.danger.map((entry) => (
-                    <DangerRow key={entry.tile} entry={entry} seats={threatSeats} />
-                  ))}
-                </div>
-              </div>
-
-              {showWall && (
-                <WallDetails
-                  dealt={round.dealtTiles}
-                  liveWall={round.liveWallSnapshot}
-                  liveWallDrawn={round.liveWallDrawn}
-                  deadWall={round.deadWallSnapshot}
-                  replacements={round.replacements}
+            )}
+            hand={
+              <div className="flex flex-col gap-4">
+                <ManualControls
+                  seatIndex={round.seatIndex}
+                  acting={round.acting}
+                  claim={round.claim}
+                  riichiTiles={round.riichiTiles()}
+                  riichiArmed={round.riichiArmed}
+                  onArmRiichi={round.armRiichi}
+                  onAnswer={round.answer}
                 />
-              )}
-
-              <CopyLinkButton query={round.situationQuery} />
+                <HandDisplay
+                  tiles={round.hand}
+                  drawn={round.drawn}
+                  onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+                />
+              </div>
+            }
+          >
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-neutral-500">{t('lab.ranking')}</span>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+                {round.ranked.map((option) => (
+                  <RankedRow key={option.discard} option={option} />
+                ))}
+              </div>
             </div>
-          </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-neutral-500">{t('lab.danger')}</span>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+                {round.danger.map((entry) => (
+                  <DangerRow key={entry.tile} entry={entry} seats={threatSeats} />
+                ))}
+              </div>
+            </div>
+
+            {showWall && (
+              <WallDetails
+                dealt={round.dealtTiles}
+                liveWall={round.liveWallSnapshot}
+                liveWallDrawn={round.liveWallDrawn}
+                deadWall={round.deadWallSnapshot}
+                replacements={round.replacements}
+              />
+            )}
+
+            <CopyLinkButton query={round.situationQuery} />
+          </BoardStage>
         )}
       </div>
     </TrainerLayout>

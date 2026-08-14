@@ -3,6 +3,7 @@ import { NORTH, type MatchOptions } from '../../core/match'
 import { shanten } from '../../core/shanten'
 import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { useSessionStats } from '../../lib/useSessionStats'
+import { seatMatchOptions, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { useTableRound, type DiscardStats, type UserDrawContext } from '../table/useTableRound'
 import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
@@ -18,6 +19,9 @@ export interface RoundOptions {
   aka: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma: boolean
+  /** Who plays which seat, from the board's seat panel; `null` is the shipped default (you at
+   *  the link's own seat, every other seat on the efficiency AI). */
+  seats: SeatConfig | null
 }
 
 /** Drives one efficiency round on top of `useTableRound`: dealing, replay, opponents and the
@@ -31,7 +35,10 @@ export function useEfficiencyRound(
 ) {
   const players = options.sanma ? 3 : 4
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
-  const seatIndex = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
+  const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
+  // the seat panel's orientation wins over the link's own `?seat=` once someone picks a side;
+  // until then `seats` is null and this resolves back to exactly the link's seat
+  const { seatIndex, humans, policies, claims } = seatMatchOptions(options.seats, players, linkSeat)
   const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const matchOptions: MatchOptions = {
     sanma: options.sanma,
@@ -43,7 +50,9 @@ export function useEfficiencyRound(
     calls: true,
     riichi: true,
     wins: false,
-    human: seatIndex,
+    humans,
+    policies,
+    claims,
   }
 
   const log = useLog((s) => s.log)
@@ -62,9 +71,9 @@ export function useEfficiencyRound(
   // a kita/kan's grading happens in onUserDiscard, before its replacement (rinshan) draw is
   // known — stashed here until the onUserDraw that immediately follows resolves it with that
   // draw. A plain discard already knows its "drawn" tile, so it never touches this.
-  const pending = useRef<{ result: TurnResult; tile: ParsedTile; situationBefore: string } | undefined>(
-    undefined,
-  )
+  const pending = useRef<
+    { result: TurnResult; tile: ParsedTile; situationBefore: string } | undefined
+  >(undefined)
   // the situation whose replayed river is already on the log; see `logReplay`
   const loggedReplay = useRef<Situation>(undefined)
   // graded choices made in *this* round, for the round-complete panel's own average — distinct
@@ -183,8 +192,14 @@ export function useEfficiencyRound(
      *  seat's corner already used. */
     melds: table.melds,
     nuki: table.nuki,
-    kans: table.melds[table.seatIndex].filter((m) => m.kind === 'ankan').map((m) => m.tiles),
+    kans: table.melds[table.acting].filter((m) => m.kind === 'ankan').map((m) => m.tiles),
     seatIndex: table.seatIndex,
+    /** Whose hand is on screen — `seatIndex` unless a second seat was set to manual. */
+    acting: table.acting,
+    /** Every seat a person plays: their hands are always face-up, whatever the reveal setting
+     *  says, since they are the reader's own. */
+    manualSeats: humans,
+    claim: table.claim,
     liveWall: table.liveWall,
     deadWall: table.deadWall,
     liveWallSnapshot: table.liveWallSnapshot,
@@ -205,6 +220,10 @@ export function useEfficiencyRound(
     roundAverageTime:
       roundActionCount.current > 0 ? (elapsed * 1000) / roundActionCount.current : 0,
     discard: table.discard,
+    answer: table.answer,
+    riichiTiles: table.riichiTiles,
+    riichiArmed: table.riichiArmed,
+    armRiichi: table.armRiichi,
     kita: table.kita,
     kan: table.kan,
     situationQuery: () => encodeSituation(table.situation()),

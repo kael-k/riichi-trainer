@@ -2,19 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import type { Meld } from '../../core/agari'
 import type { TileDanger } from '../../core/danger'
 import { evaluateKan, type DiscardOption } from '../../core/efficiency'
-import { removeTile, tileCount } from '../../core/hand'
+import { addTile, removeTile, tileCount } from '../../core/hand'
 import {
+  answerClaim,
   beginTurn,
+  canDeclareRiichi,
   createMatch,
   drawReplacement,
   finishTurn,
   NORTH,
+  type ClaimAnswer,
   type MatchOptions,
   type PlayerState,
   type WinRecord,
 } from '../../core/match'
 import { shanten } from '../../core/shanten'
 import {
+  actingSeat,
   analysisOf,
   goRound,
   replayDiscards,
@@ -80,8 +84,10 @@ export interface DiscardStats {
 
 export type AgariCall = (win: WinRecord) => void
 
+/** The seat whose turn this hook is currently handing to the reader — `core.seatIndex` in every
+ *  single-manual-seat setup, some other manual seat once there are several (`actingSeat`). */
 function you(core: TableCore): PlayerState {
-  return core.match.players[core.seatIndex]
+  return core.match.players[actingSeat(core)]
 }
 
 /** Builds the `DiscardStats` handed to `onUserDiscard`. `yours`/`best`/`danger` all read off the
@@ -131,7 +137,16 @@ export function useTableRound(input: TableRoundInput) {
   // one log row per replayed discard without reaching back into `core/table.ts` itself
   const replayed = useRef<ParsedTile[]>([])
 
+  // joined, not the arrays themselves: a caller builds these fresh from its settings on every
+  // render, so an identity dep would redeal the board each time it rendered
+  const humanKey = input.options.humans?.join()
+  const policyKey = input.options.policies?.join()
+
   const [restartCount, setRestartCount] = useState(0)
+  // "the next discard declares riichi", armed from the UI's riichi button. Kept here rather than
+  // in each page so every trainer's existing `discard(i)` call site keeps working untouched: the
+  // declaration rides on the discard the reader was going to make anyway
+  const [riichiArmed, setRiichiArmed] = useState(false)
   // a rewind/new-link hands in a brand-new `input.wall` naming its own board; restartCount is
   // per-mount React state a wall swap does not and should not reset on its own, so left alone
   // buildRound() below would treat the new wall as already-restarted-past. Reset while rendering,
@@ -159,7 +174,9 @@ export function useTableRound(input: TableRoundInput) {
     }
     const analysis = analysisOf(c)
     drawAnalysis.current = analysis
-    if (notify && !replaying.current) {
+    // only ever for the orientation seat: a second manual seat is played, not graded, so its
+    // turns must not reach a consumer whose callbacks mean "the drill's own decision"
+    if (notify && !replaying.current && actingSeat(c) === c.seatIndex) {
       input.onUserDraw?.({ turn: c.match.turn, drawn: c.match.drawn, analysis })
     }
   }
@@ -169,7 +186,7 @@ export function useTableRound(input: TableRoundInput) {
    *  measured against the still-14-tile hand. */
   function fireDiscard(c: TableCore, tile: ParsedTile, kind: DiscardStats['kind']): void {
     const analysis = drawAnalysis.current
-    if (!analysis || replaying.current) return
+    if (!analysis || replaying.current || actingSeat(c) !== c.seatIndex) return
     input.onUserDiscard?.(tile, statsFor(analysis, kind, tile, you(c), c.options.sanma))
   }
 
@@ -186,17 +203,39 @@ export function useTableRound(input: TableRoundInput) {
    *  `stopAtTenpai` reaching tenpai, the wall running dry, or anyone winning. Shared by `discard()`
    *  and `replayDiscards`'s step, so a live discard and a replayed one advance the board through
    *  the identical path. */
-  function advance(c: TableCore, tile: ParsedTile, kind: DiscardStats['kind'] = 'discard'): boolean {
+  function advance(
+    c: TableCore,
+    tile: ParsedTile,
+    kind: DiscardStats['kind'] = 'discard',
+    declareRiichi = false,
+  ): boolean {
+    const discarded = actingSeat(c)
     fireDiscard(c, tile, kind)
-    finishTurn(c.match, c.options, tile)
-    if (maybeFireAgari(c)) return false
+    finishTurn(c.match, c.options, tile, declareRiichi)
+    return settle(c, discarded)
+  }
 
-    if (input.stopAtTenpai && shanten(you(c).hand) <= 0) {
+  /** Carries the board from a discard that has just been played to the next thing a person has
+   *  to answer: another seat's claim, the next manual seat's draw, or the end of the round.
+   *  Shared by `advance` and `answer`, so a claim resolved mid-turn rejoins the identical path. */
+  function settle(c: TableCore, discarded: number): boolean {
+    if (maybeFireAgari(c)) return false
+    // a claim suspends the turn: nothing draws until it is answered
+    if (c.match.claim) return true
+
+    // your own tenpai ends the drill; another manual seat reaching tenpai is not the drill's
+    // decision point, so it plays on
+    if (
+      input.stopAtTenpai &&
+      discarded === c.seatIndex &&
+      shanten(c.match.players[c.seatIndex].hand) <= 0
+    ) {
       c.match.drawn = undefined
       return false
     }
     goRound(c)
     if (maybeFireAgari(c)) return false
+    if (c.match.claim) return true
 
     beginTurn(c.match, c.options)
     if (maybeFireAgari(c)) return false
@@ -230,7 +269,8 @@ export function useTableRound(input: TableRoundInput) {
     const snap = buildRound()
     setSnapshot(snap)
     const c = core.current!
-    const already = builtFor.current?.wall === input.wall && builtFor.current?.count === restartCount
+    const already =
+      builtFor.current?.wall === input.wall && builtFor.current?.count === restartCount
     if (!already) builtFor.current = { wall: input.wall, count: restartCount }
     // fireDraw's analysis cache has to track *this* call's build every time, even on the
     // deduped repeat: only the external onAgariCall/onUserDraw callback itself is skipped there
@@ -253,25 +293,64 @@ export function useTableRound(input: TableRoundInput) {
     input.options.calls,
     input.options.riichi,
     input.options.wins,
-    input.options.human,
+    input.options.claims,
+    humanKey,
+    policyKey,
     restartCount,
   ])
 
-  /** Discards the tile at `index` into `snapshot.hand` (or the drawn tile, at `hand.length`). */
-  function discard(index: number): void {
+  /** Discards the tile at `index` into `snapshot.hand` (or the drawn tile, at `hand.length`),
+   *  declaring riichi with it when `declareRiichi` is set — the engine never declares one for a
+   *  manual seat, since riichi locks every later discard to tsumogiri. An illegal declaration is
+   *  simply played as a plain discard (`canDeclareRiichi` gates it engine-side); `riichiTiles()`
+   *  is what keeps the UI from offering one. */
+  function discard(index: number, declareRiichi = riichiArmed): void {
     const c = core.current
-    if (!c || c.match.ended || tileCount(you(c).hand) !== 14) return
+    if (!c || c.match.ended || c.match.claim || tileCount(you(c).hand) !== 14) return
     const tile = index === snapshot.hand.length ? snapshot.drawn : snapshot.hand[index]
     if (!tile) return
-    advance(c, tile)
+    setRiichiArmed(false)
+    advance(c, tile, 'discard', declareRiichi)
     setSnapshot(snapshotTable(c))
+  }
+
+  /** Answers the claim the board is waiting on — ron, pon, chi or pass — and plays on. */
+  function answer(claimAnswer: ClaimAnswer): void {
+    const c = core.current
+    if (!c || !c.match.claim) return
+    const discarder = c.match.claim.from
+    answerClaim(c.match, c.options, claimAnswer)
+    settle(c, discarder)
+    setSnapshot(snapshotTable(c))
+  }
+
+  /** Tiles the acting seat could discard *and* declare riichi on. Read off the same ranking the
+   *  discard grading uses, so the two can never disagree about which discards reach tenpai; the
+   *  rest of the legality (menzen, not already declared, enough wall) is `canDeclareRiichi`'s,
+   *  probed against the hand as it will stand once one of these has gone. */
+  function riichiTiles(): TileId[] {
+    const c = core.current
+    const analysis = drawAnalysis.current
+    if (!c || !analysis || c.match.ended || c.match.claim) return []
+    const player = you(c)
+    if (tileCount(player.hand) !== 14) return []
+    return analysis.ranked
+      .filter((option) => {
+        if (option.shanten !== 0) return false
+        removeTile(player.hand, option.discard)
+        const legal = canDeclareRiichi(c.match, c.options, actingSeat(c))
+        addTile(player.hand, option.discard)
+        return legal
+      })
+      .map((option) => option.discard)
   }
 
   /** Pulls a held north (sanma only), graded like a discard via north's own `evaluateDiscards`
    *  entry — the same comparison `discard()` uses. */
   function kita(): void {
     const c = core.current
-    if (!c || !c.options.sanma || c.match.ended || tileCount(you(c).hand) !== 14) return
+    if (!c || !c.options.sanma || c.match.ended || c.match.claim) return
+    if (tileCount(you(c).hand) !== 14) return
     if (you(c).hand.counts[NORTH] === 0) return
     const northTile: ParsedTile = { id: NORTH, red: false }
     fireDiscard(c, northTile, 'kita')
@@ -289,7 +368,7 @@ export function useTableRound(input: TableRoundInput) {
    *  the same best discard `discard()` uses. */
   function kan(id: TileId): void {
     const c = core.current
-    if (!c || c.match.ended || tileCount(you(c).hand) !== 14) return
+    if (!c || c.match.ended || c.match.claim || tileCount(you(c).hand) !== 14) return
     if (you(c).hand.counts[id] !== 4) return
     const player = you(c)
     const red = player.reds.has(id)
@@ -339,6 +418,11 @@ export function useTableRound(input: TableRoundInput) {
   return {
     ...snapshot,
     discard,
+    answer,
+    riichiTiles,
+    riichiArmed,
+    /** Arms/disarms "the next discard declares riichi"; the discard itself carries it. */
+    armRiichi: setRiichiArmed,
     kita,
     kan,
     restart: () => setRestartCount((n) => n + 1),

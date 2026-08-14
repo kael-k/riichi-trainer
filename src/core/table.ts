@@ -5,11 +5,13 @@ import {
   beginTurn,
   concealedTiles,
   finishTurn,
+  isHuman,
   seenBy as seenByMatch,
   threatViews,
   wallDrawnCount,
   type MatchOptions,
   type MatchState,
+  type PendingClaim,
   type WinRecord,
 } from './match'
 import type { ParsedTile, RiverTile } from './tiles'
@@ -32,28 +34,42 @@ export interface TableCore {
   seatIndex: number
 }
 
-/** What `core`'s own seat can see: every face-up tile plus its own hand. Thin wrapper over
+/** The seat being played right now, which is `core.seatIndex` in the ordinary single-manual-seat
+ *  setup and stays so for every existing trainer. It differs only once more than one seat is set
+ *  to manual: the board is still drawn from `seatIndex`, but the hand on screen, the analysis and
+ *  the discard all belong to whichever manual seat the turn has reached. A pending claim wins
+ *  over the turn order — the seat being asked is the one holding the decision. */
+export function actingSeat(core: TableCore): number {
+  const { match, options, seatIndex } = core
+  if (match.claim) return match.claim.seat
+  return isHuman(options, match.seat) ? match.seat : seatIndex
+}
+
+/** What the seat being played can see: every face-up tile plus its own hand. Thin wrapper over
  *  `match.ts`'s exported `seenBy` — the canonical computation lives there (not here) because this
  *  module imports the stepper from `match.ts`, and `match.ts` must not import back. */
 export function seenBy(core: TableCore): Uint8Array {
-  return seenByMatch(core.match, core.match.players[core.seatIndex])
+  return seenByMatch(core.match, core.match.players[actingSeat(core)])
 }
 
-/** Plays every seat back around to `core`'s own seat, or until the hand ends. One full go-round is
+/** Plays every seat the engine decides for, stopping at the next seat a person plays — or when
+ *  the hand ends, or when a discard leaves a human seat a claim to answer. One full go-round is
  *  the bound — a call hands the turn sideways but never backwards, so eight begin/finish pairs
  *  (two per seat on a four-seat table) is enough, and it also backstops a rule bug that would
- *  otherwise spin forever. A no-op when it is already your turn, e.g. a one-seat solo match. It
- *  carries no opponents-on/off branch and no next-draw of its own: each consumer layers its own
- *  stop condition and its own `beginTurn` on top (efficiency stops at tenpai, folding stops when
- *  the hand ends). */
+ *  otherwise spin forever. A no-op when it is already a human seat's turn, e.g. a one-seat solo
+ *  match. It carries no opponents-on/off branch and no next-draw of its own: each consumer layers
+ *  its own stop condition and its own `beginTurn` on top (efficiency stops at tenpai, folding
+ *  stops when the hand ends).
+ *
+ *  "The seat that stops it" is `options.humans`, not `core.seatIndex`: with several manual seats
+ *  every one of them has to get its turn, and `seatIndex` is only where the board is drawn from.
+ *  Callers keep at least one human seat, or this simply plays its eight pairs and returns. */
 export function goRound(core: TableCore): void {
-  for (
-    let guard = 0;
-    guard < 8 && core.match.seat !== core.seatIndex && !core.match.ended;
-    guard++
-  ) {
-    beginTurn(core.match, core.options)
-    finishTurn(core.match, core.options)
+  for (let guard = 0; guard < 8; guard++) {
+    const { match, options } = core
+    if (match.ended || match.claim || isHuman(options, match.seat)) return
+    beginTurn(match, options)
+    finishTurn(match, options)
   }
 }
 
@@ -100,12 +116,19 @@ export interface TableSnapshot {
    *  display draws greyed-out ahead of the live pool, so it can show the whole wall as built rather
    *  than just what is left to draw. */
   dealtTiles: ParsedTile[]
+  /** Whose hand `hand`/`drawn` above actually are — `seatIndex` in every single-manual-seat
+   *  setup, and some other manual seat only once the reader is playing more than one. */
+  acting: number
+  /** The claim the board is waiting on, if any: while it is set nothing draws and nothing
+   *  discards until it is answered. */
+  claim: PendingClaim | undefined
 }
 
 /** Builds a `TableSnapshot` for `core` as the match stands right now. */
 export function snapshotTable(core: TableCore): TableSnapshot {
   const { match, seatIndex } = core
-  const player = match.players[seatIndex]
+  const acting = actingSeat(core)
+  const player = match.players[acting]
   let hand = concealedTiles(player)
   if (match.drawn) {
     const i = hand.findIndex((t) => t.id === match.drawn!.id && t.red === match.drawn!.red)
@@ -132,6 +155,8 @@ export function snapshotTable(core: TableCore): TableSnapshot {
     win: match.win,
     wall: match.wall,
     dealtTiles: match.wall.slice(0, match.players.length * INITIAL_HAND_SIZE),
+    acting,
+    claim: match.claim,
   }
 }
 
@@ -179,7 +204,7 @@ export interface TableAnalysis {
  *  board moves on rather than reusing an old one, since each object's members cache only their own
  *  first read. */
 export function analysisOf(core: TableCore): TableAnalysis {
-  const player = core.match.players[core.seatIndex]
+  const player = core.match.players[actingSeat(core)]
   let seenCache: Uint8Array | undefined
   let rankedCache: DiscardOption[] | undefined
   let dangerCache: TileDanger[] | undefined

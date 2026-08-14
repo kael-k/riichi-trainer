@@ -26,24 +26,29 @@ export function SettingRow({ label, children }: { label: ReactNode; children: Re
   )
 }
 
-function SegmentedButton({
+/** One button of a mutually-exclusive row. Exported for the seat panel (`SeatPanel.tsx`), which
+ *  is a settings surface of its own but must not grow a second look for the same control. */
+export function SegmentedButton({
   active,
   onClick,
   children,
   label,
+  disabled = false,
 }: {
   active: boolean
   onClick: () => void
   children: ReactNode
   label?: string
+  disabled?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
       aria-label={label}
-      className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg border px-3 text-sm font-medium ${
+      className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg border px-3 text-sm font-medium disabled:opacity-40 ${
         active
           ? 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
           : 'border-neutral-300 dark:border-neutral-700'

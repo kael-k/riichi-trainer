@@ -125,8 +125,10 @@ export interface Call {
   from: TileId[]
 }
 
-/** Every pon/chi this hand could legally make on `tile`; chi only from the player to the left. */
-function availableCalls(hand: Hand, tile: TileId, fromKamicha: boolean): Call[] {
+/** Every pon/chi this hand could legally make on `tile`; chi only from the player to the left.
+ *  Exported for the human claim prompt (`match.ts#claimOptions`), which offers exactly the calls
+ *  the AI weighs here rather than deriving a second, drifting notion of what is legal. */
+export function availableCalls(hand: Hand, tile: TileId, fromKamicha: boolean): Call[] {
   const calls: Call[] = []
   if (hand.counts[tile] >= 2) calls.push({ kind: 'pon', from: [tile, tile] })
   if (!fromKamicha || tile >= HONOR) return calls

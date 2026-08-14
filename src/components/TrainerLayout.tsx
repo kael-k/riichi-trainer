@@ -110,18 +110,29 @@ function LogPanel() {
           </button>
         )}
       </summary>
-      <ol className="max-h-48 overflow-y-auto px-3 pb-2 text-sm [--tile-w:calc(var(--tile-w-base)*0.55)]">
-        {entries.length === 0 && <li className="py-1 text-neutral-400">{t('common.noActions')}</li>}
-        {/* numbered from the session's first action, so the numbers stay put as the list grows —
-            the panel shows newest first, which would otherwise renumber every row each turn */}
-        {entries
-          .map((entry, i) => ({ entry, number: i + 1 }))
-          .reverse()
-          .map(({ entry, number }) => (
-            <LogRow key={entry.id} entry={entry} number={number} />
-          ))}
-      </ol>
+      <LogList />
     </details>
+  )
+}
+
+/** The log rows on their own, without the panel's own summary/clear header — the fullscreen
+ *  board's log drawer (`BoardStage.tsx`) shows exactly the same list, so there is one renderer
+ *  for it rather than a second that drifts. */
+export function LogList() {
+  const { t } = useTranslation()
+  const entries = useLog((s) => s.entries)
+  return (
+    <ol className="max-h-48 overflow-y-auto px-3 pb-2 text-sm short:max-h-none [--tile-w:calc(var(--tile-w-base)*0.55)]">
+      {entries.length === 0 && <li className="py-1 text-neutral-400">{t('common.noActions')}</li>}
+      {/* numbered from the session's first action, so the numbers stay put as the list grows —
+          the panel shows newest first, which would otherwise renumber every row each turn */}
+      {entries
+        .map((entry, i) => ({ entry, number: i + 1 }))
+        .reverse()
+        .map(({ entry, number }) => (
+          <LogRow key={entry.id} entry={entry} number={number} />
+        ))}
+    </ol>
   )
 }
 

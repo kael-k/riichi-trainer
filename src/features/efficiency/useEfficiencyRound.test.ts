@@ -9,7 +9,7 @@ import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRou
 /** Bare-table options: no dead wall, no aka, no sanma — real opponents are always dealt in and
  *  always play now (calls/riichi are hardcoded in the hook), so there is no off switch left to
  *  test here. */
-const BARE: RoundOptions = { deadWall: false, aka: false, sanma: false }
+const BARE: RoundOptions = { deadWall: false, aka: false, sanma: false, seats: null }
 
 describe('useEfficiencyRound', () => {
   it('deals 13 tiles plus a separated drawn tile and evaluates discards', () => {
@@ -210,7 +210,7 @@ describe('useEfficiencyRound', () => {
 
   it('situationQuery round-trips the exact round state', () => {
     const situation = emptySituation()
-    const opts: RoundOptions = { deadWall: true, aka: true, sanma: false }
+    const opts: RoundOptions = { deadWall: true, aka: true, sanma: false, seats: null }
     const a = renderHook(() => useEfficiencyRound(situation, opts, true))
     act(() => a.result.current.discard(0))
     act(() => a.result.current.discard(3))
@@ -223,6 +223,7 @@ describe('useEfficiencyRound', () => {
           deadWall: decoded.deadWall ?? false,
           aka: decoded.aka ?? false,
           sanma: decoded.sanma ?? false,
+          seats: null,
         },
         true,
       ),
@@ -309,7 +310,9 @@ describe('useEfficiencyRound', () => {
     // fillSeed-backed so an opponent's random deal never happens to hold a callable pair on the
     // discard below — an unset seed made this flaky the same way as the yonma opponents test
     situation.wall = completeWall(parseTenhou('123456789p1122z'), true, false, 'sanma-opp-seed')
-    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, sanma: true }, true))
+    const { result } = renderHook(() =>
+      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
+    )
     expect(result.current.rivers).toHaveLength(3)
     // 108 - 13 pinned - 26 dealt to the other two seats - 1 user draw
     expect(result.current.liveWall.length).toBe(108 - 13 - 26 - 1)

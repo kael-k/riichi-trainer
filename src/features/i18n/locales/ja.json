@@ -35,7 +35,7 @@
     "sanma": "三人麻雀",
     "numbersOnTiles": "牌に数字を表示",
     "glossaryOnClick": "用語集はホバーではなくタップでのみ開く",
-    "advanced": "上級者向けオプション",
+    "advanced": "上級者向け機能",
     "tsumogiriMarks": "ツモ切り/手出しを表示",
     "redFives": "赤ドラ",
     "showWall": "山を表示",
@@ -51,9 +51,36 @@
     "W": "西",
     "N": "北"
   },
+  "seats": {
+    "button": "{{wind}}家",
+    "title": "{{wind}}家",
+    "yourSide": "自分の席",
+    "sitHere": "ここから見る",
+    "playedBy": "打ち手",
+    "mode": {
+      "efficiency": "効率",
+      "defense": "守備",
+      "manual": "手動"
+    },
+    "modeHint": {
+      "efficiency": "毎巡、最も効率の良い牌を切ります。",
+      "defense": "降り: リーチ中の相手全員に対して最も安全な牌を切ります。",
+      "manual": "この席はあなたが操作します — 打牌・鳴き・リーチはあなたが選びます。"
+    },
+    "claims": "他家の捨て牌に鳴くか毎回確認する",
+    "playingSeat": "{{wind}}の番です",
+    "claimPrompt": "{{wind}}: {{from}}の捨て牌に鳴きますか?",
+    "claim": {
+      "ron": "ロン",
+      "pon": "ポン",
+      "chi": "チー",
+      "pass": "パス"
+    },
+    "riichi": "リーチ",
+    "riichiHint": "次のいずれかを捨ててください:"
+  },
   "table": {
     "round": "場",
-    "you": "(自分)",
     "wall": "残り{{count}}",
     "dora": "ドラ",
     "ura": "裏",
@@ -61,7 +88,10 @@
     "riichiSticks": "供託リーチ棒",
     "honbaSticks": "本場",
     "rotateHint": "画面を横向きにすると、卓と手牌を一度に表示できます。",
-    "rotateHintDismiss": "今後表示しない"
+    "rotateHintDismiss": "今後表示しない",
+    "fullscreen": "全画面で卓を表示",
+    "exitFullscreen": "全画面を終了",
+    "logDrawer": "ログを表示"
   },
   "home": {
     "title": "リーチトレーナー",

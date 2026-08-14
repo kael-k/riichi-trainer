@@ -5,6 +5,7 @@ import { handFromTenhou } from '../../core/hand'
 import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
 import { useLog } from '../../store/log'
+import type { SeatMode } from '../settings/tableSettings'
 import {
   decodeFoldingUrl,
   encodeFoldingUrl,
@@ -21,6 +22,7 @@ const OPTIONS: RoundOptions = {
   showEquallySafe: false,
   feedbackAtEnd: false,
   showOpponentHands: false,
+  seats: null,
 }
 
 /** A deterministic pseudo-random full wall — not necessarily a worthwhile board on its own (a
@@ -237,10 +239,7 @@ describe('useFoldingRound', () => {
     // wins off: a threat that won its own hand via tsumo would show a 14-tile complete hand and
     // no waits, which isn't what this test is after — wins off keeps every threat tenpai at 13
     // all the way to exhaustive/wall
-    const result = await deal(
-      { wall: wall('reveal-seed') },
-      { ...OPTIONS, opponentWins: false },
-    )
+    const result = await deal({ wall: wall('reveal-seed') }, { ...OPTIONS, opponentWins: false })
     expect(result.current.end).toBeNull()
     for (let i = 0; i < 40 && !result.current.finished; i++) {
       const safe = result.current.ranked()[0]
@@ -305,6 +304,49 @@ describe('useFoldingRound', () => {
   })
 })
 
+describe('per-seat manual configuration', () => {
+  it('every seat the panel marks manual becomes human, not only the drill’s own generated seat', async () => {
+    const seats = { modes: ['manual', 'manual', 'manual', 'manual'] as SeatMode[], claims: false }
+    const result = await deal({ wall: wall('manual-seat-seed') }, { ...OPTIONS, seats })
+    expect([...result.current.manualSeats].sort()).toEqual([0, 1, 2, 3])
+  })
+
+  it('changing only the orientation never rebuilds the round — it is a viewing perspective, not a rule', async () => {
+    // hoisted, not rebuilt inline: `useFoldingRound`'s "adjust state while rendering" reset keys
+    // on `urlData`'s own identity, so a fresh `{ wall }` literal every render would itself trigger
+    // a rebuild on every rerender — the exact thing this test is checking does *not* happen
+    const urlData: FoldingUrl = { wall: wall('orientation-seed') }
+    const { result, rerender } = renderHook(
+      ({ options }: { options: RoundOptions }) => useFoldingRound(urlData, options),
+      {
+        initialProps: {
+          options: { ...OPTIONS, seats: { modes: [], claims: false, orientation: 0 } },
+        },
+      },
+    )
+    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 })
+    const safe = result.current.ranked()[0]
+    act(() => result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)))
+    const turnAfterDiscard = result.current.turn
+    const handAfterDiscard = result.current.hand
+
+    rerender({ options: { ...OPTIONS, seats: { modes: [], claims: false, orientation: 2 } } })
+
+    // a rebuild would replay only `urlData.discards` (none here), landing back at the handover
+    // turn with a fresh hand — so the turn/hand staying put is proof no rebuild happened
+    expect(result.current.turn).toBe(turnAfterDiscard)
+    expect(result.current.hand).toEqual(handAfterDiscard)
+  })
+
+  it('answering with no claim pending is a no-op', async () => {
+    const result = await deal({ wall: wall('no-claim-seed') })
+    expect(result.current.claim).toBeUndefined()
+    act(() => result.current.answer({ kind: 'pass' }))
+    expect(result.current.claim).toBeUndefined()
+    expect(result.current.finished).toBe(false)
+  })
+})
+
 describe('boardHands (the D-14 reveal gate)', () => {
   it('gives every threat face-down filler at the right count, mid-hand', async () => {
     const result = await deal({ wall: wall('boardhands-seed') })
@@ -321,7 +363,9 @@ describe('boardHands (the D-14 reveal gate)', () => {
     const result = await deal({ wall: wall('boardhands-seed') })
     const bystanders = result.current.hands
       .map((_, seat) => seat)
-      .filter((seat) => seat !== result.current.seatIndex && !result.current.threatSeats.includes(seat))
+      .filter(
+        (seat) => seat !== result.current.seatIndex && !result.current.threatSeats.includes(seat),
+      )
     expect(bystanders.length).toBeGreaterThan(0)
     for (const seat of bystanders) {
       expect(result.current.boardHands[seat]).toEqual(result.current.hands[seat])

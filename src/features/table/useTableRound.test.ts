@@ -29,7 +29,7 @@ const BARE: MatchOptions = {
   calls: false,
   riichi: false,
   wins: false,
-  human: 0,
+  humans: [0],
 }
 
 /** Wall for seat 0: a pinned, already-tenpai 13-tile hand (shanpon on 1z/2z, via three man runs)
@@ -75,7 +75,9 @@ describe('useTableRound', () => {
     act(() => result.current.discard(0))
     expect(onUserDraw).toHaveBeenCalledTimes(2)
     expect(onUserDraw.mock.calls[1][0].analysis).not.toBe(onUserDraw.mock.calls[0][0].analysis)
-    expect(onUserDraw.mock.calls[1][0].turn).toBeGreaterThanOrEqual(onUserDraw.mock.calls[0][0].turn)
+    expect(onUserDraw.mock.calls[1][0].turn).toBeGreaterThanOrEqual(
+      onUserDraw.mock.calls[0][0].turn,
+    )
   })
 
   it('reading .danger never triggers evaluateDiscards, and reading .yours never triggers assessDiscards', () => {
@@ -146,7 +148,14 @@ describe('useTableRound', () => {
     const wall = tenpaiWall('table-stop-seed')
     const onUserDraw = vi.fn()
     const { result } = renderHook(() =>
-      useTableRound({ wall, players: 4, seatIndex: 0, options: BARE, stopAtTenpai: true, onUserDraw }),
+      useTableRound({
+        wall,
+        players: 4,
+        seatIndex: 0,
+        options: BARE,
+        stopAtTenpai: true,
+        onUserDraw,
+      }),
     )
 
     expect(onUserDraw).toHaveBeenCalledTimes(1)

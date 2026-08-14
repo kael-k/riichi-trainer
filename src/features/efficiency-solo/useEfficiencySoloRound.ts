@@ -47,7 +47,8 @@ export function useEfficiencySoloRound(
     calls: false,
     riichi: false,
     wins: false,
-    human: seatIndex,
+    // one seat, and it is always yours: there is no other side to sit at
+    humans: [seatIndex],
   }
 
   const log = useLog((s) => s.log)
@@ -61,9 +62,9 @@ export function useEfficiencySoloRound(
   const [lastResult, setLastResult] = useState<TurnResult | null>(null)
 
   const lastChoiceElapsed = useRef(0)
-  const pending = useRef<{ result: TurnResult; tile: ParsedTile; situationBefore: string } | undefined>(
-    undefined,
-  )
+  const pending = useRef<
+    { result: TurnResult; tile: ParsedTile; situationBefore: string } | undefined
+  >(undefined)
   const loggedReplay = useRef<Situation>(undefined)
   // graded choices made in *this* round, for the round-complete panel's own average — distinct
   // from `stats.averageTime`, which keeps running across every round until the log is cleared
@@ -149,7 +150,8 @@ export function useEfficiencySoloRound(
   }, [situation, restartCount])
 
   // a fixed meld (ankan) counts as 3 tiles toward the 14 even though it isn't in `hand`/`drawn`
-  const finished = table.hand.length + (table.drawn ? 1 : 0) + table.melds[seatIndex].length * 3 < 14
+  const finished =
+    table.hand.length + (table.drawn ? 1 : 0) + table.melds[seatIndex].length * 3 < 14
   const tenpai =
     finished &&
     shanten(handFromSnapshot(table.hand, table.drawn, table.melds[table.seatIndex].length)) <= 0
