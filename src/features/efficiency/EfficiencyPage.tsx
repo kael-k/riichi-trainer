@@ -37,7 +37,6 @@ export function EfficiencyPage() {
     deadWall,
     showWall,
     showOpponentHands,
-    hideConcealedHands,
     seats: seatConfig,
     seatsEnabled,
   } = useTableSettings('efficiency')
@@ -85,7 +84,7 @@ export function EfficiencyPage() {
       melds: round.melds[seat],
       nuki: round.nuki[seat],
       riichi: round.riichi[seat],
-      hand: mine || showOpponentHands || !hideConcealedHands ? round.hands[seat] : undefined,
+      hand: round.hands[seat],
       concealed: !mine && !showOpponentHands,
     }
   })

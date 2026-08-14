@@ -30,14 +30,13 @@ describe('resolveTableSettings', () => {
     expect(resolved.showWall).toBe(true)
   })
 
-  it('resolves all six fields for every TableApp', () => {
+  it('resolves every field for every TableApp', () => {
     for (const app of APPS) {
       const resolved = resolveTableSettings(app, { global: {}, apps: {} })
       expect(resolved.opponentWins).toBeDefined()
       expect(resolved.deadWall).toBeDefined()
       expect(resolved.threats).toBeDefined()
       expect(resolved.showOpponentHands).toBeDefined()
-      expect(resolved.hideConcealedHands).toBeDefined()
       expect(resolved.showWall).toBeDefined()
     }
   })

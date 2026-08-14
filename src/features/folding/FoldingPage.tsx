@@ -68,9 +68,8 @@ export function FoldingPage() {
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  // no hideConcealedHands here: folding always shows the board (reading it is the drill), and the
-  // D-14 reveal gate below already withholds real tile ids until `round.finished` or
-  // `showOpponentHands` regardless of any other setting
+  // folding always shows the board (reading it is the drill); the D-14 reveal gate below
+  // withholds real tile ids until `round.finished` or `showOpponentHands`
   const {
     showWall,
     showOpponentHands,
@@ -197,8 +196,7 @@ export function FoldingPage() {
       // `round.boardHands` is already the D-14 gate for a threat: face-down filler at the right
       // count until `round.finished` or `showOpponentHands`, real tiles after (and always real
       // for a seat someone plays, `boardHandsOf`'s own `isHuman` check). A bystander's tiles are
-      // real throughout, same as `hideConcealedHands` never withholds an ordinary opponent
-      // elsewhere
+      // real throughout, same as an ordinary opponent's elsewhere
       hand: round.boardHands[seat],
       concealed: !mine && !showOpponentHands,
     }

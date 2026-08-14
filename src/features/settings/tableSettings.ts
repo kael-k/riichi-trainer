@@ -85,14 +85,9 @@ export interface TableSettings {
   /** Reveal every opponent's (and, in the folding trainer, every threat's) concealed hand on the
    *  shared table, as real tile faces. Off by default: it turns a "read the board" drill into
    *  "read the answer key" — useful for demos and debugging, not for the drill itself. A global,
-   *  non-advanced setting: unlike the advanced-gated rows, opponents' hands being *present* (see
-   *  `hideConcealedHands`) is basic table reading, not a jargon-gated extra. */
+   *  non-advanced setting: unlike the advanced-gated rows, opponents' hands being *present* is
+   *  basic table reading, not a jargon-gated extra. */
   showOpponentHands: boolean
-  /** Hide opponents' hands from the table entirely, instead of the default face-down tile backs
-   *  (which show the shape — tile count, melds — without revealing faces). Off by default: showing
-   *  the concealed backs is what makes the table read as a real board. Moot when
-   *  `showOpponentHands` is on. */
-  hideConcealedHands: boolean
   /** Reveal the live (and, where applicable, dead) wall in draw order. */
   showWall: boolean
   /** Who plays which seat (`SeatConfig`). `null` — the default everywhere — is the shipped
@@ -115,7 +110,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
-    hideConcealedHands: false,
     showWall: false,
     seats: null,
   },
@@ -124,7 +118,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
-    hideConcealedHands: false,
     showWall: false,
     seats: null,
   },
@@ -133,7 +126,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
-    hideConcealedHands: false,
     showWall: false,
     seats: null,
   },
@@ -142,7 +134,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
-    hideConcealedHands: false,
     showWall: false,
     seats: null,
   },
@@ -151,7 +142,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
-    hideConcealedHands: false,
     showWall: false,
     // the lab is the free-play board: manual seats are the point there, so it ships with the
     // claim prompts on. No `orientation`/`modes` — those still come from the link and the
@@ -177,8 +167,7 @@ export function resolveTableSettings(
 /** The resolver, read live off the settings store, with one adjustment: `showWall` stays behind
  *  the existing Advanced gate (`useAdvancedSettings.ts`) — a hidden row must not mean a live
  *  value, and the stored choice comes straight back when Advanced is re-enabled.
- *  `showOpponentHands` and `hideConcealedHands` are explicitly *not* advanced-gated, same as
- *  today. */
+ *  `showOpponentHands` is explicitly *not* advanced-gated, same as today. */
 export function useTableSettings(app: TableApp): TableSettings & { seatsEnabled: boolean } {
   const table = useSettings((s) => s.table)
   const advanced = useSettings((s) => s.advanced)

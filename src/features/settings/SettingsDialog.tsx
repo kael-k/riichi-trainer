@@ -248,10 +248,7 @@ export function BoardSettings() {
   const advanced = useSettings((s) => s.advanced)
   const table = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
-  const { showWall, showOpponentHands, hideConcealedHands } = resolveTableSettings(
-    'efficiency',
-    table,
-  )
+  const { showWall, showOpponentHands } = resolveTableSettings('efficiency', table)
   // `update` only merges at the section level, so a patch of `{ global: {...} }` would otherwise
   // replace the whole global layer instead of adding one key to it — merge the existing layer in
   // first, same as every per-app write site does with its own `apps[app]` slice.
@@ -271,17 +268,6 @@ export function BoardSettings() {
           className="size-5"
         />
       </SettingRow>
-      {/* moot once opponent hands are revealed outright */}
-      {!showOpponentHands && (
-        <SettingRow label={t('settings.hideConcealedHands')}>
-          <input
-            type="checkbox"
-            checked={hideConcealedHands}
-            onChange={(e) => updateGlobal({ hideConcealedHands: e.target.checked })}
-            className="size-5"
-          />
-        </SettingRow>
-      )}
       {/* stays behind the Advanced gate on GlobalSettings: a hidden row must not mean a live
           value, and the stored choice comes straight back once Advanced is re-enabled */}
       {advanced && (

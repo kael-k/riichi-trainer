@@ -7,9 +7,9 @@ import { useSettings } from './settingsStore'
  * read of one of these goes through here instead of the raw store, so turning Advanced off
  * actually reverts behavior to what the hidden row would show, without touching what's persisted
  * — re-enabling Advanced brings the stored choice straight back. The wall-reveal gate moved to
- * `useTableSettings` (`tableSettings.ts`) alongside the rest of the table settings; `showOpponentHands`
- * and `hideConcealedHands` are plain global settings, not advanced-gated, so they're resolved
- * there too, not through here.
+ * `useTableSettings` (`tableSettings.ts`) alongside the rest of the table settings;
+ * `showOpponentHands` is a plain global setting, not advanced-gated, so it's resolved there too,
+ * not through here.
  */
 export function useAdvancedSettings() {
   const advanced = useSettings((s) => s.advanced)

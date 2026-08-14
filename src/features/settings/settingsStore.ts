@@ -173,10 +173,10 @@ export const useSettings = create<SettingsState>()(
     {
       name: 'riichi-trainer-settings',
       // pre-v2 schemas are dropped, not migrated: those installs fall back to defaults. v3 did
-      // the same again — the six table settings moved out of `efficiency`/`folding` and the old
-      // top-level `showWall`/`showOpponentHands`/`hideConcealedHands` into the new `table`
-      // section, so an old blob's now-removed keys are dropped rather than merged into a schema
-      // that no longer has anywhere to put them
+      // the same again — the table settings moved out of `efficiency`/`folding` and the old
+      // top-level `showWall`/`showOpponentHands` into the new `table` section, so an old blob's
+      // now-removed keys are dropped rather than merged into a schema that no longer has
+      // anywhere to put them
       version: 3,
       // zustand's default merge is shallow at the top level, so a persisted `efficiency`/
       // `shanten` object from an older schema would wholesale overwrite (not fill in
