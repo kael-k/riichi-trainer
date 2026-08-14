@@ -8,7 +8,7 @@ import { resolveSeatConfig, withSeatMode, type SeatConfig, type SeatMode } from 
 
 const MODES: SeatMode[] = ['efficiency', 'defense', 'manual']
 
-interface SeatButtonProps {
+export interface SeatButtonProps {
   /** The seat this button configures. */
   seat: number
   players: number

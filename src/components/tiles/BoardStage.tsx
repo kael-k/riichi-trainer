@@ -7,8 +7,8 @@ import { LogList } from '../TrainerLayout'
 interface BoardStageProps {
   /** The `Table` itself, built by the page. The fullscreen toggle is handed back to it through
    *  its own `controls` prop rather than wrapped around it — see `Table`'s note on why the width
-   *  has to live on the board's own box. The seat panel lives on the board itself (`Table`'s
-   *  `seatControl`), not here. */
+   *  has to live on the board's own box. Each seat's own info strip lives on the felt itself
+   *  (`Table`'s `seatInfo`), not here. */
   board: (controls: ReactNode) => ReactNode
   /** Your hand and the controls that belong to it (kita/kan, riichi, the claim prompt) — the
    *  only part of the column that follows the board into fullscreen. */

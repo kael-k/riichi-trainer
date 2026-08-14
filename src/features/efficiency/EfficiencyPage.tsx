@@ -9,7 +9,7 @@ import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
-import { SeatButton } from '../settings/SeatPanel'
+import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { ManualControls } from '../table/ManualControls'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
@@ -201,9 +201,9 @@ export function EfficiencyPage() {
           board={(controls) => (
             <Table
               controls={controls}
-              seatControl={(seat) =>
+              seatInfo={(seat) =>
                 seatsEnabled && (
-                  <SeatButton
+                  <SeatStrip
                     seat={seat}
                     players={round.rivers.length}
                     defaultOrientation={round.seatIndex}

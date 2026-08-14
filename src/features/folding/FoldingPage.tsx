@@ -9,7 +9,7 @@ import { TrainerLayout } from '../../components/TrainerLayout'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
-import { SeatButton } from '../settings/SeatPanel'
+import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { useTableSettings, type TableSettings } from '../settings/tableSettings'
@@ -270,9 +270,9 @@ export function FoldingPage() {
           board={(controls) => (
             <Table
               controls={controls}
-              seatControl={(seat) =>
+              seatInfo={(seat) =>
                 seatsEnabled && (
-                  <SeatButton
+                  <SeatStrip
                     seat={seat}
                     players={players}
                     defaultOrientation={round.seatIndex}

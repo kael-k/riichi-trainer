@@ -12,7 +12,7 @@ import { parseTenhou, serializeTenhouOrdered, tileCode, type ParsedTile } from '
 import { validateWall, wallWithHand, type WallError } from '../../core/wall'
 import type { GlossaryTermId } from '../i18n/glossary'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
-import { SeatButton } from '../settings/SeatPanel'
+import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { ManualControls } from '../table/ManualControls'
 import { useSettings } from '../settings/settingsStore'
@@ -302,9 +302,9 @@ export function LabPage() {
             board={(controls) => (
               <Table
                 controls={controls}
-                seatControl={(seat) =>
+                seatInfo={(seat) =>
                   seatsEnabled && (
-                    <SeatButton
+                    <SeatStrip
                       seat={seat}
                       players={round.rivers.length}
                       defaultOrientation={round.seatIndex}
