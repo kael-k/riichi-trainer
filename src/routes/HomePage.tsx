@@ -74,7 +74,10 @@ function ModeCard({ mode }: { mode: Mode }) {
         <div className="text-sm text-neutral-500">{t(mode.descKey)}</div>
       </div>
       <div className="relative pr-2">
-        <InfoButton title={t(mode.titleKey)} intro={{ text: t(mode.introKey), wikiUrl: mode.wikiUrl }} />
+        <InfoButton
+          title={t(mode.titleKey)}
+          intro={{ text: t(mode.introKey), wikiUrl: mode.wikiUrl }}
+        />
       </div>
     </div>
   )

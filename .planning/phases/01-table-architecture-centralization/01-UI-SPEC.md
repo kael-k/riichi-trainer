@@ -14,7 +14,7 @@ created: 2026-08-12
 **Scope note:** This phase is a routing/architecture refactor (split efficiency into solo + table
 routes, unify settings storage, add a statistical-lab route). It introduces **no new visual
 language** — every token below is the codebase's existing, mature Tailwind convention, confirmed
-by grep across `src/**/*.tsx`, and is being *locked down for reuse*, not invented. The only
+by grep across `src/**/*.tsx`, and is being _locked down for reuse_, not invented. The only
 genuinely new UI surfaces this phase adds are: two home-page cards (solo efficiency, statistical
 lab), the lab's wall-load/author surface, and one new error state (invalid shared wall link,
 D-12) — all four are specified below by composing existing components/patterns, not new ones.
@@ -23,13 +23,13 @@ D-12) — all four are specified below by composing existing components/patterns
 
 ## Design System
 
-| Property | Value |
-|----------|-------|
-| Tool | none — hand-rolled Tailwind 4 utility classes, no component library, no `components.json` (confirmed: no shadcn/radix/base-ui found) |
-| Preset | not applicable |
+| Property          | Value                                                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Tool              | none — hand-rolled Tailwind 4 utility classes, no component library, no `components.json` (confirmed: no shadcn/radix/base-ui found)     |
+| Preset            | not applicable                                                                                                                           |
 | Component library | none — custom components under `src/components/` (`Tile`, `Table`, `TrainerLayout`, `InfoPopover`, `GlossaryTerm`) and `src/features/*/` |
-| Icon library | `lucide-react` (already a dependency; every icon in the app imports from it) |
-| Font | Tailwind default sans-serif stack (`font-sans`), no custom font loaded — do not introduce one |
+| Icon library      | `lucide-react` (already a dependency; every icon in the app imports from it)                                                             |
+| Font              | Tailwind default sans-serif stack (`font-sans`), no custom font loaded — do not introduce one                                            |
 
 **Why "none" and not a shadcn init:** the project already has a coherent, mature, hand-rolled
 design system spanning every existing trainer (dark mode via `.dark` class, container-query tile
@@ -44,16 +44,17 @@ extend the existing system, do not layer a second one in.
 
 Declared values, from actual usage frequency (`grep -rhoE` across `src/**/*.tsx`):
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| xs | 4px (`gap-1`, `p-1`) | Icon-to-label gaps, tight inline padding |
-| sm | 8px (`gap-2`, `px-2`, `p-2`) | Compact element spacing, small button padding |
-| sm+ | 12px (`gap-3`, `p-3`, `px-3`) | Card padding, feedback-panel padding — the single most common container padding in the app |
-| md | 16px (`gap-4`, `p-4`, `px-4`) | Section padding, home-page card padding |
-| lg | 24px (`gap-6`) | Header-to-content gaps on the home page |
-| xl | 32px (`p-8`) | Rare — large empty-state centering padding |
+| Token | Value                         | Usage                                                                                      |
+| ----- | ----------------------------- | ------------------------------------------------------------------------------------------ |
+| xs    | 4px (`gap-1`, `p-1`)          | Icon-to-label gaps, tight inline padding                                                   |
+| sm    | 8px (`gap-2`, `px-2`, `p-2`)  | Compact element spacing, small button padding                                              |
+| sm+   | 12px (`gap-3`, `p-3`, `px-3`) | Card padding, feedback-panel padding — the single most common container padding in the app |
+| md    | 16px (`gap-4`, `p-4`, `px-4`) | Section padding, home-page card padding                                                    |
+| lg    | 24px (`gap-6`)                | Header-to-content gaps on the home page                                                    |
+| xl    | 32px (`p-8`)                  | Rare — large empty-state centering padding                                                 |
 
 Exceptions (both pre-existing, keep using them — do not "fix" them to a 4px multiple):
+
 - `gap-1.5` (6px) — the icon+label inline row spacing used throughout feedback rows
   (`DiscardFeedback.tsx`, `FoldFeedback.tsx`) and tags; reuse this exact value for any new
   icon+label row (e.g. the lab's per-row danger-tier label).
@@ -68,13 +69,13 @@ info buttons, lab's load/reset/play controls).
 
 ## Typography
 
-| Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
-| Body | 14px (`text-sm`) | 400 (default, unstated) | 1.5 (Tailwind default `leading-normal`) |
-| Label / caption | 12px (`text-xs`) | 400–500 (`font-medium` on emphasized labels) | 1.5 |
-| Emphasis / row label | 14px (`text-sm`) | 500 (`font-medium`) | 1.5 |
-| Heading (page/section title) | 16px (`text-base`, unstated) via `font-semibold` on `<h1>` in `TrainerLayout` | 600 (`font-semibold`) | 1.2 |
-| Display (home page only) | 24px (`text-2xl`) | 700 (`font-bold`) | 1.2 |
+| Role                         | Size                                                                          | Weight                                       | Line Height                             |
+| ---------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------- |
+| Body                         | 14px (`text-sm`)                                                              | 400 (default, unstated)                      | 1.5 (Tailwind default `leading-normal`) |
+| Label / caption              | 12px (`text-xs`)                                                              | 400–500 (`font-medium` on emphasized labels) | 1.5                                     |
+| Emphasis / row label         | 14px (`text-sm`)                                                              | 500 (`font-medium`)                          | 1.5                                     |
+| Heading (page/section title) | 16px (`text-base`, unstated) via `font-semibold` on `<h1>` in `TrainerLayout` | 600 (`font-semibold`)                        | 1.2                                     |
+| Display (home page only)     | 24px (`text-2xl`)                                                             | 700 (`font-bold`)                            | 1.2                                     |
 
 **Weight contract for anything new this phase adds:** use exactly two weights — 400 (body,
 unstated default) and 500 (`font-medium`, for labels/buttons/emphasis) — matching the
@@ -94,18 +95,18 @@ within `text-xs` / `text-sm` / default — no new copy needs `text-lg` or `text-
 
 ## Color
 
-| Role | Value | Usage |
-|------|-------|-------|
-| Dominant (60%) | `bg-white` / `dark:bg-neutral-950`, `text-neutral-900` / `dark:text-neutral-100` | Page background, body text |
-| Secondary (30%) | `neutral-100`–`neutral-200` (light) / `neutral-800`–`neutral-900` (dark) borders and card fills | Card borders (`border-neutral-200 dark:border-neutral-800`), settings rows, table header/footer bars |
-| Accent (10%) | `neutral-900` (light) / `neutral-100` (dark) — an inverted-neutral "ink" accent, not a hue | Primary CTA buttons only (`bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900`), active `SegmentedButton` state |
-| Semantic — success | `text-green-600` / `dark:text-green-400` | "Correct" / "best discard" / "safest" feedback rows only |
-| Semantic — warning | `text-amber-700` / `dark:text-amber-400` | "Missed kita/kan" partial-credit rows, riichi-declared indicator dot |
-| Destructive / error | `text-red-600` / `dark:text-red-400` | Wrong-answer feedback rows today; this phase adds the same tokens for the new "invalid wall link" error message — no new red shade |
+| Role                | Value                                                                                           | Usage                                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Dominant (60%)      | `bg-white` / `dark:bg-neutral-950`, `text-neutral-900` / `dark:text-neutral-100`                | Page background, body text                                                                                                         |
+| Secondary (30%)     | `neutral-100`–`neutral-200` (light) / `neutral-800`–`neutral-900` (dark) borders and card fills | Card borders (`border-neutral-200 dark:border-neutral-800`), settings rows, table header/footer bars                               |
+| Accent (10%)        | `neutral-900` (light) / `neutral-100` (dark) — an inverted-neutral "ink" accent, not a hue      | Primary CTA buttons only (`bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900`), active `SegmentedButton` state   |
+| Semantic — success  | `text-green-600` / `dark:text-green-400`                                                        | "Correct" / "best discard" / "safest" feedback rows only                                                                           |
+| Semantic — warning  | `text-amber-700` / `dark:text-amber-400`                                                        | "Missed kita/kan" partial-credit rows, riichi-declared indicator dot                                                               |
+| Destructive / error | `text-red-600` / `dark:text-red-400`                                                            | Wrong-answer feedback rows today; this phase adds the same tokens for the new "invalid wall link" error message — no new red shade |
 
 Accent reserved for: the single primary-CTA button pattern (`bg-neutral-900 …`/`bg-neutral-100
 …`, e.g. today's "New round" button) and `SegmentedButton`'s active/pressed state. This project
-has no hue-based accent color (no blue/purple "brand" color) — the accent *is* the
+has no hue-based accent color (no blue/purple "brand" color) — the accent _is_ the
 inverted-neutral ink, and this phase must not introduce a new hue for it (e.g. no blue "Load
 wall" button in the lab — reuse the same neutral-ink CTA style).
 
@@ -117,21 +118,21 @@ red-600/red-400 pair already used for wrong-answer feedback (`DiscardFeedback.ts
 
 ## Copywriting Contract
 
-| Element | Copy |
-|---------|------|
-| Home card — solo efficiency title | "Efficiency trainer (solo)" — reuses `trainer.efficiency.title` as the base with a "(solo)" suffix key, or a dedicated `trainer.efficiencySolo.title`; final key naming is Claude's discretion at plan time, but the *word* "solo" must appear so the two efficiency cards read as distinct, not duplicate, entries |
-| Home card — solo efficiency desc | "Pick the best discard; see the tiles that improve your hand. No opponents." (same as today's efficiency desc, with the no-opponents distinction spelled out — a beginner reading two efficiency cards must be able to tell them apart from the description alone, not just the title) |
-| Home card — table efficiency title | "Efficiency trainer" (unchanged from today) |
-| Home card — table efficiency desc | "Pick the best discard against three real opponents." (today's desc updated to name what "table" adds, mirroring the solo card's symmetry) |
-| Home card — statistical lab title | "Statistical lab" |
-| Home card — statistical lab desc | "Load or build any hand and see the full ranking — every discard's shanten and ukeire, every tile's danger tier." |
-| Home card — statistical lab intro (info popover) | "Load a shared wall or build your own hand, tile by tile. Play only your own discards — opponents always play themselves. Nothing is graded: every discard's full ukeire ranking and every tile's full danger-tier breakdown are shown, the same numbers the other trainers compute and only show you a sliver of." |
-| Home section headers | "Solitaire" (efficiency solo, shanten) / "Table" (efficiency, folding, scoring, statistical lab) — plain section labels above the existing card list, no new copy tone needed |
-| Primary CTA — lab, load a shared wall | "Load wall" (button next to/inside the wall-link input, mirrors `common.submit` tone) |
-| Primary CTA — lab, start from a blank wall | "Build wall" |
-| Empty state — lab, no wall loaded yet | Heading: none (single-line body only, mirrors `common.noActions`'s plain-sentence style) — Body: "No hand loaded. Load a shared wall link or build one to see its full analysis." |
+| Element                                            | Copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Home card — solo efficiency title                  | "Efficiency trainer (solo)" — reuses `trainer.efficiency.title` as the base with a "(solo)" suffix key, or a dedicated `trainer.efficiencySolo.title`; final key naming is Claude's discretion at plan time, but the _word_ "solo" must appear so the two efficiency cards read as distinct, not duplicate, entries                                                                                                                                                                     |
+| Home card — solo efficiency desc                   | "Pick the best discard; see the tiles that improve your hand. No opponents." (same as today's efficiency desc, with the no-opponents distinction spelled out — a beginner reading two efficiency cards must be able to tell them apart from the description alone, not just the title)                                                                                                                                                                                                  |
+| Home card — table efficiency title                 | "Efficiency trainer" (unchanged from today)                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Home card — table efficiency desc                  | "Pick the best discard against three real opponents." (today's desc updated to name what "table" adds, mirroring the solo card's symmetry)                                                                                                                                                                                                                                                                                                                                              |
+| Home card — statistical lab title                  | "Statistical lab"                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Home card — statistical lab desc                   | "Load or build any hand and see the full ranking — every discard's shanten and ukeire, every tile's danger tier."                                                                                                                                                                                                                                                                                                                                                                       |
+| Home card — statistical lab intro (info popover)   | "Load a shared wall or build your own hand, tile by tile. Play only your own discards — opponents always play themselves. Nothing is graded: every discard's full ukeire ranking and every tile's full danger-tier breakdown are shown, the same numbers the other trainers compute and only show you a sliver of."                                                                                                                                                                     |
+| Home section headers                               | "Solitaire" (efficiency solo, shanten) / "Table" (efficiency, folding, scoring, statistical lab) — plain section labels above the existing card list, no new copy tone needed                                                                                                                                                                                                                                                                                                           |
+| Primary CTA — lab, load a shared wall              | "Load wall" (button next to/inside the wall-link input, mirrors `common.submit` tone)                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Primary CTA — lab, start from a blank wall         | "Build wall"                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Empty state — lab, no wall loaded yet              | Heading: none (single-line body only, mirrors `common.noActions`'s plain-sentence style) — Body: "No hand loaded. Load a shared wall link or build one to see its full analysis."                                                                                                                                                                                                                                                                                                       |
 | Error state — invalid/malformed shared wall (D-12) | "That wall link isn't valid: {{zone}} has {{detail}}." — e.g. "That wall link isn't valid: pin's hand has a fifth 5p." Must always name the offending zone (hand/wall/dead wall) and tile, per D-12's "reject with an error naming the offending zone and tile; never silently repair." Rendered inline in `text-red-600 dark:text-red-400`, same visual weight as existing wrong-answer feedback — not a modal, not a toast (no such pattern exists in this app; do not introduce one) |
-| Destructive actions in this phase | "Reset wall" (clears an in-progress hand-authored wall in the lab) — no confirmation dialog, matching the existing `common.clear` ("Clear" the action log) pattern: the action fires immediately on click with no modal, because the cleared state is session-local and trivially reconstructable (re-load the same link), the same reasoning `LogPanel`'s clear button already relies on |
+| Destructive actions in this phase                  | "Reset wall" (clears an in-progress hand-authored wall in the lab) — no confirmation dialog, matching the existing `common.clear` ("Clear" the action log) pattern: the action fires immediately on click with no modal, because the cleared state is session-local and trivially reconstructable (re-load the same link), the same reasoning `LogPanel`'s clear button already relies on                                                                                               |
 
 ---
 
@@ -139,15 +140,15 @@ red-600/red-400 pair already used for wrong-answer feedback (`DiscardFeedback.ts
 
 Applicable state considerations resolved: 6 covered, 1 backstop, 0 unresolved.
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| empty | lab wall-loader (form) | ✅ covered | Empty-state copy row above ("No hand loaded…") — plain sentence, no illustration, matches `common.noActions`'s existing minimalism |
-| error | lab wall-loader (form) | ✅ covered | Error-state copy row above — inline `text-red-600`/`dark:text-red-400`, names the offending zone+tile per D-12; this is the first "reject-and-explain" input-validation UI in the app (existing `parseTenhou` silently drops bad input instead) and must not silently repair or drop |
-| populated | lab ranked-discard list, danger-tier list (list-collection) | ✅ covered | Reuses `DiscardFeedback`/`FoldFeedback`'s existing row shape (`Tile` + label + reasons), rendered once per discard/tile instead of once for the best/chosen pair — same visual density, no new list component |
-| zero-one-many | lab threat list (list-collection) | ✅ covered | 0 threats: `assessDiscards` already totals over an empty threat list via `NO_THREAT` (per RESEARCH.md's Don't-Hand-Roll table) — the danger view renders every tile as untiered/no-reasons, not an empty state; 1/many threats: existing `FoldFeedback`'s `against`-array rendering already handles this (`WINDS[seats[i]]` label only shown when `entry.against.length > 1`), reused as-is |
-| overflow | lab full-ranking list (34 rows max, list-collection) | 🧪 backstop | The lab's full `evaluateDiscards` ranking can run up to 34 rows on a phone-width screen — must scroll within its own container (same `max-h-48 overflow-y-auto` pattern `LogPanel` already uses for its log list), not push the page height unboundedly. Backstop: verify at implementation that the lab's ranking list is height-capped with internal scroll, not an unbounded page-length list — no existing trainer has rendered more than ~2 rows at once, so this is genuinely new density for the app |
-| long-text | wall-validation error message (static-content) | ✅ covered | The error copy pattern above (`"That wall link isn't valid: {{zone}} has {{detail}}."`) stays a single sentence; it renders inline (not in the fixed-height sticky header) so a long tile-list detail wraps naturally like any other `text-sm` paragraph in this app — no truncation needed |
-| — (invariant carried into new UI) | lab hand-reveal (any threat/opponent hand rendering) | ✅ covered | The lab must apply the exact same reveal-gate as folding (D-14/REQ-06): a threat's concealed hand data is never passed to `<Table>`/rendered until the loaded hand is finished/complete — the danger model's "public information only" invariant (CLAUDE.md) holds for the lab's analysis surface exactly as it holds for the folding drill, even though the lab isn't graded. This is an explicit non-goal reversal risk: D-15's "no grading" must not be misread as "no reveal-gate" |
+| Category                          | Element(s)                                                  | Status      | Resolution / Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------- | ----------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| empty                             | lab wall-loader (form)                                      | ✅ covered  | Empty-state copy row above ("No hand loaded…") — plain sentence, no illustration, matches `common.noActions`'s existing minimalism                                                                                                                                                                                                                                                                                                                                                                          |
+| error                             | lab wall-loader (form)                                      | ✅ covered  | Error-state copy row above — inline `text-red-600`/`dark:text-red-400`, names the offending zone+tile per D-12; this is the first "reject-and-explain" input-validation UI in the app (existing `parseTenhou` silently drops bad input instead) and must not silently repair or drop                                                                                                                                                                                                                        |
+| populated                         | lab ranked-discard list, danger-tier list (list-collection) | ✅ covered  | Reuses `DiscardFeedback`/`FoldFeedback`'s existing row shape (`Tile` + label + reasons), rendered once per discard/tile instead of once for the best/chosen pair — same visual density, no new list component                                                                                                                                                                                                                                                                                               |
+| zero-one-many                     | lab threat list (list-collection)                           | ✅ covered  | 0 threats: `assessDiscards` already totals over an empty threat list via `NO_THREAT` (per RESEARCH.md's Don't-Hand-Roll table) — the danger view renders every tile as untiered/no-reasons, not an empty state; 1/many threats: existing `FoldFeedback`'s `against`-array rendering already handles this (`WINDS[seats[i]]` label only shown when `entry.against.length > 1`), reused as-is                                                                                                                 |
+| overflow                          | lab full-ranking list (34 rows max, list-collection)        | 🧪 backstop | The lab's full `evaluateDiscards` ranking can run up to 34 rows on a phone-width screen — must scroll within its own container (same `max-h-48 overflow-y-auto` pattern `LogPanel` already uses for its log list), not push the page height unboundedly. Backstop: verify at implementation that the lab's ranking list is height-capped with internal scroll, not an unbounded page-length list — no existing trainer has rendered more than ~2 rows at once, so this is genuinely new density for the app |
+| long-text                         | wall-validation error message (static-content)              | ✅ covered  | The error copy pattern above (`"That wall link isn't valid: {{zone}} has {{detail}}."`) stays a single sentence; it renders inline (not in the fixed-height sticky header) so a long tile-list detail wraps naturally like any other `text-sm` paragraph in this app — no truncation needed                                                                                                                                                                                                                 |
+| — (invariant carried into new UI) | lab hand-reveal (any threat/opponent hand rendering)        | ✅ covered  | The lab must apply the exact same reveal-gate as folding (D-14/REQ-06): a threat's concealed hand data is never passed to `<Table>`/rendered until the loaded hand is finished/complete — the danger model's "public information only" invariant (CLAUDE.md) holds for the lab's analysis surface exactly as it holds for the folding drill, even though the lab isn't graded. This is an explicit non-goal reversal risk: D-15's "no grading" must not be misread as "no reveal-gate"                      |
 
 ---
 
@@ -155,10 +156,10 @@ Applicable state considerations resolved: 6 covered, 1 backstop, 0 unresolved.
 
 Not applicable — no shadcn, no component registry of any kind is used in this project.
 
-| Registry | Blocks Used | Safety Gate |
-|----------|-------------|-------------|
-| shadcn official | none | not applicable |
-| third-party | none | not applicable |
+| Registry        | Blocks Used | Safety Gate    |
+| --------------- | ----------- | -------------- |
+| shadcn official | none        | not applicable |
+| third-party     | none        | not applicable |
 
 ---
 

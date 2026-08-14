@@ -466,10 +466,7 @@ export function ScoringPage() {
 
             {showWall && round.match && (
               <WallDetails
-                dealt={round.match.wall.slice(
-                  0,
-                  round.match.players.length * INITIAL_HAND_SIZE,
-                )}
+                dealt={round.match.wall.slice(0, round.match.players.length * INITIAL_HAND_SIZE)}
                 liveWall={round.match.liveWallSnapshot}
                 liveWallDrawn={wallDrawnCount(round.match)}
                 deadWall={round.match.deadWallSnapshot}

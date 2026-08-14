@@ -72,17 +72,21 @@ export function SeatButton({
 
   return (
     <>
-      {/* the icon is drawn at the board's own scale (it sits beside a 2.4cqw wind letter) while
-          the button around it keeps the project's 44px touch target — the box is transparent, so
-          the extra reach costs the board nothing visually */}
+      {/* the wind rides along with the icon: the button sits in the control row above the board
+          now, not on the seat's own mark, so nothing else says which seat it opens. The seat the
+          board is drawn from is marked in full strength, the rest are muted — the same weight the
+          wind marks on the felt use for the same distinction */}
       <button
         type="button"
         aria-label={t('seats.button', { wind })}
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="flex size-11 items-center justify-center"
+        className={`flex h-11 min-w-11 items-center justify-center gap-0.5 text-sm font-semibold ${
+          yours ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
+        }`}
       >
-        <Settings2 className="size-[3cqw] min-h-3 min-w-3" />
+        <Settings2 className="size-4" />
+        {wind}
       </button>
       {open &&
         createPortal(
@@ -113,7 +117,12 @@ export function SeatButton({
                     orientable && (
                       <button
                         type="button"
-                        onClick={() => onChange({ ...resolved, orientation: seat })}
+                        // the board turns underneath the dialog, and the dialog is what covers it
+                        // — the whole point of the press is to look at the new view
+                        onClick={() => {
+                          onChange({ ...resolved, orientation: seat })
+                          setOpen(false)
+                        }}
                         className="min-h-11 rounded-lg border border-neutral-300 px-3 text-sm font-medium dark:border-neutral-700"
                       >
                         {t('seats.sitHere')}

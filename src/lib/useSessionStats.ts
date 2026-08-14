@@ -30,7 +30,8 @@ export function useSessionStats() {
   }, [entryCount])
 
   function elapsedNow(): number {
-    const pausedNow = pauseStartedAt.current === undefined ? 0 : performance.now() - pauseStartedAt.current
+    const pausedNow =
+      pauseStartedAt.current === undefined ? 0 : performance.now() - pauseStartedAt.current
     return performance.now() - startedAt.current - pausedMs.current - pausedNow
   }
 

@@ -14,7 +14,12 @@ function handFrom(tenhou: string): Hand {
 
 /** Builds the `DiscardStats` `gradeAction` expects, off a real 14-tile hand — mirrors what
  *  `useTableRound`'s `statsFor` hands a consumer, without going through a live match. */
-function statsFor(hand: Hand, kind: DiscardStats['kind'], discardId: number, sanma = false): DiscardStats {
+function statsFor(
+  hand: Hand,
+  kind: DiscardStats['kind'],
+  discardId: number,
+  sanma = false,
+): DiscardStats {
   const seen = hand.counts.slice()
   const ranked = evaluateDiscards(hand, seen, sanma)
   const yours: DiscardOption =

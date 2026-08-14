@@ -99,6 +99,7 @@ mount of `useTableRound` with an empty wall): `completeWall` is called **twice**
 two calls produce two different random walls. The first (from the `useState` initializer) is
 rendered, then discarded; the second (from the effect) overwrites it via `setSnapshot`, and is the
 one whose `onUserDraw` actually fires. Concretely:
+
 - Every "fresh round, no shared link" mount of `useEfficiencyRound`, `useEfficiencySoloRound`, and
   `useLabRound` (all three call `useTableRound`) deals a full match twice — including a full
   `goRound()` pass playing every opponent's AI turn — and throws one deal away. This is pure wasted
@@ -108,14 +109,14 @@ one whose `onUserDraw` actually fires. Concretely:
   `useState` initializer) is not the hand the round actually settles on a moment later (from the
   effect). If React yields to the browser between commit and the passive effect running — not
   guaranteed not to happen — the player sees a hand that changes under them on load.
-- Even when the wall *is* fully pinned (a shared link, or any test using `wallWithHand`/`completeWall`
+- Even when the wall _is_ fully pinned (a shared link, or any test using `wallWithHand`/`completeWall`
   with an explicit `fillSeed`), the double `buildRound()` call still doubles the CPU cost of every
   mount (two `createMatch` + two `goRound` AI passes), just without the correctness hazard, since a
   full wall skips `completeWall` entirely and both calls agree.
 
 No existing test catches this: every test that renders `useEfficiencyRound`/`useEfficiencySoloRound`/
 `useLabRound`/`useTableRound` with a short/empty wall (e.g. `useEfficiencyRound.test.ts`'s "restart
-deals a fresh hand" and "seeds no red fives" tests) only asserts on the state *after* the effect has
+deals a fresh hand" and "seeds no red fives" tests) only asserts on the state _after_ the effect has
 settled, never on what the initializer alone produced — so the discarded first deal is invisible to
 assertions even though it still runs.
 
@@ -145,7 +146,7 @@ useEffect(() => {
 **File:** `src/core/wall.ts:141-157`
 
 **Issue:** `wallWithHand(seat, hand, sanma, aka, seed)` builds `padding = completeWall([], sanma, aka,
-seed)` (a full wall, with `aka` already marking the *first* occurrence of each red-eligible kind
+seed)` (a full wall, with `aka` already marking the _first_ occurrence of each red-eligible kind
 red — `completeWall`'s own `remainder.findIndex(t => t.id === redId)` at `core/wall.ts:71`), then
 filters `padding` to drop `hand`'s own tile counts **by id only**, ignoring redness:
 
@@ -157,12 +158,12 @@ const padding = completeWall([], sanma, aka, seed).filter((t) => {
 })
 ```
 
-Because the filter walks `padding` front-to-back and drops the *first* `used[id]` occurrences of
-each id, and `completeWall`'s own red-marking also always targets the *first* occurrence of a given
+Because the filter walks `padding` front-to-back and drops the _first_ `used[id]` occurrences of
+each id, and `completeWall`'s own red-marking also always targets the _first_ occurrence of a given
 red-eligible id, these two "first occurrence" selections always coincide. When `hand` carries its
 own explicitly-red tile for that kind, this is harmless (the padding's red copy is correctly
 replaced by hand's own). But when `hand` contains a **plain** (non-red) tile of a red-eligible kind
-(5m/5p/5s), the filter still strips the padding's *red* copy (since it's the first occurrence) and
+(5m/5p/5s), the filter still strips the padding's _red_ copy (since it's the first occurrence) and
 splices in hand's plain one — so the returned wall ends up with **zero** red tiles for that suit even
 though `aka: true` was requested and nothing in `hand` claimed to be red.
 
@@ -178,19 +179,22 @@ that triggers the bug — a non-empty, hand-authored `hand` — so this is a liv
 caller (e.g. extending the lab's "Build Wall" flow to seed from a pasted/edited hand, which is the
 obvious next step for that feature).
 
-**Fix:** Track which id/redness *pairs* have already been consumed by `hand`, not just id counts —
-or simpler, run the `aka` red-marking *after* `hand`'s tiles have been filtered out of the remainder,
+**Fix:** Track which id/redness _pairs_ have already been consumed by `hand`, not just id counts —
+or simpler, run the `aka` red-marking _after_ `hand`'s tiles have been filtered out of the remainder,
 the same order `completeWall` already uses when a non-empty `prefix` is involved (compare
 `completeWall`'s `prefixReds` handling, which correctly skips a kind already named red by its
 `prefix`). Concretely, `wallWithHand` could just call `completeWall(hand-shaped-prefix-at-offset, ...)`
-patterns instead of post-hoc filtering, or filter first and mark red only among the *filtered*
+patterns instead of post-hoc filtering, or filter first and mark red only among the _filtered_
 survivors:
 
 ```ts
 export function wallWithHand(seat, hand, sanma, aka, seed) {
   const used = new Uint8Array(NUM_TILE_TYPES)
   const handReds = new Set<TileId>()
-  for (const t of hand) { used[t.id]++; if (t.red) handReds.add(t.id) }
+  for (const t of hand) {
+    used[t.id]++
+    if (t.red) handReds.add(t.id)
+  }
   // build the un-red-marked remainder, filter hand's copies out, THEN mark red among survivors
   // (skipping any kind hand.reds already covers) — mirrors completeWall's own prefixReds logic.
 }
@@ -224,14 +228,14 @@ rather than a third copy.
 entries, `*Translated` yaku-name tables, `intro` copy, and i18next `_one` plural forms). This lines
 up with the documented design ("ja/zh already read these terms as their own words, so there is
 nothing to translate" / the `translatedTerms` row hiding under ja/zh) and every `lab.*` key
-introduced by this phase's new Lab trainer *is* present in all four locales, so nothing from this
+introduced by this phase's new Lab trainer _is_ present in all four locales, so nothing from this
 phase's own scope is missing. Flagged only as a maintenance note: this parity gap is currently
 indistinguishable, by tooling, from an accidentally-missed translation — there's no automated check
 asserting "these 75 keys are deliberately locale-specific" versus "someone forgot to translate them",
 so a future genuinely-new shared key could land only in en/it without anything failing.
 
 **Fix:** None required now. If this becomes error-prone, a lint step that diffs key sets against an
-explicit allowlist of "intentionally EN/IT-only" keys (glossary.*, *Translated.*, *_one) would turn
+explicit allowlist of "intentionally EN/IT-only" keys (glossary.*, _Translated._, *_one) would turn
 this from a silent gap into a caught one.
 
 ---

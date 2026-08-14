@@ -7,8 +7,8 @@ tags: [table-stepper, seenBy, snapshot, replay, lazy-analysis]
 requires:
   - "createMatch(wall, players, options, fillSeed?) — 01-01's explicit-wall dealing"
 provides:
-  - "core/table.ts: TableCore, seenBy, goRound, yourDiscards, snapshotTable, replayDiscards, analysisOf"
-  - "match.ts#seenBy — now exported and clamped to TILES_PER_KIND"
+  - 'core/table.ts: TableCore, seenBy, goRound, yourDiscards, snapshotTable, replayDiscards, analysisOf'
+  - 'match.ts#seenBy — now exported and clamped to TILES_PER_KIND'
 affects: [01-03, 01-04, 01-05, 01-06, 01-07]
 
 actuals:
@@ -19,8 +19,8 @@ actuals:
 tech-stack:
   added: []
   patterns:
-    - "Pure, React-free stepper module (core/table.ts) composed by every trainer hook instead of each hook reimplementing seenBy/go-round/snapshot/replay"
-    - "Lazy per-object getters (analysisOf) for expensive analysis a consumer may not read (D-05)"
+    - 'Pure, React-free stepper module (core/table.ts) composed by every trainer hook instead of each hook reimplementing seenBy/go-round/snapshot/replay'
+    - 'Lazy per-object getters (analysisOf) for expensive analysis a consumer may not read (D-05)'
 
 key-files:
   created:
@@ -37,44 +37,44 @@ requirements-completed: [REQ-03]
 coverage:
   - id: D1
     description: "There is exactly one seenBy in the codebase — match.ts's is exported and clamped; table.ts's is a thin wrapper over it"
-    requirement: "REQ-03"
+    requirement: 'REQ-03'
     verification:
       - kind: unit
-        ref: "src/core/table.test.ts#seenBy equals visible + hand counts, clamped, at every turn of 20 seeded matches"
+        ref: 'src/core/table.test.ts#seenBy equals visible + hand counts, clamped, at every turn of 20 seeded matches'
         status: pass
       - kind: static
         ref: "grep -c '^export function seenBy' src/core/match.ts == 1"
         status: pass
     human_judgment: false
   - id: D2
-    description: "The go-round loop, render snapshot and discard-replay fast-forward each exist once, as pure functions over a match state, with no React in core/table.ts"
-    requirement: "REQ-03"
+    description: 'The go-round loop, render snapshot and discard-replay fast-forward each exist once, as pure functions over a match state, with no React in core/table.ts'
+    requirement: 'REQ-03'
     verification:
       - kind: unit
-        ref: "src/core/table.test.ts#goRound (three cases: still-running seat, one-seat no-op, guard bound)"
+        ref: 'src/core/table.test.ts#goRound (three cases: still-running seat, one-seat no-op, guard bound)'
         status: pass
       - kind: unit
-        ref: "src/core/table.test.ts#snapshotTable (drawn split, per-seat mirroring, defensive copies)"
+        ref: 'src/core/table.test.ts#snapshotTable (drawn split, per-seat mirroring, defensive copies)'
         status: pass
       - kind: unit
-        ref: "src/core/table.test.ts#replayDiscards (full playback, stops on missing tile, stops on step()===false)"
+        ref: 'src/core/table.test.ts#replayDiscards (full playback, stops on missing tile, stops on step()===false)'
         status: pass
       - kind: static
-        ref: "grep -cE \"from 'react'|useState|useRef|useEffect\" src/core/table.ts == 0"
+        ref: 'grep -cE "from ''react''|useState|useRef|useEffect" src/core/table.ts == 0'
         status: pass
     human_judgment: false
   - id: D3
-    description: "Per-turn analysis is computed only when a consumer reads it — evaluateDiscards and assessDiscards are each paid for independently"
-    requirement: "REQ-03"
+    description: 'Per-turn analysis is computed only when a consumer reads it — evaluateDiscards and assessDiscards are each paid for independently'
+    requirement: 'REQ-03'
     verification:
       - kind: unit
-        ref: "src/core/table.test.ts#analysisOf caches .ranked: reading it twice returns the identical array reference"
+        ref: 'src/core/table.test.ts#analysisOf caches .ranked: reading it twice returns the identical array reference'
         status: pass
       - kind: unit
-        ref: "src/core/table.test.ts#analysisOf never calls evaluateDiscards when only .danger is read (vi.mock call count)"
+        ref: 'src/core/table.test.ts#analysisOf never calls evaluateDiscards when only .danger is read (vi.mock call count)'
         status: pass
       - kind: unit
-        ref: "src/core/table.test.ts#analysisOf never calls assessDiscards when only .ranked is read (vi.mock call count)"
+        ref: 'src/core/table.test.ts#analysisOf never calls assessDiscards when only .ranked is read (vi.mock call count)'
         status: pass
     human_judgment: false
 
@@ -127,6 +127,7 @@ conflicts; a plain fast-forward._
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Merged wave 1's merged `main` into this worktree branch before starting**
+
 - **Found during:** Pre-Task-1 setup
 - **Issue:** This worktree's branch (`worktree-agent-a46e26b1c2acdbffa`) was created before `01-01` finished and merged into `main`. `01-02` `depends_on: ["01-01"]` — without `createMatch`'s explicit-wall signature, `core/wall.ts`'s `TILES_PER_KIND`/`validateWall`/`wallWithHand`, and `Situation.wall`, this plan's Task 1 (which imports `TILES_PER_KIND` from `./wall`) could not even compile.
 - **Fix:** `git merge main --no-edit` — a clean fast-forward from `baa1b2c` to `4ddabb3`, since no commits had landed on this branch yet. No conflicts.
@@ -135,6 +136,7 @@ conflicts; a plain fast-forward._
 - **Committed in:** the merge commit itself (fast-forward, no new commit object).
 
 **2. [Rule 1 - Bug] Reworded a doc comment that tripped the plan's own react-free grep check**
+
 - **Found during:** Post-Task-3 verification pass
 - **Issue:** `replayDiscards`' doc comment explained that "The StrictMode-dedup `useRef` guard... stays in each React hook" — the literal string `useRef` inside that prose matched the plan's acceptance grep `grep -cE "from 'react'|useState|useRef|useEffect" src/core/table.ts`, which is meant to catch an actual React import, not a comment mentioning a hook by name.
 - **Fix:** Reworded to "mutable-ref guard", preserving the exact same meaning without the literal hook name.
@@ -175,5 +177,6 @@ All modified/created files verified present on disk; all four commits (`bd9878c`
 `c92a10e`, `255f10c`) verified present in `git log`.
 
 ---
-*Phase: 01-table-architecture-centralization*
-*Completed: 2026-08-12*
+
+_Phase: 01-table-architecture-centralization_
+_Completed: 2026-08-12_

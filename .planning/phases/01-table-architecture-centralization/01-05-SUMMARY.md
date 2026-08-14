@@ -6,12 +6,12 @@ tags: [react-hook, table-round, efficiency-trainer, i18n, routing]
 
 requires:
   - phase: 01-table-architecture-centralization/01-03
-    provides: "features/table/useTableRound.ts: TableRoundInput, UserDrawContext, DiscardStats, AgariCall, useTableRound(input)"
+    provides: 'features/table/useTableRound.ts: TableRoundInput, UserDrawContext, DiscardStats, AgariCall, useTableRound(input)'
 provides:
-  - "features/efficiency/grade.ts: TurnResult, lostVs, gradeAction, efficiencyLogRows, handFromSnapshot — pure grading shared by both efficiency apps"
-  - "features/efficiency/useEfficiencyRound.ts rebuilt as a thin useTableRound consumer (table app: real opponents always on)"
-  - "features/efficiency-solo/useEfficiencySoloRound.ts + EfficiencySoloPage.tsx — the new solitaire app (one seat, no board)"
-  - "Two routes (/efficiency, /efficiency-solo), HomePage.tsx Solitaire/Table sections"
+  - 'features/efficiency/grade.ts: TurnResult, lostVs, gradeAction, efficiencyLogRows, handFromSnapshot — pure grading shared by both efficiency apps'
+  - 'features/efficiency/useEfficiencyRound.ts rebuilt as a thin useTableRound consumer (table app: real opponents always on)'
+  - 'features/efficiency-solo/useEfficiencySoloRound.ts + EfficiencySoloPage.tsx — the new solitaire app (one seat, no board)'
+  - 'Two routes (/efficiency, /efficiency-solo), HomePage.tsx Solitaire/Table sections'
   - "opponents deleted from settingsStore.ts, urlCodec.ts (Situation + FLAGS), and useTableRound.ts's situation()"
 affects: [01-06, 01-07]
 
@@ -23,7 +23,7 @@ actuals:
 tech-stack:
   added: []
   patterns:
-    - "Pure grading module (features/efficiency/grade.ts) shared by two thin hooks over useTableRound — no React/zustand, so a table mistake and a solitaire mistake grade through the exact same code"
+    - 'Pure grading module (features/efficiency/grade.ts) shared by two thin hooks over useTableRound — no React/zustand, so a table mistake and a solitaire mistake grade through the exact same code'
     - "handFromSnapshot(hand, drawn, melds) rebuilds a working core/hand.ts Hand from a TableSnapshot's display-only tile arrays — needed once a consumer wants a same-value-kan check, which core/table.ts's TableAnalysis doesn't itself carry"
     - "Deferred log-row resolution: onUserDiscard grades a kita/kan immediately (drawn tile unknown yet) and stashes the result in a ref; the onUserDraw that immediately follows resolves it once the replacement (rinshan) draw is known. A plain discard's drawn tile is already known, so it logs immediately."
     - "useTableRound.ts exposes `replayed: ParsedTile[]` (the discards a replay actually played) so a consumer's own logReplay can write one log row per replayed discard without reaching back into core/table.ts"
@@ -60,59 +60,59 @@ requirements-completed: [REQ-01]
 
 coverage:
   - id: D1
-    description: "The efficiency trainer is two routes: /efficiency-solo deals one seat with no board, /efficiency deals a full table with real opponents always on — no setting or URL flag changes which app a route is"
-    requirement: "REQ-01"
+    description: 'The efficiency trainer is two routes: /efficiency-solo deals one seat with no board, /efficiency deals a full table with real opponents always on — no setting or URL flag changes which app a route is'
+    requirement: 'REQ-01'
     verification:
       - kind: unit
-        ref: "src/features/efficiency-solo/useEfficiencySoloRound.test.ts#deals exactly one seat"
+        ref: 'src/features/efficiency-solo/useEfficiencySoloRound.test.ts#deals exactly one seat'
         status: pass
       - kind: static
-        ref: "grep -cE \"from '.*tiles/Table'\" src/features/efficiency-solo/EfficiencySoloPage.tsx == 0"
+        ref: 'grep -cE "from ''.*tiles/Table''" src/features/efficiency-solo/EfficiencySoloPage.tsx == 0'
         status: pass
       - kind: static
-        ref: "grep -cE \"'opponents'\" src/features/situation/urlCodec.ts == 0"
+        ref: 'grep -cE "''opponents''" src/features/situation/urlCodec.ts == 0'
         status: pass
     human_judgment: false
   - id: D2
-    description: "Both efficiency apps grade every discard, kita and kan through the same pure functions (features/efficiency/grade.ts), so a solitaire mistake and a table mistake score identically"
-    requirement: "REQ-01"
+    description: 'Both efficiency apps grade every discard, kita and kan through the same pure functions (features/efficiency/grade.ts), so a solitaire mistake and a table mistake score identically'
+    requirement: 'REQ-01'
     verification:
       - kind: unit
-        ref: "src/features/efficiency-solo/useEfficiencySoloRound.test.ts#grades the same 14-tile hand identically through both hooks"
+        ref: 'src/features/efficiency-solo/useEfficiencySoloRound.test.ts#grades the same 14-tile hand identically through both hooks'
         status: pass
       - kind: unit
-        ref: "src/features/efficiency/grade.test.ts (12 tests covering lostVs, gradeAction ok/warning/error, handFromSnapshot, efficiencyLogRows)"
+        ref: 'src/features/efficiency/grade.test.ts (12 tests covering lostVs, gradeAction ok/warning/error, handFromSnapshot, efficiencyLogRows)'
         status: pass
     human_judgment: false
   - id: D3
-    description: "The solitaire app is genuinely one seat and still reserves a dead wall / flips a dora indicator"
-    requirement: "REQ-01"
+    description: 'The solitaire app is genuinely one seat and still reserves a dead wall / flips a dora indicator'
+    requirement: 'REQ-01'
     verification:
       - kind: unit
-        ref: "src/features/efficiency-solo/useEfficiencySoloRound.test.ts#reserves a dead wall and flips a dora indicator when deadWall is on"
+        ref: 'src/features/efficiency-solo/useEfficiencySoloRound.test.ts#reserves a dead wall and flips a dora indicator when deadWall is on'
         status: pass
     human_judgment: false
   - id: D4
-    description: "The home page groups its cards under a Solitaire heading (efficiency-solo, shanten) and a Table heading (efficiency, folding, scoring), with distinguishable copy for the two efficiency cards"
-    requirement: "REQ-01"
+    description: 'The home page groups its cards under a Solitaire heading (efficiency-solo, shanten) and a Table heading (efficiency, folding, scoring), with distinguishable copy for the two efficiency cards'
+    requirement: 'REQ-01'
     verification:
       - kind: static
-        ref: "node -e check: all four locale files carry trainer.efficiencySolo.title, home.section.solitaire, home.section.table"
+        ref: 'node -e check: all four locale files carry trainer.efficiencySolo.title, home.section.solitaire, home.section.table'
         status: pass
       - kind: static
-        ref: "node -e check: trainer.efficiencySolo.desc differs from English in ja/zh/it (translated, not left in English)"
+        ref: 'node -e check: trainer.efficiencySolo.desc differs from English in ja/zh/it (translated, not left in English)'
         status: pass
     human_judgment: true
     rationale: "Visual layout/copy legibility on a phone-width viewport is the plan's own <human-check> item — not something a unit test can confirm."
   - id: D5
-    description: "opponents is gone from settings, the URL codec, and the round options everywhere in the tree"
-    requirement: "REQ-01"
+    description: 'opponents is gone from settings, the URL codec, and the round options everywhere in the tree'
+    requirement: 'REQ-01'
     verification:
       - kind: static
         ref: "grep -rn '\\.opponents\\b|opponents:' src (excluding opponentWins/showOpponentHands) == empty"
         status: pass
       - kind: other
-        ref: "npm test (328 tests), npm run lint, npm run build — all exit 0"
+        ref: 'npm test (328 tests), npm run lint, npm run build — all exit 0'
         status: pass
     human_judgment: false
 
@@ -176,6 +176,7 @@ status: complete
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] `useTableRound.ts`'s `situation()` still emitted the deleted `opponents` field**
+
 - **Found during:** Task 1, while designing `situationQuery()` for the rewritten hook
 - **Issue:** `useTableRound.ts` (built in plan 01-03, not in this plan's file list) builds a `Situation` object in its own `situation()` helper that included `opponents: input.options.calls` — a field this plan deletes from the `Situation` interface entirely in Task 3. Left unfixed, either Task 3's deletion would break `useTableRound.ts`'s typecheck, or Task 1's `situationQuery()` (built to delegate to `table.situation()`) would silently leak a field the rest of the app no longer understands.
 - **Fix:** Removed the `opponents:` line from `situation()`'s returned object.
@@ -184,6 +185,7 @@ status: complete
 - **Committed in:** `c49b81f`
 
 **2. [Rule 3 - Blocking] `useTableRound.ts` didn't expose which discards a replay actually played**
+
 - **Found during:** Task 1, implementing the thin hook's `logReplay()` (explicitly required by the plan text: "now fed by `useTableRound`'s replayed-discards result")
 - **Issue:** `buildRound()`'s call to `replayDiscards(...)` computed the actual list of replayed tiles internally but discarded the return value — no field on the hook's return object exposed it, so a consumer couldn't log one row per replayed discard.
 - **Fix:** Added a `replayed` ref, populated from `replayDiscards`'s return value, and exposed it (`replayed: replayed.current`) on the hook's return object — purely additive, no existing field changed shape.
@@ -192,6 +194,7 @@ status: complete
 - **Committed in:** `c49b81f`
 
 **3. [Rule 1 - Bug] `finished` derivation omitted fixed-meld tile count**
+
 - **Found during:** Task 1, first test run — the existing kan test ("kan locks a held quad as a meld... `finished` toBe(false)") failed
 - **Issue:** `finished = table.hand.length + (table.drawn ? 1 : 0) < 14` doesn't account for a locked ankan meld counting as 3 tiles toward the 14 — after a kan, `hand.length` (concealed, meld tiles excluded) + `drawn` undercounts by exactly the meld's contribution, so the hook reported a still-in-progress hand as finished.
 - **Fix:** Added `+ table.melds[table.seatIndex].length * 3` to the derivation, in both `useEfficiencyRound.ts` and `useEfficiencySoloRound.ts`.
@@ -200,6 +203,7 @@ status: complete
 - **Committed in:** `c49b81f`, `b409db7`
 
 **4. [Rule 1 - Bug] Two existing tests assumed opponents were off**
+
 - **Found during:** Task 1, test run after the rewrite
 - **Issue:** `useEfficiencyRound.test.ts`'s "runs until tenpai, not for a fixed turn count" and "draws a red five from a pinned wall and drops it again on discard" both pinned exact wall positions assuming the user draws every wall tile in sequence (the old opponents-off behavior). With real opponents now unconditionally on, ~4 wall tiles drain per turn instead of 1, so a fixed wall position no longer names "the user's Nth own draw," and the naive `discard(0)` strategy no longer reliably reaches tenpai within the old 200-iteration/single-tile-drain budget.
 - **Fix:** The tenpai test now uses a seed (`seed-6`, found empirically to converge within ~30 available turns) and a tighter, honestly-labeled iteration bound. The red-five test now only asserts the redness contract (a red five is dropped for good once discarded) rather than the specific identity of the tile drawn two turns later, since that position is no longer predictable once real opponents are consuming the wall between the user's own turns.
@@ -239,5 +243,6 @@ None — this plan's threat register (T-01-15, T-01-16, T-01-17) named exactly t
 All created files verified present on disk; all three commits (`c49b81f`, `b409db7`, `8a61f10`) verified present in `git log`; `npm test` (328 tests), `npm run lint`, and `npm run build` all exit 0 as of the final commit.
 
 ---
-*Phase: 01-table-architecture-centralization*
-*Completed: 2026-08-13*
+
+_Phase: 01-table-architecture-centralization_
+_Completed: 2026-08-13_

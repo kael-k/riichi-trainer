@@ -101,7 +101,9 @@ export function formatLogEntry(entry: LogEntry, t: TFunction, showShanten: boole
   if (EFFICIENCY_SHANTEN_KEYS.has(entry.key)) {
     const shanten = (entry.params as { shanten?: number } | undefined)?.shanten
     const shantenSuffix =
-      showShanten && shanten !== undefined ? ` ${t('log.efficiency.shanten', { count: shanten })}` : ''
+      showShanten && shanten !== undefined
+        ? ` ${t('log.efficiency.shanten', { count: shanten })}`
+        : ''
     return t(entry.key, { ...entry.params, shantenSuffix })
   }
   return t(entry.key, entry.params)

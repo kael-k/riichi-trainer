@@ -3,7 +3,13 @@ import { handFromTenhou } from '../../core/hand'
 import { createMatch, type MatchOptions } from '../../core/match'
 import { HONOR, parseTenhou, serializeTenhouOrdered } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
-import { allTiles, decodeSituation, emptySituation, encodeSituation, resolveSanma } from './urlCodec'
+import {
+  allTiles,
+  decodeSituation,
+  emptySituation,
+  encodeSituation,
+  resolveSanma,
+} from './urlCodec'
 
 const YONMA: MatchOptions = {
   sanma: false,

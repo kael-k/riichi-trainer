@@ -92,7 +92,11 @@ function matchOptions(wall: ParsedTile[], options: RoundOptions): MatchOptions {
   }
 }
 
-function situationFromWin(win: WinRecord, wall: ParsedTile[], options: RoundOptions): ScoringSituation {
+function situationFromWin(
+  win: WinRecord,
+  wall: ParsedTile[],
+  options: RoundOptions,
+): ScoringSituation {
   // matches play a single hand, so there is no honba to inherit — it stays a wall-seeded extra
   // the setting adds on top, exactly as the constructive generator did
   const rng = mulberry32(`${wallKey(wall)}:honba`)
@@ -233,7 +237,10 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
       if (!found) {
         // no attempt in the budget produced a legal win: fall back to a constructed hand, which
         // is also the only way rare shapes (kokushi, yakuman) ever come up
-        setState((prev) => ({ ...fallbackHand(fallbackSeed, false), lastResult: prev?.lastResult ?? null }))
+        setState((prev) => ({
+          ...fallbackHand(fallbackSeed, false),
+          lastResult: prev?.lastResult ?? null,
+        }))
         return
       }
       pending.current = {

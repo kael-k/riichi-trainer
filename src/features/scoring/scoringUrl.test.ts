@@ -68,8 +68,13 @@ describe('scoringUrl', () => {
   })
 
   it('a valid short wall prefix decodes with no wallError', () => {
-    const prefix = wallWithHand(0, parseTenhou('123456789m1122z'), false, false, 'seed').slice(0, 13)
-    const decoded = decodeScoringUrl(new URLSearchParams(encodeScoringWallUrl(prefix, WALL_OPTIONS)))
+    const prefix = wallWithHand(0, parseTenhou('123456789m1122z'), false, false, 'seed').slice(
+      0,
+      13,
+    )
+    const decoded = decodeScoringUrl(
+      new URLSearchParams(encodeScoringWallUrl(prefix, WALL_OPTIONS)),
+    )
     expect(decoded.wallError).toBeUndefined()
     expect(decoded.wall).toEqual(prefix)
   })

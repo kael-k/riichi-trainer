@@ -24,8 +24,8 @@ actuals:
 tech-stack:
   added: []
   patterns:
-    - "Global-default + per-app-override settings resolved by one pure function per family of
-      shared trainer settings, rather than each app growing its own copy of the same fields"
+    - 'Global-default + per-app-override settings resolved by one pure function per family of
+      shared trainer settings, rather than each app growing its own copy of the same fields'
 
 key-files:
   created:
@@ -53,11 +53,11 @@ requirements-completed: [REQ-04]
 
 coverage:
   - id: D1
-    description: "TableSettings schema + resolveTableSettings resolves app default -> global -> per-app override, absent key = inherit"
+    description: 'TableSettings schema + resolveTableSettings resolves app default -> global -> per-app override, absent key = inherit'
     requirement: REQ-04
     verification:
       - kind: unit
-        ref: "src/features/settings/tableSettings.test.ts"
+        ref: 'src/features/settings/tableSettings.test.ts'
         status: pass
     human_judgment: false
   - id: D2
@@ -65,7 +65,7 @@ coverage:
     requirement: REQ-04
     verification:
       - kind: unit
-        ref: "src/features/settings/settingsStore.test.ts"
+        ref: 'src/features/settings/settingsStore.test.ts'
         status: pass
     human_judgment: false
   - id: D3
@@ -73,10 +73,10 @@ coverage:
     requirement: REQ-04
     verification:
       - kind: unit
-        ref: "src/features/folding/useFoldingRound.test.ts (reveal-gate cases)"
+        ref: 'src/features/folding/useFoldingRound.test.ts (reveal-gate cases)'
         status: pass
       - kind: unit
-        ref: "npm test (342 tests, full suite)"
+        ref: 'npm test (342 tests, full suite)'
         status: pass
     human_judgment: true
     rationale: "Visual confirmation that toggling the global 'show opponent hands' setting reveals hands on efficiency/scoring boards but still shows only backs on a folding board until the hand ends is a human-check item per the plan's acceptance criteria — automated tests cover the underlying gate logic but not the rendered board."
@@ -97,6 +97,7 @@ status: complete
 - **Files modified:** 11 (3 created, 8 modified)
 
 ## Accomplishments
+
 - `src/features/settings/tableSettings.ts`: `TableSettings` interface, `TableApp` union, `TABLE_DEFAULTS` per app, pure `resolveTableSettings`, and `useTableSettings` (resolver + Advanced gate on `showWall`)
 - `Settings['table'] = { global, apps }` replaces `efficiency.deadWall`, `folding.threats`/`opponentWins`, and the top-level `showWall`/`showOpponentHands`/`hideConcealedHands` state+setters; persist version bumped 2 → 3 (old blobs dropped, not migrated)
 - `SettingsDialog`'s three global rows and each page's own settings-writing rows (deadWall, threats, opponentWins) now write through `update('table', {...})`, merging the existing layer first so a sibling override survives
@@ -112,6 +113,7 @@ status: complete
 _Note: Task 2's own file leaves the four board pages referencing removed fields until Task 3 lands in the same session — see Deviations._
 
 ## Files Created/Modified
+
 - `src/features/settings/tableSettings.ts` - `TableSettings`, `TableApp`, `TABLE_DEFAULTS`, `resolveTableSettings`, `useTableSettings`
 - `src/features/settings/tableSettings.test.ts` - resolver/defaults behavior cases (8 tests)
 - `src/features/settings/settingsStore.ts` - `table` section added, six fields removed, persist version 2→3, merge extended
@@ -125,6 +127,7 @@ _Note: Task 2's own file leaves the four board pages referencing removed fields 
 - `src/features/scoring/ScoringPage.tsx` - reads via `useTableSettings('scoring')`; no settings rows on this page for the moved fields
 
 ## Decisions Made
+
 - SettingsDialog's global rows resolve through `resolveTableSettings('efficiency', table)` as a representative view of the global layer — the app id passed is arbitrary for fields with no per-app override, and none of the panel's three rows had one at commit time.
 - Every write site (`SettingsDialog`'s `updateGlobal`, each page's `updateTable`) spreads the existing `global`/`apps.<app>` object before patching — `update()` only merges at the section level, so a bare `{ apps: { folding: { threats } } }` patch would otherwise silently drop any other override already set for that same app.
 
@@ -133,6 +136,7 @@ _Note: Task 2's own file leaves the four board pages referencing removed fields 
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Widened `useFoldingRound.ts`'s `RoundOptions` type**
+
 - **Found during:** Task 3 (board page rewire)
 - **Issue:** `RoundOptions` was `Settings['folding'] & { sanma: boolean }`. Task 2 removed `threats`/`opponentWins` from `Settings['folding']`, so `RoundOptions` no longer carried them — `FoldingPage`'s `options` object literal (which still needs to pass `threats`/`opponentWins`, now sourced from `useTableSettings('folding')`) failed to type-check. `useFoldingRound.ts` was not listed in the plan's `files_modified`, but the type change is required for `tsc -b` to pass.
 - **Fix:** `RoundOptions = Settings['folding'] & { sanma: boolean; threats: number; opponentWins: boolean }`.
@@ -152,6 +156,7 @@ Task 2's commit (`1d88bd5`) removes the six fields from `Settings['folding']`/`S
 ### Acceptance-criteria grep patterns that don't literally match (substance verified another way)
 
 Three of the plan's `grep` acceptance checks assume an indentation/line-count that the actual (correctly prettier-formatted) code doesn't have:
+
 - `grep -cE '^  version: 3,' settingsStore.ts` returns 0, not 1 — the `version: 3,` line is nested 6 spaces deep (inside `persist({...})`'s options object, itself nested inside `create()(persist(...))`), same depth the original `version: 2,` line had. `settingsStore.test.ts`'s `useSettings.persist.getOptions().version === 3` assertion verifies the actual bump.
 - `grep -cE '^      table: \{ \.\.\.current\.table' settingsStore.ts` returns 0, not 1 — the `merge`'s `table: { ...current.table, ...p.table }` line sits at the same 10-space depth as the adjacent `efficiency`/`shanten`/`scoring`/`folding` merge lines above it (return-object body inside an arrow function inside `merge:`). `settingsStore.test.ts`'s "merges every section" test verifies the actual merge behavior.
 - `grep -c 'useTableSettings' <page>.tsx` returns 2 per file, not 1 — one match is the import line, the other the call site; both are expected and correct.
@@ -159,16 +164,20 @@ Three of the plan's `grep` acceptance checks assume an indentation/line-count th
 None of these represent a code defect; all three were left correctly formatted rather than distorted to fake a literal grep match, and the underlying behavior each check was probing for is verified by the test suite instead.
 
 ## Issues Encountered
+
 None beyond the deviation and staged-state notes above.
 
 ## User Setup Required
+
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - Plan 01-07 (statistical lab) can add a `'lab'` `TableApp` entry with zero new settings surface — `TABLE_DEFAULTS.lab` already exists and `useTableSettings('lab')` resolves it the same way every other app does.
 - Full verification pass green: `npm test` (342/342), `npm run lint` (0 issues), `npm run build` (`tsc -b` + `vite build` clean).
 - <human-check> item still open per the plan's acceptance criteria: visually confirm that toggling the global "show opponent hands" setting reveals opponents' tiles on the efficiency and scoring boards, while the folding board still shows only backs until the hand ends. Not verifiable from this worktree session; flagged in `coverage` (D3) with `human_judgment: true`.
 
 ---
-*Phase: 01-table-architecture-centralization*
-*Completed: 2026-08-13*
+
+_Phase: 01-table-architecture-centralization_
+_Completed: 2026-08-13_

@@ -6,10 +6,10 @@ tags: [wall-format, match-engine, url-codec, validation, react-hooks]
 
 requires: []
 provides:
-  - "createMatch(wall, players, options, fillSeed?) — explicit-wall dealing, Pinned deleted"
-  - "core/wall.ts: fullWallSize, completeWall, redFiveIds, validateWall, wallWithHand, WallError"
-  - "Situation.wall redefined as the explicit wall; Situation.wallError for rejected links"
-  - "urlCodec.resolveSanma — ruleset resolution for a full or partial wall"
+  - 'createMatch(wall, players, options, fillSeed?) — explicit-wall dealing, Pinned deleted'
+  - 'core/wall.ts: fullWallSize, completeWall, redFiveIds, validateWall, wallWithHand, WallError'
+  - 'Situation.wall redefined as the explicit wall; Situation.wallError for rejected links'
+  - 'urlCodec.resolveSanma — ruleset resolution for a full or partial wall'
 affects: [01-02, 01-03, 01-04, 01-05, 01-06, 01-07]
 
 actuals:
@@ -20,7 +20,7 @@ actuals:
 tech-stack:
   added: []
   patterns:
-    - "Explicit wall in draw order (seat hands, then live draws, then dead wall) replaces seed+Pinned as the shared/URL board record"
+    - 'Explicit wall in draw order (seat hands, then live draws, then dead wall) replaces seed+Pinned as the shared/URL board record'
     - "Reject-not-repair validation at the untrusted-input boundary (validateWall), distinct from parseTenhou's silent-drop posture elsewhere"
 
 key-files:
@@ -41,55 +41,55 @@ requirements-completed: [REQ-02]
 
 coverage:
   - id: D1
-    description: "createMatch takes an explicit wall in draw order; Pinned interface deleted"
-    requirement: "REQ-02"
+    description: 'createMatch takes an explicit wall in draw order; Pinned interface deleted'
+    requirement: 'REQ-02'
     verification:
       - kind: unit
-        ref: "src/core/match.test.ts#createMatch honours a wall pinning one seat, filling the rest of the wall itself"
+        ref: 'src/core/match.test.ts#createMatch honours a wall pinning one seat, filling the rest of the wall itself'
         status: pass
       - kind: unit
         ref: "src/core/match.test.ts#createMatch honours a short wall prefix as seat 0's exact starting hand"
         status: pass
     human_judgment: false
   - id: D2
-    description: "A short wall is honoured as a prefix and completed at random from the copies it leaves"
-    requirement: "REQ-02"
+    description: 'A short wall is honoured as a prefix and completed at random from the copies it leaves'
+    requirement: 'REQ-02'
     verification:
       - kind: unit
-        ref: "src/core/wall.test.ts#completeWall keeps the prefix verbatim and fills the rest to a full wall"
+        ref: 'src/core/wall.test.ts#completeWall keeps the prefix verbatim and fills the rest to a full wall'
         status: pass
     human_judgment: false
   - id: D3
-    description: "Every D-12 validation rule rejects with a zone-and-tile-named WallError, never repairing the wall"
-    requirement: "REQ-02"
+    description: 'Every D-12 validation rule rejects with a zone-and-tile-named WallError, never repairing the wall'
+    requirement: 'REQ-02'
     verification:
       - kind: unit
-        ref: "src/core/wall.test.ts#validateWall (8 cases: length, copies-fifth, copies-missing, red-duplicate, red-nonfive, tileSet, deadWall zone, valid full/partial)"
+        ref: 'src/core/wall.test.ts#validateWall (8 cases: length, copies-fifth, copies-missing, red-duplicate, red-nonfive, tileSet, deadWall zone, valid full/partial)'
         status: pass
       - kind: unit
-        ref: "src/features/situation/urlCodec.test.ts#urlCodec rejects an invalid wall by name: the wall is emptied and never reaches createMatch"
+        ref: 'src/features/situation/urlCodec.test.ts#urlCodec rejects an invalid wall by name: the wall is emptied and never reaches createMatch'
         status: pass
     human_judgment: false
   - id: D4
-    description: "playMatch/findMatch/findMatchAsync/buildWall keep their seed-taking shape; no seeded test changed its expectations"
-    requirement: "REQ-02"
+    description: 'playMatch/findMatch/findMatchAsync/buildWall keep their seed-taking shape; no seeded test changed its expectations'
+    requirement: 'REQ-02'
     verification:
       - kind: unit
-        ref: "src/core/match.test.ts#playMatch (full describe block, seed-taking signature unchanged)"
+        ref: 'src/core/match.test.ts#playMatch (full describe block, seed-taking signature unchanged)'
         status: pass
       - kind: unit
-        ref: "src/core/danger.test.ts#genbutsu never lies (150-match simulation via playPastRiichi)"
+        ref: 'src/core/danger.test.ts#genbutsu never lies (150-match simulation via playPastRiichi)'
         status: pass
     human_judgment: false
   - id: D5
-    description: "A wall= link copied out of the efficiency trainer, pasted back in, reproduces the same starting hand and dora indicator"
-    requirement: "REQ-02"
+    description: 'A wall= link copied out of the efficiency trainer, pasted back in, reproduces the same starting hand and dora indicator'
+    requirement: 'REQ-02'
     verification:
       - kind: unit
-        ref: "src/features/efficiency/useEfficiencyRound.test.ts#useEfficiencyRound situationQuery round-trips the exact round state"
+        ref: 'src/features/efficiency/useEfficiencyRound.test.ts#useEfficiencyRound situationQuery round-trips the exact round state'
         status: pass
       - kind: unit
-        ref: "src/features/situation/urlCodec.test.ts#urlCodec a ?wall= string opens the exact board it names: seat 0 gets exactly the pinned hand"
+        ref: 'src/features/situation/urlCodec.test.ts#urlCodec a ?wall= string opens the exact board it names: seat 0 gets exactly the pinned hand'
         status: pass
     human_judgment: false
 
@@ -111,6 +111,7 @@ status: complete
 - **Files modified:** 11
 
 ## Accomplishments
+
 - `createMatch(wall, players, options, fillSeed?)`: the wall's leading `players*13` tiles ARE the deal (inverting the old "prefix drawn next" semantic); `Pinned` deleted outright.
 - `core/wall.ts` gained `fullWallSize`, `completeWall` (prefix + random/seeded completion), `redFiveIds` (moved from `match.ts`), `validateWall` (D-12's reject-not-repair untrusted-input gate), and `wallWithHand` (pins one seat's hand against a random/seeded full wall).
 - `Situation.wall` redefined as the explicit wall; `decodeSituation` wires `validateWall` at the URL boundary and returns a `wallError` on any fault instead of ever handing a repaired wall to `createMatch`.
@@ -128,6 +129,7 @@ _Task 1 was `type="tracer"` — executed and committed like a full task, verifie
 Task 2 began._
 
 ## Files Created/Modified
+
 - `src/core/wall.ts` - `fullWallSize`, `completeWall`, `redFiveIds`, `WallError`, `validateWall`, `wallWithHand`
 - `src/core/wall.test.ts` - unit tests for all of the above
 - `src/core/match.ts` - `createMatch` reshaped to take an explicit wall; `Pinned` deleted; `MatchState.wall` added
@@ -141,6 +143,7 @@ Task 2 began._
 - `src/features/shanten/useShantenRound.ts` - guards the now-optional `situation.hand`
 
 ## Decisions Made
+
 - Kept `Situation.seed`/`Situation.hand` as optional fields instead of deleting them (see Deviations #1) — a scope-preserving choice, not a plan reinterpretation.
 - `decodeSituation` validates a partial (non-full-length) wall against yonma when no explicit `sanma` flag is present in the URL, since the pure codec module has no access to the reader's global setting (see RESEARCH.md Open Question 2). The real trainer re-resolves the ruleset against its own settings when it actually deals, so this only affects the validation gate's leniency for an edge case (a sanma-only-invalid partial wall with no `sanma=` param), not correctness of a full wall or an explicitly-flagged one.
 
@@ -149,6 +152,7 @@ Task 2 began._
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Kept `Situation.seed`/`Situation.hand` as optional fields instead of removing them**
+
 - **Found during:** Task 1
 - **Issue:** The plan's artifacts table lists `Situation.seed`/`Situation.hand` as "Removed by this plan." Removing them outright breaks `src/features/shanten/useShantenRound.ts` and its test suite — the shanten trainer shares `urlCodec.ts`'s `Situation` type but was never migrated onto the wall format (it's out of this phase's scope; REQ-01 through REQ-07 don't mention it, and `wall.ts#deal` — the shanten trainer's own dealing path per CLAUDE.md — is explicitly unaffected by this phase).
 - **Fix:** `Situation.seed?: string` and `Situation.hand?: ParsedTile[]` stay on the interface as optional fields, documented as "the only trainer left on this seed+hand format." `useShantenRound.ts` gets one guard (`situation.hand?.length`) for the now-optional field. The acceptance criterion `grep -c 'seed: string' src/features/situation/urlCodec.ts` returns 0 is still satisfied, since the field is `seed?: string`, not `seed: string`.
@@ -157,6 +161,7 @@ Task 2 began._
 - **Committed in:** `0ff4258` (Task 1 commit)
 
 **2. [Rule 3 - Blocking] Fixed two direct `createMatch` callers not named by the plan**
+
 - **Found during:** Task 3
 - **Issue:** `src/core/match.test.ts`'s `playWithDefense` helper (used by `describe('defensive policy', ...)`) calls `createMatch(seed, 4, YONMA)` directly with a seed string, outside the `describe('createMatch', ...)` block the plan's action text names. It's a genuine compile error under the new signature, not covered by D-09's "seed-taking wrappers didn't change" clause (which only covers `playMatch`/`findMatch`-based callers).
 - **Fix:** `createMatch([], 4, YONMA, seed)` — same one-line pattern as the two `describe('createMatch', ...)` rewrites.
@@ -165,6 +170,7 @@ Task 2 began._
 - **Committed in:** `f732891` (Task 3 commit)
 
 **3. [Rule 1 - Bug] Fixed flaky `useEfficiencyRound.test.ts` cases relying on an unpinned random deal**
+
 - **Found during:** Task 3
 - **Issue:** The plan's literal conversion rule ("`situation.hand = parseTenhou(...)` becomes `situation.wall = parseTenhou(...)`", dropping the accompanying `situation.seed`) leaves several tests depending on Math.random()-completed wall content for behavior the test asserts a specific outcome for: a nine-gates hand discarding blindly can re-land on tenpai (ending the round on turn 1 instead of continuing), an opponent's random hand can happen to hold a callable pair on the tested discard (changing river/wall-length counts), and "always discard the smallest tile" isn't guaranteed to reach tenpai within the wall before it runs dry on an arbitrary deal. Confirmed by running the suite repeatedly — 3 of 27 tests failed intermittently across ~10 runs.
 - **Fix:** Those specific tests build their wall via `completeWall(prefix, sanma, aka, seed)` with an explicit fill seed instead of leaving the remainder to `createMatch`'s internal `Math.random()` fallback — matching the pattern the plan itself prescribes elsewhere ("Where a test only needed a deterministic board, pass a fixed `fillSeed`-backed wall from `completeWall([], false, false, 'drain-seed')`" — the plan names this exact scenario and seed for the tenpai-loop test).
@@ -173,6 +179,7 @@ Task 2 began._
 - **Committed in:** `f732891` (Task 3 commit)
 
 **4. [Rule 1 - Bug] Two tests needed different tile layouts than a literal string transplant, to preserve their actual assertions**
+
 - **Found during:** Task 3
 - **Issue:** `useEfficiencyRound.test.ts`'s river-replay test discarded a tile that (under the new wall model) became the turn's own draw rather than a tedashi from hand, flipping a `tsumogiri` flag the original assertion didn't expect. A structural consequence of "a wall's leading segment is the deal, not a drawn-next prefix" (D-10) — the specific tile that gets thrown from hand vs. drawn depends on where it sits in the wall now, which the literal string-for-string swap didn't account for.
 - **Fix:** Moved the discarded tile (`7z`) into the 13-tile hand prefix (so it discards via tedashi, matching original semantics) and placed an unrelated tile at the draw position instead.
@@ -190,18 +197,23 @@ Task 2 began._
 - **A `Situation`/wall can no longer pin a seat's hand at exactly 14 tiles with no separate draw.** Under the old seed+`Pinned` model, `pinned.hand` could supply all 14 tiles directly, skipping `beginTurn`'s draw entirely (`useEfficiencyRound.ts` checked `tileCount(hand) < 14`). Under the explicit-wall model, `createMatch` always deals exactly 13 tiles per seat by construction (`wall.slice(i*13, (i+1)*13)`), so that `< 14` branch's `else` (no-draw) arm is now structurally unreachable — a round always draws a 14th tile after the deal. To pin what gets drawn, a wall now overwrites the position right after the deal (`wall[players * 13]`) instead of appending a "prefix consumed next" tail. Three tests were converted onto this pattern (`draws a tile after the wall-pinned starting hand`, `kan locks a held quad...`, and both kita "no north left" tests) with assertions updated from `drawn.toBeUndefined()`/`hand.toHaveLength(14)` to `drawn.toEqual(<the placed tile>)`/`hand.toHaveLength(13)`. This is an intentional consequence of D-10 (the wall's leading segment IS the deal), not a bug — the old `else` branch in `createRound` is left in place as harmless dead code rather than removed, since removing it is outside this plan's stated file scope.
 
 ## Issues Encountered
+
 None beyond the deviations documented above.
 
 ## Known Stubs
+
 None.
 
 ## Threat Flags
+
 None — this plan's new surface (`validateWall`, `decodeSituation`'s wall-error path) is exactly the mitigation the threat model already names (T-01-01, T-01-02, T-01-03), not new unmitigated surface.
 
 ## User Setup Required
+
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - `createMatch`'s explicit-wall signature is stable and every consumer (`playMatch`/`findMatch`/`findMatchAsync`, `useEfficiencyRound.ts`, `useFoldingRound.ts`) is on it — plan 01-02 (`core/table.ts`) can build against this signature without further churn.
 - `validateWall`/`wallWithHand` are ready for plan 01-06's lab hand-authoring surface.
 - `Situation.wall`/`wallError`/`resolveSanma` are ready for whichever plan next touches the URL codec (opponents removal lands in plan 01-04 per the plan's own note).
@@ -213,5 +225,6 @@ All modified files verified present on disk; all three task commits (`0ff4258`, 
 `f732891`) verified present in `git log`.
 
 ---
-*Phase: 01-table-architecture-centralization*
-*Completed: 2026-08-12*
+
+_Phase: 01-table-architecture-centralization_
+_Completed: 2026-08-12_

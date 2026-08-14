@@ -43,8 +43,10 @@ interface TableProps {
    *  that knows how wide the board actually is, and a wrapper around it would have to guess —
    *  guessing wrong is what collapses the square when the board is a flex item. */
   controls?: ReactNode
-  /** Per-seat settings icon, drawn beside that seat's own wind mark rather than as one
-   *  table-wide control — a seat's rules are read and changed while looking at that seat. */
+  /** Per-seat settings button, one per seat, drawn in the control row above the board. It used to
+   *  sit on the centre panel beside each wind mark — right idea, wrong surface: four 44px targets
+   *  on a panel barely wider than that buried the round wind, the wall count and the dora row
+   *  under them, and every stray tap on the middle of the table opened a dialog. */
   seatControl?: (seat: number) => ReactNode
 }
 
@@ -197,12 +199,22 @@ export function Table({
           '--table-max': `${(25.6 * tileScale) / (showsHands ? 0.84 : 1)}rem`,
           // the control row shares the height budget the square is capped against, so it has to
           // come out of it — otherwise the board is exactly one button too tall to fit
-          '--board-controls': controls ? '2.75rem' : '0px',
+          '--board-controls': controls || seatControl ? '2.75rem' : '0px',
         } as CSSProperties
       }
     >
       <RotateHint />
-      {controls && <div className="flex items-center justify-end gap-1">{controls}</div>}
+      {(controls || seatControl) && (
+        <div className="flex items-center gap-1">
+          {/* the seats read left to right in wind order, which is not the order they sit in — the
+              board itself says where each one is, and a row that re-orders itself the moment you
+              change perspective is a row you have to re-find every time */}
+          {seatControl && (
+            <div className="flex items-center">{seats.map((_, i) => seatControl(i))}</div>
+          )}
+          <div className="ml-auto flex items-center gap-1">{controls}</div>
+        </div>
+      )}
       {/* the revealed hands sit outside the felt, so the square gives up a margin's worth of its
           own width to hold them — only when they are actually shown, so an ordinary board is
           exactly as big as it was. The border box stays square either way, which is what keeps
@@ -295,7 +307,6 @@ export function Table({
                   }`}
                 >
                   {t(`wind.${WINDS[index]}`)}
-                  {seatControl?.(index)}
                 </span>
               )
             })}

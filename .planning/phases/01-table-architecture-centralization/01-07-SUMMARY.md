@@ -9,13 +9,13 @@ requires:
     provides: "core/table.ts + useTableRound (plan 01-03), TableSettings/useTableSettings('lab')
       default row (plan 01-06), useFoldingRound's BACK_TILE reveal-gate filler (plan 01-04)"
 provides:
-  - "useLabRound: a use*Round hook over useTableRound with zero grading — full
+  - 'useLabRound: a use*Round hook over useTableRound with zero grading — full
     evaluateDiscards ranking + full assessDiscards tier list stashed once per turn, no score, no
-    useSessionStats, no worthwhile-style filter"
-  - "LabPage: standalone /lab trainer — tenhou-notation wall loader (Load/Build/Reset, parsed only
+    useSessionStats, no worthwhile-style filter'
+  - 'LabPage: standalone /lab trainer — tenhou-notation wall loader (Load/Build/Reset, parsed only
     on button press), plain empty state, inline red D-12 error sentence, and two height-capped
     scrolling lists (full ranking, full danger-tier breakdown) reusing the existing feedback row
-    shapes with no new list component and no invented probability/EV figure"
+    shapes with no new list component and no invented probability/EV figure'
   - "Home page's Table group grows to four cards (efficiency, folding, scoring, lab); trainer.lab.*
     and lab.* locale keys (incl. per-WallError.reason zone/reason keys) translated in en/ja/zh/it"
 affects: []
@@ -28,9 +28,9 @@ actuals:
 tech-stack:
   added: []
   patterns:
-    - "A hook that wants both evaluateDiscards and assessDiscards reads both off the same
+    - 'A hook that wants both evaluateDiscards and assessDiscards reads both off the same
       onUserDraw-stashed TableAnalysis object once per turn (D-05), never during render — the lab
-      is the one consumer that reads both getters where every other trainer reads only one"
+      is the one consumer that reads both getters where every other trainer reads only one'
     - "A reveal-gate filler constant (BACK_TILE) is exported from the trainer that first needed
       it (useFoldingRound.ts) and reused by name from a sibling trainer, rather than each hook
       redefining its own 'no identity' tile"
@@ -80,7 +80,7 @@ coverage:
     requirement: REQ-05
     verification:
       - kind: unit
-        ref: "src/features/lab/useLabRound.test.ts"
+        ref: 'src/features/lab/useLabRound.test.ts'
         status: pass
     human_judgment: false
   - id: D2
@@ -93,24 +93,24 @@ coverage:
         status: pass
     human_judgment: false
   - id: D3
-    description: "LabPage renders a standalone /lab route with a wall loader, empty state, inline
+    description: 'LabPage renders a standalone /lab route with a wall loader, empty state, inline
       red D-12 error state, and the two full lists with no new list component, no new colour, and
-      no invented probability/EV figure anywhere"
+      no invented probability/EV figure anywhere'
     requirement: REQ-05
     verification:
       - kind: unit
-        ref: "npm run build (tsc -b && vite build) exit 0; acceptance-criteria greps (text-red-600,
+        ref: 'npm run build (tsc -b && vite build) exit 0; acceptance-criteria greps (text-red-600,
           overflow-y-auto, absence of font-bold/font-semibold/text-lg+/toFixed/Math.round/
-          dangerScore, min-h-11 count, round.finished usage) all pass"
+          dangerScore, min-h-11 count, round.finished usage) all pass'
         status: pass
     human_judgment: true
     rationale: "The plan's own acceptance criteria mark the invalid-wall-link rendering and the
       34-row phone-width scroll behaviour as <human-check> — visual/interaction verification a
       grep or unit test cannot substitute for"
   - id: D4
-    description: "/lab is routed, has a fourth Table-group home card, and trainer.lab.*/lab.* copy
+    description: '/lab is routed, has a fourth Table-group home card, and trainer.lab.*/lab.* copy
       (including per-WallError.reason zone/reason keys) is translated, not left in English, in
-      en/ja/zh/it"
+      en/ja/zh/it'
     requirement: REQ-05
     verification:
       - kind: unit
@@ -194,6 +194,7 @@ orchestrator after this worktree merges (worktree mode)._
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Added `TRAINER_WIKI.lab` during Task 2 instead of Task 3**
+
 - **Found during:** Task 2 (`LabPage.tsx` references `TRAINER_WIKI.lab` for its info-popover link)
 - **Issue:** The plan assigns `TRAINER_WIKI.lab` to Task 3, but Task 2's own verify command
   (`npm run build`) fails without it — `tsc` errors on `Property 'lab' does not exist`.
@@ -228,5 +229,6 @@ None - no external service configuration required.
   block for the phase's UAT pass.
 
 ---
-*Phase: 01-table-architecture-centralization*
-*Completed: 2026-08-13*
+
+_Phase: 01-table-architecture-centralization_
+_Completed: 2026-08-13_

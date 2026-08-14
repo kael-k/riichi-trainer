@@ -50,7 +50,12 @@ export function handFromSnapshot(
 /** Grades one discard/kita/kan against the draw-time `DiscardStats` a `useTableRound` consumer
  *  is handed by `onUserDiscard` — `hand` is the pre-throw 14-tile hand (see `handFromSnapshot`),
  *  needed only to look for a same-value kan a plain discard passed up. */
-export function gradeAction(stats: DiscardStats, turn: number, hand: Hand, sanma: boolean): TurnResult {
+export function gradeAction(
+  stats: DiscardStats,
+  turn: number,
+  hand: Hand,
+  sanma: boolean,
+): TurnResult {
   const { kind, yours, best } = stats
   const isBest = isBestDiscard(yours, best)
 
@@ -63,7 +68,9 @@ export function gradeAction(stats: DiscardStats, turn: number, hand: Hand, sanma
     if (northOption && isBestDiscard(northOption, best)) {
       missed = { kind: 'kita', tile: NORTH }
     } else {
-      const kanOption = evaluateKan(hand, stats.analysis.seen, sanma).find((o) => isBestDiscard(o, best))
+      const kanOption = evaluateKan(hand, stats.analysis.seen, sanma).find((o) =>
+        isBestDiscard(o, best),
+      )
       if (kanOption) missed = { kind: 'kan', tile: kanOption.discard }
     }
   }
@@ -91,7 +98,13 @@ export function efficiencyLogRows(
     if (grade !== 'error') {
       rows.push([
         drawnCode ? 'log.efficiency.discardBestDrew' : 'log.efficiency.discardBest',
-        { turn, drawn: drawnCode, tile: tileCode(tile.id, tile.red), ukeire: yours.ukeireCount, shanten: yours.shanten },
+        {
+          turn,
+          drawn: drawnCode,
+          tile: tileCode(tile.id, tile.red),
+          ukeire: yours.ukeireCount,
+          shanten: yours.shanten,
+        },
         [...drawnTiles, tile],
       ])
     } else {
@@ -131,7 +144,11 @@ export function efficiencyLogRows(
   if (kind === 'kita') {
     rows.push(
       grade === 'ok'
-        ? ['log.efficiency.kitaBest', { turn, ukeire: yours.ukeireCount, shanten: yours.shanten }, tiles]
+        ? [
+            'log.efficiency.kitaBest',
+            { turn, ukeire: yours.ukeireCount, shanten: yours.shanten },
+            tiles,
+          ]
         : [
             'log.efficiency.kitaMistake',
             {

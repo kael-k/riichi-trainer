@@ -6,11 +6,11 @@ tags: [react-hook, table-round, scoring, wall-link, agari-callback]
 
 requires:
   - phase: 01-table-architecture-centralization/01-02
-    provides: "core/table.ts: TableCore, seenBy, goRound, yourDiscards, snapshotTable, replayDiscards, analysisOf"
+    provides: 'core/table.ts: TableCore, seenBy, goRound, yourDiscards, snapshotTable, replayDiscards, analysisOf'
 provides:
-  - "features/table/useTableRound.ts: TableRoundInput, UserDrawContext, DiscardStats, AgariCall, useTableRound(input)"
-  - "core/match.ts#playWall(wall, players, options, stop?) — explicit-wall equivalent of playMatch"
-  - "features/scoring/scoringUrl.ts#encodeScoringWallUrl, ScoringUrl.wall — replaces the seed-based scoring link"
+  - 'features/table/useTableRound.ts: TableRoundInput, UserDrawContext, DiscardStats, AgariCall, useTableRound(input)'
+  - 'core/match.ts#playWall(wall, players, options, stop?) — explicit-wall equivalent of playMatch'
+  - 'features/scoring/scoringUrl.ts#encodeScoringWallUrl, ScoringUrl.wall — replaces the seed-based scoring link'
 affects: [01-04, 01-05, 01-06, 01-07]
 
 actuals:
@@ -21,10 +21,10 @@ actuals:
 tech-stack:
   added: []
   patterns:
-    - "Three-callback React hook contract (onUserDraw/onUserDiscard/onAgariCall) over a pure core/table.ts stepper, with draw-time analysis stashed in a ref so a discard is graded against the pre-throw hand, never a post-throw recomputation"
+    - 'Three-callback React hook contract (onUserDraw/onUserDiscard/onAgariCall) over a pure core/table.ts stepper, with draw-time analysis stashed in a ref so a discard is graded against the pre-throw hand, never a post-throw recomputation'
     - "Identity-keyed dedup ref (wall + restart count) for the initial callback fire, mirroring useEfficiencyRound's logReplay pattern — the mechanics may build the round twice under StrictMode's double-invoked mount effect, but the user-visible callback fires once"
     - "AgariCall as a fixed (win: WinRecord) => void contract: a consumer that needs more context (scoring needs the wall/match too) stashes it in a ref immediately before invoking the shared handler, rather than widening the callback's own signature"
-    - "Wall-derived RNG keys (wallKey = serializeTenhouOrdered(wall)) replacing seed strings for reproducible per-board randomness (round wind, honba) — the same wall always re-derives the same round/honba, which is what makes a wall link exact"
+    - 'Wall-derived RNG keys (wallKey = serializeTenhouOrdered(wall)) replacing seed strings for reproducible per-board randomness (round wind, honba) — the same wall always re-derives the same round/honba, which is what makes a wall link exact'
 
 key-files:
   created:
@@ -45,14 +45,14 @@ requirements-completed: [REQ-03]
 
 coverage:
   - id: D1
-    description: "useTableRound exposes exactly onUserDraw/onUserDiscard/onAgariCall, drives a real core/match round through them, and grades every discard against the draw-time analysis by reference identity"
-    requirement: "REQ-03"
+    description: 'useTableRound exposes exactly onUserDraw/onUserDiscard/onAgariCall, drives a real core/match round through them, and grades every discard against the draw-time analysis by reference identity'
+    requirement: 'REQ-03'
     verification:
       - kind: unit
         ref: "src/features/table/useTableRound.test.ts#onUserDiscard's stats.analysis is the same object onUserDraw handed over"
         status: pass
       - kind: unit
-        ref: "src/features/table/useTableRound.test.ts#fires onUserDraw again with a fresh analysis object and an advanced turn after a live discard"
+        ref: 'src/features/table/useTableRound.test.ts#fires onUserDraw again with a fresh analysis object and an advanced turn after a live discard'
         status: pass
       - kind: static
         ref: "grep -cE 'onUserDraw|onUserDiscard|onAgariCall' src/features/table/useTableRound.ts >= 6; grep -c 'onGenericEvent\\|onEvent' == 0"
@@ -60,35 +60,35 @@ coverage:
     human_judgment: false
   - id: D2
     description: "A shared link's replayed discards fire zero callbacks; the live turn the replay lands on fires exactly one onUserDraw, including under React StrictMode's double-invoked mount effect"
-    requirement: "REQ-03"
+    requirement: 'REQ-03'
     verification:
       - kind: unit
-        ref: "src/features/table/useTableRound.test.ts#replaying discards fires zero onUserDraw/onUserDiscard, then exactly one onUserDraw for the live turn"
+        ref: 'src/features/table/useTableRound.test.ts#replaying discards fires zero onUserDraw/onUserDiscard, then exactly one onUserDraw for the live turn'
         status: pass
       - kind: unit
-        ref: "src/features/table/useTableRound.test.ts#fires each callback once per real event even under React StrictMode double-invoked effects"
+        ref: 'src/features/table/useTableRound.test.ts#fires each callback once per real event even under React StrictMode double-invoked effects'
         status: pass
     human_judgment: false
   - id: D3
     description: "DiscardStats.yours/best/danger are lazy getters over the stashed analysis — reading one never forces the other's underlying computation"
     verification:
       - kind: unit
-        ref: "src/features/table/useTableRound.test.ts#reading .danger never triggers evaluateDiscards, and reading .yours never triggers assessDiscards"
+        ref: 'src/features/table/useTableRound.test.ts#reading .danger never triggers evaluateDiscards, and reading .yours never triggers assessDiscards'
         status: pass
     human_judgment: false
   - id: D4
-    description: "stopAtTenpai stops the round at 13 tiles the moment your discard reaches tenpai; unset, the round plays on"
-    requirement: "REQ-03"
+    description: 'stopAtTenpai stops the round at 13 tiles the moment your discard reaches tenpai; unset, the round plays on'
+    requirement: 'REQ-03'
     verification:
       - kind: unit
-        ref: "src/features/table/useTableRound.test.ts#stopAtTenpai leaves the hand at 13 tiles and fires no further onUserDraw"
+        ref: 'src/features/table/useTableRound.test.ts#stopAtTenpai leaves the hand at 13 tiles and fires no further onUserDraw'
         status: pass
       - kind: unit
-        ref: "src/features/table/useTableRound.test.ts#without stopAtTenpai, the round plays on past tenpai and draws again"
+        ref: 'src/features/table/useTableRound.test.ts#without stopAtTenpai, the round plays on past tenpai and draws again'
         status: pass
     human_judgment: false
   - id: D5
-    description: "kita()/kan() route through the same onUserDiscard/onUserDraw contract, tagged with stats.kind"
+    description: 'kita()/kan() route through the same onUserDiscard/onUserDraw contract, tagged with stats.kind'
     verification:
       - kind: unit
         ref: "src/features/table/useTableRound.test.ts#kita() fires onUserDiscard with stats.kind 'kita', then onUserDraw for the replacement"
@@ -99,27 +99,27 @@ coverage:
     human_judgment: false
   - id: D6
     description: "onAgariCall fires exactly once with the winning seat's WinRecord, matching the returned snapshot's own win field"
-    requirement: "REQ-03"
+    requirement: 'REQ-03'
     verification:
       - kind: unit
-        ref: "src/features/table/useTableRound.test.ts#fires onAgariCall once with the winning seat, matching the snapshot win field"
+        ref: 'src/features/table/useTableRound.test.ts#fires onAgariCall once with the winning seat, matching the snapshot win field'
         status: pass
     human_judgment: false
   - id: D7
     description: "Scoring's only entry point is a single named onAgariCall handler (typed with AgariCall); a scoring link carries a wall, not a seed, and round-trips to the identical winning hand — an invalid wall= surfaces wallError and falls back to a generated hand"
-    requirement: "REQ-03"
+    requirement: 'REQ-03'
     verification:
       - kind: unit
-        ref: "src/features/scoring/scoringUrl.test.ts#round-trips a wall exactly through encodeScoringWallUrl/decodeScoringUrl"
+        ref: 'src/features/scoring/scoringUrl.test.ts#round-trips a wall exactly through encodeScoringWallUrl/decodeScoringUrl'
         status: pass
       - kind: unit
-        ref: "src/features/scoring/scoringUrl.test.ts#surfaces a wallError and empties wall on an invalid wall= (five copies of a kind)"
+        ref: 'src/features/scoring/scoringUrl.test.ts#surfaces a wallError and empties wall on an invalid wall= (five copies of a kind)'
         status: pass
       - kind: unit
-        ref: "src/features/scoring/useScoringRound.test.ts#replays the hand its own situationQuery names, han and fu included"
+        ref: 'src/features/scoring/useScoringRound.test.ts#replays the hand its own situationQuery names, han and fu included'
         status: pass
       - kind: unit
-        ref: "src/features/scoring/useScoringRound.test.ts#falls back to a generated hand when a pinned wall has no legal win"
+        ref: 'src/features/scoring/useScoringRound.test.ts#falls back to a generated hand when a pinned wall has no legal win'
         status: pass
       - kind: static
         ref: "grep -c 'onAgariCall' src/features/scoring/useScoringRound.ts >= 2; grep -c 'situationFromWin(' == 2"
@@ -143,7 +143,7 @@ status: complete
 ## Accomplishments
 
 - `src/features/table/useTableRound.ts` (new): the React hook layer over `core/table.ts` (01-02). Exactly three callbacks (`onUserDraw`, `onUserDiscard`, `onAgariCall`), named verbatim per the user's own contract — no generic event escape hatch (checked by grep in Task 1's acceptance criteria).
-- `DiscardStats.yours`/`.best`/`.danger` are getters over the *draw-time* `TableAnalysis` (stashed in a `drawAnalysis` ref, never a fresh `analysisOf` call at discard time) — proved correct by reference identity (`onUserDiscard`'s `stats.analysis === onUserDraw`'s handed-over `analysis`) and proved lazy by `vi.mock` call-count assertions on `evaluateDiscards`/`assessDiscards`.
+- `DiscardStats.yours`/`.best`/`.danger` are getters over the _draw-time_ `TableAnalysis` (stashed in a `drawAnalysis` ref, never a fresh `analysisOf` call at discard time) — proved correct by reference identity (`onUserDiscard`'s `stats.analysis === onUserDraw`'s handed-over `analysis`) and proved lazy by `vi.mock` call-count assertions on `evaluateDiscards`/`assessDiscards`.
 - `input.replay` fast-forwards silently (D-06): a `replaying` ref suppresses all three callbacks while `replayDiscards` steps the board through recorded discards, then fires exactly one `onUserDraw` for the live turn the replay lands on.
 - StrictMode-safety: the mount effect's initial callback fire is deduped via a `{wall, restartCount}`-keyed ref (`builtFor`), the same identity-keyed pattern `useEfficiencyRound.ts`'s `logReplay` already established — proved by an actual `renderHook` test wrapped in `<StrictMode>`, not just by code inspection.
 - `core/match.ts`: `playMatch`'s guard loop extracted into a private `playFrom(state, options, stop?)`; new `export function playWall(wall, players, options, stop?)` plays an explicit wall through the same loop. `playMatch`'s own exported signature is unchanged, so every existing seeded test stayed green.
@@ -202,5 +202,6 @@ None - no external service configuration required.
 All modified/created files verified present on disk; both commits (`d30d4d0`, `41a482a`) verified present in `git log`; `npm test` (304 tests), `npm run lint`, and `npm run build` all exit 0 as of the final commit.
 
 ---
-*Phase: 01-table-architecture-centralization*
-*Completed: 2026-08-12*
+
+_Phase: 01-table-architecture-centralization_
+_Completed: 2026-08-12_

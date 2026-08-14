@@ -23,6 +23,7 @@ that shape (see Out of Scope in PROJECT.md).
 ## Implementation Decisions
 
 ### Split depth & routing
+
 - **D-01:** Efficiency trainer splits into two routes, two pages, two hooks — not a shared hook
   behind a flag. `opponents` is removed entirely: from `Settings['efficiency']`, from the URL
   codec's `FLAGS` (`urlCodec.ts:26`), and from `situationQuery()`. The route is the choice.
@@ -36,6 +37,7 @@ that shape (see Out of Scope in PROJECT.md).
   written for 3-4 seats and would render mostly-empty cells for one.
 
 ### Shared layer shape
+
 - **D-04:** Three layers, strictly: pure `core/table.ts` (stepper wrapping `beginTurn`/`finishTurn`,
   the go-round loop, the snapshot builder, one canonical `seenBy` — replacing the three current
   implementations at `match.ts:278-282`, `useEfficiencyRound.ts:121-125`, `useFoldingRound.ts:202-209`
@@ -47,9 +49,9 @@ that shape (see Out of Scope in PROJECT.md).
   - `onUserDiscard(tile, stats)` — fires after the throw, `stats` carries the chosen action's
     ukeire/danger computed from the ranking captured at draw time (not recomputed post-throw)
   - `onAgariCall(win)` — fires when any seat wins; scoring's entry point
-  Analysis is exposed as memoized getters, not eagerly computed — solo never reads danger, folding
-  never reads ukeire, and `evaluateDiscards` costs ~476 shanten probes per turn
-  (`efficiency.ts:38-41`); nobody should pay for what they don't read.
+    Analysis is exposed as memoized getters, not eagerly computed — solo never reads danger, folding
+    never reads ukeire, and `evaluateDiscards` costs ~476 shanten probes per turn
+    (`efficiency.ts:38-41`); nobody should pay for what they don't read.
 - **D-06:** Callbacks are suppressed during replay fast-forward (loading a shared link or a log
   row's rewind) — restored turns must not grade or log as if they were live.
 - **D-07:** Scoring keeps its existing shape unchanged: it generates a result and never re-touches
@@ -63,7 +65,7 @@ that shape (see Out of Scope in PROJECT.md).
   mid-hand riichi-target policy flip (the moment the target is reached, every seat that hasn't
   itself declared switches to `policy: 'defense'`) runs at turn granularity between
   `beginTurn`/`finishTurn`, which is exactly why `useFoldingRound.ts` drives those directly today
-  instead of `playMatch` — `playMatch`'s `stop` fires per event only *after* the whole turn has
+  instead of `playMatch` — `playMatch`'s `stop` fires per event only _after_ the whole turn has
   run, too late for the flip. `useTableRound`'s `onUserDraw`/`onUserDiscard`/`onAgariCall`
   contract is shaped around efficiency/scoring/lab's needs and stays exactly those three — it does
   not grow a generic event escape hatch for this one consumer. Folding gets a thin, folding-owned
@@ -74,6 +76,7 @@ that shape (see Out of Scope in PROJECT.md).
   genuinely different control flow through a contract built for someone else.
 
 ### Wall sharing
+
 - **D-09:** Seeds are dropped as the stored/shared record. `createMatch` takes an explicit wall.
   `buildWall(seed, sanma)` (`wall.ts:11`) is kept internally for random generation
   (`buildWall(String(Math.random()), sanma)`) and for existing seeded tests (3000-hand shanten
@@ -94,6 +97,7 @@ that shape (see Out of Scope in PROJECT.md).
   silently repair.
 
 ### Settings
+
 - **D-13:** Table settings — `opponentWins`, `deadWall`, `threats`, `showOpponentHands`,
   `hideConcealedHands`, `showWall` — move to one shared schema: a global `table` section plus a
   per-app `Partial<TableSettings>` override, resolved as
@@ -105,6 +109,7 @@ that shape (see Out of Scope in PROJECT.md).
   drill's own stated rule. This is a live bug fix riding the settings move, not a new feature.
 
 ### Statistical lab
+
 - **D-15:** Standalone route + home-page card, not a panel toggle inside existing trainers — a
   panel would collide with folding's rule against showing danger markers before the answer and its
   rule that a threat's hand is revealed only once the hand is over. Loads or authors a wall,
@@ -119,6 +124,7 @@ that shape (see Out of Scope in PROJECT.md).
   than showing no number.
 
 ### Claude's Discretion
+
 - Exact directory/feature naming for the new solo efficiency app and the lab app
   (`src/features/<name>/`) — not specified by the user, follow the existing trainer pattern
 - Exact shape of wall-validation error messages, as long as they name the offending zone and tile
@@ -143,6 +149,7 @@ that shape (see Out of Scope in PROJECT.md).
 </specifics>
 
 <canonical_refs>
+
 ## Canonical References
 
 No external specs/ADRs exist for this project yet. `CLAUDE.md` at the repo root is the canonical
@@ -151,9 +158,11 @@ architecture reference — read it before planning; do not duplicate its content
 </canonical_refs>
 
 <code_context>
+
 ## Existing Code Insights
 
 ### Reusable Assets
+
 - `core/match.ts` — `createMatch`, `beginTurn`, `finishTurn`, `playMatch`, `findMatch`/
   `findMatchAsync`, `threatViews`, `concealedTiles`, `wallDrawnCount`: the engine API this phase
   builds on. Only `createMatch`'s wall-sourcing changes shape (seed+pinned → explicit wall);
@@ -183,6 +192,7 @@ architecture reference — read it before planning; do not duplicate its content
   until the hand ends rather than emitting per-turn — a folding-level concern, not the stepper's).
 
 ### Established Patterns
+
 - Trainer pattern: page component + `use*Round` hook, session state via `lib/useSessionStats.ts`,
   action log via `store/log.ts`, settings via a per-trainer section of the Zustand store. New
   trainers (solo efficiency, lab) should follow this even where they don't use `useTableRound`.
@@ -191,6 +201,7 @@ architecture reference — read it before planning; do not duplicate its content
   `logReplay`, which dedupes on the decoded link object's identity.
 
 ### Integration Points
+
 - New routes touch four places every time: `src/routes/index.tsx` (route table),
   `src/routes/HomePage.tsx` (`MODES` array), `src/features/i18n/trainerLinks.ts` (`TRAINER_WIKI`),
   and all four locale JSON files (`en`/`ja`/`zh`/`it`) for `trainer.<name>.*` strings. Both the new
@@ -209,5 +220,6 @@ architecture reference — read it before planning; do not duplicate its content
 </deferred>
 
 ---
-*Phase: 01-table-architecture-centralization*
-*Context gathered: 2026-08-12*
+
+_Phase: 01-table-architecture-centralization_
+_Context gathered: 2026-08-12_

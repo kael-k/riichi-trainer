@@ -5,6 +5,7 @@
 **Confidence:** HIGH
 
 <user_constraints>
+
 ## User Constraints (from CONTEXT.md)
 
 ### Locked Decisions
@@ -31,9 +32,9 @@
   - `onUserDiscard(tile, stats)` — fires after the throw, `stats` carries the chosen action's
     ukeire/danger computed from the ranking captured at draw time (not recomputed post-throw)
   - `onAgariCall(win)` — fires when any seat wins; scoring's entry point
-  Analysis is exposed as memoized getters, not eagerly computed — solo never reads danger, folding
-  never reads ukeire, and `evaluateDiscards` costs ~476 shanten probes per turn
-  (`efficiency.ts:38-41`); nobody should pay for what they don't read.
+    Analysis is exposed as memoized getters, not eagerly computed — solo never reads danger, folding
+    never reads ukeire, and `evaluateDiscards` costs ~476 shanten probes per turn
+    (`efficiency.ts:38-41`); nobody should pay for what they don't read.
 - **D-06:** Callbacks are suppressed during replay fast-forward (loading a shared link or a log
   row's rewind) — restored turns must not grade or log as if they were live.
 - **D-07:** Scoring keeps its existing shape unchanged: it generates a result and never re-touches
@@ -47,7 +48,7 @@
   mid-hand riichi-target policy flip (the moment the target is reached, every seat that hasn't
   itself declared switches to `policy: 'defense'`) runs at turn granularity between
   `beginTurn`/`finishTurn`, which is exactly why `useFoldingRound.ts` drives those directly today
-  instead of `playMatch` — `playMatch`'s `stop` fires per event only *after* the whole turn has
+  instead of `playMatch` — `playMatch`'s `stop` fires per event only _after_ the whole turn has
   run, too late for the flip. `useTableRound`'s `onUserDraw`/`onUserDiscard`/`onAgariCall`
   contract is shaped around efficiency/scoring/lab's needs and stays exactly those three — it does
   not grow a generic event escape hatch for this one consumer. Folding gets a thin, folding-owned
@@ -115,17 +116,18 @@
 </user_constraints>
 
 <phase_requirements>
+
 ## Phase Requirements
 
-| ID | Description | Research Support |
-|----|-------------|------------------|
-| REQ-01 | Efficiency trainer splits into two routed apps — solitaire and table — instead of one route with a behavior-changing checkbox | See "Splitting the efficiency trainer" pattern below; `EfficiencyPage.tsx` full read shows exactly what `showTable`/`options.opponents` branches to peel apart |
-| REQ-02 | Boards shared as explicit, validated walls; seeds keep backing random generation and tests | See "Wall format and `createMatch` reshape" — full read of `createMatch`'s current dealing loop and `Pinned` interface, plus the exact two `match.test.ts` unit tests that call `createMatch` directly and must change |
-| REQ-03 | Turn-stepping and per-turn analysis centralized in `core/table.ts` + `useTableRound` | See "The three duplicated implementations" — verbatim line-cited comparison of `seenBy`, snapshot bodies, and replay logic across `match.ts`/`useEfficiencyRound.ts`/`useFoldingRound.ts` |
-| REQ-07 | Folding migrates onto `core/table.ts`'s pure stepper via its own thin hook | See "Folding's control-flow divergence" — full read of `playToRiichi`/`buildRound`/`advanceAfterDiscard` shows exactly which primitives are shared vs. folding-owned |
-| REQ-04 | Table settings unify under global + per-app override schema; `sanma`/`aka` stay global | See "Settings schema today" — full read of `settingsStore.ts`, confirms which fields are top-level globals today (`showOpponentHands`, `hideConcealedHands`, `showWall`) vs. per-section (`efficiency.deadWall`, `folding.threats`, `folding.opponentWins`) and the section-wise `merge` that must be extended |
-| REQ-05 | Statistical lab loads/authors a wall, plays own discards, shows full ukeire/danger/score with no grading | See "Statistical lab data sources" — `evaluateDiscards`/`assessDiscards` signatures confirmed, both already computed and discarded by existing trainers |
-| REQ-06 | Folding's threat-hand reveal hard-gated on hand end | See "The reveal-gate bug" — exact line in `FoldingPage.tsx` where `showOpponentHands` alone currently controls the reveal, with no `finished` check |
+| ID     | Description                                                                                                                   | Research Support                                                                                                                                                                                                                                                                                               |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| REQ-01 | Efficiency trainer splits into two routed apps — solitaire and table — instead of one route with a behavior-changing checkbox | See "Splitting the efficiency trainer" pattern below; `EfficiencyPage.tsx` full read shows exactly what `showTable`/`options.opponents` branches to peel apart                                                                                                                                                 |
+| REQ-02 | Boards shared as explicit, validated walls; seeds keep backing random generation and tests                                    | See "Wall format and `createMatch` reshape" — full read of `createMatch`'s current dealing loop and `Pinned` interface, plus the exact two `match.test.ts` unit tests that call `createMatch` directly and must change                                                                                         |
+| REQ-03 | Turn-stepping and per-turn analysis centralized in `core/table.ts` + `useTableRound`                                          | See "The three duplicated implementations" — verbatim line-cited comparison of `seenBy`, snapshot bodies, and replay logic across `match.ts`/`useEfficiencyRound.ts`/`useFoldingRound.ts`                                                                                                                      |
+| REQ-07 | Folding migrates onto `core/table.ts`'s pure stepper via its own thin hook                                                    | See "Folding's control-flow divergence" — full read of `playToRiichi`/`buildRound`/`advanceAfterDiscard` shows exactly which primitives are shared vs. folding-owned                                                                                                                                           |
+| REQ-04 | Table settings unify under global + per-app override schema; `sanma`/`aka` stay global                                        | See "Settings schema today" — full read of `settingsStore.ts`, confirms which fields are top-level globals today (`showOpponentHands`, `hideConcealedHands`, `showWall`) vs. per-section (`efficiency.deadWall`, `folding.threats`, `folding.opponentWins`) and the section-wise `merge` that must be extended |
+| REQ-05 | Statistical lab loads/authors a wall, plays own discards, shows full ukeire/danger/score with no grading                      | See "Statistical lab data sources" — `evaluateDiscards`/`assessDiscards` signatures confirmed, both already computed and discarded by existing trainers                                                                                                                                                        |
+| REQ-06 | Folding's threat-hand reveal hard-gated on hand end                                                                           | See "The reveal-gate bug" — exact line in `FoldingPage.tsx` where `showOpponentHands` alone currently controls the reveal, with no `finished` check                                                                                                                                                            |
 
 </phase_requirements>
 
@@ -149,7 +151,7 @@ contract's `stats` payload.
 
 The wall-sharing change (`createMatch` seed+pinned → explicit wall) is the single riskiest piece:
 it inverts the current relationship between "wall prefix" and "starting hand" (today a `Pinned.wall`
-prefix is *drawn after* the deal; the new format's leading segment *is* the deal) and forces
+prefix is _drawn after_ the deal; the new format's leading segment _is_ the deal) and forces
 `createMatch`'s dealing loop to be rewritten from "loop `take()` per seat off a shuffled pool" to
 "slice an explicit array by seat segments." Two existing `match.test.ts` unit tests call
 `createMatch` directly with a seed string and will need rewriting to the new wall-taking signature
@@ -165,18 +167,18 @@ depend on the previous step's shape being stable — `core/table.ts` cannot be w
 
 ## Architectural Responsibility Map
 
-| Capability | Primary Tier | Secondary Tier | Rationale |
-|------------|-------------|----------------|-----------|
-| Wall construction/validation (explicit wall, prefix completion) | Engine (`core/wall.ts` + new codec) | — | Pure data transform, no UI or React involvement — must stay deterministic and testable in isolation |
-| Match dealing/turn-stepping (`createMatch`, `beginTurn`, `finishTurn`) | Engine (`core/match.ts`) | — | Already the sole authority; only `createMatch`'s wall-sourcing changes shape |
-| Turn-stepper/go-round loop/snapshot/`seenBy`/replay fast-forward | Engine (new `core/table.ts`) | — | Pure, reusable across 3+ consumers; D-04 explicitly locks this at the engine tier, not the hook tier |
-| Per-turn analysis (ukeire ranking, danger tiers) | Engine (`core/efficiency.ts`, `core/danger.ts`) | `core/table.ts` (memoized getter wrapper) | Computation is already pure/engine-tier; `core/table.ts` only adds lazy-getter plumbing so unused analysis isn't computed |
-| Round state ownership, callback firing, replay suppression | React hook tier (`useTableRound`, folding's thin hook) | — | `useRef` mutable core + `useState` snapshot mirror is the established hook pattern (`CLAUDE.md` Trainer pattern section) — must stay React, not engine, since it owns commit-time effects (StrictMode dedup, timers) |
-| Board rendering (seats, rivers, melds, centre panel) | Presentational component (`<Table>`) | — | Already zero-game-logic per `Table.tsx:19-21`; explicitly unchanged this phase |
-| Solo layout (hand/river/nuki/wall chips, no `<Table>`) | Page component (new solo `EfficiencyPage`) | React hook tier (likely `useTableRound` per D-05's "solo never reads danger" framing) | D-03 locks the visual shape; D-05 implies solo still consumes the same hook/getter contract as table apps, just renders differently and never reads the danger getter |
-| Settings resolution (global + per-app override) | React hook/component tier (a `resolveTableSettings` helper) | Zustand store (`settingsStore.ts`) | Storage stays flat key/value per Zustand convention; resolution (`{...defaultsForApp, ...global, ...appOverride}`) is a pure function callable from any page, not baked into the store itself |
-| URL wall/situation codec | Engine-adjacent pure module (new or extended `urlCodec.ts`) | — | Must stay React-free like the existing codec — it is called from `useSearchParams` at the page boundary only |
-| Statistical lab data surfacing | Page component + thin hook | Engine (`evaluateDiscards`, `assessDiscards` — reused directly) | No new computation; the lab is a rendering surface over engine outputs already computed elsewhere and thrown away |
+| Capability                                                             | Primary Tier                                                | Secondary Tier                                                                        | Rationale                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wall construction/validation (explicit wall, prefix completion)        | Engine (`core/wall.ts` + new codec)                         | —                                                                                     | Pure data transform, no UI or React involvement — must stay deterministic and testable in isolation                                                                                                                  |
+| Match dealing/turn-stepping (`createMatch`, `beginTurn`, `finishTurn`) | Engine (`core/match.ts`)                                    | —                                                                                     | Already the sole authority; only `createMatch`'s wall-sourcing changes shape                                                                                                                                         |
+| Turn-stepper/go-round loop/snapshot/`seenBy`/replay fast-forward       | Engine (new `core/table.ts`)                                | —                                                                                     | Pure, reusable across 3+ consumers; D-04 explicitly locks this at the engine tier, not the hook tier                                                                                                                 |
+| Per-turn analysis (ukeire ranking, danger tiers)                       | Engine (`core/efficiency.ts`, `core/danger.ts`)             | `core/table.ts` (memoized getter wrapper)                                             | Computation is already pure/engine-tier; `core/table.ts` only adds lazy-getter plumbing so unused analysis isn't computed                                                                                            |
+| Round state ownership, callback firing, replay suppression             | React hook tier (`useTableRound`, folding's thin hook)      | —                                                                                     | `useRef` mutable core + `useState` snapshot mirror is the established hook pattern (`CLAUDE.md` Trainer pattern section) — must stay React, not engine, since it owns commit-time effects (StrictMode dedup, timers) |
+| Board rendering (seats, rivers, melds, centre panel)                   | Presentational component (`<Table>`)                        | —                                                                                     | Already zero-game-logic per `Table.tsx:19-21`; explicitly unchanged this phase                                                                                                                                       |
+| Solo layout (hand/river/nuki/wall chips, no `<Table>`)                 | Page component (new solo `EfficiencyPage`)                  | React hook tier (likely `useTableRound` per D-05's "solo never reads danger" framing) | D-03 locks the visual shape; D-05 implies solo still consumes the same hook/getter contract as table apps, just renders differently and never reads the danger getter                                                |
+| Settings resolution (global + per-app override)                        | React hook/component tier (a `resolveTableSettings` helper) | Zustand store (`settingsStore.ts`)                                                    | Storage stays flat key/value per Zustand convention; resolution (`{...defaultsForApp, ...global, ...appOverride}`) is a pure function callable from any page, not baked into the store itself                        |
+| URL wall/situation codec                                               | Engine-adjacent pure module (new or extended `urlCodec.ts`) | —                                                                                     | Must stay React-free like the existing codec — it is called from `useSearchParams` at the page boundary only                                                                                                         |
+| Statistical lab data surfacing                                         | Page component + thin hook                                  | Engine (`evaluateDiscards`, `assessDiscards` — reused directly)                       | No new computation; the lab is a rendering surface over engine outputs already computed elsewhere and thrown away                                                                                                    |
 
 ## Standard Stack
 
@@ -184,15 +186,17 @@ No new external packages are introduced by this phase. Everything needed already
 `package.json` `[VERIFIED: package.json]`:
 
 ### Core (already in use, no version change)
-| Library | Version (installed) | Purpose | Why Standard (for this repo) |
-|---------|---------|---------|--------------|
-| react / react-dom | ^19.2.8 | UI runtime | Already the app's framework; hooks (`useRef`+`useState` mirror pattern) are the established trainer pattern |
-| react-router | ^7.18.2 | Routing | New routes (solo efficiency, lab) are added to the existing `createBrowserRouter` array (`src/routes/index.tsx`) |
-| zustand | ^5.0.14 | Settings + log stores | `settingsStore.ts`'s `persist` middleware and hand-written section-wise `merge` is the established pattern for schema evolution |
-| i18next / react-i18next | ^26.3.6 / ^17.0.11 | i18n | New routes need `trainer.<name>.*` keys in all four locale JSON files, same as every existing trainer |
-| vitest | (devDependency, config in `vite.config.ts:33-37`) | Test runner | `environment: 'jsdom'`, `globals: true`, `setupFiles: './src/test/setup.ts'` — unchanged |
+
+| Library                 | Version (installed)                               | Purpose               | Why Standard (for this repo)                                                                                                    |
+| ----------------------- | ------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| react / react-dom       | ^19.2.8                                           | UI runtime            | Already the app's framework; hooks (`useRef`+`useState` mirror pattern) are the established trainer pattern                     |
+| react-router            | ^7.18.2                                           | Routing               | New routes (solo efficiency, lab) are added to the existing `createBrowserRouter` array (`src/routes/index.tsx`)                |
+| zustand                 | ^5.0.14                                           | Settings + log stores | `settingsStore.ts`'s `persist` middleware and hand-written section-wise `merge` is the established pattern for schema evolution |
+| i18next / react-i18next | ^26.3.6 / ^17.0.11                                | i18n                  | New routes need `trainer.<name>.*` keys in all four locale JSON files, same as every existing trainer                           |
+| vitest                  | (devDependency, config in `vite.config.ts:33-37`) | Test runner           | `environment: 'jsdom'`, `globals: true`, `setupFiles: './src/test/setup.ts'` — unchanged                                        |
 
 ### Alternatives Considered
+
 None — this is an internal refactor of code the project already owns; no library choice is in play.
 
 **Installation:** None required.
@@ -318,6 +322,7 @@ shared by efficiency-table and the lab is not settled by CONTEXT.md — flagged 
 builder are each implemented three times today.
 
 `match.ts`'s own private `seenBy` (used only by the AI, module-private, not exported):
+
 ```typescript
 // Source: src/core/match.ts:278-282
 function seenBy(state: MatchState, player: PlayerState): Uint8Array {
@@ -328,6 +333,7 @@ function seenBy(state: MatchState, player: PlayerState): Uint8Array {
 ```
 
 `useEfficiencyRound.ts`'s equivalent, inlined into `rankDiscards` (`useEfficiencyRound.ts:120-127`):
+
 ```typescript
 // Source: src/features/efficiency/useEfficiencyRound.ts:120-127
 function rankDiscards(core: RoundCore, sanma: boolean) {
@@ -342,6 +348,7 @@ function rankDiscards(core: RoundCore, sanma: boolean) {
 
 `useFoldingRound.ts`'s equivalent, with an extra clamp `match.ts` doesn't have
 (`useFoldingRound.ts:202-209`):
+
 ```typescript
 // Source: src/features/folding/useFoldingRound.ts:201-209
 function seenBy(core: RoundCore): Uint8Array {
@@ -360,6 +367,7 @@ adopt (visibility can't exceed 4 copies of a kind), worth flagging to the planne
 behavior-preserving-or-fixing choice, not silently dropped.
 
 **Opponent go-round loop**, near-identical in both hooks:
+
 ```typescript
 // Source: src/features/efficiency/useEfficiencyRound.ts:137-149 (runOpponents)
 function runOpponents(core: RoundCore, opponents: boolean): void {
@@ -375,6 +383,7 @@ function runOpponents(core: RoundCore, opponents: boolean): void {
   }
 }
 ```
+
 ```typescript
 // Source: src/features/folding/useFoldingRound.ts:287-299 (advanceAfterDiscard, inlined loop)
 function advanceAfterDiscard(core: RoundCore, tile: ParsedTile): void {
@@ -389,15 +398,17 @@ function advanceAfterDiscard(core: RoundCore, tile: ParsedTile): void {
   }
 }
 ```
+
 Folding's version has no "opponents off" branch (folding always has opponents — they're the
 threats) and always draws the player's next tile inline; efficiency's version separates
 "run opponents" from "advance after discard" (the latter also checks tenpai-stop). `core/table.ts`'s
 stepper should expose the go-round loop as one primitive that both call, with each hook layering
 its own stop condition (tenpai for efficiency, "did the hand end" for folding) on top.
 
-**`logReplay` StrictMode-dedup pattern**, identical shape in both hooks — this is a *hook-tier*
+**`logReplay` StrictMode-dedup pattern**, identical shape in both hooks — this is a _hook-tier_
 pattern (not engine-tier), so it stays in each consumer, but should be recognized as the same
 pattern rather than independently reinvented for the lab:
+
 ```typescript
 // Source: src/features/efficiency/useEfficiencyRound.ts:320-323 (shape mirrored in useFoldingRound.ts:477-479)
 function logReplay() {
@@ -411,7 +422,8 @@ function logReplay() {
 ### Pattern 2: `createMatch`'s current dealing loop (must be rewritten for explicit walls)
 
 **What it does today** — deals sequentially per seat off a shuffled pool, unshifts a pinned prefix
-*after* the deal so it names what's drawn next (not what's dealt):
+_after_ the deal so it names what's drawn next (not what's dealt):
+
 ```typescript
 // Source: src/core/match.ts:243-254
 for (const player of state.players) {
@@ -425,7 +437,7 @@ if (pinned?.wall.length) state.liveWall.unshift(...pinned.wall)
 state.liveWallSnapshot = [...state.liveWall]
 ```
 
-**What the new format requires** (D-10): the wall's *leading* `players * 13` tiles ARE the
+**What the new format requires** (D-10): the wall's _leading_ `players * 13` tiles ARE the
 starting hands, in seat order — the inverse of today's relationship between "wall" and "hand".
 `createMatch`'s new signature needs to slice the explicit wall directly:
 `wall.slice(0, 13)` → seat 0's hand, `wall.slice(13, 26)` → seat 1's hand, … , then everything up
@@ -441,8 +453,8 @@ Folding's `playToRiichi` (`useFoldingRound.ts:158-199`) drives `beginTurn`/`fini
 loop with a **turn-boundary stop condition evaluated between the two calls**, not after — checking
 `riichiSeats(match).length < threats` right after `finishTurn` returns, then mutating
 `player.policy` on every non-declaring seat before continuing. This is structurally different from
-`playMatch`'s `stop` callback, which only fires per *event* (draw/discard/riichi/call/win),
-*after* the whole turn (both `beginTurn` and `finishTurn`) has completed — too coarse for a
+`playMatch`'s `stop` callback, which only fires per _event_ (draw/discard/riichi/call/win),
+_after_ the whole turn (both `beginTurn` and `finishTurn`) has completed — too coarse for a
 flip that must land before the next `beginTurn`. `core/table.ts`'s exported primitives (not
 wrapped in `useTableRound`'s 3-callback React contract) are what folding's thin hook composes
 directly, matching D-08 exactly.
@@ -457,24 +469,24 @@ directly, matching D-08 exactly.
   never coercing an over-count or wrong-ruleset wall into something playable — a repaired wall is
   a different board than the one the link claimed to share.
 - **Recomputing `onUserDiscard`'s stats post-throw:** D-05 explicitly requires the stats attached
-  to the callback be the ranking captured *at draw time*, before the tile leaves the hand — a
+  to the callback be the ranking captured _at draw time_, before the tile leaves the hand — a
   post-throw recomputation is measuring a different (already-13-tile) hand.
 - **Bumping the settings-store `merge`'s per-section list without bumping `persist`'s `version`:**
   `settingsStore.ts:195-196` already documents "pre-v2 schemas are dropped, not migrated" — since
-  keys are being *removed* (`efficiency.opponents`) and *moved* (`folding.threats` → `table`), the
+  keys are being _removed_ (`efficiency.opponents`) and _moved_ (`folding.threats` → `table`), the
   existing merge (`settingsStore.ts:200-210`) would otherwise leave a stale `efficiency.opponents`
   boolean sitting in `localStorage` forever, unread by anything, doing nothing but confusing a
   future reader of devtools. See Runtime State Inventory below.
 
 ## Don't Hand-Roll
 
-| Problem | Don't Build | Use Instead | Why |
-|---------|-------------|-------------|-----|
-| Ukeire/shanten ranking for the lab's discard view | A second ranking function for "show everything" mode | `evaluateDiscards` (`core/efficiency.ts:17`) — same function every trainer already calls | It already ranks every discard, shanten-then-ukeire; the lab just renders the whole list instead of a `[0]`/comparison, no new engine code |
-| Danger tiers for the lab's threat view | A second danger function for "no threats declared yet" mode | `assessDiscards` (`core/danger.ts:122`), already total over an empty threat list via `NO_THREAT` (`danger.ts:118-120`) | `assessDiscards` is documented as never assuming a riichi is out — the lab can pass whatever `threatViews(match)` (`match.ts:289`) returns, including empty |
-| Wall RNG for random generation and prefix-completion | A new shuffle/seed scheme | `mulberry32` + `shuffle` via `buildWall(seed, sanma)` (`rng.ts`, `wall.ts:11-18`) | D-09 explicitly keeps `buildWall` for this; census/fuzz tests already prove its distribution is fair per-kind |
-| Settings inheritance resolution | A three-state (inherit/on/off) UI control per field | Plain object spread `{ ...defaultsForApp, ...global, ...appOverride }` (D-13) | Absent key already means "inherit" with plain JS spread semantics — a tri-state UI is solving a problem spread already solves |
-| Detecting "hand worth drilling" logic in the lab | New heuristics | None needed — the lab has no grading, so `worthwhile()` (`useFoldingRound.ts:220-235`, folding-specific) does not apply; the lab accepts whatever wall it's given | The lab explicitly has no grading (D-15); a "worth showing" filter would contradict its purpose (analysis surface, not a drill) |
+| Problem                                              | Don't Build                                                 | Use Instead                                                                                                                                                       | Why                                                                                                                                                         |
+| ---------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ukeire/shanten ranking for the lab's discard view    | A second ranking function for "show everything" mode        | `evaluateDiscards` (`core/efficiency.ts:17`) — same function every trainer already calls                                                                          | It already ranks every discard, shanten-then-ukeire; the lab just renders the whole list instead of a `[0]`/comparison, no new engine code                  |
+| Danger tiers for the lab's threat view               | A second danger function for "no threats declared yet" mode | `assessDiscards` (`core/danger.ts:122`), already total over an empty threat list via `NO_THREAT` (`danger.ts:118-120`)                                            | `assessDiscards` is documented as never assuming a riichi is out — the lab can pass whatever `threatViews(match)` (`match.ts:289`) returns, including empty |
+| Wall RNG for random generation and prefix-completion | A new shuffle/seed scheme                                   | `mulberry32` + `shuffle` via `buildWall(seed, sanma)` (`rng.ts`, `wall.ts:11-18`)                                                                                 | D-09 explicitly keeps `buildWall` for this; census/fuzz tests already prove its distribution is fair per-kind                                               |
+| Settings inheritance resolution                      | A three-state (inherit/on/off) UI control per field         | Plain object spread `{ ...defaultsForApp, ...global, ...appOverride }` (D-13)                                                                                     | Absent key already means "inherit" with plain JS spread semantics — a tri-state UI is solving a problem spread already solves                               |
+| Detecting "hand worth drilling" logic in the lab     | New heuristics                                              | None needed — the lab has no grading, so `worthwhile()` (`useFoldingRound.ts:220-235`, folding-specific) does not apply; the lab accepts whatever wall it's given | The lab explicitly has no grading (D-15); a "worth showing" filter would contradict its purpose (analysis surface, not a drill)                             |
 
 **Key insight:** Every piece of analysis the lab needs to show is already computed somewhere in the
 codebase and thrown away after rendering one or two rows of it (`DiscardFeedback.tsx`,
@@ -484,13 +496,13 @@ codebase and thrown away after rendering one or two rows of it (`DiscardFeedback
 
 Triggered because this phase renames/removes/moves persisted settings keys.
 
-| Category | Items Found | Action Required |
-|----------|-------------|------------------|
-| Stored data | `localStorage` key `'riichi-trainer-settings'` (Zustand `persist`, `settingsStore.ts:194`), currently `version: 2` (`settingsStore.ts:196`), holds `efficiency.opponents`, `efficiency.deadWall`, `folding.threats`, `folding.opponentWins`, top-level `showOpponentHands`/`hideConcealedHands`/`showWall` — all of which move or are removed this phase `[VERIFIED: src/features/settings/settingsStore.ts:194-196, quoted above]` | Code edit: bump `version` (e.g. to `3`) so an old persisted blob is dropped rather than merged — the existing comment `// pre-v2 schemas are dropped, not migrated: those installs fall back to defaults` (`settingsStore.ts:195`) documents this is the established pattern for exactly this situation. No data migration needed (Deferred Ideas explicitly excludes back-compat for `efficiency.opponents`) |
-| Live service config | None — static SPA, no backend, no external service config | None |
-| OS-registered state | None — browser-only PWA, no OS-level task/service registration | None |
-| Secrets/env vars | None found; only `GITHUB_SHA`/`process.env.GITHUB_SHA` in `vite.config.ts:10` for the build footer, unrelated to this phase | None |
-| Build artifacts | None — no compiled/installed artifact caches the old settings shape; `settingsStore.ts`'s `merge` function is itself the only place old-shape data is read, and it is being edited directly this phase | None beyond the `merge` edit itself |
+| Category            | Items Found                                                                                                                                                                                                                                                                                                                                                                                                                         | Action Required                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stored data         | `localStorage` key `'riichi-trainer-settings'` (Zustand `persist`, `settingsStore.ts:194`), currently `version: 2` (`settingsStore.ts:196`), holds `efficiency.opponents`, `efficiency.deadWall`, `folding.threats`, `folding.opponentWins`, top-level `showOpponentHands`/`hideConcealedHands`/`showWall` — all of which move or are removed this phase `[VERIFIED: src/features/settings/settingsStore.ts:194-196, quoted above]` | Code edit: bump `version` (e.g. to `3`) so an old persisted blob is dropped rather than merged — the existing comment `// pre-v2 schemas are dropped, not migrated: those installs fall back to defaults` (`settingsStore.ts:195`) documents this is the established pattern for exactly this situation. No data migration needed (Deferred Ideas explicitly excludes back-compat for `efficiency.opponents`) |
+| Live service config | None — static SPA, no backend, no external service config                                                                                                                                                                                                                                                                                                                                                                           | None                                                                                                                                                                                                                                                                                                                                                                                                          |
+| OS-registered state | None — browser-only PWA, no OS-level task/service registration                                                                                                                                                                                                                                                                                                                                                                      | None                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Secrets/env vars    | None found; only `GITHUB_SHA`/`process.env.GITHUB_SHA` in `vite.config.ts:10` for the build footer, unrelated to this phase                                                                                                                                                                                                                                                                                                         | None                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Build artifacts     | None — no compiled/installed artifact caches the old settings shape; `settingsStore.ts`'s `merge` function is itself the only place old-shape data is read, and it is being edited directly this phase                                                                                                                                                                                                                              | None beyond the `merge` edit itself                                                                                                                                                                                                                                                                                                                                                                           |
 
 **The canonical question, answered:** after every source file is updated, the only runtime state
 still holding the old shape is each user's browser `localStorage` blob — handled entirely by the
@@ -499,23 +511,25 @@ existing `persist` `version` bump mechanism, not by a data migration.
 ## Common Pitfalls
 
 ### Pitfall 1: Treating the wall-format inversion as a drop-in `Pinned` rename
+
 **What goes wrong:** Reusing `Pinned`'s current semantics ("prefix is drawn next") for the new
 explicit-wall format silently deals the wrong hands — under the new format the leading segment
-*is* the starting hand, not the next draw.
+_is_ the starting hand, not the next draw.
 **Why it happens:** `Pinned.wall`'s doc comment (`match.ts:139`) literally says "consumed by
 whoever draws next" — a naive read carries that semantic forward.
 **How to avoid:** Rewrite `createMatch`'s dealing loop to slice by seat segment first (see Pattern
 2 above), and delete/replace the `Pinned` interface rather than extend it.
-**Warning signs:** A test asserting the wall's first 13 tiles land in seat 0's *drawn tiles*
-rather than its *starting hand* — that's the old semantic bleeding through.
+**Warning signs:** A test asserting the wall's first 13 tiles land in seat 0's _drawn tiles_
+rather than its _starting hand_ — that's the old semantic bleeding through.
 
 ### Pitfall 2: `match.test.ts`'s direct `createMatch(...)` calls silently break
+
 **What goes wrong:** The two `describe('createMatch', ...)` tests
 (`match.test.ts:176-219` — "seeds exactly one red five…" and "honours a pinned hand and wall
 prefix…") call `createMatch(seed, players, options, pinned)` directly with a seed string. Once
 `createMatch` takes an explicit wall, these calls have the wrong argument shape and either fail to
 compile or (worse, if TypeScript is lenient) silently misbehave at runtime.
-**Why it happens:** D-09's "none of those need to change" clause names only the *seed-based* tests
+**Why it happens:** D-09's "none of those need to change" clause names only the _seed-based_ tests
 (shanten fuzz, danger simulation, census) — which go through `playMatch`/`findMatch`, not
 `createMatch` directly — leaving these two tests unaddressed by that decision.
 **How to avoid:** Explicitly plan to rewrite these two tests (and any other direct `createMatch`
@@ -525,8 +539,9 @@ other call sites, both already covered by REQ-03/REQ-07) to the new wall-taking 
 with a type error at the `pinned` argument.
 
 ### Pitfall 3: Partial/short walls can't infer sanma from length (D-12 ambiguity)
+
 **What goes wrong:** D-12 says "wall length implies the ruleset (108 = sanma)" — but that only
-resolves for a *full* wall. A short/partial wall (D-11) of, say, 20 tiles is a valid prefix under
+resolves for a _full_ wall. A short/partial wall (D-11) of, say, 20 tiles is a valid prefix under
 either ruleset, and inferring `sanma` from its length alone is not possible.
 **Why it happens:** D-12's wording covers the full-wall case explicitly; the partial case is not
 addressed by any locked decision.
@@ -538,6 +553,7 @@ back to the global/situation `sanma` flag.
 accepted because the yonma inference path was taken by default.
 
 ### Pitfall 4: StrictMode double-invocation breaking `logReplay`'s dedup when ported to `core/table.ts`
+
 **What goes wrong:** `logReplay`'s dedup pattern (`useEfficiencyRound.ts:320-323`,
 `useFoldingRound.ts:477-479`) keys on **object identity** of the decoded situation/link, not on a
 string. If any part of this pattern moves into `core/table.ts` (a non-React module) without
@@ -545,7 +561,7 @@ preserving that identity-keyed dedup at the React-effect boundary, StrictMode's 
 four-times-under-StrictMode-per-CLAUDE.md) will double- or quadruple-log replayed discards.
 **Why it happens:** `core/table.ts` is meant to be pure and React-free (D-04) — the dedup ref
 (`loggedReplay = useRef(...)`) is inherently a React concern and must stay in each hook, not move
-into the pure module, even though the *loop that builds the replayed events* can move.
+into the pure module, even though the _loop that builds the replayed events_ can move.
 **How to avoid:** Keep the `useRef`-based StrictMode dedup guard in `useTableRound` and folding's
 thin hook; only the underlying replay-loop mechanics (fast-forwarding tiles/events through
 `beginTurn`/`finishTurn` given a discard list) move into `core/table.ts`.
@@ -553,6 +569,7 @@ thin hook; only the underlying replay-loop mechanics (fast-forwarding tiles/even
 mode (StrictMode is on by default in dev).
 
 ### Pitfall 5: The folding reveal-gate fix (D-14/REQ-06) needs both the hand-pass AND the concealed-flag checked
+
 **What goes wrong:** `FoldingPage.tsx`'s current seat-mapping
 (`FoldingPage.tsx:160-164` — the `hand: seat !== round.seatIndex && (showOpponentHands ||
 !hideConcealedHands) ? round.hands[seat] : undefined` line) passes a threat's live concealed hand
@@ -570,11 +587,12 @@ threat seat — `hand: seat !== round.seatIndex && round.finished && (showOppone
 rendered tile faces look correct (face-down).
 
 ### Pitfall 6: `evaluateDiscards`'s cost model applies to the lab's "show everything" view too
+
 **What goes wrong:** `evaluateDiscards` costs "~475x faster than the reference search" per suit
 but is still real work — the CLAUDE.md-documented cost is ~476 shanten probes per turn
 (`efficiency.ts:38-41` comment on `bestDiscards`). If the lab recomputes this on every keystroke of
 a hand-authoring UI (rather than on wall-load/discard-commit), it will visibly lag.
-**Why it happens:** The lab is explicitly meant to show the *full* ranking (D-15), which is more
+**Why it happens:** The lab is explicitly meant to show the _full_ ranking (D-15), which is more
 expensive than the graded trainers' "compare against `ranked[0]`" pattern.
 **How to avoid:** Memoize on the current hand+visible-tiles snapshot, not on every UI interaction;
 D-05's "memoized getters, not eagerly computed" principle for `useTableRound` applies equally here.
@@ -583,6 +601,7 @@ D-05's "memoized getters, not eagerly computed" principle for `useTableRound` ap
 ## Code Examples
 
 ### Current `MatchOptions`/`createMatch` shape the reshape must preserve elsewhere
+
 ```typescript
 // Source: src/core/match.ts:38-55 — every field except wall-sourcing (Pinned) stays as-is
 export interface MatchOptions {
@@ -598,30 +617,34 @@ export interface MatchOptions {
 ```
 
 ### Current `Settings` interface fields relevant to the D-13 unification
+
 ```typescript
 // Source: src/features/settings/settingsStore.ts:11-66 (relevant excerpts)
 efficiency: {
   // ...
-  opponents: boolean   // REMOVED entirely per D-01
-  deadWall: boolean    // MOVES into `table` schema per D-13
+  opponents: boolean // REMOVED entirely per D-01
+  deadWall: boolean // MOVES into `table` schema per D-13
 }
 folding: {
   // ...
-  threats: number        // MOVES into `table` schema
-  opponentWins: boolean  // MOVES into `table` schema
-  showEquallySafe: boolean  // folding-only, stays
-  feedbackAtEnd: boolean    // folding-only, stays
+  threats: number // MOVES into `table` schema
+  opponentWins: boolean // MOVES into `table` schema
+  showEquallySafe: boolean // folding-only, stays
+  feedbackAtEnd: boolean // folding-only, stays
 }
 ```
+
 And, top-level in `SettingsState` (not inside any section today):
+
 ```typescript
 // Source: src/features/settings/settingsStore.ts:103-117
-showWall: boolean            // MOVES into `table` schema per D-13
-showOpponentHands: boolean   // MOVES into `table` schema per D-13
-hideConcealedHands: boolean  // MOVES into `table` schema per D-13
+showWall: boolean // MOVES into `table` schema per D-13
+showOpponentHands: boolean // MOVES into `table` schema per D-13
+hideConcealedHands: boolean // MOVES into `table` schema per D-13
 ```
 
 ### Current section-wise `merge` pattern to extend
+
 ```typescript
 // Source: src/features/settings/settingsStore.ts:200-210
 merge: (persisted, current) => {
@@ -640,6 +663,7 @@ merge: (persisted, current) => {
 ```
 
 ### Current `FLAGS`/`Situation` shape `opponents` is removed from
+
 ```typescript
 // Source: src/features/situation/urlCodec.ts:26 and :17-24
 const FLAGS = ['opponents', 'deadWall', 'aka', 'sanma'] as const
@@ -647,44 +671,42 @@ const FLAGS = ['opponents', 'deadWall', 'aka', 'sanma'] as const
 ```
 
 ### `SafetyTier` enum (verbatim — feeds the lab's danger view and any UI mapping table)
+
 ```typescript
 // Source: src/core/danger.ts:19-35
 export type SafetyTier =
-  | 'genbutsu'
-  | 'noChance'
-  | 'oneChance'
-  | 'doubleSuji'
-  | 'suji'
-  | 'honour'
-  | 'halfSuji'
-  | 'nonSuji'
+  'genbutsu' | 'noChance' | 'oneChance' | 'doubleSuji' | 'suji' | 'honour' | 'halfSuji' | 'nonSuji'
 ```
 
 ### Wall/tile-count constants relevant to the wall codec's validation math
+
 ```typescript
 // Source: src/core/wall.ts:5-7
 export const TILES_PER_KIND = 4
 export const DEAD_WALL_SIZE = 14
 export const INITIAL_HAND_SIZE = 13
 ```
+
 ```typescript
 // Source: src/core/tiles.ts:1
 export const NUM_TILE_TYPES = 34
 ```
+
 Full wall length = `players * INITIAL_HAND_SIZE + liveDraws + DEAD_WALL_SIZE`; a full yonma wall
 is 136 tiles (`NUM_TILE_TYPES * TILES_PER_KIND`), a full sanma wall is 108 (27 kinds * 4, per
 `inTileSet`'s 2m-8m exclusion, `tiles.ts:61-63`).
 
 ## State of the Art
 
-| Old Approach | Current Approach | When Changed | Impact |
-|--------------|------------------|--------------|--------|
-| Seed + optional `Pinned{seat,hand,wall}` partial override, drawn-next semantics | Explicit flat wall in draw order, dealt-hands-first semantics | This phase (REQ-02/D-09–D-12) | `createMatch`'s dealing loop and the `Pinned` type are rewritten, not extended; two `match.test.ts` unit tests must be rewritten |
-| One `useEfficiencyRound` hook branching on `options.opponents` | Two hooks (solo, table) sharing `core/table.ts` primitives, opponents-flag removed | This phase (REQ-01/D-01) | `EfficiencyPage.tsx`'s `showTable`/branching logic (`EfficiencyPage.tsx:55-70` etc.) splits across two page components |
-| `seenBy`/snapshot/replay/`logReplay` independently implemented per trainer | Centralized in `core/table.ts` (engine tier) + shared React dedup pattern per hook | This phase (REQ-03/D-04) | Net line reduction; single source of truth for the AI-vs-player visibility computation, unifying `match.ts`'s private `seenBy` with the hooks' public ones |
-| `showOpponentHands`/`hideConcealedHands`/`showWall` top-level; `deadWall`/`threats`/`opponentWins` per-trainer-section | Single `table` global + per-app `Partial<TableSettings>` override | This phase (REQ-04/D-13) | `settingsStore.ts`'s `persist` version must bump; every page reading these six settings switches from `useSettings((s) => s.xxx)` to a resolved-settings helper |
+| Old Approach                                                                                                           | Current Approach                                                                   | When Changed                  | Impact                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Seed + optional `Pinned{seat,hand,wall}` partial override, drawn-next semantics                                        | Explicit flat wall in draw order, dealt-hands-first semantics                      | This phase (REQ-02/D-09–D-12) | `createMatch`'s dealing loop and the `Pinned` type are rewritten, not extended; two `match.test.ts` unit tests must be rewritten                                |
+| One `useEfficiencyRound` hook branching on `options.opponents`                                                         | Two hooks (solo, table) sharing `core/table.ts` primitives, opponents-flag removed | This phase (REQ-01/D-01)      | `EfficiencyPage.tsx`'s `showTable`/branching logic (`EfficiencyPage.tsx:55-70` etc.) splits across two page components                                          |
+| `seenBy`/snapshot/replay/`logReplay` independently implemented per trainer                                             | Centralized in `core/table.ts` (engine tier) + shared React dedup pattern per hook | This phase (REQ-03/D-04)      | Net line reduction; single source of truth for the AI-vs-player visibility computation, unifying `match.ts`'s private `seenBy` with the hooks' public ones      |
+| `showOpponentHands`/`hideConcealedHands`/`showWall` top-level; `deadWall`/`threats`/`opponentWins` per-trainer-section | Single `table` global + per-app `Partial<TableSettings>` override                  | This phase (REQ-04/D-13)      | `settingsStore.ts`'s `persist` version must bump; every page reading these six settings switches from `useSettings((s) => s.xxx)` to a resolved-settings helper |
 
 **Deprecated/outdated (as of this phase):**
+
 - `Pinned` interface (`match.ts:135-141`) — superseded by the explicit wall format; likely deleted
   outright rather than kept for compatibility (pre-release, no back-compat commitment).
 - `efficiency.opponents` / `Situation.opponents` — removed, not deprecated-with-fallback, per
@@ -692,12 +714,12 @@ is 136 tiles (`NUM_TILE_TYPES * TILES_PER_KIND`), a full sanma wall is 108 (27 k
 
 ## Assumptions Log
 
-| # | Claim | Section | Risk if Wrong |
-|---|-------|---------|---------------|
-| A1 | Solo efficiency's page/hook builds on `useTableRound` (rather than calling `core/table.ts` primitives directly like folding does) | Architectural Responsibility Map, "Recommended Project Structure" | If wrong, solo needs its own thin hook mirroring folding's pattern instead — a smaller but still real restructuring difference for the planner to decide explicitly rather than infer. Based on D-05's phrasing ("solo never reads danger" — grouped with the getter-consumer framing, not with folding's separate-hook framing) and the domain summary's "useTableRound (efficiency's two apps, the lab)" wording, but neither is a locked decision naming solo explicitly |
-| A2 | A short/partial shared wall falls back to the global/situation `sanma` flag rather than being rejected outright when its length doesn't reach either ruleset's full size | Common Pitfalls #3, Open Questions | If the planner instead requires an explicit `sanma` param on every partial-wall link, the wall codec's parameter surface grows by one field beyond what D-10/D-12 describe |
-| A3 | `useTableRound` and the folding thin hook are separate files/modules, not one file exporting two hooks | Recommended Project Structure | Low risk — purely a file-organization guess; either shape satisfies D-04/D-08 |
-| A4 | `settingsStore.ts`'s `persist` `version` should be bumped to drop old persisted state, rather than hand-writing a migration that strips the removed keys | Runtime State Inventory | Low risk — the existing code comment (`settingsStore.ts:195`) already documents version-bump-drops-old-schema as the established pattern for schema changes in this repo; a hand migration would be new, unprecedented complexity for a pre-release app that explicitly declined back-compat |
+| #   | Claim                                                                                                                                                                    | Section                                                           | Risk if Wrong                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | Solo efficiency's page/hook builds on `useTableRound` (rather than calling `core/table.ts` primitives directly like folding does)                                        | Architectural Responsibility Map, "Recommended Project Structure" | If wrong, solo needs its own thin hook mirroring folding's pattern instead — a smaller but still real restructuring difference for the planner to decide explicitly rather than infer. Based on D-05's phrasing ("solo never reads danger" — grouped with the getter-consumer framing, not with folding's separate-hook framing) and the domain summary's "useTableRound (efficiency's two apps, the lab)" wording, but neither is a locked decision naming solo explicitly |
+| A2  | A short/partial shared wall falls back to the global/situation `sanma` flag rather than being rejected outright when its length doesn't reach either ruleset's full size | Common Pitfalls #3, Open Questions                                | If the planner instead requires an explicit `sanma` param on every partial-wall link, the wall codec's parameter surface grows by one field beyond what D-10/D-12 describe                                                                                                                                                                                                                                                                                                  |
+| A3  | `useTableRound` and the folding thin hook are separate files/modules, not one file exporting two hooks                                                                   | Recommended Project Structure                                     | Low risk — purely a file-organization guess; either shape satisfies D-04/D-08                                                                                                                                                                                                                                                                                                                                                                                               |
+| A4  | `settingsStore.ts`'s `persist` `version` should be bumped to drop old persisted state, rather than hand-writing a migration that strips the removed keys                 | Runtime State Inventory                                           | Low risk — the existing code comment (`settingsStore.ts:195`) already documents version-bump-drops-old-schema as the established pattern for schema changes in this repo; a hand migration would be new, unprecedented complexity for a pre-release app that explicitly declined back-compat                                                                                                                                                                                |
 
 ## Open Questions
 
@@ -705,7 +727,7 @@ is 136 tiles (`NUM_TILE_TYPES * TILES_PER_KIND`), a full sanma wall is 108 (27 k
    - What we know: CONTEXT.md's own Code Context section flags this explicitly ("the wall-sharing
      format (D-10/D-11) likely lives in a new or adjacent codec rather than this one, since
      `Situation.wall` today means something different"). `urlCodec.ts`'s `Situation.wall` today is
-     a *prefix consumed on next draw* (`urlCodec.ts:9-11`), not the new full/partial explicit wall.
+     a _prefix consumed on next draw_ (`urlCodec.ts:9-11`), not the new full/partial explicit wall.
    - What's unclear: whether `Situation` itself is restructured (wall + river + rule-override
      flags all still needed for a mid-hand replay link) or whether a wholly separate `wall=`
      parameter/module is introduced alongside a slimmed `Situation`.
@@ -743,7 +765,7 @@ is 136 tiles (`NUM_TILE_TYPES * TILES_PER_KIND`), a full sanma wall is 108 (27 k
 4. **`showWall`'s `advanced`-setting gate — does it survive the move into the `table` schema?**
    - What we know: `showWall` is currently read through `useAdvancedSettings()`
      (`useAdvancedSettings.ts:17,23`), which zeroes it out unless `advanced` is on — a UI-layer
-     gate, not a stored-value gate. `showOpponentHands`/`hideConcealedHands` are explicitly *not*
+     gate, not a stored-value gate. `showOpponentHands`/`hideConcealedHands` are explicitly _not_
      advanced-gated per that file's own doc comment (`useAdvancedSettings.ts:9-11`).
    - What's unclear: D-13 doesn't mention the `advanced` gate at all when describing the `table`
      schema's fields — it's silent on whether `showWall`'s special gating survives the move.
@@ -760,26 +782,29 @@ CLI, database, or service dependency is introduced.
 ## Validation Architecture
 
 ### Test Framework
-| Property | Value |
-|----------|-------|
-| Framework | Vitest (`^4.1.10`-family devDependency; exact version not directly relevant — config only) `[VERIFIED: package.json + vite.config.ts:33-37]` |
-| Config file | `vite.config.ts:33-37` — `{ environment: 'jsdom', globals: true, setupFiles: './src/test/setup.ts' }` |
-| Quick run command | `npx vitest run src/core/table.test.ts` (or any single new/changed test file) |
-| Full suite command | `npm test` (= `vitest run`) |
+
+| Property           | Value                                                                                                                                        |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework          | Vitest (`^4.1.10`-family devDependency; exact version not directly relevant — config only) `[VERIFIED: package.json + vite.config.ts:33-37]` |
+| Config file        | `vite.config.ts:33-37` — `{ environment: 'jsdom', globals: true, setupFiles: './src/test/setup.ts' }`                                        |
+| Quick run command  | `npx vitest run src/core/table.test.ts` (or any single new/changed test file)                                                                |
+| Full suite command | `npm test` (= `vitest run`)                                                                                                                  |
 
 ### Phase Requirements → Test Map
-| Req ID | Behavior | Test Type | Automated Command | File Exists? |
-|--------|----------|-----------|-------------------|-------------|
-| REQ-02 | `createMatch` deals starting hands from the wall's leading segment, reserves last 14 as dead wall, validates untrusted wall input | unit | `npx vitest run src/core/match.test.ts` (existing `describe('createMatch', …)` block rewritten) + new wall-codec validation tests | ✅ existing file, rewrite needed / ❌ new codec test file, Wave 0 |
-| REQ-02 | Census invariant (every tile kind exactly 4/4 copies, sanma 0 for 2m-8m) still holds under wall-taking `createMatch` | unit | `npx vitest run src/core/match.test.ts -t census` (existing `census()` helper, `match.test.ts:32-52`) | ✅ existing |
-| REQ-03 | `core/table.ts`'s stepper/`seenBy`/snapshot/replay match the three implementations' current behavior | unit | `npx vitest run src/core/table.test.ts` | ❌ Wave 0 |
-| REQ-03/REQ-07 | `useTableRound`'s callbacks fire correctly (draw before discard-decision, discard after throw with pre-throw stats, agari on any seat) and are suppressed during replay | unit (hook test, `@testing-library/react` present as devDependency) | `npx vitest run src/features/table/useTableRound.test.ts` (or wherever it lands) | ❌ Wave 0 |
-| REQ-01 | Two efficiency routes render distinctly (solo has no `<Table>`, table does) | existing pattern: `useEfficiencyRound.test.ts`/`useFoldingRound.test.ts` show the hook-level test style already used | unit | New/rewritten hook test files per split | ❌ Wave 0 for the solo hook; rewrite for table hook |
-| REQ-04 | Settings `merge` correctly resolves `{ ...defaultsForApp, ...global, ...appOverride }` and survives a version bump (old shape dropped, not merged) | unit | New test in or near `settingsStore.ts` (no existing `settingsStore.test.ts` found — confirm during planning) | ❌ Wave 0 |
-| REQ-06 | Folding never passes threat hand data before `round.finished`, under every combination of `showOpponentHands`/`hideConcealedHands` | unit/component | Existing `useFoldingRound.test.ts` extended with a case asserting `hand` is `undefined` for a threat seat before `finished` | ✅ existing file, extend |
-| REQ-05 | Lab surfaces full `evaluateDiscards`/`assessDiscards` output for a loaded/authored wall with no grading | unit/component | New test file for the lab's hook/page | ❌ Wave 0 |
+
+| Req ID        | Behavior                                                                                                                                                                | Test Type                                                                                                            | Automated Command                                                                                                                 | File Exists?                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| REQ-02        | `createMatch` deals starting hands from the wall's leading segment, reserves last 14 as dead wall, validates untrusted wall input                                       | unit                                                                                                                 | `npx vitest run src/core/match.test.ts` (existing `describe('createMatch', …)` block rewritten) + new wall-codec validation tests | ✅ existing file, rewrite needed / ❌ new codec test file, Wave 0 |
+| REQ-02        | Census invariant (every tile kind exactly 4/4 copies, sanma 0 for 2m-8m) still holds under wall-taking `createMatch`                                                    | unit                                                                                                                 | `npx vitest run src/core/match.test.ts -t census` (existing `census()` helper, `match.test.ts:32-52`)                             | ✅ existing                                                       |
+| REQ-03        | `core/table.ts`'s stepper/`seenBy`/snapshot/replay match the three implementations' current behavior                                                                    | unit                                                                                                                 | `npx vitest run src/core/table.test.ts`                                                                                           | ❌ Wave 0                                                         |
+| REQ-03/REQ-07 | `useTableRound`'s callbacks fire correctly (draw before discard-decision, discard after throw with pre-throw stats, agari on any seat) and are suppressed during replay | unit (hook test, `@testing-library/react` present as devDependency)                                                  | `npx vitest run src/features/table/useTableRound.test.ts` (or wherever it lands)                                                  | ❌ Wave 0                                                         |
+| REQ-01        | Two efficiency routes render distinctly (solo has no `<Table>`, table does)                                                                                             | existing pattern: `useEfficiencyRound.test.ts`/`useFoldingRound.test.ts` show the hook-level test style already used | unit                                                                                                                              | New/rewritten hook test files per split                           | ❌ Wave 0 for the solo hook; rewrite for table hook |
+| REQ-04        | Settings `merge` correctly resolves `{ ...defaultsForApp, ...global, ...appOverride }` and survives a version bump (old shape dropped, not merged)                      | unit                                                                                                                 | New test in or near `settingsStore.ts` (no existing `settingsStore.test.ts` found — confirm during planning)                      | ❌ Wave 0                                                         |
+| REQ-06        | Folding never passes threat hand data before `round.finished`, under every combination of `showOpponentHands`/`hideConcealedHands`                                      | unit/component                                                                                                       | Existing `useFoldingRound.test.ts` extended with a case asserting `hand` is `undefined` for a threat seat before `finished`       | ✅ existing file, extend                                          |
+| REQ-05        | Lab surfaces full `evaluateDiscards`/`assessDiscards` output for a loaded/authored wall with no grading                                                                 | unit/component                                                                                                       | New test file for the lab's hook/page                                                                                             | ❌ Wave 0                                                         |
 
 ### Sampling Rate
+
 - **Per task commit:** `npx vitest run <changed-file>.test.ts`
 - **Per wave merge:** `npm test` (full suite, including `match.test.ts`'s census/pinned-wall
   invariants and `danger.test.ts`'s 150-match 15s-timeout simulation — both must stay green
@@ -788,14 +813,15 @@ CLI, database, or service dependency is introduced.
   (mirrors ROADMAP.md's Success Criterion 5 verbatim)
 
 ### Wave 0 Gaps
+
 - [ ] `src/core/table.test.ts` — covers REQ-03 (stepper/seenBy/snapshot/replay parity with the
-  three current implementations)
+      three current implementations)
 - [ ] A new wall-codec test file — covers REQ-02's D-12 validation rules (length bounds, copy
-  counts, red-per-suit, sanma tile-set exclusion, and the "reject naming zone+tile" error shape)
+      counts, red-per-suit, sanma tile-set exclusion, and the "reject naming zone+tile" error shape)
 - [ ] A `useTableRound` hook test file — covers REQ-03/REQ-01's callback-firing and
-  replay-suppression behavior (D-05/D-06)
+      replay-suppression behavior (D-05/D-06)
 - [ ] A settings-schema test (new or added to an existing settings test, none currently found under
-  `src/features/settings/`) — covers REQ-04's resolution order and version-bump behavior
+      `src/features/settings/`) — covers REQ-04's resolution order and version-bump behavior
 - [ ] A lab hook/page test file — covers REQ-05
 - [ ] Framework install: none — Vitest/`@testing-library/react`/jsdom are already devDependencies
 
@@ -807,25 +833,26 @@ validation of the untrusted `wall=` URL parameter.
 
 ### Applicable ASVS Categories
 
-| ASVS Category | Applies | Standard Control |
-|---------------|---------|-----------------|
-| V2 Authentication | No | No auth in this app |
-| V3 Session Management | No | No sessions/cookies |
-| V4 Access Control | No | No authorization boundaries |
-| V5 Input Validation | Yes | D-12's explicit wall-validation rules (length bounds, ≤4 copies per kind, exactly 4 when full, ≤1 red per suit, no 2m-8m under sanma) — reject-with-named-error, never silently repair, per the untrusted-input handling this project already follows for `parseTenhou` (`tiles.ts:73-101`, malformed input silently dropped rather than crashing — a comparable "never throw on bad input, never trust it either" posture the wall codec should match, adapted to *reject* rather than *drop* since a wall is positionally meaningful) |
-| V6 Cryptography | No | No cryptographic operations anywhere in this app |
+| ASVS Category         | Applies | Standard Control                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V2 Authentication     | No      | No auth in this app                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| V3 Session Management | No      | No sessions/cookies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| V4 Access Control     | No      | No authorization boundaries                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| V5 Input Validation   | Yes     | D-12's explicit wall-validation rules (length bounds, ≤4 copies per kind, exactly 4 when full, ≤1 red per suit, no 2m-8m under sanma) — reject-with-named-error, never silently repair, per the untrusted-input handling this project already follows for `parseTenhou` (`tiles.ts:73-101`, malformed input silently dropped rather than crashing — a comparable "never throw on bad input, never trust it either" posture the wall codec should match, adapted to _reject_ rather than _drop_ since a wall is positionally meaningful) |
+| V6 Cryptography       | No      | No cryptographic operations anywhere in this app                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ### Known Threat Patterns for this stack
 
-| Pattern | STRIDE | Standard Mitigation |
-|---------|--------|---------------------|
-| Maliciously crafted `wall=` param causing out-of-bounds array access or an inconsistent `MatchState` (e.g. more than 4 copies of a kind, causing downstream `shanten`/`ukeire` computations to behave on impossible data) | Tampering | D-12's validate-before-`createMatch` gate — reject at the codec boundary, never let an invalid wall reach `createMatch`'s dealing logic |
-| A crafted wall claiming sanma while containing 2m-8m tiles (or vice versa), causing `inTileSet`-dependent logic (`ukeire`/`evaluateDiscards`/`assessDiscards`, all of which take a `sanma` flag) to disagree with the actual wall contents | Tampering | D-12's explicit "no 2m-8m under sanma" check, validated against the *wall's own inferred/declared ruleset*, not the reader's local `sanma` setting |
-| Denial of service via a pathological wall causing `evaluateDiscards`'s ~476-probe-per-turn cost to spike unboundedly (e.g. an extremely long partial-wall completion loop) | Tampering/DoS (client-side only, self-inflicted — no server to protect) | Bound wall length validation strictly (D-12's "length within bounds") before any engine computation runs |
+| Pattern                                                                                                                                                                                                                                    | STRIDE                                                                  | Standard Mitigation                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Maliciously crafted `wall=` param causing out-of-bounds array access or an inconsistent `MatchState` (e.g. more than 4 copies of a kind, causing downstream `shanten`/`ukeire` computations to behave on impossible data)                  | Tampering                                                               | D-12's validate-before-`createMatch` gate — reject at the codec boundary, never let an invalid wall reach `createMatch`'s dealing logic            |
+| A crafted wall claiming sanma while containing 2m-8m tiles (or vice versa), causing `inTileSet`-dependent logic (`ukeire`/`evaluateDiscards`/`assessDiscards`, all of which take a `sanma` flag) to disagree with the actual wall contents | Tampering                                                               | D-12's explicit "no 2m-8m under sanma" check, validated against the _wall's own inferred/declared ruleset_, not the reader's local `sanma` setting |
+| Denial of service via a pathological wall causing `evaluateDiscards`'s ~476-probe-per-turn cost to spike unboundedly (e.g. an extremely long partial-wall completion loop)                                                                 | Tampering/DoS (client-side only, self-inflicted — no server to protect) | Bound wall length validation strictly (D-12's "length within bounds") before any engine computation runs                                           |
 
 ## Sources
 
 ### Primary (HIGH confidence — direct source reads this session, file:line cited throughout)
+
 - `src/core/match.ts` (full read) — `createMatch`, `beginTurn`, `finishTurn`, `playMatch`,
   `findMatch`/`findMatchAsync`, `threatViews`, `seenBy`, `Pinned`, `MatchOptions`, `MatchState`
 - `src/core/wall.ts` (full read) — `buildWall`, `deal`, `TILES_PER_KIND`/`DEAD_WALL_SIZE`/`INITIAL_HAND_SIZE`
@@ -851,14 +878,17 @@ validation of the untrusted `wall=` URL parameter.
 - `src/core/match.test.ts` (partial read, lines 1-60, 176-225) — exact tests that call `createMatch` directly and must change
 
 ### Secondary (MEDIUM confidence)
+
 - None — no external documentation was consulted; this phase is entirely internal-codebase research
 
 ### Tertiary (LOW confidence)
+
 - None
 
 ## Metadata
 
 **Confidence breakdown:**
+
 - Standard stack: HIGH — no new packages, confirmed via direct `package.json`/import reads
 - Architecture: HIGH — every claim traces to a specific file:line read this session; the four
   genuinely unresolved points are called out explicitly in Open Questions rather than guessed at

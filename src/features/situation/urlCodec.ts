@@ -101,7 +101,11 @@ export function allTiles(s: Situation): ParsedTile[] {
  *  136 = yonma) — a loaded wall wins over the reader's own setting. A short/partial wall can't be
  *  inferred from length alone, so it falls back to `flag` (the situation's own `sanma` override,
  *  when a link carries one) and then to `global` (the reader's setting). */
-export function resolveSanma(wall: ParsedTile[], flag: boolean | undefined, global: boolean): boolean {
+export function resolveSanma(
+  wall: ParsedTile[],
+  flag: boolean | undefined,
+  global: boolean,
+): boolean {
   if (wall.length === 108) return true
   if (wall.length === 136) return false
   return flag ?? global

@@ -6,7 +6,7 @@ current_phase: 01
 current_phase_name: table-architecture-centralization
 status: executing
 stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-08-13T08:02:11.738Z"
+last_updated: '2026-08-13T08:02:11.738Z'
 last_activity: 2026-08-13
 last_activity_desc: Phase 01 execution resumed (wave continue)
 progress:
@@ -48,15 +48,15 @@ Progress: [░░░░░░░░░░] 0%
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| - | - | - | - |
+| ----- | ----- | ----- | -------- |
+| -     | -     | -     | -        |
 
 **Recent Trend:**
 
 - Last 5 plans: —
 - Trend: —
 
-*Updated after each plan completion*
+_Updated after each plan completion_
 
 ## Accumulated Context
 
@@ -83,8 +83,8 @@ onto the shared layer this phase) was resolved with the user: it does, via its o
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
-|----------|------|--------|-------------|
-| *(none)* | | | |
+| -------- | ---- | ------ | ----------- |
+| _(none)_ |      |        |             |
 
 ## Session Continuity
 

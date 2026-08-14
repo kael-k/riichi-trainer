@@ -11,12 +11,8 @@ describe('resolveTableSettings', () => {
   })
 
   it('applies a global override to every app', () => {
-    expect(
-      resolveTableSettings('folding', { global: { threats: 2 }, apps: {} }).threats,
-    ).toBe(2)
-    expect(
-      resolveTableSettings('scoring', { global: { threats: 2 }, apps: {} }).threats,
-    ).toBe(2)
+    expect(resolveTableSettings('folding', { global: { threats: 2 }, apps: {} }).threats).toBe(2)
+    expect(resolveTableSettings('scoring', { global: { threats: 2 }, apps: {} }).threats).toBe(2)
   })
 
   it('lets a per-app override win over the global layer, for that app only', () => {

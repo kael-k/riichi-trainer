@@ -1,6 +1,15 @@
 import { addTile, createHand, type Hand } from './hand'
 import { mulberry32, shuffle } from './rng'
-import { HONOR, inTileSet, MAN, NUM_TILE_TYPES, PIN, SOU, type ParsedTile, type TileId } from './tiles'
+import {
+  HONOR,
+  inTileSet,
+  MAN,
+  NUM_TILE_TYPES,
+  PIN,
+  SOU,
+  type ParsedTile,
+  type TileId,
+} from './tiles'
 
 export const TILES_PER_KIND = 4
 export const DEAD_WALL_SIZE = 14
@@ -105,7 +114,11 @@ function zoneAt(
  *  under sanma. Returns the first fault found, naming its zone and tile — never mutates `tiles`
  *  and never returns a repaired wall, since a repaired wall is a different board than the one the
  *  link claimed to share. `null` means `tiles` is a valid full wall or a valid short prefix. */
-export function validateWall(tiles: ParsedTile[], players: number, sanma: boolean): WallError | null {
+export function validateWall(
+  tiles: ParsedTile[],
+  players: number,
+  sanma: boolean,
+): WallError | null {
   const max = fullWallSize(sanma)
   if (tiles.length > max) return { zone: 'wall', reason: 'length' }
 
