@@ -182,7 +182,9 @@ export function Table({
       // can zero it: held sideways the row moves off the top of the board into the gutter beside
       // it, and a row that costs nothing vertically must not still be charged for
       className={`relative mx-auto w-full max-w-[min(100%,calc(var(--board-max-h,calc(100svh-8rem))-var(--board-controls,0px)),var(--table-max,var(--table-cap)))] shrink-0 ${
-        controls ? '[--board-controls:2.75rem] short:[--board-controls:0px]' : '[--board-controls:0px]'
+        controls
+          ? '[--board-controls:2.75rem] short:[--board-controls:0px]'
+          : '[--board-controls:0px]'
       }`}
       style={
         {
@@ -210,7 +212,9 @@ export function Table({
           margin's worth of its own width to hold them — only when at least one is actually shown,
           so an ordinary board is exactly as big as it was. The border box stays square either
           way, which is what keeps each seat's rotation covering it */}
-      <div className={`@container aspect-square w-full ${showsHands || showsInfo ? 'p-[12%]' : ''}`}>
+      <div
+        className={`@container aspect-square w-full ${showsHands || showsInfo ? 'p-[12%]' : ''}`}
+      >
         {/* minmax(0,…): a seat block is measured before it rotates, so its 6-tile row is wider
             than the 4fr band it sits in — with fr's default auto minimum that would grow the
             band and knock the whole board out of square. The centre band is 6.6fr, not 6fr: the
@@ -265,7 +269,11 @@ export function Table({
                       {seat.hand && seat.hand.length > 0 && (
                         <div className="flex [--tile-w:calc(100cqw/16)]">
                           {seat.hand.map((tile, i) => (
-                            <Tile key={i} id={seat.concealed ? undefined : tile.id} red={tile.red} />
+                            <Tile
+                              key={i}
+                              id={seat.concealed ? undefined : tile.id}
+                              red={tile.red}
+                            />
                           ))}
                         </div>
                       )}

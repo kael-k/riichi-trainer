@@ -162,7 +162,10 @@
     "shantenWorse": "这张出牌会让上听数变差{{count}}。",
     "fewerTiles_other": "这样出牌会少{{count}}种进张。",
     "missedKita": "这里拔北本可以是免费的 —",
-    "missedKan": "这里开杠本可以是免费的 —"
+    "missedKan": "这里开杠本可以是免费的 —",
+    "verdictOk": "最佳切牌",
+    "verdictWarning": "并非最佳",
+    "verdictError": "退向听"
   },
   "shanten": {
     "settings": {
@@ -311,6 +314,9 @@
     "safestDiscard": "最安全的是",
     "wasSafest": "当前最安全的牌。",
     "saferWasAvailable": "还有更安全的牌。",
+    "verdictOk": "最安全的牌",
+    "verdictWarning": "较危险的牌",
+    "verdictError": "危险的牌",
     "equallySafe": "同样安全:",
     "tier": {
       "genbutsu": "现物",

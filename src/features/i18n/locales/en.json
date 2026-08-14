@@ -214,7 +214,10 @@
     "fewerTiles_one": "{{count}} fewer tile improves your hand this way.",
     "fewerTiles_other": "{{count}} fewer tiles improve your hand this way.",
     "missedKita": "Kita here would have been free —",
-    "missedKan": "Kan here would have been free —"
+    "missedKan": "Kan here would have been free —",
+    "verdictOk": "Best discard",
+    "verdictWarning": "Not best discard",
+    "verdictError": "Back in shanten"
   },
   "shanten": {
     "settings": {
@@ -412,6 +415,9 @@
     "safestDiscard": "Safest was",
     "wasSafest": "Safest tile available.",
     "saferWasAvailable": "A safer tile was available.",
+    "verdictOk": "Safest tile",
+    "verdictWarning": "Riskier tile",
+    "verdictError": "Dangerous tile",
     "equallySafe": "Equally safe:",
     "tier": {
       "genbutsu": "Genbutsu",

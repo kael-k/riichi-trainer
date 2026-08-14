@@ -12,12 +12,14 @@ import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { ManualControls } from '../table/ManualControls'
+import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
 import { useTableSettings, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { DiscardFeedback } from './DiscardFeedback'
+import { EFFICIENCY_VERDICT_TEXT_KEY, efficiencyVerdictSeverity } from './grade'
 import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
 
 /** 1 lost out of 100 available reads as 99% accuracy; no graded choices yet reads as 100%. */
@@ -237,6 +239,14 @@ export function EfficiencyPage() {
                 showShanten={settings.showShanten}
                 showUkeire={settings.showUkeire}
                 sanma={options.sanma}
+              />
+            )
+          }
+          noticeCompact={
+            round.lastResult && (
+              <Verdict
+                severity={efficiencyVerdictSeverity(round.lastResult)}
+                text={t(EFFICIENCY_VERDICT_TEXT_KEY[efficiencyVerdictSeverity(round.lastResult)])}
               />
             )
           }

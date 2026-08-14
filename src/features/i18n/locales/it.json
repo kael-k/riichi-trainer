@@ -214,7 +214,10 @@
     "fewerTiles_one": "Con questo scarto hai {{count}} tessera di ukeire in meno.",
     "fewerTiles_other": "Con questo scarto hai {{count}} tessere di ukeire in meno.",
     "missedKita": "Un kita qui sarebbe stato gratuito —",
-    "missedKan": "Un kan qui sarebbe stato gratuito —"
+    "missedKan": "Un kan qui sarebbe stato gratuito —",
+    "verdictOk": "Scarto migliore",
+    "verdictWarning": "Non lo scarto migliore",
+    "verdictError": "Shanten peggiorato"
   },
   "shanten": {
     "settings": {
@@ -412,6 +415,9 @@
     "safestDiscard": "Il più sicuro era",
     "wasSafest": "Il tile più sicuro disponibile.",
     "saferWasAvailable": "C’era un tile più sicuro.",
+    "verdictOk": "Tessera più sicura",
+    "verdictWarning": "Tessera più rischiosa",
+    "verdictError": "Tessera pericolosa",
     "equallySafe": "Sicuri allo stesso modo:",
     "tier": {
       "genbutsu": "Genbutsu",

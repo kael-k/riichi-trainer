@@ -162,7 +162,10 @@
     "shantenWorse": "この打牌はシャンテン数が{{count}}悪化します。",
     "fewerTiles_other": "この打牌では受け入れが{{count}}種少なくなります。",
     "missedKita": "ここで北抜きすれば無料でした —",
-    "missedKan": "ここでカンすれば無料でした —"
+    "missedKan": "ここでカンすれば無料でした —",
+    "verdictOk": "最善の打牌",
+    "verdictWarning": "最善ではない",
+    "verdictError": "シャンテン後退"
   },
   "shanten": {
     "settings": {
@@ -311,6 +314,9 @@
     "safestDiscard": "最も安全なのは",
     "wasSafest": "この局面で最も安全な牌。",
     "saferWasAvailable": "もっと安全な牌があった。",
+    "verdictOk": "最も安全な牌",
+    "verdictWarning": "より危険な牌",
+    "verdictError": "危険な牌",
     "equallySafe": "同じくらい安全:",
     "tier": {
       "genbutsu": "現物",

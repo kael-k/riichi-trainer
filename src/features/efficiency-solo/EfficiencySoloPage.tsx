@@ -9,12 +9,14 @@ import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Ti
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
+import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
 import { useTableSettings, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation, WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { DiscardFeedback } from '../efficiency/DiscardFeedback'
+import { EFFICIENCY_VERDICT_TEXT_KEY, efficiencyVerdictSeverity } from '../efficiency/grade'
 import { NORTH, useEfficiencySoloRound, type RoundOptions } from './useEfficiencySoloRound'
 
 /** 1 lost out of 100 available reads as 99% accuracy; no graded choices yet reads as 100%. */
@@ -204,6 +206,14 @@ export function EfficiencySoloPage() {
                 showShanten={settings.showShanten}
                 showUkeire={settings.showUkeire}
                 sanma={options.sanma}
+              />
+            )
+          }
+          noticeCompact={
+            round.lastResult && (
+              <Verdict
+                severity={efficiencyVerdictSeverity(round.lastResult)}
+                text={t(EFFICIENCY_VERDICT_TEXT_KEY[efficiencyVerdictSeverity(round.lastResult)])}
               />
             )
           }

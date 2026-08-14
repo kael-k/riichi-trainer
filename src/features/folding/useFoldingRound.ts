@@ -40,6 +40,7 @@ import { useLog } from '../../store/log'
 import { resolveSanma } from '../situation/urlCodec'
 import type { Settings } from '../settings/settingsStore'
 import type { SeatConfig } from '../settings/tableSettings'
+import type { VerdictSeverity } from '../table/Verdict'
 
 /** The folding settings section plus the ruleset the round runs under (which a link can pin, so
  *  it is not a plain setting) and the two table settings (`threats`, `opponentWins`) that moved
@@ -89,6 +90,25 @@ export interface TurnResult {
   /** Every tile tied for safest (rank 0) — ties are genuinely equivalent choices. */
   safest: TileDanger[]
   correct: boolean
+  /** Partial credit against the turn's own worst option, 0-1 — what `useSessionStats.record`
+   *  averages into `averageQuality` and what the compact mobile verdict bands into red/yellow
+   *  when `correct` is false. */
+  quality: number
+}
+
+/** The compact mobile verdict's severity, banded off the same partial credit the session score
+ *  already averages — red for the bottom half (a real mistake), yellow above it (a tile that
+ *  tied a worse tier than the safest but was still a defensible push away from the worst option). */
+export function foldingVerdictSeverity(result: TurnResult): VerdictSeverity {
+  if (result.correct) return 'ok'
+  return result.quality < 0.5 ? 'error' : 'warning'
+}
+
+/** The i18n key for each severity's compact verdict text. */
+export const FOLDING_VERDICT_TEXT_KEY: Record<VerdictSeverity, string> = {
+  ok: 'folding.verdictOk',
+  warning: 'folding.verdictWarning',
+  error: 'folding.verdictError',
 }
 
 export interface ThreatReveal {
@@ -526,7 +546,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   // live rather than waiting for the next discard to pick it up
   useEffect(() => {
     const r = core.current
-    if (r) setState((prev) => (prev ? snapshot(r, options.sanma, options.showSeatWaits, prev) : prev))
+    if (r)
+      setState((prev) => (prev ? snapshot(r, options.sanma, options.showSeatWaits, prev) : prev))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.showSeatWaits])
 
@@ -564,13 +585,13 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     const yours = ranked.find((entry) => entry.tile === tile.id)!
     const safest = ranked.filter((entry) => entry.rank === 0)
     const correct = yours.rank === 0
-    const result: TurnResult = { turn: r.match.turn, yours, safest, correct }
     const elapsed = stats.elapsedNow()
     // partial credit against the turn's own worst option: right/wrong alone calls a suji throw
     // when a genbutsu was there the same mistake as throwing the live non-suji 5. A hand where
     // everything is genbutsu has nothing to be wrong about, so it scores full marks
     const worst = Math.max(...ranked.map(dangerScore))
     const quality = worst > 0 ? (worst - dangerScore(yours)) / worst : 1
+    const result: TurnResult = { turn: r.match.turn, yours, safest, correct, quality }
 
     // logged here, not from an effect watching round state: effect-based logging inverts entry
     // order and duplicates under StrictMode. Raw params, so a language switch re-translates.

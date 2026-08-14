@@ -16,9 +16,12 @@ import { useTableSettings, type TableSettings } from '../settings/tableSettings'
 import { WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { ManualControls } from '../table/ManualControls'
+import { Verdict } from '../table/Verdict'
 import { FoldFeedback } from './FoldFeedback'
 import {
   decodeFoldingUrl,
+  FOLDING_VERDICT_TEXT_KEY,
+  foldingVerdictSeverity,
   useFoldingRound,
   type RoundOptions,
   type ThreatReveal,
@@ -330,6 +333,15 @@ export function FoldingPage() {
           notice={
             !settings.feedbackAtEnd &&
             round.lastResult && <FoldFeedback result={round.lastResult} seats={round.threatSeats} />
+          }
+          noticeCompact={
+            !settings.feedbackAtEnd &&
+            round.lastResult && (
+              <Verdict
+                severity={foldingVerdictSeverity(round.lastResult)}
+                text={t(FOLDING_VERDICT_TEXT_KEY[foldingVerdictSeverity(round.lastResult)])}
+              />
+            )
           }
           end={
             round.end && (

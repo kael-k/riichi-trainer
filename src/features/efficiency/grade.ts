@@ -2,6 +2,7 @@ import { evaluateKan, isBestDiscard, type DiscardOption } from '../../core/effic
 import { addTile, createHand, type Hand } from '../../core/hand'
 import { NORTH } from '../../core/match'
 import { tileCode, type ParsedTile, type TileId } from '../../core/tiles'
+import type { VerdictSeverity } from '../table/Verdict'
 import type { DiscardStats } from '../table/useTableRound'
 
 /**
@@ -24,6 +25,22 @@ export interface TurnResult {
   grade: 'ok' | 'warning' | 'error'
   /** Set alongside a 'warning' grade: which call was available for free and skipped. */
   missed?: { kind: 'kan' | 'kita'; tile: TileId }
+}
+
+/** The compact mobile verdict's severity — a coarser read of the same `grade`/shanten gap, no
+ *  new grading concept. `grade === 'ok'` is green regardless of kind; red is reserved for an
+ *  actual shanten regression, so a same-shanten ukeire loss (or the softer 'warning' grade) reads
+ *  as yellow instead of red. */
+export function efficiencyVerdictSeverity(result: TurnResult): VerdictSeverity {
+  if (result.grade === 'ok') return 'ok'
+  return result.yours.shanten > result.best.shanten ? 'error' : 'warning'
+}
+
+/** The i18n key for each severity's compact verdict text. */
+export const EFFICIENCY_VERDICT_TEXT_KEY: Record<VerdictSeverity, string> = {
+  ok: 'discardFeedback.verdictOk',
+  warning: 'discardFeedback.verdictWarning',
+  error: 'discardFeedback.verdictError',
 }
 
 /** Ukeire given up by playing `yours` instead of `best`. Counts only compare directly at the

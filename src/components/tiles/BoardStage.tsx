@@ -19,11 +19,18 @@ interface BoardStageProps {
   /** Your hand and the controls that belong to it (kita/kan, riichi, the claim prompt) — the
    *  only part of the column that follows the board into fullscreen. */
   hand: ReactNode
-  /** Per-action feedback. Inline it sits in the column as it always has; in fullscreen it floats
-   *  over the board as a notice that fades on its own and never takes a click. */
+  /** Per-action feedback. Inline it sits in the column as it always has, full detail (tile lists,
+   *  ukeire counts) included — there is space for it there, and it is what Req 1.3 calls "check
+   *  the log if you want full feedback". */
   notice?: ReactNode
-  /** Bumped whenever `notice` is a *new* one — that is what re-shows a faded notice. A notice
-   *  whose key has not moved stays hidden, so re-renders do not resurrect it. */
+  /** The same feedback, one `Verdict` line (icon, colour, short text, `features/table/Verdict.tsx`)
+   *  — what floats over the board in fullscreen instead of `notice`, since a phone mid-drill has
+   *  no room for tile lists and the full breakdown is a tap away in the log either way. Falls back
+   *  to `notice` when omitted, so a caller with nothing compact to say (or a page that has not
+   *  adopted the split yet) still gets *something* in fullscreen rather than a silent gap. */
+  noticeCompact?: ReactNode
+  /** Bumped whenever `notice`/`noticeCompact` is a *new* one — that is what re-shows a faded
+   *  notice. A notice whose key has not moved stays hidden, so re-renders do not resurrect it. */
   noticeKey?: string | number
   /** Shown once the hand is over: in the column inline, as a centred card in fullscreen. */
   end?: ReactNode
@@ -66,6 +73,7 @@ export function BoardStage({
   board,
   hand,
   notice,
+  noticeCompact,
   noticeKey,
   end,
   children,
@@ -228,16 +236,19 @@ export function BoardStage({
           matches its real width */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center short:pl-[calc(2.75rem+env(safe-area-inset-left))]">
         {board?.(null)}
-        {notice && noticeShown && (
+        {(noticeCompact ?? notice) && noticeShown && (
           // pointer-events-none: a notice must never sit between the reader and a tile they are
           // about to click, which is the whole difference between this and a dialog. Held
           // sideways it stops floating over the board at all and stands in the right-hand
           // gutter instead — sized so it cannot reach the square (the board is `--board-max-h`
           // wide there, centred in what is left after the chrome column), because feedback that
-          // covers the tiles it is talking about is feedback you have to wait out
+          // covers the tiles it is talking about is feedback you have to wait out. Compact here:
+          // a phone mid-drill has no room for `notice`'s tile lists and ukeire counts, and the
+          // full breakdown is a tap away in the log — `noticeCompact` is what actually renders,
+          // falling back to `notice` only for a caller with nothing compact to say
           <div className="pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:bottom-2 short:right-2 short:items-center">
             <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 short:max-h-full short:max-w-[calc((100svw-2.75rem-var(--board-max-h))/2-0.5rem)] dark:bg-neutral-900/95 dark:ring-white/10">
-              {notice}
+              {noticeCompact ?? notice}
             </div>
           </div>
         )}
