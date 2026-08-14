@@ -58,6 +58,10 @@ function hash(str: string): string {
 
 const SEEDS = Array.from({ length: 20 }, (_, i) => `golden-${i}`)
 
+// tsconfig.app.json carries no Node types (it's the browser app config); vitest runs this file
+// under Node regardless, so `process` exists at runtime even though the app config doesn't know it.
+declare const process: { env: Record<string, string | undefined> }
+
 /** Frozen against `main` as it stood before the seat-algorithm refactor. Regenerate with
  *  `GENERATE_GOLDEN=1 npx vitest run src/core/match.golden.test.ts` and paste the printed table
  *  back in here — only T3 is allowed to do that. */
