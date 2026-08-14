@@ -108,6 +108,8 @@ export function GlobalSettings() {
   const setAdvanced = useSettings((s) => s.setAdvanced)
   const glossaryOnClick = useSettings((s) => s.glossaryOnClick)
   const setGlossaryOnClick = useSettings((s) => s.setGlossaryOnClick)
+  const mobileFullscreen = useSettings((s) => s.mobileFullscreen)
+  const setMobileFullscreen = useSettings((s) => s.setMobileFullscreen)
 
   return (
     <div className="flex flex-col gap-4">
@@ -185,6 +187,14 @@ export function GlobalSettings() {
           type="checkbox"
           checked={showTileNumbers}
           onChange={(e) => setShowTileNumbers(e.target.checked)}
+          className="size-5"
+        />
+      </SettingRow>
+      <SettingRow label={t('settings.mobileFullscreen')}>
+        <input
+          type="checkbox"
+          checked={mobileFullscreen}
+          onChange={(e) => setMobileFullscreen(e.target.checked)}
           className="size-5"
         />
       </SettingRow>

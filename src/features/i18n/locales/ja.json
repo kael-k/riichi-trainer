@@ -34,6 +34,7 @@
     "yonma": "四人麻雀",
     "sanma": "三人麻雀",
     "numbersOnTiles": "牌に数字を表示",
+    "mobileFullscreen": "スマートフォンで自動的に全画面表示",
     "glossaryOnClick": "用語集はホバーではなくタップでのみ開く",
     "advanced": "上級者向け機能",
     "tsumogiriMarks": "ツモ切り/手出しを表示",

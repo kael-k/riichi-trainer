@@ -38,6 +38,7 @@
     "yonma": "4 players",
     "sanma": "3 players",
     "numbersOnTiles": "Numbers on tiles",
+    "mobileFullscreen": "Fullscreen automatically on phones",
     "glossaryOnClick": "Open glossary terms on tap only, not hover",
     "advanced": "Advanced features",
     "tsumogiriMarks": "Show tsumogiri/tedashi",

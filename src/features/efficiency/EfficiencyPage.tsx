@@ -193,6 +193,8 @@ export function EfficiencyPage() {
 
         {/* stacked in the page, or filling the screen outright behind the fullscreen button */}
         <BoardStage
+          title={t('trainer.efficiency.title')}
+          intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
           chrome={
             <>

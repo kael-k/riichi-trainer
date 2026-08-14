@@ -271,6 +271,8 @@ export function FoldingPage() {
         {/* stacked normally; beside the board when the viewport is too short to stack, which is
             what makes turning the phone sideways actually pay off */}
         <BoardStage
+          title={t('trainer.folding.title')}
+          intro={{ text: t('trainer.folding.intro'), wikiUrl: TRAINER_WIKI.folding }}
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
           chrome={
             <>

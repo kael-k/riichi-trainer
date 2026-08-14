@@ -2,12 +2,13 @@ import { useMemo, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
-import { TrainerStatusBar } from '../../components/TrainerControls'
+import { BoardStage } from '../../components/tiles/BoardStage'
+import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
-import { SettingRow } from '../settings/SettingsDialog'
+import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
 import { useTableSettings, type TableSettings } from '../settings/tableSettings'
@@ -67,46 +68,54 @@ export function EfficiencySoloPage() {
     </SettingRow>
   )
 
+  const settingsRows = (
+    <>
+      {toggle(
+        'showShanten',
+        <Trans
+          i18nKey="efficiency.settings.showShanten"
+          components={{ term: <GlossaryTerm id="shanten" /> }}
+        />,
+      )}
+      {toggle('timerEnabled', t('efficiency.settings.timer'))}
+      {toggle(
+        'showUkeire',
+        <Trans
+          i18nKey="efficiency.settings.showUkeire"
+          components={{ term: <GlossaryTerm id="ukeire" /> }}
+        />,
+      )}
+      <SettingRow label={t('efficiency.settings.deadWall')}>
+        <input
+          type="checkbox"
+          checked={deadWall}
+          onChange={(e) => updateTable({ deadWall: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
+    </>
+  )
+
+  // the same start/pause and reset the status bar draws, so the fullscreen chrome can draw them
+  // too rather than sending you back out to the page for them
+  const toggles = {
+    showToggle: settings.timerEnabled,
+    paused: round.paused,
+    onToggle: round.togglePause,
+    toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
+    onReset: round.restart,
+    resetLabel: t('common.resetHand'),
+  }
+
   return (
     <TrainerLayout
       title={t('trainer.efficiencySolo.title')}
       intro={{ text: t('trainer.efficiencySolo.intro'), wikiUrl: TRAINER_WIKI.efficiencySolo }}
-      settings={
-        <>
-          {toggle(
-            'showShanten',
-            <Trans
-              i18nKey="efficiency.settings.showShanten"
-              components={{ term: <GlossaryTerm id="shanten" /> }}
-            />,
-          )}
-          {toggle('timerEnabled', t('efficiency.settings.timer'))}
-          {toggle(
-            'showUkeire',
-            <Trans
-              i18nKey="efficiency.settings.showUkeire"
-              components={{ term: <GlossaryTerm id="ukeire" /> }}
-            />,
-          )}
-          <SettingRow label={t('efficiency.settings.deadWall')}>
-            <input
-              type="checkbox"
-              checked={deadWall}
-              onChange={(e) => updateTable({ deadWall: e.target.checked })}
-              className="size-5"
-            />
-          </SettingRow>
-        </>
-      }
+      settings={settingsRows}
     >
       <div className="flex flex-col gap-4">
         <TrainerStatusBar
-          showToggle={settings.timerEnabled}
-          paused={round.paused}
-          onToggle={round.togglePause}
-          toggleLabel={t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')}
-          onReset={round.restart}
-          resetLabel={t('common.resetHand')}
+          {...toggles}
           elapsedNow={round.elapsedNow}
           running={round.running}
           timerEnabled={settings.timerEnabled}
@@ -140,78 +149,95 @@ export function EfficiencySoloPage() {
           )}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <HandDisplay
-            tiles={round.hand}
-            drawn={round.drawn}
-            onTileClick={round.finished ? undefined : (i) => round.discard(i)}
-          />
+        <BoardStage
+          title={t('trainer.efficiencySolo.title')}
+          intro={{ text: t('trainer.efficiencySolo.intro'), wikiUrl: TRAINER_WIKI.efficiencySolo }}
+          chrome={
+            <>
+              <SettingsButton title={t('trainer.efficiencySolo.title')}>
+                {settingsRows}
+              </SettingsButton>
+              <TrainerToggles {...toggles} compact />
+            </>
+          }
+          hand={
+            <div className="flex flex-col gap-4">
+              <HandDisplay
+                tiles={round.hand}
+                drawn={round.drawn}
+                onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+              />
 
-          {(options.sanma || kanEligible.length > 0) && !round.finished && (
-            <div className="flex flex-wrap gap-2">
-              {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
-                <button
-                  type="button"
-                  onClick={round.kita}
-                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                >
-                  {t('efficiency.kitaButton')}
-                </button>
+              {(options.sanma || kanEligible.length > 0) && !round.finished && (
+                <div className="flex flex-wrap gap-2">
+                  {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
+                    <button
+                      type="button"
+                      onClick={round.kita}
+                      className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                    >
+                      {t('efficiency.kitaButton')}
+                    </button>
+                  )}
+                  {kanEligible.map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => round.kan(id)}
+                      className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                    >
+                      <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
+                        <Tile id={id} />
+                      </span>
+                      {t('efficiency.kanButton')}
+                    </button>
+                  ))}
+                </div>
               )}
-              {kanEligible.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => round.kan(id)}
-                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                >
-                  <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
-                    <Tile id={id} />
-                  </span>
-                  {t('efficiency.kanButton')}
-                </button>
-              ))}
             </div>
-          )}
-
-          {round.lastResult && (
-            <DiscardFeedback
-              result={round.lastResult}
-              showShanten={settings.showShanten}
-              showUkeire={settings.showUkeire}
-              sanma={options.sanma}
-            />
-          )}
-
-          {round.finished && (
-            <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
-              <p className="font-semibold">
-                {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
-              </p>
-              <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                {t('efficiency.totalLost', {
-                  count: round.turn,
-                  turns: round.turn,
-                  lost: round.cumulativeLost,
-                  total: round.cumulativeTotal,
-                  accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
-                })}
-              </p>
-              {settings.timerEnabled && (
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  {t('efficiency.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
+          }
+          noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
+          notice={
+            round.lastResult && (
+              <DiscardFeedback
+                result={round.lastResult}
+                showShanten={settings.showShanten}
+                showUkeire={settings.showUkeire}
+                sanma={options.sanma}
+              />
+            )
+          }
+          end={
+            round.finished && (
+              <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
+                <p className="font-semibold">
+                  {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
                 </p>
-              )}
-              <button
-                type="button"
-                onClick={round.restart}
-                className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-              >
-                {t('common.newRound')}
-              </button>
-            </div>
-          )}
-
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {t('efficiency.totalLost', {
+                    count: round.turn,
+                    turns: round.turn,
+                    lost: round.cumulativeLost,
+                    total: round.cumulativeTotal,
+                    accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+                  })}
+                </p>
+                {settings.timerEnabled && (
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    {t('efficiency.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={round.restart}
+                  className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  {t('common.newRound')}
+                </button>
+              </div>
+            )
+          }
+        >
           <div className="flex flex-wrap gap-4 [--tile-w:calc(var(--tile-w-base)*0.8)]">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-neutral-500">
@@ -248,7 +274,7 @@ export function EfficiencySoloPage() {
           )}
 
           <CopyLinkButton query={round.situationQuery} />
-        </div>
+        </BoardStage>
       </div>
     </TrainerLayout>
   )

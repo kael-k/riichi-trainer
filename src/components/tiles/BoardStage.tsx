@@ -2,14 +2,20 @@ import { ArrowLeft, Maximize2, Minimize2, ScrollText } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
-import { LogList } from '../TrainerLayout'
+import { useSettings } from '../../features/settings/settingsStore'
+import { InfoButton, LogList, type TrainerIntro } from '../TrainerLayout'
+
+/** A phone-sized viewport — the breakpoint `mobileFullscreen` auto-enters at. */
+const MOBILE_QUERY = '(max-width: 640px)'
 
 interface BoardStageProps {
-  /** The `Table` itself, built by the page. The fullscreen toggle is handed back to it through
-   *  its own `controls` prop rather than wrapped around it — see `Table`'s note on why the width
-   *  has to live on the board's own box. Each seat's own info strip lives on the felt itself
-   *  (`Table`'s `seatInfo`), not here. */
-  board: (controls: ReactNode) => ReactNode
+  /** The `Table` itself, built by the page. Omitted by the boardless trainers (shanten, solo):
+   *  their content goes through the ordinary slots below instead, and the fullscreen toggle
+   *  moves into its own small row above `hand`. The fullscreen toggle is handed back to it
+   *  through its own `controls` prop rather than wrapped around it — see `Table`'s note on why
+   *  the width has to live on the board's own box. Each seat's own info strip lives on the felt
+   *  itself (`Table`'s `seatInfo`), not here. */
+  board?: (controls: ReactNode) => ReactNode
   /** Your hand and the controls that belong to it (kita/kan, riichi, the claim prompt) — the
    *  only part of the column that follows the board into fullscreen. */
   hand: ReactNode
@@ -31,6 +37,12 @@ interface BoardStageProps {
    *  controls, the two things fullscreen used to have no answer for but leaving it. Back-to-home,
    *  the log drawer and the exit toggle are this component's own — every board has those. */
   chrome?: ReactNode
+  /** The trainer's own title, passed straight to `InfoButton` alongside `intro` — needed here
+   *  only because fullscreen hides `TrainerLayout`'s header, info button included. */
+  title: string
+  /** Shown behind an info button in the fullscreen chrome row — the one item the inline layout's
+   *  `TrainerLayout` header already has that fullscreen otherwise has no answer for. */
+  intro?: TrainerIntro
 }
 
 /** How long a fullscreen notice stays up. Long enough to read a discard's feedback, short enough
@@ -41,10 +53,14 @@ const NOTICE_MS = 6000
  * The shared board layout, in its two shapes: stacked in the page (board, then the column beside
  * or under it), or filling the viewport like a real client's table.
  *
- * Fullscreen is entered by an explicit button rather than by orientation, so it is reachable on
- * any device and never takes the screen from someone who did not ask. It is a fixed overlay
+ * Auto-entered on phone-sized viewports behind `mobileFullscreen`, a persisted setting that
+ * defaults on — every trainer, board or boardless, comes up already filling the screen on a
+ * phone. The explicit toggle button still exists for every other viewport, and exiting on a
+ * phone writes the opt-out rather than just closing for that one visit. It is a fixed overlay
  * *and* a real `requestFullscreen` where the browser has one — the overlay is what actually lays
- * the board out, the API call is only there to drop the browser chrome on a phone.
+ * the board out; the API call only drops the browser chrome, and only ever fires inside a real
+ * user gesture (a load-time call is rejected outright), so an auto-entered stage waits for the
+ * reader's first tap before attempting it, rather than trying at mount and failing silently.
  */
 export function BoardStage({
   board,
@@ -55,9 +71,18 @@ export function BoardStage({
   children,
   onLogOpen,
   chrome,
+  title,
+  intro,
 }: BoardStageProps) {
   const { t } = useTranslation()
-  const [full, setFull] = useState(false)
+  const mobileFullscreen = useSettings((s) => s.mobileFullscreen)
+  const setMobileFullscreen = useSettings((s) => s.setMobileFullscreen)
+  const [full, setFull] = useState(() => mobileFullscreen && matchMedia(MOBILE_QUERY).matches)
+  // whether *this* entry into fullscreen happened with no gesture behind it yet (true only for
+  // an auto-entered stage, and only until the first tap resolves it) — captured once per entry,
+  // not just at mount, so leaving and manually re-entering later still requests real fullscreen
+  // immediately like any other button press
+  const enteredWithoutGesture = useRef(full)
   const [logOpen, setLogOpen] = useState(false)
   const [noticeShown, setNoticeShown] = useState(false)
   const stage = useRef<HTMLDivElement>(null)
@@ -78,13 +103,33 @@ export function BoardStage({
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
       return
     }
-    void stage.current?.requestFullscreen?.().catch(() => {})
+    const el = stage.current
+    const requestReal = () => {
+      if (!document.fullscreenElement) void el?.requestFullscreen?.().catch(() => {})
+    }
+    // StrictMode replays this effect (mount, cleanup, mount again) with no real pointerdown in
+    // between, so the flag can only be cleared *inside* the listener itself — clearing it eagerly
+    // here would have the synthetic second mount see it already false and fire the real call with
+    // no gesture behind it after all
+    let onFirstPointerDown: (() => void) | undefined
+    if (enteredWithoutGesture.current) {
+      onFirstPointerDown = () => {
+        enteredWithoutGesture.current = false
+        requestReal()
+      }
+      el?.addEventListener('pointerdown', onFirstPointerDown, { once: true })
+    } else {
+      requestReal()
+    }
     // Escape (or the browser's own control) leaves fullscreen without going through our button
     const onChange = () => {
       if (!document.fullscreenElement) setFull(false)
     }
     document.addEventListener('fullscreenchange', onChange)
-    return () => document.removeEventListener('fullscreenchange', onChange)
+    return () => {
+      if (onFirstPointerDown) el?.removeEventListener('pointerdown', onFirstPointerDown)
+      document.removeEventListener('fullscreenchange', onChange)
+    }
   }, [full])
 
   const toggleLog = (open: boolean) => {
@@ -98,7 +143,14 @@ export function BoardStage({
       aria-label={t(full ? 'table.exitFullscreen' : 'table.fullscreen')}
       aria-pressed={full}
       onClick={() => {
-        if (full) toggleLog(false)
+        if (full) {
+          toggleLog(false)
+          // the persisted opt-out: closing it once on a phone means "not by default" from here
+          // on, not just "not this visit" — the settings row is how it comes back
+          if (matchMedia(MOBILE_QUERY).matches) setMobileFullscreen(false)
+        } else {
+          enteredWithoutGesture.current = false
+        }
         setFull(!full)
       }}
       className="flex size-11 items-center justify-center text-neutral-500"
@@ -113,7 +165,13 @@ export function BoardStage({
       // which fits more on screen but is not the table anyone has ever played on: a real client
       // (and every physical table) puts your tiles along your own edge of the felt
       <div className="flex flex-col gap-4">
-        {board(fullscreenButton)}
+        {board ? (
+          board(fullscreenButton)
+        ) : (
+          // boardless trainers (shanten, solo) have no `Table` to hand the toggle to — it gets
+          // its own row instead of vanishing along with the board
+          <div className="flex justify-end">{fullscreenButton}</div>
+        )}
         <div className="flex min-w-0 flex-col gap-4">
           {hand}
           {notice}
@@ -147,6 +205,7 @@ export function BoardStage({
         >
           <ArrowLeft className="size-5" />
         </Link>
+        {intro && <InfoButton title={title} intro={intro} />}
         {chrome}
         <button
           type="button"
@@ -162,7 +221,7 @@ export function BoardStage({
 
       {/* padded clear of the gutter chrome, so the square still centres on what is left */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center short:pl-11">
-        {board(null)}
+        {board?.(null)}
         {notice && noticeShown && (
           // pointer-events-none: a notice must never sit between the reader and a tile they are
           // about to click, which is the whole difference between this and a dialog. Held

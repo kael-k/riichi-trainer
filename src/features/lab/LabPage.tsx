@@ -300,6 +300,8 @@ export function LabPage() {
 
         {loaded && (
           <BoardStage
+            title={t('trainer.lab.title')}
+            intro={{ text: t('trainer.lab.intro'), wikiUrl: TRAINER_WIKI.lab }}
             chrome={<SettingsButton title={t('trainer.lab.title')}>{settingsRows}</SettingsButton>}
             board={(controls) => (
               <Table

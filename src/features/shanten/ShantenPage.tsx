@@ -2,12 +2,13 @@ import type { TFunction } from 'i18next'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { TrainerStatusBar } from '../../components/TrainerControls'
+import { BoardStage } from '../../components/tiles/BoardStage'
+import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
-import { SettingRow } from '../settings/SettingsDialog'
+import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
@@ -53,35 +54,39 @@ export function ShantenPage() {
     round.submit(value)
   }
 
+  const settingsRows = (
+    <SettingRow label={t('shanten.settings.timer')}>
+      <input
+        type="checkbox"
+        checked={settings.timerEnabled}
+        onChange={(e) => update('shanten', { timerEnabled: e.target.checked })}
+        className="size-5"
+      />
+    </SettingRow>
+  )
+
+  // the same reveal/pause and stop the status bar draws, so the fullscreen chrome can draw them
+  // too rather than sending you back out to the page for them
+  const toggles = {
+    showToggle: true,
+    paused: !round.revealed || round.paused,
+    onToggle: round.revealed ? round.togglePause : round.reveal,
+    toggleLabel: !round.revealed
+      ? t('shanten.revealHand')
+      : t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
+    onReset: round.stop,
+    resetLabel: t('common.resetHand'),
+  }
+
   return (
     <TrainerLayout
       title={t('trainer.shanten.title')}
       intro={{ text: t('trainer.shanten.intro'), wikiUrl: TRAINER_WIKI.shanten }}
-      settings={
-        <>
-          <SettingRow label={t('shanten.settings.timer')}>
-            <input
-              type="checkbox"
-              checked={settings.timerEnabled}
-              onChange={(e) => update('shanten', { timerEnabled: e.target.checked })}
-              className="size-5"
-            />
-          </SettingRow>
-        </>
-      }
+      settings={settingsRows}
     >
       <div className="flex flex-col gap-4">
         <TrainerStatusBar
-          showToggle
-          paused={!round.revealed || round.paused}
-          onToggle={round.revealed ? round.togglePause : round.reveal}
-          toggleLabel={
-            !round.revealed
-              ? t('shanten.revealHand')
-              : t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer')
-          }
-          onReset={round.stop}
-          resetLabel={t('common.resetHand')}
+          {...toggles}
           elapsedNow={round.elapsedNow}
           running={round.running}
           timerEnabled={settings.timerEnabled}
@@ -94,74 +99,90 @@ export function ShantenPage() {
           )}
         </TrainerStatusBar>
 
-        <HandDisplay tiles={round.hand} concealed={round.concealed} />
+        <BoardStage
+          title={t('trainer.shanten.title')}
+          intro={{ text: t('trainer.shanten.intro'), wikiUrl: TRAINER_WIKI.shanten }}
+          chrome={
+            <>
+              <SettingsButton title={t('trainer.shanten.title')}>{settingsRows}</SettingsButton>
+              <TrainerToggles {...toggles} compact />
+            </>
+          }
+          hand={
+            <div className="flex flex-col gap-4">
+              <HandDisplay tiles={round.hand} concealed={round.concealed} />
 
-        {!round.concealed && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              submitGuess(Number(guessInput))
-            }}
-            className="flex flex-col gap-2"
-          >
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min={0}
-                autoFocus
-                value={guessInput}
-                onChange={(e) => setGuessInput(e.target.value)}
-                placeholder={t('shanten.placeholder')}
-                className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
-              />
-              <button
-                type="submit"
-                className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-              >
-                {t('common.submit')}
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {QUICK_GUESSES.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => submitGuess(n)}
-                  className="min-h-11 min-w-11 rounded-lg border border-neutral-300 font-medium dark:border-neutral-700"
+              {!round.concealed && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    submitGuess(Number(guessInput))
+                  }}
+                  className="flex flex-col gap-2"
                 >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </form>
-        )}
-
-        {round.lastResult && (
-          <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-            <p
-              className={`flex items-center gap-1.5 font-semibold ${round.lastResult.correct ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
-            >
-              {round.lastResult.correct ? (
-                <>
-                  <CheckCircle2 className="size-4" /> {t('shanten.correctLabel')}
-                </>
-              ) : (
-                <>
-                  <XCircle className="size-4" />{' '}
-                  {t('shanten.youSaid', { guess: round.lastResult.guess })}
-                </>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      autoFocus
+                      value={guessInput}
+                      onChange={(e) => setGuessInput(e.target.value)}
+                      placeholder={t('shanten.placeholder')}
+                      className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+                    />
+                    <button
+                      type="submit"
+                      className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+                    >
+                      {t('common.submit')}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {QUICK_GUESSES.map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => submitGuess(n)}
+                        className="min-h-11 min-w-11 rounded-lg border border-neutral-300 font-medium dark:border-neutral-700"
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </form>
               )}
-            </p>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              {t('shanten.previousHand', { value: round.lastResult.actual.value })}
-              {pathsLabel(round.lastResult.actual, t) &&
-                ` ${pathsLabel(round.lastResult.actual, t)}`}
-            </p>
-            <div className="[--tile-w:calc(var(--tile-w-base)*0.55)]">
-              <HandDisplay tiles={round.lastResult.hand} />
             </div>
-          </div>
-        )}
+          }
+          noticeKey={round.lastResult ? round.totalCount : undefined}
+          notice={
+            round.lastResult && (
+              <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+                <p
+                  className={`flex items-center gap-1.5 font-semibold ${round.lastResult.correct ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
+                >
+                  {round.lastResult.correct ? (
+                    <>
+                      <CheckCircle2 className="size-4" /> {t('shanten.correctLabel')}
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="size-4" />{' '}
+                      {t('shanten.youSaid', { guess: round.lastResult.guess })}
+                    </>
+                  )}
+                </p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {t('shanten.previousHand', { value: round.lastResult.actual.value })}
+                  {pathsLabel(round.lastResult.actual, t) &&
+                    ` ${pathsLabel(round.lastResult.actual, t)}`}
+                </p>
+                <div className="[--tile-w:calc(var(--tile-w-base)*0.55)]">
+                  <HandDisplay tiles={round.lastResult.hand} />
+                </div>
+              </div>
+            )
+          }
+        />
       </div>
     </TrainerLayout>
   )

@@ -111,6 +111,13 @@ interface SettingsState extends Settings {
    *  inline — click still opens the full popover either way, wiki link included. */
   glossaryOnClick: boolean
   setGlossaryOnClick: (onClick: boolean) => void
+  /** Auto-enter `BoardStage`'s fullscreen overlay on phone-sized viewports, every trainer
+   *  including the boardless ones. On by default; explicitly exiting it on a phone flips this
+   *  false (the persisted opt-out) rather than just closing for that one visit. A global setting,
+   *  not per-app: there is no trainer where a phone reader would want the chrome back but not
+   *  the others. */
+  mobileFullscreen: boolean
+  setMobileFullscreen: (mobileFullscreen: boolean) => void
   update: <K extends keyof Settings>(section: K, patch: Partial<Settings[K]>) => void
 }
 
@@ -163,6 +170,8 @@ export const useSettings = create<SettingsState>()(
       setTranslatedTerms: (translatedTerms) => set({ translatedTerms }),
       glossaryOnClick: false,
       setGlossaryOnClick: (glossaryOnClick) => set({ glossaryOnClick }),
+      mobileFullscreen: true,
+      setMobileFullscreen: (mobileFullscreen) => set({ mobileFullscreen }),
       update: (section, patch) => set((s) => ({ ...s, [section]: { ...s[section], ...patch } })),
     }),
     {
