@@ -37,7 +37,7 @@ export function TrainerStatusBar({
   children,
 }: TrainerStatusBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       <div className="flex items-center gap-1">
         {showToggle && (
           <button
@@ -62,10 +62,14 @@ export function TrainerStatusBar({
           <RotateCcw className="size-6" />
         </button>
         {showToggle && timerEnabled && (
-          <span className="font-mono tabular-nums">{formatElapsedMs(elapsed)}</span>
+          <span className="font-mono tabular-nums text-neutral-500">
+            {formatElapsedMs(elapsed)}
+          </span>
         )}
       </div>
-      {children && <span className="ml-auto flex flex-col items-end">{children}</span>}
+      {children && (
+        <span className="ml-auto flex flex-col items-end text-neutral-500">{children}</span>
+      )}
     </div>
   )
 }
