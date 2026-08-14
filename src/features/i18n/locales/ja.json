@@ -86,8 +86,6 @@
     "riichiStick": "リーチ棒(1000点)",
     "riichiSticks": "供託リーチ棒",
     "honbaSticks": "本場",
-    "rotateHint": "画面を横向きにすると、卓と手牌を一度に表示できます。",
-    "rotateHintDismiss": "今後表示しない",
     "fullscreen": "全画面で卓を表示",
     "exitFullscreen": "全画面を終了",
     "logDrawer": "ログを表示"

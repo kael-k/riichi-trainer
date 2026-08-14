@@ -165,9 +165,13 @@ export function BoardStage({
         {board(null)}
         {notice && noticeShown && (
           // pointer-events-none: a notice must never sit between the reader and a tile they are
-          // about to click, which is the whole difference between this and a dialog
-          <div className="pointer-events-none absolute inset-x-2 top-2 flex justify-center">
-            <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 dark:bg-neutral-900/95 dark:ring-white/10">
+          // about to click, which is the whole difference between this and a dialog. Held
+          // sideways it stops floating over the board at all and stands in the right-hand
+          // gutter instead — sized so it cannot reach the square (the board is `--board-max-h`
+          // wide there, centred in what is left after the chrome column), because feedback that
+          // covers the tiles it is talking about is feedback you have to wait out
+          <div className="pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:bottom-2 short:right-2 short:items-center">
+            <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 short:max-h-full short:max-w-[calc((100svw-2.75rem-var(--board-max-h))/2-0.5rem)] dark:bg-neutral-900/95 dark:ring-white/10">
               {notice}
             </div>
           </div>

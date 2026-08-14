@@ -86,8 +86,6 @@
     "riichiStick": "立直棒(1000点)",
     "riichiSticks": "场上立直棒",
     "honbaSticks": "本场",
-    "rotateHint": "横屏可同时显示牌桌和手牌。",
-    "rotateHintDismiss": "不再显示",
     "fullscreen": "全屏牌桌",
     "exitFullscreen": "退出全屏",
     "logDrawer": "显示记录"

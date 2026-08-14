@@ -132,28 +132,6 @@ function IndicatorRow({ label, tiles }: { label: string; tiles: ParsedTile[] }) 
   )
 }
 
-/** Shown on a narrow portrait screen, where a square board leaves the hand no room. Dismissed
- *  for good via the persisted setting rather than per session — it is a one-time tip. */
-function RotateHint() {
-  const { t } = useTranslation()
-  const hidden = useSettings((s) => s.hideRotateHint)
-  const setHidden = useSettings((s) => s.setHideRotateHint)
-  if (hidden) return null
-  return (
-    <div className="mb-2 hidden flex-col gap-1 rounded-lg border border-amber-400 p-2 text-xs text-amber-700 max-sm:portrait:flex dark:text-amber-400">
-      <span>{t('table.rotateHint')}</span>
-      <label className="flex min-h-11 items-center gap-2">
-        <input
-          type="checkbox"
-          onChange={(e) => e.target.checked && setHidden(true)}
-          className="size-5"
-        />
-        {t('table.rotateHintDismiss')}
-      </label>
-    </div>
-  )
-}
-
 /**
  * The board: every seat's river, melds and nuki placed around a centre panel holding the round
  * wind, dora and wall count — the shared surface for the efficiency, scoring and folding
@@ -210,7 +188,6 @@ export function Table({
         } as CSSProperties
       }
     >
-      <RotateHint />
       {/* a row above the board normally; held sideways, a column standing in the gutter to its
           left (`right-full`, so it hugs the square's edge whatever the square's size), wrapping
           into a second column rather than running off the bottom. Height is the only axis a
