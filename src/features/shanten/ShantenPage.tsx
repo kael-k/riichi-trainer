@@ -120,7 +120,11 @@ export function ShantenPage() {
                   }}
                   className="flex flex-col gap-2"
                 >
-                  <div className="flex gap-2">
+                  {/* typing a number needs a keyboard, and a keyboard on a phone covers the hand
+                      you are counting — so the field is a tablet-and-up control and the buttons
+                      are the whole answer below that. Held sideways the same applies at any
+                      width: `short:` is where the keyboard would eat the screen outright */}
+                  <div className="flex gap-2 max-sm:hidden short:hidden">
                     <input
                       type="number"
                       min={0}
@@ -137,13 +141,17 @@ export function ShantenPage() {
                       {t('common.submit')}
                     </button>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  {/* seven answers, so a phone gets four columns and one empty cell rather than
+                      six columns and a missing answer — 0 through 6 are all reachable (chiitoitsu
+                      caps shanten at 6). Held sideways they go on one row: height is the only
+                      axis short of room there, and a second row would come out of the board's */}
+                  <div className="flex flex-wrap gap-2 max-sm:grid max-sm:grid-cols-4 short:grid short:grid-cols-7">
                     {QUICK_GUESSES.map((n) => (
                       <button
                         key={n}
                         type="button"
                         onClick={() => submitGuess(n)}
-                        className="min-h-11 min-w-11 rounded-lg border border-neutral-300 font-medium dark:border-neutral-700"
+                        className="min-h-11 min-w-11 rounded-lg border border-neutral-300 text-lg font-medium max-sm:h-14 max-sm:w-full short:h-12 short:w-full dark:border-neutral-700"
                       >
                         {n}
                       </button>
