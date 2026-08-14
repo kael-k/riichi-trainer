@@ -103,9 +103,12 @@ export function BoardStage({
 
   if (!full) {
     return (
-      <div className="flex flex-col gap-4 short:flex-row short:items-start">
+      // the hand stays under the board at every size. Held sideways it used to move *beside* it,
+      // which fits more on screen but is not the table anyone has ever played on: a real client
+      // (and every physical table) puts your tiles along your own edge of the felt
+      <div className="flex flex-col gap-4">
         {board(fullscreenButton)}
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           {hand}
           {notice}
           {end}

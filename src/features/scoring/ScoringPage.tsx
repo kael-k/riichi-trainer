@@ -282,9 +282,8 @@ export function ScoringPage() {
           </p>
         )}
 
-        {/* stacked normally; beside the board when the viewport is too short to stack, which is
-            what makes turning the phone sideways actually pay off */}
-        <div className="flex flex-col gap-4 short:flex-row short:items-start">
+        {/* the hand stays under the board at every size — see `BoardStage` */}
+        <div className="flex flex-col gap-4">
           {/* ura is not held back until the reveal: it counts into the han the question asks for,
               and a real hand flips it the moment the riichi wins, so hiding it made the answer
               unknowable. Only a riichi win ever has any, so the list gates itself */}

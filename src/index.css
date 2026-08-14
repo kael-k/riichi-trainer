@@ -20,7 +20,8 @@
 /* held sideways, width is plentiful and height is scarce — the exact reverse of what the
    width-keyed clamp above assumes, which is what let the hand take its full 44px and wrap onto
    two rows while the board collapsed to an unreadable square. Same clamp, keyed to the axis that
-   is actually short. */
+   is actually short: the board is square, so height is the only axis that ever limits it, and
+   the width left over becomes the gutters the fullscreen chrome and notices live in. */
 @media (max-height: 520px) {
   :root {
     --tile-w-raw: clamp(1.375rem, 5.2vh, 2.75rem);
