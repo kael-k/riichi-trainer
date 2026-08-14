@@ -5,6 +5,7 @@ import {
   answerClaim,
   beginTurn,
   canDeclareRiichi,
+  claimOptions,
   createMatch,
   findMatch,
   finishTurn,
@@ -433,6 +434,50 @@ describe('human claims', () => {
     expect(state.ended).toBeUndefined()
     expect(state.seat).toBe(1) // the turn moves on exactly as it would with nothing to ask about
     expect(state.players[1].missedWin).toBe(true) // declined a win that was really there
+  })
+
+  // Req 2.3's second half — furiten already cannot ron (`tryWin`, match.ts:404); these are
+  // regression tests, not code changes.
+  it("never offers a ron on a tile sitting in the seat's own river (permanent furiten)", () => {
+    const options: MatchOptions = { ...YONMA, claims: true, calls: false, humans: [1] }
+    // same tanki-2s tenpai as the pass test above, but seat 1 has already discarded a 2s itself
+    const wall = [
+      ...parseTenhou('189m189p2s123456z'),
+      ...parseTenhou('234567m234567p2s'),
+      ...parseTenhou('111222333m111p7z'),
+      ...parseTenhou('444555666m222p7z'),
+    ]
+    const state = createMatch(wall, 4, options, 'furiten-own-river')
+    beginTurn(state, options)
+    state.players[1].river.push({ id: SOU + 1, red: false })
+
+    expect(
+      claimOptions(state, options, 1, { id: SOU + 1, red: false }, 0).some((o) => o.kind === 'ron'),
+    ).toBe(false)
+
+    finishTurn(state, options, { id: SOU + 1, red: false })
+
+    expect(state.claim).toBeUndefined()
+    expect(state.win).toBeUndefined()
+  })
+
+  it('never offers a ron once the seat has missed a win on this tenpai (temporary furiten)', () => {
+    const options: MatchOptions = { ...YONMA, claims: true, calls: false, humans: [1] }
+    const wall = [
+      ...parseTenhou('189m189p2s123456z'),
+      ...parseTenhou('234567m234567p2s'),
+      ...parseTenhou('111222333m111p7z'),
+      ...parseTenhou('444555666m222p7z'),
+    ]
+    const state = createMatch(wall, 4, options, 'claim-pass')
+    beginTurn(state, options)
+    finishTurn(state, options, { id: SOU + 1, red: false })
+    answerClaim(state, options, { kind: 'pass' })
+    expect(state.players[1].missedWin).toBe(true)
+
+    expect(
+      claimOptions(state, options, 1, { id: SOU + 1, red: false }, 0).some((o) => o.kind === 'ron'),
+    ).toBe(false)
   })
 
   it('answering pon opens the meld and moves the tile from the river into it, keeping the log', () => {
