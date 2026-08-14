@@ -5,7 +5,7 @@ import {
   beginTurn,
   concealedTiles,
   finishTurn,
-  isHuman,
+  isManual,
   seenBy as seenByMatch,
   threatViews,
   wallDrawnCount,
@@ -41,9 +41,9 @@ export interface TableCore {
  *  the discard all belong to whichever manual seat the turn has reached. A pending claim wins
  *  over the turn order — the seat being asked is the one holding the decision. */
 export function actingSeat(core: TableCore): number {
-  const { match, options, seatIndex } = core
+  const { match, seatIndex } = core
   if (match.claim) return match.claim.seat
-  return isHuman(options, match.seat) ? match.seat : seatIndex
+  return isManual(match, match.seat) ? match.seat : seatIndex
 }
 
 /** What the seat being played can see: every face-up tile plus its own hand. Thin wrapper over
@@ -53,22 +53,23 @@ export function seenBy(core: TableCore): Uint8Array {
   return seenByMatch(core.match, core.match.players[actingSeat(core)])
 }
 
-/** Plays every seat the engine decides for, stopping at the next seat a person plays — or when
- *  the hand ends, or when a discard leaves a human seat a claim to answer. One full go-round is
- *  the bound — a call hands the turn sideways but never backwards, so eight begin/finish pairs
- *  (two per seat on a four-seat table) is enough, and it also backstops a rule bug that would
- *  otherwise spin forever. A no-op when it is already a human seat's turn, e.g. a one-seat solo
- *  match. It carries no opponents-on/off branch and no next-draw of its own: each consumer layers
- *  its own stop condition and its own `beginTurn` on top (efficiency stops at tenpai, folding
- *  stops when the hand ends).
+/** Plays every seat the engine decides for, stopping at the next manual seat — or when the hand
+ *  ends, or when a discard leaves a manual seat a claim to answer. One full go-round is the bound
+ *  — a call hands the turn sideways but never backwards, so eight begin/finish pairs (two per
+ *  seat on a four-seat table) is enough, and it also backstops a rule bug that would otherwise
+ *  spin forever. A no-op when it is already a manual seat's turn, e.g. a one-seat solo match. It
+ *  carries no opponents-on/off branch and no next-draw of its own: each consumer layers its own
+ *  stop condition and its own `beginTurn` on top (efficiency stops at tenpai, folding stops when
+ *  the hand ends).
  *
- *  "The seat that stops it" is `options.humans`, not `core.seatIndex`: with several manual seats
- *  every one of them has to get its turn, and `seatIndex` is only where the board is drawn from.
- *  Callers keep at least one human seat, or this simply plays its eight pairs and returns. */
+ *  "The seat that stops it" is each player's own `algorithm`, not `core.seatIndex`: with several
+ *  manual seats every one of them has to get its turn, and `seatIndex` is only where the board is
+ *  drawn from. Callers keep at least one manual seat, or this simply plays its eight pairs and
+ *  returns. */
 export function goRound(core: TableCore): void {
   for (let guard = 0; guard < 8; guard++) {
     const { match, options } = core
-    if (match.ended || match.claim || isHuman(options, match.seat)) return
+    if (match.ended || match.claim || isManual(match, match.seat)) return
     beginTurn(match, options)
     finishTurn(match, options)
   }
@@ -129,7 +130,7 @@ export interface TableSnapshot {
    *  (`concealedTiles`, sorted), since only `hand`/`drawn` above ever get it spliced out. */
   drawnSeat: number | undefined
   /** Each seat's own tenpai/waits/furiten (`seatRead`). Always present for a seat the reader
-   *  plays — a human seat's own furiten is legitimate information a real client shows, and one
+   *  plays — a manual seat's own furiten is legitimate information a real client shows, and one
    *  more `waits` call is negligible next to the analysis that seat's own turn already pays for
    *  — `undefined` for every other seat unless `showSeatWaits` is on, since `waits` runs
    *  `improvingTiles` (~34 shanten probes) per seat and nobody asked to pay that for opponents. */
@@ -181,7 +182,7 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
     claim: match.claim,
     drawnSeat: match.drawn ? match.seat : undefined,
     seatReads: match.players.map((_, seat) =>
-      showSeatWaits || isHuman(options, seat) ? seatRead(match, seat, options.sanma) : undefined,
+      showSeatWaits || isManual(match, seat) ? seatRead(match, seat, options.sanma) : undefined,
     ),
   }
 }

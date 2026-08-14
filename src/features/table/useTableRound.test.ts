@@ -29,7 +29,7 @@ const BARE: MatchOptions = {
   calls: false,
   riichi: false,
   wins: false,
-  humans: [0],
+  algorithms: ['manual'],
 }
 
 /** Wall for seat 0: a pinned, already-tenpai 13-tile hand (shanpon on 1z/2z, via three man runs)

@@ -8,7 +8,7 @@ import {
   concealedTiles,
   createMatch,
   finishTurn,
-  isHuman,
+  isManual,
   type ClaimAnswer,
   type MatchOptions,
   type MatchState,
@@ -62,7 +62,7 @@ export type RoundOptions = Settings['folding'] & {
   showSeatWaits: boolean
   /** Per-seat algorithm from the board's seat panel. Every seat can be set to `'manual'`, same as
    *  efficiency/lab — the drill's own generated seat (`RoundCore.seatIndex`) is just the one the
-   *  handover always includes, not the only one that may be human. */
+   *  handover always includes, not the only one that may be manual. */
   seats: SeatConfig | null
 }
 
@@ -193,9 +193,9 @@ export function splitConcealedDrawn(
 function boardHandsOf(core: RoundCore, reveal: boolean): ParsedTile[][] {
   const threats = new Set(riichiSeats(core.match))
   return core.match.players.map((player, seat) => {
-    // `isHuman` rather than `seat === core.seatIndex`: a seat the reader plays is their own hand
-    // wherever it sits, and there is only ever one of them here (see `RoundOptions.seats`)
-    if (isHuman(core.options, seat) || reveal || !threats.has(seat)) return concealedTiles(player)
+    // `isManual` rather than `seat === core.seatIndex`: a seat the reader plays is their own hand
+    // wherever it sits, and there can be more than one of them (see `RoundOptions.seats`)
+    if (isManual(core.match, seat) || reveal || !threats.has(seat)) return concealedTiles(player)
     return concealedTiles(player).map(() => BACK_TILE)
   })
 }
@@ -263,12 +263,12 @@ function playToRiichi(
     // before the handover turns below, so those turns cannot add a threat the link never
     // promised — the seat that ends up yours is one the engine stops deciding for anyway
     for (const player of match.players) {
-      if (player.riichiAt === undefined) player.policy = 'defense'
+      if (player.riichiAt === undefined) player.algorithm = 'defense'
     }
     // an explicit per-seat choice outranks the drill's own blanket fold: the panel is read off
     // the raw config, not the resolved one, so a seat nobody touched keeps folding
     seats?.modes.forEach((mode, seat) => {
-      if (mode !== 'manual' && match.players[seat]) match.players[seat].policy = mode
+      if (match.players[seat]) match.players[seat].algorithm = mode
     })
     // seeded off the wall like the round wind, so replaying the wall seats you the same way and
     // a shared link stays exact
@@ -280,14 +280,13 @@ function playToRiichi(
     if (match.ended) return null
 
     const seatIndex = match.seat
-    // every seat the panel marked manual is human, not only the one the handover lands on — a
-    // second manual seat plays for real once the turn reaches it (`goRound`/`actingSeat`)
-    const manualSeats =
-      seats?.modes.flatMap((mode, seat) => (mode === 'manual' ? [seat] : [])) ?? []
-    const humans = manualSeats.includes(seatIndex) ? manualSeats : [seatIndex, ...manualSeats]
+    // the drill's own generated seat always joins the manual seats the panel named, even if the
+    // config said otherwise for it — this is the seat `worthwhile`/`handedOverAt`/`endOf` anchor
+    // to, so it is never left to an algorithm at generation time
+    match.players[seatIndex].algorithm = 'manual'
     return {
       match,
-      options: { ...options, humans, claims: seats?.claims ?? false },
+      options: { ...options, claims: seats?.claims ?? false },
       seatIndex,
       handedOverAt: match.discards.filter((d) => d.seat === seatIndex).length,
     }
@@ -748,17 +747,15 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       : [],
     /** Seats a person plays: the drill's own generated seat, plus any other seat the panel set
      *  to `'manual'`. */
-    manualSeats: core.current ? [...(core.current.options.humans ?? [])] : [],
-    /** How the board is actually playing each seat right now — the AI policy `finishTurn` reads
+    manualSeats: core.current
+      ? core.current.match.players.flatMap((p, seat) => (p.algorithm === 'manual' ? [seat] : []))
+      : [],
+    /** How the board is actually playing each seat right now — the algorithm `finishTurn` reads
      *  (which flips non-declarers to `'defense'` at handover, `playToRiichi` above), not the
      *  generic default `resolveSeatConfig` would otherwise show while a seat is unconfigured.
      *  Fed to `SeatButton` as `fallbackModes` so the panel never lies about what the seat is
      *  doing. */
-    policies: core.current
-      ? core.current.match.players.map((p, seat) =>
-          core.current!.options.humans?.includes(seat) ? 'manual' : p.policy,
-        )
-      : [],
+    algorithms: core.current ? core.current.match.players.map((p) => p.algorithm) : [],
     elapsedNow: stats.elapsedNow,
     /** Whether the clock is ticking: a board is up, unfinished and unpaused. */
     running: !!state && !state.finished && !state.loading && !stats.paused,

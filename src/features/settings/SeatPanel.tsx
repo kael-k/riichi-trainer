@@ -4,9 +4,10 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { WINDS } from '../situation/urlCodec'
 import { SegmentedButton, SettingRow } from './SettingsDialog'
-import { resolveSeatConfig, withSeatMode, type SeatConfig, type SeatMode } from './tableSettings'
+import { resolveSeatConfig, withSeatMode, type SeatConfig } from './tableSettings'
+import type { SeatAlgorithm } from '../../core/policy'
 
-const MODES: SeatMode[] = ['efficiency', 'defense', 'manual']
+const MODES: SeatAlgorithm[] = ['efficiency', 'defense', 'manual']
 
 export interface SeatButtonProps {
   /** The seat this button configures. */
@@ -17,9 +18,9 @@ export interface SeatButtonProps {
   defaultOrientation: number
   config: SeatConfig | null
   onChange: (config: SeatConfig) => void
-  /** What an unconfigured seat is really doing right now (folding's live per-seat policy) —
+  /** What an unconfigured seat is really doing right now (folding's live per-seat algorithm) —
    *  overrides the generic `'efficiency'` default `resolveSeatConfig` would otherwise show. */
-  fallbackModes?: readonly SeatMode[]
+  fallbackModes?: readonly SeatAlgorithm[]
   /** The seat the board is currently drawn from — purely a display concern (which seat reads as
    *  "your side" in this dialog); perspective itself is the page's own ephemeral state, not this
    *  component's. */
@@ -34,7 +35,7 @@ export interface SeatButtonProps {
 
 /**
  * One seat's own settings, behind one icon sitting at that seat's mark on the board: which side
- * you watch from, and how the seat is played (`SeatMode`). One button per seat rather than a
+ * you watch from, and how the seat is played (`SeatAlgorithm`). One button per seat rather than a
  * single table-wide panel — a seat's rules are read and changed while looking at that seat.
  *
  * Rendered only where `useTableSettings` says the panel is offered at all (`seatsEnabled`), which

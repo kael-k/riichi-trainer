@@ -85,7 +85,7 @@ describe('seatMatchOptions', () => {
       claims: false,
     }
     const result = seatMatchOptions(config, 4, 0)
-    expect(result.humans).toEqual([1])
+    expect(result.algorithms).toEqual(['efficiency', 'manual', 'efficiency', 'efficiency'])
     expect(result.seatIndex).toBe(1)
   })
 })

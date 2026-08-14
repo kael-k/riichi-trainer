@@ -1,10 +1,5 @@
-import type { SeatPolicy } from '../../core/policy'
+import type { SeatAlgorithm } from '../../core/policy'
 import { useSettings } from './settingsStore'
-
-/** How one seat is played. The two AI values are `PlayerState.policy`'s own (`core/policy.ts`);
- *  `'manual'` is not a policy at all but the absence of one — the seat goes into
- *  `MatchOptions.humans` and the engine stops deciding for it. */
-export type SeatMode = SeatPolicy | 'manual'
 
 /** Who plays which seat. Advanced-only, and `null` everywhere until someone opens the panel: the
  *  shipped behaviour is exactly "you sit where the trainer seats you, every other seat is the
@@ -15,7 +10,7 @@ export type SeatMode = SeatPolicy | 'manual'
  *  which comes only from a seat's `modes` entry being `'manual'`. */
 export interface SeatConfig {
   /** Indexed by seat; a seat past the end falls back to the default for its position. */
-  modes: SeatMode[]
+  modes: SeatAlgorithm[]
   /** Ask the manual seats about pon/chi/ron on other seats' discards (`MatchOptions.claims`).
    *  Off in the graded drills, which ask one question per turn; on in the free-play lab. */
   claims: boolean
@@ -28,16 +23,16 @@ export interface SeatConfig {
  *
  *  `fallbackModes` overrides the `'efficiency'` default for an unconfigured seat — the folding
  *  trainer flips non-declarers to `'defense'` at handover, and the panel must show what the
- *  board is actually doing rather than a generic guess (see `useFoldingRound`'s `policies`). */
+ *  board is actually doing rather than a generic guess (see `useFoldingRound`'s live algorithms). */
 export function resolveSeatConfig(
   config: SeatConfig | null,
   players: number,
   defaultSeat: number,
-  fallbackModes?: readonly SeatMode[],
+  fallbackModes?: readonly SeatAlgorithm[],
 ): SeatConfig {
   const modes = Array.from(
     { length: players },
-    (_, seat): SeatMode =>
+    (_, seat): SeatAlgorithm =>
       config?.modes[seat] ??
       fallbackModes?.[seat] ??
       (seat === defaultSeat ? 'manual' : 'efficiency'),
@@ -50,33 +45,36 @@ export function resolveSeatConfig(
  *  patch that writes back the resolved fallback modes is what silently re-searches the folding
  *  drill for a new hand (its `seatKey` reacts to any `modes` change), so every edit must send only
  *  what the reader actually changed. */
-export function withSeatMode(modes: readonly SeatMode[], seat: number, mode: SeatMode): SeatMode[] {
+export function withSeatMode(
+  modes: readonly SeatAlgorithm[],
+  seat: number,
+  mode: SeatAlgorithm,
+): SeatAlgorithm[] {
   const next = [...modes]
   next[seat] = mode
   return next
 }
 
-/** The `MatchOptions` fields a seat configuration decides, plus the seat the engine grades —
- *  the one place `SeatMode` is translated into what the engine actually reads, so no trainer has
- *  to know that "manual" means `humans` and "defend" means `policies`. `seatIndex` keeps
- *  `defaultSeat` when it is itself manual, so a second manual seat never silently moves which
- *  seat a graded trainer scores (`useTableRound` anchors grading on `core.seatIndex`). */
+/** The `MatchOptions` fields a seat configuration decides, plus the seat the engine grades — the
+ *  one place a `SeatConfig` is translated into what the engine actually reads. `modes` already
+ *  *is* `MatchOptions.algorithms` (the merge is what lets this collapse to a pass-through);
+ *  `seatIndex` keeps `defaultSeat` when it is itself manual, so a second manual seat never
+ *  silently moves which seat a graded trainer scores (`useTableRound` anchors grading on
+ *  `core.seatIndex`). */
 export function seatMatchOptions(
   config: SeatConfig | null,
   players: number,
   defaultSeat: number,
 ): {
   seatIndex: number
-  humans: number[]
-  policies: SeatPolicy[]
+  algorithms: SeatAlgorithm[]
   claims: boolean
 } {
   const { modes, claims } = resolveSeatConfig(config, players, defaultSeat)
-  const humans = modes.flatMap((mode, seat) => (mode === 'manual' ? [seat] : []))
+  const manualSeats = modes.flatMap((mode, seat) => (mode === 'manual' ? [seat] : []))
   return {
-    seatIndex: humans.includes(defaultSeat) ? defaultSeat : (humans[0] ?? defaultSeat),
-    humans,
-    policies: modes.map((mode) => (mode === 'manual' ? 'efficiency' : mode)),
+    seatIndex: manualSeats.includes(defaultSeat) ? defaultSeat : (manualSeats[0] ?? defaultSeat),
+    algorithms: modes,
     claims,
   }
 }

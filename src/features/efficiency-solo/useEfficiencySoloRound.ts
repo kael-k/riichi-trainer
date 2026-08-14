@@ -48,7 +48,7 @@ export function useEfficiencySoloRound(
     riichi: false,
     wins: false,
     // one seat, and it is always yours: there is no other side to sit at
-    humans: [seatIndex],
+    algorithms: ['manual'],
   }
 
   const log = useLog((s) => s.log)

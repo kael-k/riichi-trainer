@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { assessDiscards } from './danger'
 import { evaluateDiscards } from './efficiency'
 import { beginTurn, createMatch, finishTurn, type MatchOptions } from './match'
+import type { SeatAlgorithm } from './policy'
 import { HONOR, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
 import {
   actingSeat,
@@ -37,6 +38,14 @@ const YONMA: MatchOptions = {
   wins: true,
 }
 
+/** `MatchOptions.algorithms` naming just the manual seats — every other seat defaults to
+ *  `'efficiency'`, same as an absent entry does. */
+function manual(...seats: number[]): SeatAlgorithm[] {
+  const algorithms: SeatAlgorithm[] = Array(Math.max(...seats) + 1).fill('efficiency')
+  for (const seat of seats) algorithms[seat] = 'manual'
+  return algorithms
+}
+
 describe('seenBy', () => {
   it('equals visible + hand counts, clamped, at every turn of 20 seeded matches', () => {
     for (let i = 0; i < 20; i++) {
@@ -62,12 +71,12 @@ describe('seenBy', () => {
   })
 })
 
-// what stops the go-round loop is a *human* seat, not `seatIndex` — the two coincide in every
+// what stops the go-round loop is a *manual* seat, not `seatIndex` — the two coincide in every
 // single-manual-seat setup, which is what these fixtures spell out
-const YOU_AT_0: MatchOptions = { ...YONMA, humans: [0] }
+const YOU_AT_0: MatchOptions = { ...YONMA, algorithms: manual(0) }
 
 describe('goRound', () => {
-  it('leaves match.seat at the human seat when the hand is still running', () => {
+  it('leaves match.seat at the manual seat when the hand is still running', () => {
     const match = createMatch([], 4, YOU_AT_0, 'table-goround-1')
     const core: TableCore = { match, options: YOU_AT_0, seatIndex: 0 }
     beginTurn(match, YOU_AT_0)
@@ -79,7 +88,7 @@ describe('goRound', () => {
   it('stops at whichever manual seat comes first, not only at seatIndex', () => {
     // seat 2 is manual and seat 0 is the one the board is drawn from: the loop must hand the
     // turn over at seat 2 rather than playing straight past it back round to seat 0
-    const options: MatchOptions = { ...YONMA, humans: [0, 2] }
+    const options: MatchOptions = { ...YONMA, algorithms: manual(0, 2) }
     const match = createMatch([], 4, options, 'table-goround-multi')
     const core: TableCore = { match, options, seatIndex: 0 }
     beginTurn(match, options)
@@ -100,9 +109,9 @@ describe('goRound', () => {
 
   it('makes at most one full circuit even on a table that never returns the turn', () => {
     // a rule bug that never hands the turn back would spin without the guard; simulate it by
-    // naming a human seat that can never become current (out of range), so the loop condition
-    // never trips false on its own and only the guard stops it
-    const options: MatchOptions = { ...YONMA, humans: [99] }
+    // leaving every seat on an algorithm (no seat manual at all), so the loop condition never
+    // trips false on its own and only the guard stops it
+    const options: MatchOptions = { ...YONMA }
     const match = createMatch([], 4, options, 'table-goround-guard')
     const core: TableCore = { match, options, seatIndex: 99 }
     const before = match.discards.length
@@ -117,7 +126,7 @@ describe('goRound', () => {
 const NO_WIN: MatchOptions = { ...YONMA, calls: false, riichi: false, wins: false }
 
 describe('actingSeat', () => {
-  it('returns seatIndex when only that seat is human', () => {
+  it('returns seatIndex when only that seat is manual', () => {
     const match = createMatch([], 4, YOU_AT_0, 'table-acting-1')
     const core: TableCore = { match, options: YOU_AT_0, seatIndex: 0 }
     expect(actingSeat(core)).toBe(0)
@@ -125,9 +134,9 @@ describe('actingSeat', () => {
 
   it('returns the other manual seat once the turn reaches it, not seatIndex', () => {
     // same setup as goRound's "stops at whichever manual seat comes first" case: the board is
-    // drawn from seat 0, but once the turn hands to seat 2 (also human) the acting seat has to
+    // drawn from seat 0, but once the turn hands to seat 2 (also manual) the acting seat has to
     // follow the turn, not the board
-    const options: MatchOptions = { ...YONMA, humans: [0, 2] }
+    const options: MatchOptions = { ...YONMA, algorithms: manual(0, 2) }
     const match = createMatch([], 4, options, 'table-acting-2')
     const core: TableCore = { match, options, seatIndex: 0 }
     beginTurn(match, options)

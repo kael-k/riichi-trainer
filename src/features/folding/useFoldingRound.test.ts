@@ -2,10 +2,10 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { handFromTenhou } from '../../core/hand'
+import type { SeatAlgorithm } from '../../core/policy'
 import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
 import { useLog } from '../../store/log'
-import type { SeatMode } from '../settings/tableSettings'
 import {
   BACK_TILE,
   decodeFoldingUrl,
@@ -308,8 +308,11 @@ describe('useFoldingRound', () => {
 })
 
 describe('per-seat manual configuration', () => {
-  it('every seat the panel marks manual becomes human, not only the drill’s own generated seat', async () => {
-    const seats = { modes: ['manual', 'manual', 'manual', 'manual'] as SeatMode[], claims: false }
+  it('every seat the panel marks manual plays for real, not only the drill’s own generated seat', async () => {
+    const seats = {
+      modes: ['manual', 'manual', 'manual', 'manual'] as SeatAlgorithm[],
+      claims: false,
+    }
     const result = await deal({ wall: wall('manual-seat-seed') }, { ...OPTIONS, seats })
     expect([...result.current.manualSeats].sort()).toEqual([0, 1, 2, 3])
   })

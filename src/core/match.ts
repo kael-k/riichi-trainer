@@ -10,7 +10,7 @@ import {
   isFuriten,
   waits,
   type Call,
-  type SeatPolicy,
+  type SeatAlgorithm,
 } from './policy'
 import { scoreHand, type ScoreResult } from './score'
 import { shanten } from './shanten'
@@ -25,14 +25,14 @@ import {
 import { isMenzen, type WinContext } from './yaku'
 
 /**
- * A whole hand of mahjong, simulated deterministically. Same seed and same human choices always
- * replay identically — that is what makes a situation link reproduce a drill, and what lets a
- * generator search seeds for a hand that reaches some target state (a scoreable win, an opponent
- * riichi) by simply replaying them.
+ * A whole hand of mahjong, simulated deterministically. Same seed and same manual-seat choices
+ * always replay identically — that is what makes a situation link reproduce a drill, and what
+ * lets a generator search seeds for a hand that reaches some target state (a scoreable win, an
+ * opponent riichi) by simply replaying them.
  *
  * The turn is split into `beginTurn` (draw) and `finishTurn` (discard, then everyone else's
- * reactions) so an interactive trainer can stop between the two and let a human pick the discard,
- * while `playMatch` just runs both in a loop.
+ * reactions) so an interactive trainer can stop between the two and let a manual seat pick the
+ * discard, while `playMatch` just runs both in a loop.
  */
 
 /** Kan-dora indicators a real dead wall holds, each sitting on top of its ura counterpart. */
@@ -55,27 +55,23 @@ export interface MatchOptions {
   /** Let players win. The efficiency trainer turns this off: ending the hand on someone else's
    *  tsumo would cut its per-turn drill short on a result the player did not cause. */
   wins: boolean
-  /** Seats played by a person: the engine draws for them but never chooses for them, so each
+  /** Seeds each player's `PlayerState.algorithm`, indexed by seat; a seat with no entry starts on
+   *  `'efficiency'`. Seeding only — the live value lives on the player and moves without touching
+   *  options, and a `'manual'` seat is one the engine draws for but never chooses for: each
    *  discard comes in through `finishTurn`, none is auto-kita'd, none auto-declares riichi and
-   *  none calls or rons without being asked (`claimOptions`/`answerClaim`). A list rather than a
-   *  single seat because every seat can be manual at once — four manual seats is one person
-   *  playing the whole table. */
-  humans?: readonly number[]
-  /** Ask human seats what to do with *other* seats' discards — ron, pon, chi. Off by default, and
-   *  deliberately: the graded drills ask one question per turn ("what do you discard"), and a
+   *  none calls or rons without being asked (`claimOptions`/`answerClaim`). More than one seat
+   *  can be `'manual'` at once — four manual seats is one person playing the whole table. */
+  algorithms?: readonly SeatAlgorithm[]
+  /** Ask manual seats what to do with *other* seats' discards — ron, pon, chi. Off by default,
+   *  and deliberately: the graded drills ask one question per turn ("what do you discard"), and a
    *  trainer that interrupted every ponnable tile with a prompt would be grading a different
    *  skill. The free-play boards turn it on. Independent of `calls`, which is about the AI. */
   claims?: boolean
-  /** Starting `PlayerState.policy` per seat, indexed by seat; a seat with no entry starts on
-   *  `'efficiency'`. Only the *starting* value: the folding trainer still flips seats mid-hand
-   *  through `PlayerState.policy` itself. Ignored for a seat in `humans`, which the engine never
-   *  decides for. */
-  policies?: readonly SeatPolicy[]
 }
 
 /** Whether the engine must stop and ask instead of deciding for `seat`. */
-export function isHuman(options: MatchOptions, seat: number): boolean {
-  return options.humans?.includes(seat) ?? false
+export function isManual(state: MatchState, seat: number): boolean {
+  return state.players[seat].algorithm === 'manual'
 }
 
 export interface PlayerState {
@@ -93,10 +89,11 @@ export interface PlayerState {
   /** Passed on a discard that would have won: no ron until this player's next draw (and, under
    *  riichi, not for the rest of the hand). Own-river furiten is derived, not stored. */
   missedWin: boolean
-  /** How the engine plays this seat. Per seat and flippable mid-hand — ignored once `riichiAt`
-   *  is set (riichi locks every later discard to tsumogiri regardless) and for `options.human`,
-   *  which the engine never decides for. */
-  policy: SeatPolicy
+  /** How the engine plays this seat. LIVE: flip it mid-hand and the next turn obeys — no redeal,
+   *  no new match. `'manual'` is not "a person" but "ask, don't decide", and once set the engine
+   *  never chooses for that seat — ignored, too, once `riichiAt` is set (riichi locks every later
+   *  discard to tsumogiri regardless of algorithm). */
+  algorithm: SeatAlgorithm
 }
 
 export interface WinRecord {
@@ -115,13 +112,13 @@ export interface WinRecord {
 /** One thing a seat may do with the tile someone else just discarded. `from` names the caller's
  *  own tiles that would join it — empty for a ron, two tiles for a pon or chi. Daiminkan is
  *  absent on purpose: the engine models no called kan at all (`chooseCall` never offers one
- *  either), so offering it to a human alone would be the one call the AI seats cannot answer. */
+ *  either), so offering it to a manual seat alone would be the one call the AI seats cannot answer. */
 export interface ClaimOption {
   kind: 'ron' | 'pon' | 'chi'
   from: TileId[]
 }
 
-/** A human seat's reply to `ClaimOption`s. `'pass'` gives up every claim on that discard, ron
+/** A manual seat's reply to `ClaimOption`s. `'pass'` gives up every claim on that discard, ron
  *  included — which is what puts the seat in temporary furiten, exactly as declining costs an AI
  *  seat its ron. */
 export type ClaimAnswer =
@@ -136,7 +133,7 @@ export interface PendingClaim {
   from: number
   tile: RiverTile
   options: ClaimOption[]
-  /** Every human seat's answer to *this* discard so far, seat-indexed. Reactions are resolved
+  /** Every manual seat's answer to *this* discard so far, seat-indexed. Reactions are resolved
    *  from scratch each time one arrives (see `resolveReactions`), so this is what makes the
    *  re-run skip the seats already asked instead of asking them again. */
   answers: Record<number, ClaimAnswer>
@@ -187,14 +184,14 @@ export interface MatchState {
   replacements: number
   /** Tile that brought the current seat to 14, if any. */
   drawn?: ParsedTile
-  /** A human seat's outstanding decision on the discard just made. Set only while the turn is
+  /** A manual seat's outstanding decision on the discard just made. Set only while the turn is
    *  suspended; `beginTurn`/`finishTurn` are no-ops until `answerClaim` clears it. */
   claim?: PendingClaim
   ended?: 'win' | 'exhaustive'
   win?: WinRecord
 }
 
-function createPlayer(policy: SeatPolicy = 'efficiency'): PlayerState {
+function createPlayer(algorithm: SeatAlgorithm = 'efficiency'): PlayerState {
   return {
     hand: createHand(),
     reds: new Set(),
@@ -203,7 +200,7 @@ function createPlayer(policy: SeatPolicy = 'efficiency'): PlayerState {
     ippatsu: false,
     nuki: [],
     missedWin: false,
-    policy,
+    algorithm,
   }
 }
 
@@ -253,7 +250,7 @@ export function createMatch(
   for (const indicator of doraIndicators) visible[indicator.id]++
 
   const state: MatchState = {
-    players: Array.from({ length: players }, (_, seat) => createPlayer(options.policies?.[seat])),
+    players: Array.from({ length: players }, (_, seat) => createPlayer(options.algorithms?.[seat])),
     wall: full,
     liveWall: dealable,
     liveWallSnapshot: [],
@@ -376,10 +373,11 @@ function tryWin(
   const player = state.players[seat]
   // a folding seat is trying to leave the hand, not win it — same reasoning as the riichi and
   // call gates in finishTurn below, just reached from the draw/ron side instead of the discard
-  // side. Never for a human seat: the engine never decides for those, a stray leftover
-  // 'defense' from the folding trainer's own handoff (see useFoldingRound.ts#playToRiichi) must
-  // not block a human win the player actually drew or ronned into.
-  if (player.policy === 'defense' && !isHuman(options, seat)) return null
+  // side. 'manual' is a different algorithm value now, so this can never block a manual seat's
+  // own win even after a stray leftover 'defense' from the folding trainer's own handoff (see
+  // useFoldingRound.ts#playToRiichi) — the engine never decides for a manual seat in the first
+  // place.
+  if (player.algorithm === 'defense') return null
 
   // one shanten call gates the whole win check, and it fails for almost every seat on almost
   // every discard. Everything below — decompose, the wait set, scoring — is far more expensive,
@@ -463,10 +461,10 @@ export function beginTurn(state: MatchState, options: MatchOptions): MatchEvent[
   let tile = take(state, player)!
   events.push({ kind: 'draw', seat: state.seat, tile })
 
-  // sanma nukidora: pulling a held north is graded exactly as the efficiency trainer grades the
-  // human's — north's own evaluateDiscards entry against the best discard — so the AI pulls
-  // whenever that entry is as good as the best line, and draws its replacement
-  while (options.sanma && !isHuman(options, state.seat) && player.hand.counts[NORTH] > 0) {
+  // sanma nukidora: pulling a held north is graded exactly as the efficiency trainer grades a
+  // manual seat's own — north's own evaluateDiscards entry against the best discard — so the AI
+  // pulls whenever that entry is as good as the best line, and draws its replacement
+  while (options.sanma && !isManual(state, state.seat) && player.hand.counts[NORTH] > 0) {
     const seen = seenBy(state, player)
     const ranked = evaluateDiscards(player.hand, seen, options.sanma)
     const north = ranked.find((o) => o.discard === NORTH)
@@ -515,14 +513,14 @@ export function wallDrawnCount(state: MatchState): number {
 }
 
 /**
- * Plays the current seat's discard — `discard` overrides the AI, which is how a human seat takes
+ * Plays the current seat's discard — `discard` overrides the AI, which is how a manual seat takes
  * its turn — then lets every other seat react to it: ron first, then calls.
  *
- * `declareRiichi` is read only for a human seat, where riichi has to be a choice: it locks every
+ * `declareRiichi` is read only for a manual seat, where riichi has to be a choice: it locks every
  * later discard to tsumogiri, so the engine must never declare one on a player's behalf. An AI
  * seat ignores it and declares on its own terms, exactly as before.
  *
- * The reaction half can suspend (see `resolveReactions`) when a human seat has a legal claim on
+ * The reaction half can suspend (see `resolveReactions`) when a manual seat has a legal claim on
  * the discard. The turn is then unfinished until `answerClaim` resolves it.
  */
 export function finishTurn(
@@ -541,7 +539,7 @@ export function finishTurn(
   if (!tile) {
     if (forcedTsumogiri) {
       tile = state.drawn
-    } else if (player.policy === 'defense') {
+    } else if (player.algorithm === 'defense') {
       const fold = chooseFold(player.hand, threatViews(state), seenBy(state, player), options.sanma)
       tile = pickTile(player, fold)
     } else {
@@ -559,10 +557,10 @@ export function finishTurn(
 
   // riichi is declared with the discard that reaches tenpai, so it is decided after the choice
   const declaring = canDeclareRiichi(state, options, seat)
-    ? isHuman(options, seat)
+    ? isManual(state, seat)
       ? declareRiichi
       : // a folding seat must not declare — it is trying to leave the hand, not win it
-        player.policy !== 'defense'
+        player.algorithm !== 'defense'
     : false
   if (declaring) {
     player.riichiAt = player.river.length
@@ -605,14 +603,14 @@ export function canDeclareRiichi(state: MatchState, options: MatchOptions, seat:
  * Every seat's reaction to `entry`, the tile `discarder` has just thrown: ron first (in claim
  * order from the discarder), then calls, then handing the turn on.
  *
- * Human seats are asked rather than decided for, which is what makes this restartable: it runs
- * from the top on every `answerClaim`, reading each human seat's reply out of `answers` and
+ * Manual seats are asked rather than decided for, which is what makes this restartable: it runs
+ * from the top on every `answerClaim`, reading each manual seat's reply out of `answers` and
  * suspending again on the first one that has not replied yet. Everything it re-runs on the way
  * back through is idempotent — `tryWin` restores the hand it probes, `couldHaveWon` too, and
  * `missedWin` only ever goes true — so re-running costs a little work and changes nothing.
  *
- * The three phases are separate for priority's sake: every human is asked before any ron is
- * awarded, so a pon answered early can never outrank a ron the seat order says comes first.
+ * The three phases are separate for priority's sake: every manual seat is asked before any ron
+ * is awarded, so a pon answered early can never outrank a ron the seat order says comes first.
  */
 function resolveReactions(
   state: MatchState,
@@ -625,7 +623,7 @@ function resolveReactions(
   const order = seatsFrom(state, discarder)
 
   for (const other of order) {
-    if (!isHuman(options, other) || answers[other]) continue
+    if (!isManual(state, other) || answers[other]) continue
     const claims = claimOptions(state, options, other, tile, discarder)
     // nothing legal to offer is a pass nobody has to be asked about
     if (claims.length === 0) {
@@ -640,13 +638,13 @@ function resolveReactions(
   const events: MatchEvent[] = []
   for (const other of order) {
     const answer = answers[other]
-    const wants = isHuman(options, other) ? answer?.kind === 'ron' : true
+    const wants = isManual(state, other) ? answer?.kind === 'ron' : true
     const win = wants ? tryWin(state, other, options, tile, false, discarder) : null
     if (win) {
       entry.win = true
       return [...events, ...endWith(state, win)]
     }
-    // declining a win that was there is what makes a player temporarily furiten — for a human
+    // declining a win that was there is what makes a player temporarily furiten — for a manual
     // seat that passed just as much as for an AI seat the engine never offered it to
     if (options.wins && couldHaveWon(state, other, tile.id)) state.players[other].missedWin = true
   }
@@ -656,10 +654,11 @@ function resolveReactions(
       const caller = state.players[other]
       if (caller.riichiAt !== undefined) continue
       // a folding seat does not call: every meld it opened is one more shape it might have to
-      // defend a wait with. A human seat is never held to a policy — it was asked instead.
-      if (!isHuman(options, other) && caller.policy === 'defense') continue
+      // defend a wait with. A manual seat's algorithm is never consulted here — it was asked
+      // instead, and 'defense' can never coincide with 'manual' on the same seat.
+      if (caller.algorithm === 'defense') continue
       const answer = answers[other]
-      const call: Call | null = isHuman(options, other)
+      const call: Call | null = isManual(state, other)
         ? answer && (answer.kind === 'pon' || answer.kind === 'chi')
           ? { kind: answer.kind, from: answer.from }
           : null

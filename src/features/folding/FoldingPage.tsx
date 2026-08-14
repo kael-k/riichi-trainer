@@ -231,7 +231,7 @@ export function FoldingPage() {
       riichi: round.riichi[seat],
       // `round.boardHands` is already the D-14 gate for a threat: face-down filler at the right
       // count until `round.finished` or `showOpponentHands`, real tiles after (and always real
-      // for a seat someone plays, `boardHandsOf`'s own `isHuman` check). A bystander's tiles are
+      // for a seat someone plays, `boardHandsOf`'s own `isManual` check). A bystander's tiles are
       // real throughout, same as an ordinary opponent's elsewhere
       hand: round.boardHands[seat],
       concealed: !mine && !showOpponentHands,
@@ -307,7 +307,7 @@ export function FoldingPage() {
                     defaultOrientation={round.seatIndex}
                     config={seatConfig}
                     onChange={(next) => updateTable({ seats: next })}
-                    fallbackModes={round.policies}
+                    fallbackModes={round.algorithms}
                     viewSeat={perspective}
                     onWatch={setViewSeat}
                     read={round.seatReads[seat]}

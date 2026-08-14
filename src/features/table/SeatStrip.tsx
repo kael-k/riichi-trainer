@@ -1,14 +1,15 @@
 import { useTranslation } from 'react-i18next'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Tile } from '../../components/tiles/Tile'
+import type { SeatAlgorithm } from '../../core/policy'
 import type { SeatRead } from '../../core/table'
 import { SeatButton, type SeatButtonProps } from '../settings/SeatPanel'
-import { resolveSeatConfig, type SeatMode } from '../settings/tableSettings'
+import { resolveSeatConfig } from '../settings/tableSettings'
 
 /** One colour per algorithm, always shown (no gating setting — reading who is running what is
  *  basic table awareness, same reasoning as `showOpponentHands`) so the badge is a fast visual
  *  read of "who's doing what" across the felt. */
-const ALGO_COLOR: Record<SeatMode, string> = {
+const ALGO_COLOR: Record<SeatAlgorithm, string> = {
   efficiency: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
   defense: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
   manual: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',

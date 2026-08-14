@@ -16,9 +16,18 @@ import {
   type MatchOptions,
   type MatchState,
 } from './match'
+import type { SeatAlgorithm } from './policy'
 import { scoreHand } from './score'
 import { HONOR, inTileSet, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
 import { INITIAL_HAND_SIZE, TILES_PER_KIND, wallWithHand } from './wall'
+
+/** `MatchOptions.algorithms` naming just the manual seats — every other seat defaults to
+ *  `'efficiency'`, same as an absent entry does. */
+function manual(...seats: number[]): SeatAlgorithm[] {
+  const algorithms: SeatAlgorithm[] = Array(Math.max(...seats) + 1).fill('efficiency')
+  for (const seat of seats) algorithms[seat] = 'manual'
+  return algorithms
+}
 
 const YONMA: MatchOptions = {
   sanma: false,
@@ -305,7 +314,7 @@ function playWithDefense(seed: string) {
 
     if (declarer >= 0 && !switched) {
       for (const [seat, player] of state.players.entries()) {
-        if (seat !== declarer) player.policy = 'defense'
+        if (seat !== declarer) player.algorithm = 'defense'
       }
       switched = true
     }
@@ -360,7 +369,7 @@ describe('defensive policy', () => {
     },
   )
 
-  it('never tsumos for a defense-policy seat, but does for the same tenpai hand under efficiency', () => {
+  it('never tsumos for a defense-algorithm seat, but does for the same tenpai hand under efficiency', () => {
     // shanpon tenpai on 1p/2p, drawing either completes it
     const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'tryWin-defense')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
@@ -371,7 +380,7 @@ describe('defensive policy', () => {
     expect(pushing.win?.seat).toBe(0)
 
     const folding = createMatch(wall, 4, YONMA)
-    folding.players[0].policy = 'defense'
+    folding.players[0].algorithm = 'defense'
     beginTurn(folding, YONMA)
     expect(folding.ended).toBeUndefined()
     expect(folding.win).toBeUndefined()
@@ -380,23 +389,23 @@ describe('defensive policy', () => {
 })
 
 // `claims: true` is what turns a discard into a question instead of a decision the engine makes
-// for a human seat. These hands are built tile-by-tile (rather than seeded and searched for)
+// for a manual seat. These hands are built tile-by-tile (rather than seeded and searched for)
 // because a claim needs an exact shape on both sides of the discard — a random deal would only
 // prove the mechanism works on whichever seed happened to offer one.
-describe('human claims', () => {
-  it('never sets state.claim when claims stays off, even with a human seat at the table', () => {
+describe('manual claims', () => {
+  it('never sets state.claim when claims stays off, even with a manual seat at the table', () => {
     // this is every existing trainer's setup (nobody passes `claims: true` today) — if turning a
-    // seat human alone started suspending turns, every one of them would silently break
+    // seat manual alone started suspending turns, every one of them would silently break
     let sawClaim = false
-    playMatch('claims-off', 4, { ...YONMA, humans: [0] }, (_event, state) => {
+    playMatch('claims-off', 4, { ...YONMA, algorithms: manual(0) }, (_event, state) => {
       sawClaim ||= state.claim !== undefined
       return false
     })
     expect(sawClaim).toBe(false)
   })
 
-  it('offers a human seat holding a pair a pon on the matching discard', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, humans: [1] }
+  it('offers a manual seat holding a pair a pon on the matching discard', () => {
+    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1) }
     // seat 0's hand only needs a spare 9s to discard; seat 1's is scattered everywhere else so it
     // is nowhere near tenpai and the only thing on offer is the pon
     const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
@@ -411,7 +420,7 @@ describe('human claims', () => {
   })
 
   it('passing clears the claim, hands the turn on as usual, and leaves the declined win furiten', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, calls: false, humans: [1] }
+    const options: MatchOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
     // seat 1 is tanki tenpai on 2s (all simples, so tanyao carries the yaku on a ron); seats 2
     // and 3 hold no sou at all, so they cannot react to a sou discard and cannot steal the win
     // out from under the seed's randomness
@@ -439,7 +448,7 @@ describe('human claims', () => {
   // Req 2.3's second half — furiten already cannot ron (`tryWin`, match.ts:404); these are
   // regression tests, not code changes.
   it("never offers a ron on a tile sitting in the seat's own river (permanent furiten)", () => {
-    const options: MatchOptions = { ...YONMA, claims: true, calls: false, humans: [1] }
+    const options: MatchOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
     // same tanki-2s tenpai as the pass test above, but seat 1 has already discarded a 2s itself
     const wall = [
       ...parseTenhou('189m189p2s123456z'),
@@ -462,7 +471,7 @@ describe('human claims', () => {
   })
 
   it('never offers a ron once the seat has missed a win on this tenpai (temporary furiten)', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, calls: false, humans: [1] }
+    const options: MatchOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
     const wall = [
       ...parseTenhou('189m189p2s123456z'),
       ...parseTenhou('234567m234567p2s'),
@@ -481,7 +490,7 @@ describe('human claims', () => {
   })
 
   it('answering pon opens the meld and moves the tile from the river into it, keeping the log', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, humans: [1] }
+    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1) }
     const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
     const state = createMatch(wall, 4, options, 'claim-pon-answer')
     beginTurn(state, options)
@@ -505,7 +514,7 @@ describe('human claims', () => {
   })
 
   it('lets a ron outrank a pon even when the ponning seat is asked and answers first', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, humans: [1, 2] }
+    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1, 2) }
     // seat order puts seat 1 (pon-eligible) first and seat 2 (ron-eligible, chiitoi tenpai so the
     // terminal wait still carries a yaku) second; seat 3 holds no sou and cannot react at all
     const wall = [
@@ -527,12 +536,12 @@ describe('human claims', () => {
 
     expect(state.win?.seat).toBe(2)
     // the pon was answered first but never actually applied — ron is resolved as its own phase,
-    // strictly before calls are, regardless of which order the humans replied in
+    // strictly before calls are, regardless of which order the manual seats replied in
     expect(state.players[1].melds).toHaveLength(0)
   })
 
   it('is a no-op for beginTurn and finishTurn while a claim is pending', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, humans: [1] }
+    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1) }
     const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
     const state = createMatch(wall, 4, options, 'claim-noop')
     beginTurn(state, options)
@@ -561,7 +570,7 @@ describe('human claims', () => {
   })
 
   it('is a no-op when nothing is pending, so double-tapping an answer cannot skip a seat', () => {
-    const options: MatchOptions = { ...YONMA, humans: [0], claims: true }
+    const options: MatchOptions = { ...YONMA, algorithms: manual(0), claims: true }
     const state = createMatch([], 4, options, 'claim-noop-answer')
     expect(state.claim).toBeUndefined()
     const before = { seat: state.seat, turn: state.turn, discardsLength: state.discards.length }
@@ -575,44 +584,47 @@ describe('human claims', () => {
   })
 })
 
-describe('policies option', () => {
-  it('seeds each seat’s starting policy from options.policies, defaulting the rest to efficiency', () => {
-    const state = createMatch([], 4, { ...YONMA, policies: ['defense'] }, 'policy-seed')
-    expect(state.players[0].policy).toBe('defense')
-    expect(state.players.slice(1).every((p) => p.policy === 'efficiency')).toBe(true)
+describe('algorithms option', () => {
+  it('seeds each seat’s starting algorithm from options.algorithms, defaulting the rest to efficiency', () => {
+    const state = createMatch([], 4, { ...YONMA, algorithms: ['defense'] }, 'algorithm-seed')
+    expect(state.players[0].algorithm).toBe('defense')
+    expect(state.players.slice(1).every((p) => p.algorithm === 'efficiency')).toBe(true)
   })
 
   it('a seat seeded on defense from turn one never declares riichi and never calls', () => {
     for (let i = 0; i < 15; i++) {
-      const { state } = playMatch(`policy-defense-${i}`, 4, { ...YONMA, policies: ['defense'] })
-      expect(state.players[0].riichiAt, `seed policy-defense-${i}`).toBeUndefined()
-      expect(state.players[0].melds, `seed policy-defense-${i}`).toHaveLength(0)
+      const { state } = playMatch(`algorithm-defense-${i}`, 4, {
+        ...YONMA,
+        algorithms: ['defense'],
+      })
+      expect(state.players[0].riichiAt, `seed algorithm-defense-${i}`).toBeUndefined()
+      expect(state.players[0].melds, `seed algorithm-defense-${i}`).toHaveLength(0)
     }
   })
 })
 
-describe('human riichi declaration', () => {
+describe('manual riichi declaration', () => {
   // seat 0 is dealt straight into a shanpon tenpai (1p/2p) and draws a tile that cannot complete
   // it, so the hand is still exactly as tenpai after tsumogiri-ing that draw straight back out —
   // which is what makes canDeclareRiichi hold on the discard that follows
-  function tenpaiHumanState(seed: string) {
+  function tenpaiManualState(seed: string) {
     const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, seed)
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('9s')[0]
-    const options: MatchOptions = { ...YONMA, humans: [0] }
+    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
     const state = createMatch(wall, 4, options)
     beginTurn(state, options)
     return { state, options }
   }
 
-  it('never auto-declares riichi for a human seat, even reaching tenpai, unless the caller says so', () => {
-    const { state, options } = tenpaiHumanState('human-riichi-1')
+  it('never auto-declares riichi for a manual seat, even reaching tenpai, unless the caller says so', () => {
+    const { state, options } = tenpaiManualState('manual-riichi-1')
     // declareRiichi omitted — this is the same call playMatch makes every turn
     finishTurn(state, options, { id: SOU + 8, red: false })
     expect(state.players[0].riichiAt).toBeUndefined()
   })
 
-  it('declares riichi for a human seat once the caller passes declareRiichi and it is legal', () => {
-    const { state, options } = tenpaiHumanState('human-riichi-2')
+  it('declares riichi for a manual seat once the caller passes declareRiichi and it is legal', () => {
+    const { state, options } = tenpaiManualState('manual-riichi-2')
     finishTurn(state, options, { id: SOU + 8, red: false }, true)
     expect(state.players[0].riichiAt).toBe(0)
     expect(state.players[0].river[0]?.riichi).toBe(true)

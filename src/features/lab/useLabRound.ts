@@ -50,7 +50,8 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
   const players = options.sanma ? 3 : 4
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
-  const { seatIndex, humans, policies, claims } = seatMatchOptions(options.seats, players, linkSeat)
+  const { seatIndex, algorithms, claims } = seatMatchOptions(options.seats, players, linkSeat)
+  const manualSeats = algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
   const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const matchOptions: MatchOptions = {
     sanma: options.sanma,
@@ -60,8 +61,7 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
     calls: true,
     riichi: true,
     wins: options.opponentWins,
-    humans,
-    policies,
+    algorithms,
     claims,
   }
 
@@ -102,7 +102,7 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
   // leaks what the folding drill hides
   const boardHands: ParsedTile[][] = table.hands.map((hand, seat) =>
     // a manual seat is the reader's own, so it is never hidden from them
-    humans.includes(seat) || finished || options.showOpponentHands
+    manualSeats.includes(seat) || finished || options.showOpponentHands
       ? hand
       : hand.map(() => BACK_TILE),
   )
@@ -114,7 +114,7 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
     finished,
     boardHands,
     /** Every seat a person plays — face-up on the board and playable in turn. */
-    manualSeats: humans,
+    manualSeats,
     situationQuery: () => encodeSituation(table.situation()),
   }
 }

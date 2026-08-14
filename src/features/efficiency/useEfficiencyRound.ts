@@ -41,7 +41,8 @@ export function useEfficiencyRound(
   const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
   // the seat panel's orientation wins over the link's own `?seat=` once someone picks a side;
   // until then `seats` is null and this resolves back to exactly the link's seat
-  const { seatIndex, humans, policies, claims } = seatMatchOptions(options.seats, players, linkSeat)
+  const { seatIndex, algorithms, claims } = seatMatchOptions(options.seats, players, linkSeat)
+  const manualSeats = algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
   const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const matchOptions: MatchOptions = {
     sanma: options.sanma,
@@ -53,8 +54,7 @@ export function useEfficiencyRound(
     calls: true,
     riichi: true,
     wins: false,
-    humans,
-    policies,
+    algorithms,
     claims,
   }
 
@@ -194,7 +194,7 @@ export function useEfficiencyRound(
     acting: table.acting,
     /** Every seat a person plays: their hands are always face-up, whatever the reveal setting
      *  says, since they are the reader's own. */
-    manualSeats: humans,
+    manualSeats,
     drawnSeat: table.drawnSeat,
     claim: table.claim,
     seatReads: table.seatReads,

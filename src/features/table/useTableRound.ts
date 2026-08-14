@@ -39,7 +39,7 @@ import { WINDS, type Situation } from '../situation/urlCodec'
  * `core/table.ts` already centralizes. Scoring and folding are the two exceptions: scoring never
  * re-touches its match after generation (its only entry point is `onAgariCall`, Task 2 of this
  * plan), and folding drives `beginTurn`/`finishTurn` itself through its own thin hook on
- * `core/table.ts`'s primitives (REQ-07, D-08) because its mid-hand policy flip needs
+ * `core/table.ts`'s primitives (REQ-07, D-08) because its mid-hand algorithm flip needs
  * turn-granularity control this hook's three-callback contract does not offer.
  */
 
@@ -140,10 +140,9 @@ export function useTableRound(input: TableRoundInput) {
   // one log row per replayed discard without reaching back into `core/table.ts` itself
   const replayed = useRef<ParsedTile[]>([])
 
-  // joined, not the arrays themselves: a caller builds these fresh from its settings on every
-  // render, so an identity dep would redeal the board each time it rendered
-  const humanKey = input.options.humans?.join()
-  const policyKey = input.options.policies?.join()
+  // joined, not the array itself: a caller builds this fresh from its settings on every render,
+  // so an identity dep would redeal the board each time it rendered
+  const algorithmsKey = input.options.algorithms?.join()
 
   const [restartCount, setRestartCount] = useState(0)
   // "the next discard declares riichi", armed from the UI's riichi button. Kept here rather than
@@ -297,8 +296,7 @@ export function useTableRound(input: TableRoundInput) {
     input.options.riichi,
     input.options.wins,
     input.options.claims,
-    humanKey,
-    policyKey,
+    algorithmsKey,
     restartCount,
   ])
 
