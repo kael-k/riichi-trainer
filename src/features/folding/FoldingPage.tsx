@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { BoardStage } from '../../components/tiles/BoardStage'
@@ -12,7 +12,7 @@ import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatButton } from '../settings/SeatPanel'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
-import { resolveSeatConfig, useTableSettings, type TableSettings } from '../settings/tableSettings'
+import { useTableSettings, type TableSettings } from '../settings/tableSettings'
 import { WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { ManualControls } from '../table/ManualControls'
@@ -99,12 +99,22 @@ export function FoldingPage() {
 
   const round = useFoldingRound(urlData, options)
   const players = options.sanma ? 3 : 4
-  // orientation is a pure viewing perspective — which seat `Table` draws at the bottom — kept
-  // out of the round's own rebuild key (`useFoldingRound`'s `seatKey`), so changing it here never
-  // resets the hand. `round.seatIndex` (the drill's own generated seat) is only the default until
-  // someone picks a different one; a link built from a non-default perspective is not
-  // reproducible, which is the trade a reader is opting into by moving it
-  const viewSeat = resolveSeatConfig(seatConfig, players, round.seatIndex).orientation
+  // perspective is a pure viewing choice — which seat `Table` draws at the bottom — held as the
+  // page's own ephemeral state, never the round's or the settings store's: it never reaches
+  // `useFoldingRound` at all, so changing it can never re-search for a new hand or persist across
+  // hands. `round.seatIndex` (the drill's own generated seat) is the default until someone picks
+  // a different one for this hand; it resets back to that default on every new hand
+  const [viewSeat, setViewSeat] = useState<number | null>(null)
+  const [lastUrlData, setLastUrlData] = useState(urlData)
+  if (urlData !== lastUrlData) {
+    setLastUrlData(urlData)
+    setViewSeat(null)
+  }
+  const perspective = viewSeat ?? round.seatIndex
+  const nextHand = () => {
+    setViewSeat(null)
+    round.next()
+  }
 
   const settingsRows = (
     <>
@@ -166,7 +176,7 @@ export function FoldingPage() {
           <div className="flex justify-center">
             <button
               type="button"
-              onClick={round.next}
+              onClick={nextHand}
               className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
             >
               {t('common.newRound')}
@@ -184,7 +194,7 @@ export function FoldingPage() {
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
-    onReset: round.next,
+    onReset: nextHand,
     resetLabel: t('common.resetHand'),
   }
 
@@ -196,7 +206,7 @@ export function FoldingPage() {
     // watching from another side used to leave a face-down row stacked over your own face-up
     // tiles, reading as "your hand, concealed from you". The graded seat, once it is elsewhere,
     // is an ordinary seat on the felt — and a seat you play, so `boardHands` gives it real faces
-    if (seat === viewSeat) {
+    if (seat === perspective) {
       return { river, melds: round.melds[seat], nuki: round.nuki[seat], riichi: round.riichi[seat] }
     }
     return {
@@ -269,11 +279,13 @@ export function FoldingPage() {
                     config={seatConfig}
                     onChange={(next) => updateTable({ seats: next })}
                     fallbackModes={round.policies}
+                    viewSeat={perspective}
+                    onWatch={setViewSeat}
                   />
                 )
               }
               seats={seats}
-              seatIndex={viewSeat}
+              seatIndex={perspective}
               round={WINDS[round.round - HONOR]}
               doraIndicators={round.doraIndicators}
               wallCount={round.liveWall.length}
@@ -341,7 +353,7 @@ export function FoldingPage() {
                 )}
                 <button
                   type="button"
-                  onClick={round.next}
+                  onClick={nextHand}
                   className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
                 >
                   {t('folding.newSituation')}

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { resolveTableSettings, TABLE_DEFAULTS, type TableApp } from './tableSettings'
+import {
+  resolveTableSettings,
+  seatMatchOptions,
+  TABLE_DEFAULTS,
+  type SeatConfig,
+  type TableApp,
+} from './tableSettings'
 
 const APPS: TableApp[] = ['efficiency', 'efficiencySolo', 'folding', 'scoring', 'lab']
 
@@ -55,5 +61,31 @@ describe('resolveTableSettings', () => {
     const table = { global: {}, apps: { efficiency: { showOpponentHands: true } } }
     expect(resolveTableSettings('efficiency', table).showOpponentHands).toBe(true)
     expect(resolveTableSettings('scoring', table).showOpponentHands).toBe(false)
+  })
+})
+
+describe('seatMatchOptions', () => {
+  it('grades the default seat with no configuration at all', () => {
+    expect(seatMatchOptions(null, 4, 2).seatIndex).toBe(2)
+  })
+
+  it('keeps grading the default seat when a second seat is also manual', () => {
+    const config: SeatConfig = {
+      modes: ['efficiency', 'manual', 'manual', 'efficiency'],
+      claims: false,
+    }
+    expect(seatMatchOptions(config, 4, 2).seatIndex).toBe(2)
+  })
+
+  it('falls back to the first manual seat when the default seat was given away', () => {
+    // seat 0 is the default, but the reader handed it to the efficiency AI and made seat 1
+    // manual instead — perspective never does this (it is view-only), but a raw config edit can
+    const config: SeatConfig = {
+      modes: ['efficiency', 'manual', 'efficiency', 'efficiency'],
+      claims: false,
+    }
+    const result = seatMatchOptions(config, 4, 0)
+    expect(result.humans).toEqual([1])
+    expect(result.seatIndex).toBe(1)
   })
 })

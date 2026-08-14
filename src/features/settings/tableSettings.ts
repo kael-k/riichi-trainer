@@ -6,15 +6,14 @@ import { useSettings } from './settingsStore'
  *  `MatchOptions.humans` and the engine stops deciding for it. */
 export type SeatMode = SeatPolicy | 'manual'
 
-/** Who plays which seat, and from whose side the board is drawn. Advanced-only, and `null`
- *  everywhere until someone opens the panel: the shipped behaviour is exactly "you sit where the
- *  trainer seats you, every other seat is the efficiency AI", which `resolveSeatConfig` below
- *  reproduces from `null`. */
+/** Who plays which seat. Advanced-only, and `null` everywhere until someone opens the panel: the
+ *  shipped behaviour is exactly "you sit where the trainer seats you, every other seat is the
+ *  efficiency AI", which `resolveSeatConfig` below reproduces from `null`.
+ *
+ *  Perspective (which seat the board is drawn from) is not part of this: it is ephemeral page
+ *  state, reset on every new hand, never persisted — "watch from here" stops meaning "play here",
+ *  which comes only from a seat's `modes` entry being `'manual'`. */
 export interface SeatConfig {
-  /** The seat you watch from — always drawn at the bottom of the board. Absent means "wherever
-   *  the trainer seats you", which is how a link's own `?seat=` keeps working until someone
-   *  actually picks a side. */
-  orientation?: number
   /** Indexed by seat; a seat past the end falls back to the default for its position. */
   modes: SeatMode[]
   /** Ask the manual seats about pon/chi/ron on other seats' discards (`MatchOptions.claims`).
@@ -22,9 +21,10 @@ export interface SeatConfig {
   claims: boolean
 }
 
-/** `SeatConfig` filled in for a real table: every seat named, the orientation clamped into the
- *  seat count (a yonma link opened under sanma can point at North), and at least one manual seat
- *  guaranteed — with none, nothing would ever stop the go-round loop to let a person act.
+/** `SeatConfig` filled in for a real table: every seat named, and at least one manual seat
+ *  guaranteed — with none, nothing would ever stop the go-round loop to let a person act. The
+ *  guarantee anchors on `defaultSeat` (a link's `?seat=`, or the seat the trainer generated), not
+ *  on perspective — perspective doesn't reach this function at all.
  *
  *  `fallbackModes` overrides the `'efficiency'` default for an unconfigured seat — the folding
  *  trainer flips non-declarers to `'defense'` at handover, and the panel must show what the
@@ -32,38 +32,50 @@ export interface SeatConfig {
 export function resolveSeatConfig(
   config: SeatConfig | null,
   players: number,
-  defaultOrientation: number,
+  defaultSeat: number,
   fallbackModes?: readonly SeatMode[],
-): SeatConfig & { orientation: number } {
-  const orientation = Math.min(Math.max(0, config?.orientation ?? defaultOrientation), players - 1)
+): SeatConfig {
   const modes = Array.from(
     { length: players },
     (_, seat): SeatMode =>
       config?.modes[seat] ??
       fallbackModes?.[seat] ??
-      (seat === orientation ? 'manual' : 'efficiency'),
+      (seat === defaultSeat ? 'manual' : 'efficiency'),
   )
-  if (!modes.includes('manual')) modes[orientation] = 'manual'
-  return { orientation, modes, claims: config?.claims ?? false }
+  if (!modes.includes('manual')) modes[defaultSeat] = 'manual'
+  return { modes, claims: config?.claims ?? false }
 }
 
-/** The `MatchOptions` fields a seat configuration decides, plus the orientation seat itself —
+/** `modes` with `seat` set to `mode`, built off the *raw* array rather than a resolved one — a
+ *  patch that writes back the resolved fallback modes is what silently re-searches the folding
+ *  drill for a new hand (its `seatKey` reacts to any `modes` change), so every edit must send only
+ *  what the reader actually changed. */
+export function withSeatMode(modes: readonly SeatMode[], seat: number, mode: SeatMode): SeatMode[] {
+  const next = [...modes]
+  next[seat] = mode
+  return next
+}
+
+/** The `MatchOptions` fields a seat configuration decides, plus the seat the engine grades —
  *  the one place `SeatMode` is translated into what the engine actually reads, so no trainer has
- *  to know that "manual" means `humans` and "defend" means `policies`. */
+ *  to know that "manual" means `humans` and "defend" means `policies`. `seatIndex` keeps
+ *  `defaultSeat` when it is itself manual, so a second manual seat never silently moves which
+ *  seat a graded trainer scores (`useTableRound` anchors grading on `core.seatIndex`). */
 export function seatMatchOptions(
   config: SeatConfig | null,
   players: number,
-  defaultOrientation: number,
+  defaultSeat: number,
 ): {
   seatIndex: number
   humans: number[]
   policies: SeatPolicy[]
   claims: boolean
 } {
-  const { orientation, modes, claims } = resolveSeatConfig(config, players, defaultOrientation)
+  const { modes, claims } = resolveSeatConfig(config, players, defaultSeat)
+  const humans = modes.flatMap((mode, seat) => (mode === 'manual' ? [seat] : []))
   return {
-    seatIndex: orientation,
-    humans: modes.flatMap((mode, seat) => (mode === 'manual' ? [seat] : [])),
+    seatIndex: humans.includes(defaultSeat) ? defaultSeat : (humans[0] ?? defaultSeat),
+    humans,
     policies: modes.map((mode) => (mode === 'manual' ? 'efficiency' : mode)),
     claims,
   }

@@ -199,12 +199,24 @@ export function LabPage() {
   const round = useLabRound(situation, options)
   const threatSeats = round.riichi.flatMap((inRiichi, seat) => (inRiichi ? [seat] : []))
 
+  // perspective is view-only and ephemeral: the page's own state, never the round's — reset to
+  // the drill's own seat on every new hand, never persisted
+  const [viewSeat, setViewSeat] = useState<number | null>(null)
+  const [lastSituation, setLastSituation] = useState(situation)
+  if (situation !== lastSituation) {
+    setLastSituation(situation)
+    setViewSeat(null)
+  }
+  const perspective = viewSeat ?? round.seatIndex
+
   const seats: SeatView[] = round.rivers.map((river, seat) => ({
     river,
     melds: round.melds[seat],
     nuki: round.nuki[seat],
     riichi: round.riichi[seat],
-    hand: seat !== round.seatIndex ? round.boardHands[seat] : undefined,
+    // the felt omits a hand row for whichever seat sits at the bottom of the board — that is
+    // where HandDisplay, in the page's own `hand` slot, already sits
+    hand: seat !== perspective ? round.boardHands[seat] : undefined,
     // finished alone has always revealed here (a post-game reveal, same as reading a real score
     // sheet); showOpponentHands now does the same live, mid-hand — previously this page never
     // read that setting at all, so toggling it did nothing. A manual seat is the reader's own
@@ -298,11 +310,13 @@ export function LabPage() {
                       defaultOrientation={round.seatIndex}
                       config={seatConfig}
                       onChange={(next) => updateTable({ seats: next })}
+                      viewSeat={perspective}
+                      onWatch={setViewSeat}
                     />
                   )
                 }
                 seats={seats}
-                seatIndex={round.seatIndex}
+                seatIndex={perspective}
                 round={situation.round}
                 doraIndicators={round.doraIndicators}
                 wallCount={round.liveWall.length}

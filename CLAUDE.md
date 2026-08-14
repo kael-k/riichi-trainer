@@ -37,7 +37,7 @@ One deterministic hand of mahjong drives every trainer. `createMatch` deals (the
 
 More than one seat can be human at once — a table setting (`features/settings/tableSettings.ts`'s `SeatConfig`), not a per-trainer concept. `MatchOptions.policies?: readonly SeatPolicy[]` seeds each `PlayerState.policy`; `MatchOptions.claims?: boolean` (default **false**, so every existing graded drill's behaviour stays bit-for-bit unchanged) makes a human seat get _asked_ about another seat's discard instead of being silently skipped. While an answer is pending, `MatchState.claim?: PendingClaim` is set and `beginTurn`/`finishTurn` are no-ops — one guard in the shared functions rather than one in every caller that steps a match. `claimOptions(state, options, seat, tile, from)` lists what a seat may call; `answerClaim(state, options, answer)` resolves it through an internal **restartable** `resolveReactions` that runs from the top on every answer, reading replies out of `claim.answers` and suspending again on the first seat that hasn't replied yet. Three phases, in this order, and the order is the point: ask every human first, then resolve rons in seat order, then calls — that is what stops a pon answered early from outranking a ron the seat order says comes first. Everything it re-runs is idempotent (`tryWin`/`couldHaveWon` restore the hand they probe; `missedWin` only ever goes true). Daiminkan is deliberately not offered — the engine models no called kan at all, so offering it to one human alone would be the one call the AI seats can't answer. `canDeclareRiichi(state, options, seat)` gates a human's own riichi declaration, read by `finishTurn`'s 4th argument (`declareRiichi`, human seats only) and by `riichiTiles()` in the round hooks below.
 
-`core/table.ts#actingSeat(core)` is "whose turn is this, right now": `core.seatIndex` in the ordinary single-manual-seat setup, some other manual seat once several are human, and `claim.seat` while a claim is suspended — every shared primitive (`seenBy`, `analysisOf`, `snapshotTable`) reads through it rather than `core.seatIndex` directly. `goRound(core)` plays every AI-decided seat and stops at the next human turn, a pending claim, or the hand's end; it is a no-op when it's already a human's turn. `core.seatIndex` itself stays purely "which seat the board is drawn from" — see the `SeatConfig`/orientation note in the trainer-pattern section.
+`core/table.ts#actingSeat(core)` is "whose turn is this, right now": `core.seatIndex` in the ordinary single-manual-seat setup, some other manual seat once several are human, and `claim.seat` while a claim is suspended — every shared primitive (`seenBy`, `analysisOf`, `snapshotTable`) reads through it rather than `core.seatIndex` directly. `goRound(core)` plays every AI-decided seat and stops at the next human turn, a pending claim, or the hand's end; it is a no-op when it's already a human's turn. `core.seatIndex` is the seat the engine grades, decided by `seatMatchOptions` — not the same thing as which seat `Table` draws at the bottom, which is a page-local viewing perspective the engine never sees at all (see the `SeatConfig` note in the trainer-pattern section).
 
 `policy.ts` is the AI, pure and total — deterministic means every ranking needs an explicit tie-break, never sort stability. Calls happen only when they lower shanten **and** `hasYakuRoute` still holds; without that guard a shanten-chaser opens itself into hands that cannot legally win. Furiten is `waits()` (which is `improvingTiles` at tenpai) checked against your own river.
 
@@ -106,10 +106,10 @@ explicit per-seat choice there outranks the drill's own blanket "everyone who mi
 target folds" flip. `advanceAfterDiscard`'s tail (`settleAfterClaim`, shared with `answer`) must not
 `beginTurn` into a turn `match.claim` has suspended — folding drives `beginTurn`/`finishTurn`
 directly rather than through `useTableRound`, so it re-derives that one guard rather than getting it
-for free. Orientation (which seat `Table` draws at the bottom, `SeatConfig.orientation`) is a pure
-viewing perspective, deliberately kept out of `useFoldingRound`'s own rebuild key (`seatKey` tracks
-only `modes`/`claims`) — changing it must never re-search for a new hand, unlike a `modes`/`claims`
-edit, which legitimately does. Because it can move, the felt hand `FoldingPage` omits is the one
+for free. Perspective (which seat `Table` draws at the bottom) never reaches this hook at all — it
+is `FoldingPage`'s own `useState`, reset to `round.seatIndex` on every new hand and never persisted,
+so rotating it cannot re-search for a new hand or pin itself onto the next one the way a stored
+`orientation` field once did. Because it can move, the felt hand `FoldingPage` omits is the one
 belonging to the seat the board is _drawn from_, never the drill's own graded seat: the bottom of
 the felt is where `HandDisplay` already sits, so anything drawn there lands on top of it. The graded
 seat, once the perspective has moved off it, is an ordinary seat on the felt — face-up, since
@@ -155,17 +155,28 @@ Sanma (`options.sanma`, mirrored by the global `sanma` setting and the `sanma` s
 State stores are zustand: `settingsStore.ts` (persisted; has a custom section-wise `merge` so adding fields to `efficiency`/`shanten` survives old persisted schemas — extend that merge when adding a new section) and `store/log.ts` (session-only action log; entries can carry inline tiles and a `copyText` for a tenhou copy button). Log entries are written imperatively from user-triggered actions (inside `discard()` / `submit()`), never from `useEffect`s watching round state — effect-based logging inverts entry order and duplicates under StrictMode. The one exception is the round-build effect itself (`logReplay` in both `useEfficiencyRound.ts` and `useFoldingRound.ts`, which puts a shared link's replayed discards on the log under the shared `log.replay` key): it deduplicates on the decoded situation/link object's identity, since that effect runs twice per mount and four times under StrictMode for one and the same round — which is also why those objects come from `useUrlData` (memoised per navigation) rather than being rebuilt per render, the same identity the trainers' "reset `handIndex` while rendering" pattern keys on. That row is also why `TrainerLayout` clears the log during its first render rather than from a mount effect — effects run children-first, so a page that logs as its round mounts would have those rows wiped by its own layout a moment later.
 
 Per-seat table configuration (`features/settings/tableSettings.ts`) is one schema every
-board-rendering trainer shares: `SeatConfig { orientation?, modes, claims }`, `SeatMode = SeatPolicy
-| 'manual'`. `resolveSeatConfig(config, players, defaultOrientation, fallbackModes?)` fills every
-seat, clamps orientation into the seat count, and guarantees at least one manual seat (with none,
-nothing would ever stop `goRound`); `fallbackModes` overrides the generic `'efficiency'` default for
+board-rendering trainer shares: `SeatConfig { modes, claims }`, `SeatMode = SeatPolicy | 'manual'`.
+Perspective (which seat `Table` draws at the bottom) is deliberately not part of this schema at
+all — it is ephemeral page state (each page's own `viewSeat` `useState`, defaulting to
+`round.seatIndex` and reset on every new hand), never persisted, and view-only in every trainer
+including efficiency and the lab: "watch from here" stops meaning "play here", which comes only
+from a seat's `modes` entry being `'manual'`. `resolveSeatConfig(config, players, defaultSeat,
+fallbackModes?)` fills every seat and guarantees at least one manual seat, anchored on `defaultSeat`
+(a link's `?seat=`, or the seat the trainer generated) rather than on perspective — with none,
+nothing would ever stop `goRound`; `fallbackModes` overrides the generic `'efficiency'` default for
 an unconfigured seat with what the board is _actually_ doing right now (folding's own live
 `policies`, since it flips non-declarers to `'defense'` at handover — the panel must not show a mode
 the board isn't really running). `seatMatchOptions` is the one place `SeatMode` becomes what the
-engine reads (`{ seatIndex, humans, policies, claims }`). `useTableSettings(app)` adds
-`seatsEnabled` (`advanced || app === 'lab'`), distinct from `seats === null` ("offered, nobody has
-configured it yet") — when the panel isn't offered, `seats` is forced to `null` too, so a hidden
-panel never leaves a live per-seat configuration running underneath.
+engine reads (`{ seatIndex, humans, policies, claims }`); `seatIndex` keeps `defaultSeat` when it is
+itself manual, and only falls back to the first manual seat when it was given away, so a second
+manual seat never silently moves which seat a graded trainer scores. Every patch a caller sends
+`onChange` is built off the _raw_ `SeatConfig`, never the resolved one (`withSeatMode` copies just
+the array a click actually touches) — writing the resolved fallback modes back on every edit is what
+used to make an unrelated change (like moving perspective) look like a real `modes` edit and
+re-search folding for a new hand. `useTableSettings(app)` adds `seatsEnabled` (`advanced || app ===
+'lab'`), distinct from `seats === null` ("offered, nobody has configured it yet") — when the panel
+isn't offered, `seats` is forced to `null` too, so a hidden panel never leaves a live per-seat
+configuration running underneath.
 
 `SeatButton` (`features/settings/SeatPanel.tsx`) is one button per seat — not one table-wide panel
 — fed to `Table`'s `seatControl?: (seat: number) => ReactNode` prop, which draws them in the control
@@ -174,11 +185,11 @@ is, and a row that re-orders itself on every perspective change is one you re-fi
 sat on the centre panel beside each wind mark until four 44px targets on a panel barely wider than
 that buried the round wind, the wall count and the dora row under them — hence the button carrying
 its own wind label now, since nothing else beside it names the seat. Each opens a dialog scoped to
-that seat: "watch from here" (orientation, off via `orientable={false}`
-where the trainer's own board generation is keyed to a seat and moving it would mean a different
-board), the efficiency/defend/manual row, and the claims checkbox (manual seats only). Every trainer
-offers every mode on every seat uniformly — there is no baked-in "you vs opponents" distinction,
-only orientation (perspective) and mode (who decides). `ManualControls`
+that seat: "watch from here" (`onWatch`, offered on every seat on every trainer now that perspective
+is view-only — there is no longer a trainer where moving it would mean a different board), the
+efficiency/defend/manual row, and the claims checkbox (manual seats only). Every trainer offers every
+mode on every seat uniformly — there is no baked-in "you vs opponents" distinction, only perspective
+(view) and mode (who decides). `ManualControls`
 (`features/table/ManualControls.tsx`) is the shared riichi-arm button, claim prompt (ron/pon/chi/
 pass, caller's own tiles drawn on each button), and — once more than one seat is manual — a
 "Playing {wind}" line; it renders nothing in the single-manual-seat, no-claim, no-riichi case, so

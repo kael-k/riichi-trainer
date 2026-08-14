@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { WINDS } from '../situation/urlCodec'
 import { SegmentedButton, SettingRow } from './SettingsDialog'
-import { resolveSeatConfig, type SeatConfig, type SeatMode } from './tableSettings'
+import { resolveSeatConfig, withSeatMode, type SeatConfig, type SeatMode } from './tableSettings'
 
 const MODES: SeatMode[] = ['efficiency', 'defense', 'manual']
 
@@ -20,9 +20,12 @@ interface SeatButtonProps {
   /** What an unconfigured seat is really doing right now (folding's live per-seat policy) —
    *  overrides the generic `'efficiency'` default `resolveSeatConfig` would otherwise show. */
   fallbackModes?: readonly SeatMode[]
-  /** Off where the trainer picks your seat itself and a different one would mean a different
-   *  board (the folding drill hands you a seat as part of generating the hand). */
-  orientable?: boolean
+  /** The seat the board is currently drawn from — purely a display concern (which seat reads as
+   *  "your side" in this dialog); perspective itself is the page's own ephemeral state, not this
+   *  component's. */
+  viewSeat: number
+  /** "Watch from here" — perspective is view-only, so this never touches `onChange`. */
+  onWatch: (seat: number) => void
   /** Only your own seat may be manual. The graded drills that own their board (folding) grade
    *  exactly one seat's discards against exactly one hand, so a second manual seat has nothing
    *  defined to score — the algorithm choice is still offered for every seat. */
@@ -46,7 +49,8 @@ export function SeatButton({
   config,
   onChange,
   fallbackModes,
-  orientable = true,
+  viewSeat,
+  onWatch,
   ownSeatOnlyManual = false,
 }: SeatButtonProps) {
   const { t } = useTranslation()
@@ -68,7 +72,7 @@ export function SeatButton({
 
   const mode = resolved.modes[seat] ?? 'efficiency'
   const manualCount = resolved.modes.filter((m) => m === 'manual').length
-  const yours = seat === resolved.orientation
+  const yours = seat === viewSeat
 
   return (
     <>
@@ -114,20 +118,19 @@ export function SeatButton({
                   {yours ? (
                     <span className="text-sm text-neutral-500">{t('seats.yourSide')}</span>
                   ) : (
-                    orientable && (
-                      <button
-                        type="button"
-                        // the board turns underneath the dialog, and the dialog is what covers it
-                        // — the whole point of the press is to look at the new view
-                        onClick={() => {
-                          onChange({ ...resolved, orientation: seat })
-                          setOpen(false)
-                        }}
-                        className="min-h-11 rounded-lg border border-neutral-300 px-3 text-sm font-medium dark:border-neutral-700"
-                      >
-                        {t('seats.sitHere')}
-                      </button>
-                    )
+                    <button
+                      type="button"
+                      // the board turns underneath the dialog, and the dialog is what covers it
+                      // — the whole point of the press is to look at the new view. View-only: it
+                      // never touches `onChange`, so it cannot re-search for a new hand or persist
+                      onClick={() => {
+                        onWatch(seat)
+                        setOpen(false)
+                      }}
+                      className="min-h-11 rounded-lg border border-neutral-300 px-3 text-sm font-medium dark:border-neutral-700"
+                    >
+                      {t('seats.sitHere')}
+                    </button>
                   )}
                 </div>
 
@@ -145,11 +148,12 @@ export function SeatButton({
                         // the last manual seat may not be given away: with none, no seat ever
                         // stops the go-round loop and the hand would play itself out
                         disabled={mode === 'manual' && option !== 'manual' && manualCount === 1}
-                        onClick={() => {
-                          const modes = [...resolved.modes]
-                          modes[seat] = option
-                          onChange({ ...resolved, modes })
-                        }}
+                        onClick={() =>
+                          onChange({
+                            modes: withSeatMode(config?.modes ?? [], seat, option),
+                            claims: config?.claims ?? false,
+                          })
+                        }
                       >
                         {t(`seats.mode.${option}`)}
                       </SegmentedButton>
@@ -166,7 +170,9 @@ export function SeatButton({
                     <input
                       type="checkbox"
                       checked={resolved.claims}
-                      onChange={(e) => onChange({ ...resolved, claims: e.target.checked })}
+                      onChange={(e) =>
+                        onChange({ modes: config?.modes ?? [], claims: e.target.checked })
+                      }
                       className="size-5"
                     />
                   </SettingRow>

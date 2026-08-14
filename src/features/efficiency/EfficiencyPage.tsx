@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
@@ -61,6 +61,21 @@ export function EfficiencyPage() {
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
 
+  // perspective is view-only and ephemeral: the page's own state, never the round's — reset to
+  // the drill's own seat on every new hand (a link's identity changing, or an explicit restart),
+  // never persisted
+  const [viewSeat, setViewSeat] = useState<number | null>(null)
+  const [lastSituation, setLastSituation] = useState(situation)
+  if (situation !== lastSituation) {
+    setLastSituation(situation)
+    setViewSeat(null)
+  }
+  const perspective = viewSeat ?? round.seatIndex
+  const restart = () => {
+    setViewSeat(null)
+    round.restart()
+  }
+
   // tiles held four times (hand + the separated drawn tile) can be closed-kanned
   const counts = new Map<number, number>()
   for (const t of round.hand) counts.set(t.id, (counts.get(t.id) ?? 0) + 1)
@@ -71,10 +86,15 @@ export function EfficiencyPage() {
   // the reveal setting only ever governed the seats somebody else is playing
   const seats: SeatView[] = round.rivers.map((river, seat) => {
     const mine = round.manualSeats.includes(seat)
-    if (seat === round.seatIndex) {
+    // the felt omits a hand row for whichever seat sits at the bottom of the board — that is
+    // where HandDisplay, in the page's own `hand` slot, already sits
+    if (seat === perspective) {
       return {
         river,
-        melds: round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles })),
+        melds:
+          seat === round.acting
+            ? round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles }))
+            : round.melds[seat],
         nuki: round.nuki[seat],
         riichi: round.riichi[seat],
       }
@@ -135,7 +155,7 @@ export function EfficiencyPage() {
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
-    onReset: round.restart,
+    onReset: restart,
     resetLabel: t('common.resetHand'),
   }
 
@@ -189,11 +209,13 @@ export function EfficiencyPage() {
                     defaultOrientation={round.seatIndex}
                     config={seatConfig}
                     onChange={(next) => updateTable({ seats: next })}
+                    viewSeat={perspective}
+                    onWatch={setViewSeat}
                   />
                 )
               }
               seats={seats}
-              seatIndex={round.seatIndex}
+              seatIndex={perspective}
               round={situation.round}
               doraIndicators={round.doraIndicators}
               wallCount={round.liveWall.length}
@@ -234,7 +256,7 @@ export function EfficiencyPage() {
                 )}
                 <button
                   type="button"
-                  onClick={round.restart}
+                  onClick={restart}
                   className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
                 >
                   {t('common.newRound')}
