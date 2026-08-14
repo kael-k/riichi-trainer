@@ -22,6 +22,7 @@ const OPTIONS: RoundOptions = {
   showEquallySafe: false,
   feedbackAtEnd: false,
   showOpponentHands: false,
+  showSeatWaits: false,
   seats: null,
 }
 

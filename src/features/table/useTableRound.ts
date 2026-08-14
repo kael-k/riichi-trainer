@@ -54,6 +54,9 @@ export interface TableRoundInput {
   /** Stops the round the moment your own discard reaches tenpai, leaving the hand at 13 tiles
    *  (the efficiency trainers' drill) rather than playing the wall out. */
   stopAtTenpai?: boolean
+  /** The seat panel's "show tenpai/waits" setting — threaded straight to `snapshotTable`, which
+   *  is where the per-seat `waits` cost is actually paid, never here. */
+  showSeatWaits?: boolean
   onUserDraw?: (ctx: UserDrawContext) => void
   onUserDiscard?: (tile: ParsedTile, stats: DiscardStats) => void
   onAgariCall?: AgariCall
@@ -260,7 +263,7 @@ export function useTableRound(input: TableRoundInput) {
     replayed.current = replayDiscards(c, input.replay ?? [], (rc, tile) => advance(rc, tile))
     replaying.current = false
 
-    return snapshotTable(c)
+    return snapshotTable(c, input.showSeatWaits)
   }
 
   const [snapshot, setSnapshot] = useState<TableSnapshot>(() => buildRound())
@@ -299,6 +302,15 @@ export function useTableRound(input: TableRoundInput) {
     restartCount,
   ])
 
+  // `showSeatWaits` alone must not run the rebuild effect above (that would redeal the match) —
+  // this re-snapshots the board exactly as it stands instead, which is what makes toggling the
+  // setting live rather than waiting for the next discard to pick it up
+  useEffect(() => {
+    const c = core.current
+    if (c) setSnapshot(snapshotTable(c, input.showSeatWaits))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.showSeatWaits])
+
   /** Discards the tile at `index` into `snapshot.hand` (or the drawn tile, at `hand.length`),
    *  declaring riichi with it when `declareRiichi` is set — the engine never declares one for a
    *  manual seat, since riichi locks every later discard to tsumogiri. An illegal declaration is
@@ -311,7 +323,7 @@ export function useTableRound(input: TableRoundInput) {
     if (!tile) return
     setRiichiArmed(false)
     advance(c, tile, 'discard', declareRiichi)
-    setSnapshot(snapshotTable(c))
+    setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
 
   /** Answers the claim the board is waiting on — ron, pon, chi or pass — and plays on. */
@@ -321,7 +333,7 @@ export function useTableRound(input: TableRoundInput) {
     const discarder = c.match.claim.from
     answerClaim(c.match, c.options, claimAnswer)
     settle(c, discarder)
-    setSnapshot(snapshotTable(c))
+    setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
 
   /** Tiles the acting seat could discard *and* declare riichi on. Read off the same ranking the
@@ -361,7 +373,7 @@ export function useTableRound(input: TableRoundInput) {
     c.match.visible[NORTH]++
     c.match.drawn = drawReplacement(c.match, player)
     fireDraw(c)
-    setSnapshot(snapshotTable(c))
+    setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
 
   /** Calls a closed kan on a held quad, graded against `evaluateKan`'s entry for `id` compared to
@@ -397,7 +409,7 @@ export function useTableRound(input: TableRoundInput) {
     }
     c.match.drawn = drawReplacement(c.match, player)
     fireDraw(c)
-    setSnapshot(snapshotTable(c))
+    setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
 
   /** Current round as a shareable `Situation`: the wall actually dealt and the discards your own

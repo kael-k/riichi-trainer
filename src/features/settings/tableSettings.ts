@@ -100,6 +100,12 @@ export interface TableSettings {
    *  non-advanced setting: unlike the advanced-gated rows, opponents' hands being *present* is
    *  basic table reading, not a jargon-gated extra. */
   showOpponentHands: boolean
+  /** Reveal every seat's tenpai/waits on its own strip (`core/table.ts#seatRead`). Same reasoning
+   *  as `showOpponentHands` — board-wide, non-advanced, reveals riichi threats live — and not
+   *  carved out for the folding drill's own answer key either: one "show me everything" switch
+   *  per concept beats a narrower one with a special case, and switching it on is the reader
+   *  choosing to spoil their own drill. */
+  showSeatWaits: boolean
   /** Reveal the live (and, where applicable, dead) wall in draw order. */
   showWall: boolean
   /** Who plays which seat (`SeatConfig`). `null` — the default everywhere — is the shipped
@@ -122,6 +128,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
+    showSeatWaits: false,
     showWall: false,
     seats: null,
   },
@@ -130,6 +137,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
+    showSeatWaits: false,
     showWall: false,
     seats: null,
   },
@@ -138,6 +146,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
+    showSeatWaits: false,
     showWall: false,
     seats: null,
   },
@@ -146,6 +155,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
+    showSeatWaits: false,
     showWall: false,
     seats: null,
   },
@@ -154,6 +164,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     deadWall: true,
     threats: 1,
     showOpponentHands: false,
+    showSeatWaits: false,
     showWall: false,
     // the lab is the free-play board: manual seats are the point there, so it ships with the
     // claim prompts on. No `orientation`/`modes` — those still come from the link and the

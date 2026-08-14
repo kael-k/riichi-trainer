@@ -9,7 +9,13 @@ import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRou
 /** Bare-table options: no dead wall, no aka, no sanma — real opponents are always dealt in and
  *  always play now (calls/riichi are hardcoded in the hook), so there is no off switch left to
  *  test here. */
-const BARE: RoundOptions = { deadWall: false, aka: false, sanma: false, seats: null }
+const BARE: RoundOptions = {
+  deadWall: false,
+  aka: false,
+  sanma: false,
+  seats: null,
+  showSeatWaits: false,
+}
 
 describe('useEfficiencyRound', () => {
   it('deals 13 tiles plus a separated drawn tile and evaluates discards', () => {
@@ -210,7 +216,13 @@ describe('useEfficiencyRound', () => {
 
   it('situationQuery round-trips the exact round state', () => {
     const situation = emptySituation()
-    const opts: RoundOptions = { deadWall: true, aka: true, sanma: false, seats: null }
+    const opts: RoundOptions = {
+      deadWall: true,
+      aka: true,
+      sanma: false,
+      seats: null,
+      showSeatWaits: false,
+    }
     const a = renderHook(() => useEfficiencyRound(situation, opts, true))
     act(() => a.result.current.discard(0))
     act(() => a.result.current.discard(3))
@@ -224,6 +236,7 @@ describe('useEfficiencyRound', () => {
           aka: decoded.aka ?? false,
           sanma: decoded.sanma ?? false,
           seats: null,
+          showSeatWaits: false,
         },
         true,
       ),

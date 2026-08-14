@@ -13,6 +13,7 @@ const BARE: RoundOptions = {
   sanma: false,
   opponentWins: false,
   showOpponentHands: false,
+  showSeatWaits: false,
   seats: null,
 }
 

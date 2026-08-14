@@ -40,6 +40,7 @@
     "redFives": "赤宝牌",
     "showWall": "显示牌山",
     "showOpponentHands": "显示对手手牌",
+    "showSeatWaits": "显示听牌与进张",
     "language": "语言",
     "languageAuto": "自动(跟随浏览器)",
     "translatedTerms": "使用翻译役名"
@@ -55,7 +56,7 @@
     "title": "{{wind}}家",
     "yourSide": "你的座位",
     "sitHere": "从这里观战",
-    "playedBy": "操作方式",
+    "playedBy": "算法",
     "mode": {
       "efficiency": "效率",
       "defense": "防守",

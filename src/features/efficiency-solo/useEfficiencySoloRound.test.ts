@@ -10,7 +10,13 @@ import { emptySituation } from '../situation/urlCodec'
 import { useEfficiencySoloRound, type RoundOptions } from './useEfficiencySoloRound'
 
 const BARE: RoundOptions = { deadWall: false, aka: false, sanma: false }
-const TABLE_BARE: TableRoundOptions = { deadWall: false, aka: false, sanma: false, seats: null }
+const TABLE_BARE: TableRoundOptions = {
+  deadWall: false,
+  aka: false,
+  sanma: false,
+  seats: null,
+  showSeatWaits: false,
+}
 
 describe('useEfficiencySoloRound', () => {
   it('deals exactly one seat', () => {

@@ -37,6 +37,7 @@ export function EfficiencyPage() {
     deadWall,
     showWall,
     showOpponentHands,
+    showSeatWaits,
     seats: seatConfig,
     seatsEnabled,
   } = useTableSettings('efficiency')
@@ -55,8 +56,9 @@ export function EfficiencyPage() {
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
       seats: seatConfig,
+      showSeatWaits,
     }),
-    [situation, deadWall, aka, sanma, seatConfig],
+    [situation, deadWall, aka, sanma, seatConfig, showSeatWaits],
   )
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
@@ -211,6 +213,8 @@ export function EfficiencyPage() {
                     onChange={(next) => updateTable({ seats: next })}
                     viewSeat={perspective}
                     onWatch={setViewSeat}
+                    read={round.seatReads[seat]}
+                    showWaits={showSeatWaits}
                   />
                 )
               }

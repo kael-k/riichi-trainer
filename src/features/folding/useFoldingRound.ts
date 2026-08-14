@@ -54,6 +54,10 @@ export type RoundOptions = Settings['folding'] & {
    *  Not a folding-only concept and not a drill mechanic, which is why it lives beside `threats`/
    *  `opponentWins` here rather than in `Settings['folding']` itself. */
   showOpponentHands: boolean
+  /** Same board-wide, non-advanced reveal reasoning as `showOpponentHands`, for tenpai/waits
+   *  instead of hands — not carved out for folding's own answer key either, so switching it on is
+   *  the reader choosing to spoil their own drill. */
+  showSeatWaits: boolean
   /** Per-seat algorithm from the board's seat panel. Every seat can be set to `'manual'`, same as
    *  efficiency/lab — the drill's own generated seat (`RoundCore.seatIndex`) is just the one the
    *  handover always includes, not the only one that may be human. */
@@ -358,11 +362,16 @@ function endOf(core: RoundCore, sanma: boolean): RoundEnd | null {
   return null
 }
 
-function snapshot(core: RoundCore, sanma: boolean, prev?: RoundState): RoundState {
+function snapshot(
+  core: RoundCore,
+  sanma: boolean,
+  showSeatWaits: boolean,
+  prev?: RoundState,
+): RoundState {
   const end = endOf(core, sanma)
   const finished = end !== null
   return {
-    ...snapshotTable(core),
+    ...snapshotTable(core, showSeatWaits),
     round: core.options.round,
     threatSeats: riichiSeats(core.match),
     lastResult: prev?.lastResult ?? null,
@@ -507,10 +516,19 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       stats.startClock()
       roundActionCount.current = 0
       roundTotalMs.current = 0
-      setState(snapshot(result.core, options.sanma))
+      setState(snapshot(result.core, options.sanma, options.showSeatWaits))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlData, handIndex, options.sanma, options.threats, options.opponentWins, seatKey])
+
+  // `showSeatWaits` alone must not rejoin the search effect above (that would deal a new hand) —
+  // this re-snapshots the board exactly as it stands, which is what makes toggling the setting
+  // live rather than waiting for the next discard to pick it up
+  useEffect(() => {
+    const r = core.current
+    if (r) setState((prev) => (prev ? snapshot(r, options.sanma, options.showSeatWaits, prev) : prev))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options.showSeatWaits])
 
   /** Writes one log row per discard the link was fast-forwarded through, so a shared link (or a
    *  rewind) arrives with the turns behind it on the record instead of a blank log. Keyed on the
@@ -574,7 +592,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     roundTotalMs.current += elapsed
 
     advanceAfterDiscard(r, tile, declareRiichi)
-    const next = snapshot(r, options.sanma, state)
+    const next = snapshot(r, options.sanma, options.showSeatWaits, state)
     if (next.end?.kind === 'dealIn') {
       writeLog(
         'log.folding.dealIn',
@@ -598,7 +616,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     if (!r || !r.match.claim || !state) return
     answerClaim(r.match, r.options, claimAnswer)
     settleAfterClaim(r)
-    const next = snapshot(r, options.sanma, state)
+    const next = snapshot(r, options.sanma, options.showSeatWaits, state)
     if (next.end) flushLog()
     setState(next)
   }
@@ -675,6 +693,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       finished: false,
       end: null,
       boardHands: [],
+      seatReads: [],
     }),
     loading: !failed && (state === null || state.loading),
     /** No seed in the budget produced a drillable hand — the page offers another deal. */

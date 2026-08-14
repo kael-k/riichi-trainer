@@ -73,6 +73,7 @@ export function FoldingPage() {
   const {
     showWall,
     showOpponentHands,
+    showSeatWaits,
     threats,
     opponentWins,
     seats: seatConfig,
@@ -93,9 +94,19 @@ export function FoldingPage() {
       // one seat has to be left to fold; a link can pin a count this table cannot seat
       threats: Math.min(urlData.threats ?? threats, (isSanma ? 3 : 4) - 1),
       showOpponentHands,
+      showSeatWaits,
       seats: seatConfig,
     }
-  }, [urlData, sanma, settings, threats, opponentWins, showOpponentHands, seatConfig])
+  }, [
+    urlData,
+    sanma,
+    settings,
+    threats,
+    opponentWins,
+    showOpponentHands,
+    showSeatWaits,
+    seatConfig,
+  ])
 
   const round = useFoldingRound(urlData, options)
   const players = options.sanma ? 3 : 4
@@ -281,6 +292,8 @@ export function FoldingPage() {
                     fallbackModes={round.policies}
                     viewSeat={perspective}
                     onWatch={setViewSeat}
+                    read={round.seatReads[seat]}
+                    showWaits={showSeatWaits}
                   />
                 )
               }

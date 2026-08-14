@@ -14,8 +14,9 @@ import {
   type PendingClaim,
   type WinRecord,
 } from './match'
-import type { ParsedTile, RiverTile } from './tiles'
-import { INITIAL_HAND_SIZE } from './wall'
+import { isFuriten, waits } from './policy'
+import type { ParsedTile, RiverTile, TileId } from './tiles'
+import { INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
 
 /**
  * Pure, React-free primitives for stepping a match, reading what a seat can see, and replaying its
@@ -122,11 +123,17 @@ export interface TableSnapshot {
   /** The claim the board is waiting on, if any: while it is set nothing draws and nothing
    *  discards until it is answered. */
   claim: PendingClaim | undefined
+  /** Each seat's own tenpai/waits/furiten (`seatRead`). Always present for a seat the reader
+   *  plays — a human seat's own furiten is legitimate information a real client shows, and one
+   *  more `waits` call is negligible next to the analysis that seat's own turn already pays for
+   *  — `undefined` for every other seat unless `showSeatWaits` is on, since `waits` runs
+   *  `improvingTiles` (~34 shanten probes) per seat and nobody asked to pay that for opponents. */
+  seatReads: (SeatRead | undefined)[]
 }
 
 /** Builds a `TableSnapshot` for `core` as the match stands right now. */
-export function snapshotTable(core: TableCore): TableSnapshot {
-  const { match, seatIndex } = core
+export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnapshot {
+  const { match, seatIndex, options } = core
   const acting = actingSeat(core)
   const player = match.players[acting]
   let hand = concealedTiles(player)
@@ -157,6 +164,9 @@ export function snapshotTable(core: TableCore): TableSnapshot {
     dealtTiles: match.wall.slice(0, match.players.length * INITIAL_HAND_SIZE),
     acting,
     claim: match.claim,
+    seatReads: match.players.map((_, seat) =>
+      showSeatWaits || isHuman(options, seat) ? seatRead(match, seat, options.sanma) : undefined,
+    ),
   }
 }
 
@@ -198,6 +208,31 @@ export interface TableAnalysis {
   readonly seen: Uint8Array
   readonly ranked: DiscardOption[]
   readonly danger: TileDanger[]
+}
+
+/** What a seat's own tenpai/waits/furiten reads as, from that seat's point of view — the seat
+ *  panel's `showSeatWaits` badge, and its more expensive cousin: `waits` runs `improvingTiles`,
+ *  ~34 shanten probes, so a caller gates this on the setting being on and computes it inside its
+ *  own snapshot builder, never per render and never when the setting is off. */
+export interface SeatRead {
+  tenpai: boolean
+  /** Wait tiles with copies still unseen from *this* seat's own point of view. */
+  waits: { tile: TileId; remaining: number }[]
+  /** Permanent (a wait sitting in the seat's own river) or temporary (`missedWin`) — either way,
+   *  a furiten seat cannot ron (`tryWin`, guarded by a regression test in `match.test.ts`). */
+  furiten: boolean
+}
+
+/** Builds `seat`'s own `SeatRead` from `state` as it stands right now. */
+export function seatRead(state: MatchState, seat: number, sanma: boolean): SeatRead {
+  const player = state.players[seat]
+  const waitTiles = waits(player.hand, sanma)
+  const seen = seenByMatch(state, player)
+  return {
+    tenpai: waitTiles.length > 0,
+    waits: waitTiles.map((tile) => ({ tile, remaining: TILES_PER_KIND - seen[tile] })),
+    furiten: isFuriten(waitTiles, player.river) || player.missedWin,
+  }
 }
 
 /** Builds a fresh `TableAnalysis` for `core` as it stands right now — call it again after the

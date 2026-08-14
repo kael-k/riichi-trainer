@@ -2,12 +2,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { assessDiscards } from './danger'
 import { evaluateDiscards } from './efficiency'
 import { beginTurn, createMatch, finishTurn, type MatchOptions } from './match'
-import { HONOR, NUM_TILE_TYPES, parseTenhou } from './tiles'
+import { HONOR, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
 import {
   actingSeat,
   analysisOf,
   goRound,
   replayDiscards,
+  seatRead,
   seenBy,
   snapshotTable,
   yourDiscards,
@@ -329,5 +330,42 @@ describe('analysisOf', () => {
     const player = match.players[0]
     const distinctKinds = player.hand.counts.filter((c) => c > 0).length
     expect(analysisOf(core).danger.length).toBe(distinctKinds)
+  })
+})
+
+describe('seatRead', () => {
+  // seat 1 is tanki tenpai on 2s (two complete runs each in man/pin, plus the single wait) —
+  // the same hand `match.test.ts`'s furiten regression tests use
+  const wall = [
+    ...parseTenhou('189m189p2s123456z'),
+    ...parseTenhou('234567m234567p2s'),
+    ...parseTenhou('111222333m111p7z'),
+    ...parseTenhou('444555666m222p7z'),
+  ]
+
+  it('reads no tenpai, no waits and no furiten for a seat far from tenpai', () => {
+    const match = createMatch(wall, 4, YONMA, 'seat-read-1')
+    expect(seatRead(match, 0, false)).toEqual({ tenpai: false, waits: [], furiten: false })
+  })
+
+  it('reads tenpai, the wait and its remaining copies for a seat one tile from a hand', () => {
+    const match = createMatch(wall, 4, YONMA, 'seat-read-2')
+    const read = seatRead(match, 1, false)
+    expect(read.tenpai).toBe(true)
+    // 4 copies of 2s total, minus the one already in seat 1's own hand
+    expect(read.waits).toEqual([{ tile: SOU + 1, remaining: 3 }])
+    expect(read.furiten).toBe(false)
+  })
+
+  it('reads furiten for a seat tenpai on a tile sitting in its own river', () => {
+    const match = createMatch(wall, 4, YONMA, 'seat-read-3')
+    match.players[1].river.push({ id: SOU + 1, red: false })
+    expect(seatRead(match, 1, false).furiten).toBe(true)
+  })
+
+  it('reads furiten for a seat that missed a win on this tenpai', () => {
+    const match = createMatch(wall, 4, YONMA, 'seat-read-4')
+    match.players[1].missedWin = true
+    expect(seatRead(match, 1, false).furiten).toBe(true)
   })
 })

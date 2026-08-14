@@ -44,6 +44,7 @@
     "redFives": "Cinque rossi",
     "showWall": "Mostra il muro",
     "showOpponentHands": "Mostra le mani degli avversari",
+    "showSeatWaits": "Mostra tenpai e attese",
     "language": "Lingua",
     "languageAuto": "Automatica (browser)",
     "translatedTerms": "Nomi degli yaku tradotti"
@@ -59,7 +60,7 @@
     "title": "Posto {{wind}}",
     "yourSide": "Il tuo lato",
     "sitHere": "Guarda da qui",
-    "playedBy": "Giocato da",
+    "playedBy": "Algoritmo",
     "mode": {
       "efficiency": "Efficienza",
       "defense": "Difesa",
@@ -115,6 +116,10 @@
     "genbutsu": {
       "term": "Genbutsu",
       "desc": "Una tessera sicura al 100% contro un riichi specifico: è già tra gli scarti di quel giocatore, oppure qualcuno l'ha scartata dopo il suo riichi senza essere ronnato. L'unico livello davvero sicuro."
+    },
+    "furiten": {
+      "term": "Furiten",
+      "desc": "Un posto in tenpai che al momento non può ronnare: una delle sue tessere d'attesa è tra i suoi stessi scarti, oppure ha già lasciato passare una tessera vincente in questa mano. Può ancora fare tsumo — solo il ron è bloccato."
     },
     "suji": {
       "term": "Suji",

@@ -47,6 +47,8 @@ Win legality is free from existing code: `decompose()` non-empty is the shape, `
 
 **Performance**: `standardShanten` decomposes each suit separately and merges (`groupTable`/`merge`), ~475x faster than searching all 34 kinds at once, because a draw probe only perturbs one suit and the other three come out of the cache. `referenceStandardShanten` is the old whole-hand search, kept solely as the specification the fast one is proved against over thousands of random hands in `shanten.test.ts` — change one, re-run that. Simulated players use `bestDiscards` (shanten only) and price ukeire just for the tiles already tied. A match is ~17ms; the census test in `match.test.ts` (every tile kind accounted for exactly four times) is what catches bookkeeping slips.
 
+Furiten invariant: ron legality lives in `tryWin` alone (own-river or `missedWin`), and `claimOptions` only ever offers `'ron'` when `tryWin` returns a record — so there is exactly one place that can offer a furiten seat a ron, and it never does. Covered by a regression test in `match.test.ts` rather than left to `seatRead`'s badge (`core/table.ts`) to imply correctness on its own.
+
 ### The danger model (`core/danger.ts`) + the folding trainer
 
 `assessDiscards(hand, threats, visible, sanma)` ranks every tile in hand by how dangerous it is
@@ -130,7 +132,21 @@ reveals the declarer exactly like it reveals every other seat, live, mid-hand. A
 bystander was never gated on `finished` at all — it carries real tiles throughout and always
 followed `showOpponentHands` live like any other trainer's opponents — and no tier below
 `genbutsu` may ever read as "safe": suji only ever spoke about ryanmen, and a wall only about
-runs. The per-discard feedback (`FoldFeedback.tsx`) names only
+runs.
+
+`showSeatWaits` (`tableSettings.ts`) is the same reasoning again for tenpai/waits instead of hands:
+board-wide, non-advanced, default off, reveals riichi threats live, and explicitly *not* carved
+out for the folding drill's own answer key either. `core/table.ts#seatRead(state, seat, sanma)` is
+what it gates — `waits()` (`policy.ts`) plus `TILES_PER_KIND - seenBy(state, player)[tile]` for
+each wait's remaining copies, and `isFuriten(waits, river) || player.missedWin` for furiten.
+`waits` costs ~34 shanten probes per seat, so it is computed inside the snapshot builders
+(`snapshotTable`, and folding's own `snapshot`) rather than per render — and always for a seat the
+reader plays regardless of the setting (their own furiten is legitimate information a real client
+shows, and one more `waits` call is negligible next to the per-turn analysis that seat already
+pays for), gated on `showSeatWaits` for every other seat. The algorithm badge (`SeatStrip`) has no
+such setting at all — every seat's mode is shown always, colour-coded (efficiency green, defense
+blue, manual yellow), since reading who is running what is basic table awareness the same way
+`showOpponentHands` is, not a jargon-gated extra. The per-discard feedback (`FoldFeedback.tsx`) names only
 the tier (with a glossary popover on genbutsu/suji) — it does not spell out why in a sentence of its
 own, trusting the glossary entry to carry that instead. Per §8 decisions: fold-only (no push
 control — grading push/fold needs an EV model this codebase does not have), no danger markers before

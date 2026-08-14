@@ -28,6 +28,11 @@ export const GLOSSARY = {
     descKey: 'glossary.genbutsu.desc',
     wikiUrl: 'https://riichi.wiki/Genbutsu',
   },
+  furiten: {
+    labelKey: 'glossary.furiten.term',
+    descKey: 'glossary.furiten.desc',
+    wikiUrl: 'https://riichi.wiki/Furiten',
+  },
   suji: {
     labelKey: 'glossary.suji.term',
     descKey: 'glossary.suji.desc',

@@ -44,6 +44,7 @@
     "redFives": "Red fives",
     "showWall": "Show wall",
     "showOpponentHands": "Show opponent hands",
+    "showSeatWaits": "Show tenpai and waits",
     "language": "Language",
     "languageAuto": "Auto (browser)",
     "translatedTerms": "Translated yaku names"
@@ -59,7 +60,7 @@
     "title": "{{wind}} seat",
     "yourSide": "Your side",
     "sitHere": "Watch from here",
-    "playedBy": "Played by",
+    "playedBy": "Algorithm",
     "mode": {
       "efficiency": "Efficiency",
       "defense": "Defend",
@@ -115,6 +116,10 @@
     "genbutsu": {
       "term": "Genbutsu",
       "desc": "A tile provably safe against a specific riichi: it's already in that player's own discards, or someone discarded it after their riichi without being ronned. The only tier that's actually 100% safe."
+    },
+    "furiten": {
+      "term": "Furiten",
+      "desc": "A tenpai seat that can't ron at all right now: one of its own waits is sitting in its own discards, or it passed up a winning tile earlier this hand. It can still tsumo — only the ron is blocked."
     },
     "suji": {
       "term": "Suji",

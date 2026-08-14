@@ -30,6 +30,9 @@ export interface RoundOptions {
   /** Who plays which seat, from the board's seat panel; `null` is the shipped default (you at
    *  the link's own seat, every other seat on the efficiency AI). */
   seats: SeatConfig | null
+  /** The seat panel's "show tenpai/waits" setting — threaded to `useTableRound`, which is where
+   *  the per-seat cost of computing it is actually paid. */
+  showSeatWaits: boolean
 }
 
 /** The full analysis for the current 14-tile hand: `evaluateDiscards`'s whole ranking and
@@ -72,6 +75,7 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
     options: matchOptions,
     replay: situation.river,
     stopAtTenpai: false,
+    showSeatWaits: options.showSeatWaits,
     onUserDraw(ctx: UserDrawContext) {
       // read both once here, not from render — evaluateDiscards/assessDiscards are real work
       setAnalysis({ ranked: ctx.analysis.ranked, danger: ctx.analysis.danger })

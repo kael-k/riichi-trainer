@@ -22,6 +22,9 @@ export interface RoundOptions {
   /** Who plays which seat, from the board's seat panel; `null` is the shipped default (you at
    *  the link's own seat, every other seat on the efficiency AI). */
   seats: SeatConfig | null
+  /** The seat panel's "show tenpai/waits" setting — threaded to `useTableRound`, which is where
+   *  the per-seat cost of computing it is actually paid. */
+  showSeatWaits: boolean
 }
 
 /** Drives one efficiency round on top of `useTableRound`: dealing, replay, opponents and the
@@ -103,6 +106,7 @@ export function useEfficiencyRound(
     options: matchOptions,
     replay: situation.river,
     stopAtTenpai: true,
+    showSeatWaits: options.showSeatWaits,
     onUserDraw(ctx: UserDrawContext) {
       if (!pending.current) return
       const { result, tile, situationBefore } = pending.current
@@ -192,6 +196,7 @@ export function useEfficiencyRound(
      *  says, since they are the reader's own. */
     manualSeats: humans,
     claim: table.claim,
+    seatReads: table.seatReads,
     liveWall: table.liveWall,
     deadWall: table.deadWall,
     liveWallSnapshot: table.liveWallSnapshot,

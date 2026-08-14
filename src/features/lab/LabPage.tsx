@@ -133,6 +133,7 @@ export function LabPage() {
     showWall,
     opponentWins,
     showOpponentHands,
+    showSeatWaits,
     seats: seatConfig,
     seatsEnabled,
   } = useTableSettings('lab')
@@ -191,9 +192,10 @@ export function LabPage() {
       sanma: situation.sanma ?? sanma,
       opponentWins,
       showOpponentHands,
+      showSeatWaits,
       seats: seatConfig,
     }),
-    [situation, deadWall, aka, sanma, opponentWins, showOpponentHands, seatConfig],
+    [situation, deadWall, aka, sanma, opponentWins, showOpponentHands, showSeatWaits, seatConfig],
   )
 
   const round = useLabRound(situation, options)
@@ -312,6 +314,8 @@ export function LabPage() {
                       onChange={(next) => updateTable({ seats: next })}
                       viewSeat={perspective}
                       onWatch={setViewSeat}
+                      read={round.seatReads[seat]}
+                      showWaits={showSeatWaits}
                     />
                   )
                 }

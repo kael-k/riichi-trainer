@@ -40,6 +40,7 @@
     "redFives": "赤ドラ",
     "showWall": "山を表示",
     "showOpponentHands": "対戦相手の手牌を表示",
+    "showSeatWaits": "テンパイと待ちを表示",
     "language": "言語",
     "languageAuto": "自動(ブラウザ設定)",
     "translatedTerms": "役名を翻訳して表示"
@@ -55,7 +56,7 @@
     "title": "{{wind}}家",
     "yourSide": "自分の席",
     "sitHere": "ここから見る",
-    "playedBy": "打ち手",
+    "playedBy": "アルゴリズム",
     "mode": {
       "efficiency": "効率",
       "defense": "守備",
