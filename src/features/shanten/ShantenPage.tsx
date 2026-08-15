@@ -109,7 +109,9 @@ export function ShantenPage() {
             </>
           }
           hand={
-            <div className="flex flex-col gap-4">
+            // named for the UI suite: the feedback notice draws a `HandDisplay` of its own (the
+            // hand just answered), so "the tiles on screen" needs to say which
+            <div data-testid="shanten-hand" className="flex flex-col gap-4">
               <HandDisplay tiles={round.hand} concealed={round.concealed} />
 
               {!round.concealed && (
