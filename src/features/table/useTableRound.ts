@@ -266,6 +266,21 @@ export function useTableRound(input: TableRoundInput) {
     replayed.current = (input.replay ?? []).slice(0, consumed)
     replaying.current = false
 
+    // `replayLog` has no notion of `stopAtTenpai` — it's a UI-level stopping condition, not
+    // something the pure replay driver could know about — so a log that ends with your own
+    // discard reaching tenpai (exactly the shape `settle()` itself stops the live round on) must
+    // not be driven any further here either, or a shared efficiency link would silently keep
+    // playing opponents' turns a real round of the same hand never reached. Checking both "the
+    // last thing replayed was your own discard" and "your hand is now tenpai" (rather than either
+    // alone) is what tells this apart from the ordinary first build of a hand pre-dealt into
+    // tenpai, where neither the discard nor the stop has happened yet.
+    const lastReplayed = replayed.current[replayed.current.length - 1]
+    const stoppedAtTenpai =
+      input.stopAtTenpai &&
+      lastReplayed?.kind === 'discard' &&
+      lastReplayed.seat === input.seatIndex &&
+      shanten(c.match.players[input.seatIndex].hand) <= 0
+
     // the recorded log reconstructs every seat's turn exactly, consulting no algorithm at all
     // (D-L4); once it runs out, live play picks up from wherever it stopped — every AI-decided
     // seat plays on (`goRound`) and the next manual turn draws (`beginTurn`). Guarded on
@@ -273,7 +288,7 @@ export function useTableRound(input: TableRoundInput) {
     // `goRound`) can leave *any* seat, manual included, already mid-turn with its 14th tile
     // sitting there and no logged discard for it — a bare `beginTurn` there would draw a second,
     // uncorroborated tile on top.
-    if (!c.match.ended && !c.match.claim) {
+    if (!stoppedAtTenpai && !c.match.ended && !c.match.claim) {
       goRound(c)
       if (
         !c.match.ended &&
