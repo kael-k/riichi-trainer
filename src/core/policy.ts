@@ -15,7 +15,7 @@ import { HONOR, isDragon, isTerminalOrHonor, suitOf, type RiverTile, type TileId
 export type SeatAlgorithm = 'efficiency' | 'defense' | 'tsumogiri' | 'manual'
 
 /**
- * The moves `core/algorithm.ts`'s two `AIAlgorithm`s are written in terms of. Every function here
+ * The moves `core/algorithm.ts`'s `AIAlgorithm`s are written in terms of. Every function here
  * is pure and total: the same inputs always produce the same output, which is what lets a whole
  * match be reproduced from its seed. That rules out anything probabilistic, and it means every
  * ranking needs a **total** order — ties broken explicitly rather than left to sort stability.
