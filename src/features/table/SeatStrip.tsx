@@ -37,7 +37,11 @@ export function SeatStrip({ read, showWaits, ...seatButtonProps }: SeatStripProp
   const mode = resolveSeatConfig(config, players, defaultOrientation, fallbackModes).modes[seat]
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-1">
+    <div
+      data-testid="seat-strip"
+      data-seat={seat}
+      className="flex flex-wrap items-center justify-center gap-1"
+    >
       <SeatButton {...seatButtonProps} />
       {read?.furiten && <GlossaryTerm id="furiten" />}
       <span className={`shrink-0 rounded px-[0.6cqw] py-[0.1cqw] text-[2cqw] ${ALGO_COLOR[mode]}`}>

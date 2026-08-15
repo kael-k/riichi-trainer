@@ -209,7 +209,10 @@ export function BoardStage({
           either way — pads itself clear of them: the status bar/notch above in portrait, and
           whichever physical edge is now "left" (env() tracks the current orientation, not a
           fixed side) once the row itself has moved there for `short:` */}
-      <div className="z-10 flex shrink-0 items-center gap-1 px-2 pt-[env(safe-area-inset-top)] short:absolute short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
+      {/* z-40 and opaque: the log drawer below spans the whole overlay (it has to cover the hand
+          strip), so this row has to stay above it — otherwise the drawer buries the very button
+          that closes it */}
+      <div className="z-40 flex shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] dark:bg-neutral-950 short:absolute short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
         <Link
           to="/"
           aria-label={t('common.back')}
@@ -233,9 +236,22 @@ export function BoardStage({
 
       {/* padded clear of the gutter chrome, so the square still centres on what is left — widened
           by the same inset the chrome column itself just grew by, so the reservation still
-          matches its real width */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center short:pl-[calc(2.75rem+env(safe-area-inset-left))]">
-        {board?.(null)}
+          matches its real width.
+          `container-type: size` is what makes the square actually fit: `Table` caps itself at
+          `100cqh` of *this* box, which is the height genuinely left over after the chrome row and
+          the hand strip have taken theirs — the `--board-max-h` guess below can only estimate
+          those. Outside a size container that same term falls back to the small viewport, which
+          is why the inline layout is unaffected. */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size] short:pl-[calc(2.75rem+env(safe-area-inset-left))]">
+        {board ? (
+          board(null)
+        ) : (
+          // a boardless trainer (shanten, solo) has nothing to put in the middle of the stage, so
+          // its column content goes here rather than being dropped for the duration — solo's
+          // river lives in there, and a fullscreen where you cannot see your own discards is not
+          // a table
+          <div className="max-h-full overflow-auto px-2">{children}</div>
+        )}
         {(noticeCompact ?? notice) && noticeShown && (
           // pointer-events-none: a notice must never sit between the reader and a tile they are
           // about to click, which is the whole difference between this and a dialog. Held
@@ -259,11 +275,6 @@ export function BoardStage({
             </div>
           </div>
         )}
-        {logOpen && (
-          <div className="absolute inset-y-0 right-0 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-950">
-            <LogList />
-          </div>
-        )}
       </div>
 
       {/* capped: the claim prompt and the kita/kan row make this strip taller some turns, and it
@@ -271,9 +282,25 @@ export function BoardStage({
           most (and, held sideways, still the full-width) row regardless of orientation, so it
           carries the bottom inset (the home indicator) plus the side ones (a landscape notch)
           rather than the chrome row above, which only ever owns one edge at a time */}
-      <div className="flex max-h-[35svh] shrink-0 justify-center overflow-auto pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))]">
+      <div
+        data-testid="hand-strip"
+        className="flex max-h-[35svh] shrink-0 justify-center overflow-auto pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))]"
+      >
         {hand}
       </div>
+
+      {/* the drawer is the stage's own, not the board area's: it spans the whole overlay so it
+          covers the hand strip too. Opened from a row that sits above the hand, a panel that
+          stopped at the board's bottom edge left the tiles it was meant to be read over showing
+          underneath it */}
+      {logOpen && (
+        <div
+          data-testid="log-drawer"
+          className="absolute inset-y-0 right-0 z-30 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
+        >
+          <LogList />
+        </div>
+      )}
     </div>
   )
 }

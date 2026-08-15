@@ -47,14 +47,15 @@ interface TableProps {
    *  board actually is, and a wrapper around it would have to guess — guessing wrong is what
    *  collapses the square when the board is a flex item. */
   controls?: ReactNode
-  /** One seat's own info strip — the settings button plus (Task 3) its furiten/algorithm/wait
-   *  reads — drawn one ring outboard of that seat's hand, on every seat including the bottom one
-   *  (whose felt hand is omitted, but whose strip still lands where that hand would have sat). It
-   *  used to sit on the centre panel beside each wind mark — right idea, wrong surface: four 44px
-   *  targets on a panel barely wider than that buried the round wind, the wall count and the dora
-   *  row under them. It is not a return to the control row it moved off either (`f0d8bc7`): the
-   *  strip is the seat's own edge, outside the felt, where there is empty board margin and nothing
-   *  to bury. */
+  /** One seat's own info strip — the settings button plus its furiten/algorithm/wait reads —
+   *  drawn in that seat's own corner cell, above its melds, like the player plate on a Mahjong
+   *  Soul table. It sat one ring *outboard* of the seat's hand before, which cost the board a 16%
+   *  margin on every side purely to host a 44px button: on a phone that band came out ~50px, so
+   *  the strip and the hand row together overflowed it and landed on top of the seat's third
+   *  river row. The corner cell is 4 tile widths square and empty until a seat calls, so the
+   *  strip costs the felt nothing there. (Earlier homes, both rejected: the centre panel — four
+   *  44px targets buried the round wind, the wall count and the dora row — and the control row
+   *  above the board, which is nowhere near the seat it configures.) */
   seatInfo?: (seat: number) => ReactNode
 }
 
@@ -87,13 +88,13 @@ const WIND_MARKS = [
  *  instead of silently growing. */
 const INDICATOR_SLOTS = 5
 
-/** Fraction of the board's own edge given up to the per-seat hand+strip ring when either is
- *  shown (`showsHands || showsInfo`) — the single number behind both the felt's own padding
- *  (`p-[16%]`, hardcoded below since Tailwind's class scanner needs the literal) and the
- *  `--table-cap` divisor that keeps the felt from shrinking when it's spent. Wide enough for
- *  `SeatStrip`'s wait-tile row wrapping onto two lines; a bare hand row alone (WAVE 1) fit
- *  inside the old 12%. */
-const SEAT_RING_FRACTION = 0.16
+/** Fraction of the board's own edge given up to the per-seat hand ring when hands are revealed
+ *  (`showsHands`) — the single number behind both the felt's own padding (`p-[10%]`, hardcoded
+ *  below since Tailwind's class scanner needs the literal) and the `--table-cap` divisor that
+ *  keeps the felt from shrinking when it's spent. A revealed hand row is `100cqw/16` per tile,
+ *  so ~8.3cqw tall — 10% of the square clears it. It was 16% while the seat strip lived out here
+ *  too; the strip has moved to the corner cells, and the board keeps the difference. */
+const SEAT_RING_FRACTION = 0.1
 
 /** A betting stick, sized off the board's tile width like everything else here: 1000 points
  *  (one red dot) for a riichi bet, 100 points (plain) for an honba counter. It reads as a
@@ -175,12 +176,10 @@ export function Table({
   // default scale, so an untouched setting leaves the board exactly where it was
   const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
   const showsHands = seats.some((seat) => seat.hand && seat.hand.length > 0)
-  // evaluated once per seat rather than inline in the render loop below, so the felt's outboard
-  // margin can be sized off whether a strip is *actually* showing on this board (a caller may
-  // pass `seatInfo` unconditionally and return nothing per seat, e.g. while `seatsEnabled` is
-  // false) rather than off whether the prop itself was merely passed
+  // evaluated once per seat rather than once per render pass through the loop below — a caller
+  // may pass `seatInfo` unconditionally and return nothing per seat (e.g. while `seatsEnabled`
+  // is false), and each seat's corner cell has to know which it got
   const seatInfoNodes = seatInfo ? seats.map((_, i) => seatInfo(i)) : undefined
-  const showsInfo = seatInfoNodes?.some(Boolean) ?? false
 
   return (
     // square, so its size is one number: the narrower of the column it sits in and the height
@@ -193,20 +192,25 @@ export function Table({
       // `--board-controls` is a class, not part of the style object below, so the `short:` variant
       // can zero it: held sideways the row moves off the top of the board into the gutter beside
       // it, and a row that costs nothing vertically must not still be charged for
-      className={`relative mx-auto w-full max-w-[min(100%,calc(var(--board-max-h,calc(100svh-8rem))-var(--board-controls,0px)),var(--table-max,var(--table-cap)))] shrink-0 ${
+      // `100cqh` is the real height left for the board wherever an ancestor declares itself a
+      // size container (the fullscreen stage does), so the square fits what is actually there
+      // rather than what `--board-max-h` guessed the chrome and the hand would take. With no such
+      // ancestor the unit falls back to the small viewport, which is larger than the guess and so
+      // changes nothing for the inline layout
+      className={`relative mx-auto w-full max-w-[min(100%,calc(100cqh-var(--board-controls,0px)),calc(var(--board-max-h,calc(100svh-8rem))-var(--board-controls,0px)),var(--table-max,var(--table-cap)))] shrink-0 ${
         controls
           ? '[--board-controls:2.75rem] short:[--board-controls:0px]'
           : '[--board-controls:0px]'
       }`}
       style={
         {
-          // the revealed hands and/or the per-seat strip are paid for out of the board's own
-          // footprint (the 12% below), so the cap grows to match: at the same felt size the
-          // square needs 1/0.78 of the width. Without it, turning either on shrank the felt.
+          // the revealed hands are paid for out of the board's own footprint (the 10% below), so
+          // the cap grows to match: at the same felt size the square needs 1/0.8 of the width.
+          // Without it, revealing hands shrank the felt.
           // Named `--table-cap`, not `--table-max`: this is the desktop "don't balloon" default,
           // and an inline style would otherwise outrank the `--table-max` a caller sets on an
           // ancestor — which is exactly how fullscreen lifts the cap
-          '--table-cap': `${(25.6 * tileScale) / (showsHands || showsInfo ? 1 - 2 * SEAT_RING_FRACTION : 1)}rem`,
+          '--table-cap': `${(25.6 * tileScale) / (showsHands ? 1 - 2 * SEAT_RING_FRACTION : 1)}rem`,
         } as CSSProperties
       }
     >
@@ -220,13 +224,14 @@ export function Table({
           <div className="ml-auto flex items-center gap-1 short:contents">{controls}</div>
         </div>
       )}
-      {/* the revealed hands and the per-seat strip sit outside the felt, so the square gives up a
-          margin's worth of its own width to hold them — only when at least one is actually shown,
-          so an ordinary board is exactly as big as it was. The border box stays square either
-          way, which is what keeps each seat's rotation covering it. `relative`: the ring below is
-          anchored to *this* box's own edge, not the felt's, so it can never leave the square */}
+      {/* the revealed hands sit outside the felt, so the square gives up a margin's worth of its
+          own width to hold them — only while they are actually shown, so an ordinary board is
+          exactly as big as it was. The border box stays square either way, which is what keeps
+          each seat's rotation covering it. `relative`: the ring below is anchored to *this* box's
+          own edge, not the felt's, so it can never leave the square */}
       <div
-        className={`@container relative aspect-square w-full ${showsHands || showsInfo ? 'p-[16%]' : ''}`}
+        data-testid="board"
+        className={`@container relative aspect-square w-full ${showsHands ? 'p-[10%]' : ''}`}
       >
         {/* minmax(0,…): a seat block is measured before it rotates, so its 6-tile row is wider
             than the 4fr band it sits in — with fr's default auto minimum that would grow the
@@ -235,7 +240,14 @@ export function Table({
             exactly 4 tile widths for the river bands to fit — that leaves 6.6fr for the centre,
             which is what actually grows it (the old 6fr/100cqw pairing quietly shorted the river
             bands by that same 2cqw, which is what let them overlap the panel) */}
-        <div className="grid h-full w-full grid-cols-[minmax(0,4fr)_minmax(0,6.6fr)_minmax(0,4fr)] grid-rows-[minmax(0,4fr)_minmax(0,6.6fr)_minmax(0,4fr)] rounded-xl bg-emerald-800/10 p-[1cqw] [--tile-w:calc((100cqw-2cqw)/14.6)] dark:bg-emerald-200/5">
+        {/* `aspect-square`, not `h-full`: the felt's box is square by construction (a square with
+            equal padding on all four sides — percentage padding resolves against the width, so it
+            is equal), and asking for it directly is the one form both engines agree on. `h-full`
+            here is a percentage of a height the square itself only gets from `aspect-ratio`, which
+            WebKit treats as indefinite — the height fell back to auto, the rows sized to their
+            content instead of to their fr shares, and the board came out 390x468 on an iPhone
+            while Chrome drew it square. That is the "table is not squared, but only on iOS" bug. */}
+        <div className="grid aspect-square w-full grid-cols-[minmax(0,4fr)_minmax(0,6.6fr)_minmax(0,4fr)] grid-rows-[minmax(0,4fr)_minmax(0,6.6fr)_minmax(0,4fr)] rounded-xl bg-emerald-800/10 p-[1cqw] [--tile-w:calc((100cqw-2cqw)/14.6)] dark:bg-emerald-200/5">
           {seats.map((seat, index) => {
             const slot = SLOTS[slotOf[(index - seatIndex + players) % players]]
             const wind = t(`wind.${WINDS[index]}`)
@@ -255,6 +267,7 @@ export function Table({
                     edge of the felt */}
                 <div
                   aria-label={wind}
+                  data-testid="river"
                   data-seat={index}
                   className={`relative flex h-[calc(var(--tile-w)*4)] w-[calc(var(--tile-w)*6)] flex-col items-start place-self-center ${slot.river} ${slot.spin}`}
                 >
@@ -265,7 +278,7 @@ export function Table({
                   )}
                   <River tiles={seat.river ?? []} />
                 </div>
-                {(showsInfo || (seat.hand && seat.hand.length > 0) || seat.drawn) && (
+                {((seat.hand && seat.hand.length > 0) || seat.drawn) && (
                   /* anchored to the *outer* square (the `relative` box two levels up), not to the
                      felt this `contents` group sits in — `display: contents` doesn't generate a
                      box, so an absolutely positioned child here still resolves against that outer
@@ -273,45 +286,35 @@ export function Table({
                      reaches past its own padding to the true border edge, so `items-end` lands
                      this ring flush against the square's own boundary: the ring can grow into the
                      padding band it was given, never past it. Nothing about the river moves: the
-                     hand (and, one ring further out, the strip) is beside the table, which is also
-                     where a revealed hand belongs. Stacked in one flex-col rather than two
-                     independently-placed rings: with no hand to show (the bottom seat, whose felt
-                     hand is always omitted) the strip is the only child, so it lands exactly where
-                     the hand row would have sat instead of leaving a gap outboard of nothing */
+                     hand is beside the table, which is where a revealed hand belongs. The seat's
+                     info strip is no longer stacked out here with it — that lives in the corner
+                     cell below now, so this ring is never deeper than one row of tiles */
                   <div
                     className={`pointer-events-none absolute inset-0 flex items-end justify-center ${slot.spin}`}
                   >
-                    <div className="flex flex-col items-center gap-[1cqw]">
-                      {seat.hand && seat.hand.length > 0 && (
-                        <div className="flex [--tile-w:calc(100cqw/16)]">
-                          {seat.hand.map((tile, i) => (
-                            <Tile
-                              key={i}
-                              id={seat.concealed ? undefined : tile.id}
-                              red={tile.red}
-                            />
-                          ))}
-                          {seat.drawn && (
-                            <div className="ml-[0.5cqw]">
-                              <Tile
-                                id={seat.concealed ? undefined : seat.drawn.id}
-                                red={seat.drawn.red}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {seatInfoNodes?.[index] && (
-                        <div className="pointer-events-auto [--tile-w:calc(100cqw/22)]">
-                          {seatInfoNodes[index]}
+                    <div className="flex [--tile-w:calc(100cqw/16)]">
+                      {seat.hand?.map((tile, i) => (
+                        <Tile key={i} id={seat.concealed ? undefined : tile.id} red={tile.red} />
+                      ))}
+                      {seat.drawn && (
+                        <div className="ml-[0.5cqw]">
+                          <Tile
+                            id={seat.concealed ? undefined : seat.drawn.id}
+                            red={seat.drawn.red}
+                          />
                         </div>
                       )}
                     </div>
                   </div>
                 )}
-                {called && (
+                {(called || seatInfoNodes?.[index]) && (
+                  /* the seat's own corner: melds stacked from the edge nearest the centre, the
+                     info strip pinned (`mt-auto`) to the far one — the plate at the seat's corner,
+                     where a Mahjong Soul table puts it. The cell fills its whole 4x4 tile-width
+                     track (no `place-self-center`) so `mt-auto` has the corner to push against,
+                     and the seat's own rotation carries "far" round with it for every seat */
                   <div
-                    className={`flex flex-col items-end justify-start gap-[0.5cqw] place-self-center [--tile-w:calc(100cqw/18)] ${slot.melds} ${slot.spin}`}
+                    className={`flex h-full w-full flex-col items-end justify-start gap-[0.5cqw] [--tile-w:calc(100cqw/18)] ${slot.melds} ${slot.spin}`}
                   >
                     {seat.melds?.map((meld, i) => (
                       <MeldDisplay key={i} meld={meld} />
@@ -321,6 +324,11 @@ export function Table({
                         {seat.nuki.map((tile, i) => (
                           <Tile key={i} id={tile.id} red={tile.red} />
                         ))}
+                      </div>
+                    )}
+                    {seatInfoNodes?.[index] && (
+                      <div className="mt-auto [--tile-w:calc(100cqw/22)]">
+                        {seatInfoNodes[index]}
                       </div>
                     )}
                   </div>
