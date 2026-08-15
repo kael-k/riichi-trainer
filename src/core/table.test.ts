@@ -187,10 +187,9 @@ describe('snapshotTable', () => {
     const core: TableCore = { match, options: YONMA, seatIndex: 0 }
     beginTurn(match, YONMA)
     const snap = snapshotTable(core)
-    expect(snap.drawn).toEqual(match.drawn)
-    expect(snap.hand.some((t) => t.id === match.drawn!.id && t.red === match.drawn!.red)).toBe(
-      false,
-    )
+    const drawn = match.players[match.seat].hand.drawn
+    expect(snap.drawn).toEqual(drawn)
+    expect(snap.hand.some((t) => t.id === drawn!.id && t.red === drawn!.red)).toBe(false)
     // whoever's turn it is right now — the seat a page must split *its own* hand for when
     // watching it from another perspective
     expect(snap.drawnSeat).toBe(match.seat)
@@ -200,7 +199,7 @@ describe('snapshotTable', () => {
     const match = createMatch([], 4, YONMA, 'table-snap-nodraw')
     const core: TableCore = { match, options: YONMA, seatIndex: 0 }
     const snap = snapshotTable(core)
-    expect(match.drawn).toBeUndefined()
+    expect(match.players[match.seat].hand.drawn).toBeUndefined()
     expect(snap.drawnSeat).toBeUndefined()
   })
 

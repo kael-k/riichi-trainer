@@ -5,6 +5,13 @@ export interface Hand {
   counts: Uint8Array
   /** Number of already-fixed (called) melds; each counts as one complete set. */
   melds: number
+  /** The tile that brought this hand to 14, still counted in `counts` above. `ParsedTile`, not
+   *  `TileId`: redness of the draw is not reconstructable from `reds`, which tracks kinds, not
+   *  copies. A narrow, deliberate exception to "`Hand` tracks no redness" — one optional tile
+   *  beside the count array doesn't touch the shanten hot path. Informational only: `removeTile`
+   *  deliberately does not clear it, so a probe (`ukeire`/`efficiency`) may leave it briefly
+   *  stale; nothing reads it there. Set by `take`/`drawReplacement`, cleared by `finishTurn`. */
+  drawn?: ParsedTile
 }
 
 export function createHand(): Hand {

@@ -75,7 +75,7 @@ export function goRound(core: TableCore): void {
     // ever comes back down after the *next* `finishTurn` moves the turn on. Skipping straight to
     // `finishTurn` is what lets a live algorithm flip (`useTableRound.ts`) carry an already-drawn
     // seat forward through this same loop rather than needing its own copy of it.
-    if (match.drawn === undefined) beginTurn(match, options)
+    if (match.players[match.seat].hand.drawn === undefined) beginTurn(match, options)
     finishTurn(match, options)
   }
 }
@@ -161,7 +161,7 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
   const { match, seatIndex, options } = core
   const acting = actingSeat(core)
   const player = match.players[acting]
-  const { tiles: hand, drawn } = splitDrawn(concealedTiles(player), match.drawn)
+  const { tiles: hand, drawn } = splitDrawn(concealedTiles(player), player.hand.drawn)
   return {
     hand,
     drawn,
@@ -185,7 +185,7 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
     dealtTiles: match.wall.slice(0, match.players.length * INITIAL_HAND_SIZE),
     acting,
     claim: match.claim,
-    drawnSeat: match.drawn ? match.seat : undefined,
+    drawnSeat: match.players[match.seat].hand.drawn ? match.seat : undefined,
     seatReads: match.players.map((_, seat) =>
       showSeatWaits || isManual(match, seat) ? seatRead(match, seat, options.sanma) : undefined,
     ),

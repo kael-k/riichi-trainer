@@ -372,14 +372,20 @@ function advanceAfterDiscard(core: RoundCore, tile: ParsedTile, declareRiichi = 
 /** The shared tail of a turn: run the AI seats round, then draw for whichever seat is up next —
  *  unless a claim is now pending, in which case nothing draws until `answer` resolves it. Shared
  *  by `advanceAfterDiscard`, `answer` and the live algorithm sync below, so a claim resolved
- *  mid-turn rejoins the identical path. `match.drawn === undefined` is always true already at the
- *  first two call sites (`finishTurn`/`answerClaim` both leave it cleared) — the guard exists for
+ *  mid-turn rejoins the identical path. The acting seat's `hand.drawn === undefined` is always
+ *  true already at the first two call sites (`finishTurn`/`answerClaim` both leave it cleared) —
+ *  the guard exists for
  *  the third: a live algorithm flip can land here with the acting seat's tile already drawn, and
  *  `beginTurn` has no drawn-tile guard of its own. */
 function settleAfterClaim(core: RoundCore): void {
   const { match, options } = core
   goRound(core)
-  if (!match.ended && !match.claim && match.drawn === undefined && match.liveWall.length > 0) {
+  if (
+    !match.ended &&
+    !match.claim &&
+    match.players[match.seat].hand.drawn === undefined &&
+    match.liveWall.length > 0
+  ) {
     beginTurn(match, options)
   }
 }

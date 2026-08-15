@@ -181,7 +181,7 @@ export function useTableRound(input: TableRoundInput) {
     // only ever for the orientation seat: a second manual seat is played, not graded, so its
     // turns must not reach a consumer whose callbacks mean "the drill's own decision"
     if (notify && !replaying.current && actingSeat(c) === c.seatIndex) {
-      input.onUserDraw?.({ turn: c.match.turn, drawn: c.match.drawn, analysis })
+      input.onUserDraw?.({ turn: c.match.turn, drawn: player.hand.drawn, analysis })
     }
   }
 
@@ -234,7 +234,7 @@ export function useTableRound(input: TableRoundInput) {
       discarded === c.seatIndex &&
       shanten(c.match.players[c.seatIndex].hand) <= 0
     ) {
-      c.match.drawn = undefined
+      c.match.players[c.seatIndex].hand.drawn = undefined
       return false
     }
     goRound(c)
@@ -307,7 +307,7 @@ export function useTableRound(input: TableRoundInput) {
   // call, so a seat that only *becomes* relevant later (goRound hasn't reached it yet) just works
   // the next time the board naturally advances. Two cases can't wait for that: a seat that just
   // stopped being manual while its own drawn tile is already sitting there (`goRound`'s own
-  // `match.drawn` check is what stops it re-drawing) and a claim pending on a seat that just
+  // `hand.drawn` check is what stops it re-drawing) and a claim pending on a seat that just
   // stopped being manual — nobody will ever call `answerClaim` for it now, so it is re-resolved
   // through the restartable path `answerClaim` itself uses (`reconsiderClaim`). Never
   // auto-passed: a pass sets `missedWin`, so a dropdown must never poison the hand with furiten by
@@ -331,7 +331,11 @@ export function useTableRound(input: TableRoundInput) {
     }
     if (!maybeFireAgari(c) && !c.match.claim) {
       goRound(c)
-      if (!maybeFireAgari(c) && !c.match.claim && c.match.drawn === undefined) {
+      if (
+        !maybeFireAgari(c) &&
+        !c.match.claim &&
+        c.match.players[c.match.seat].hand.drawn === undefined
+      ) {
         beginTurn(c.match, c.options)
         maybeFireAgari(c)
       }
@@ -410,7 +414,7 @@ export function useTableRound(input: TableRoundInput) {
     removeTile(player.hand, NORTH)
     player.nuki.push(northTile)
     c.match.visible[NORTH]++
-    c.match.drawn = drawReplacement(c.match, player)
+    drawReplacement(c.match, player)
     fireDraw(c)
     setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
@@ -446,7 +450,7 @@ export function useTableRound(input: TableRoundInput) {
       c.match.doraIndicators.push(indicator)
       c.match.visible[indicator.id]++
     }
-    c.match.drawn = drawReplacement(c.match, player)
+    drawReplacement(c.match, player)
     fireDraw(c)
     setSnapshot(snapshotTable(c, input.showSeatWaits))
   }

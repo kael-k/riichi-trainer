@@ -173,8 +173,6 @@ export interface MatchState {
    *  two snapshots above it lets a display reconstruct "already drawn/taken" without a fourth
    *  stored field — see `wallDrawnCount`. */
   replacements: number
-  /** Tile that brought the current seat to 14, if any. */
-  drawn?: ParsedTile
   /** A manual seat's outstanding decision on the discard just made. Set only while the turn is
    *  suspended; `beginTurn`/`finishTurn` are no-ops until `answerClaim` clears it. */
   claim?: PendingClaim
@@ -275,6 +273,7 @@ function take(state: MatchState, player: PlayerState): ParsedTile | undefined {
   if (!tile) return undefined
   addTile(player.hand, tile.id)
   if (tile.red) player.reds.add(tile.id)
+  player.hand.drawn = tile
   return tile
 }
 
@@ -486,7 +485,7 @@ export function beginTurn(state: MatchState, options: MatchOptions): MatchEvent[
 
   if (!state.pendingDraw) {
     state.pendingDraw = true
-    state.drawn = undefined
+    player.hand.drawn = undefined
     return []
   }
   if (state.liveWall.length === 0) {
@@ -518,7 +517,6 @@ export function beginTurn(state: MatchState, options: MatchOptions): MatchEvent[
     events.push({ kind: 'draw', seat: state.seat, tile })
   }
 
-  state.drawn = tile
   const win = tryWin(state, state.seat, options, tile, true)
   if (win) return [...events, ...endWith(state, win)]
   return events
@@ -537,6 +535,7 @@ export function drawReplacement(state: MatchState, player: PlayerState): ParsedT
     if (backfill) state.deadWall.unshift(backfill)
     addTile(player.hand, tile.id)
     if (tile.red) player.reds.add(tile.id)
+    player.hand.drawn = tile
   } else {
     tile = take(state, player)
   }
@@ -573,11 +572,11 @@ export function finishTurn(
   const player = state.players[seat]
   const events: MatchEvent[] = []
 
-  const forcedTsumogiri = player.riichiAt !== undefined && state.drawn !== undefined
+  const forcedTsumogiri = player.riichiAt !== undefined && player.hand.drawn !== undefined
   let tile = discard
   if (!tile) {
     if (forcedTsumogiri) {
-      tile = state.drawn
+      tile = player.hand.drawn
     } else {
       // no explicit discard and not forced tsumogiri: `finishTurn` is being driven mechanically
       // (a test, `playMatch`'s bare loop, `useFoldingRound.ts`'s own generation) rather than
@@ -591,9 +590,12 @@ export function finishTurn(
   }
   if (!tile) return events
 
-  const tsumogiri = state.drawn !== undefined && sameTile(tile, state.drawn)
+  const tsumogiri = player.hand.drawn !== undefined && sameTile(tile, player.hand.drawn)
   removeTile(player.hand, tile.id)
   if (tile.red) player.reds.delete(tile.id)
+  // cleared here, not at the end: a naive end-of-function clear would leave `hand.drawn` naming a
+  // tile no longer in the hand while the riichi decision below builds its `SeatView`
+  player.hand.drawn = undefined
 
   // riichi is declared with the discard that reaches tenpai, so it is decided after the choice
   const declaring = canDeclareRiichi(state, options, seat)
@@ -616,7 +618,6 @@ export function finishTurn(
   player.river.push(entry)
   state.discards.push({ seat, tile: entry })
   state.visible[tile.id]++
-  state.drawn = undefined
   if (declaring) events.push({ kind: 'riichi', seat })
   events.push({ kind: 'discard', seat, tile: entry })
 
