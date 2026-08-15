@@ -16,6 +16,12 @@ const ALGO_COLOR: Record<SeatAlgorithm, string> = {
   manual: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
 }
 
+/** Wait tiles drawn before the rest become a count. Five is what fits one line of a seat's corner
+ *  cell; past that the tiles are too small to read anyway, and the extreme case — kokushi's
+ *  thirteen-sided wait — is better answered by "+8" than by thirteen unreadable faces. Ordinary
+ *  waits are one to three tiles, so this only ever trims the hands that are wide open. */
+const MAX_WAIT_TILES = 5
+
 interface SeatStripProps extends SeatButtonProps {
   /** This seat's own tenpai/waits/furiten (`core/table.ts#seatRead`) — present for a seat the
    *  reader plays regardless of `showWaits` (their own furiten is legitimate information a real
@@ -49,7 +55,7 @@ export function SeatStrip({ read, showWaits, ...seatButtonProps }: SeatStripProp
       </span>
       {showWaits && read && read.waits.length > 0 && (
         <div className="flex items-center gap-[0.3cqw]">
-          {read.waits.map(({ tile, remaining }) => (
+          {read.waits.slice(0, MAX_WAIT_TILES).map(({ tile, remaining }) => (
             <div
               key={tile}
               className={`flex flex-col items-center ${remaining === 0 ? 'opacity-30' : ''}`}
@@ -58,6 +64,11 @@ export function SeatStrip({ read, showWaits, ...seatButtonProps }: SeatStripProp
               <span className="text-[1.8cqw] text-neutral-500">{remaining}</span>
             </div>
           ))}
+          {read.waits.length > MAX_WAIT_TILES && (
+            <span className="text-[2cqw] text-neutral-500">
+              +{read.waits.length - MAX_WAIT_TILES}
+            </span>
+          )}
         </div>
       )}
     </div>

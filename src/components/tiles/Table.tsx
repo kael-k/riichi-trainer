@@ -357,7 +357,11 @@ export function Table({
                       </div>
                     )}
                     {seatInfoNodes?.[index] && (
-                      <div className="mt-auto [--tile-w:calc(100cqw/22)]">
+                      // `max-w-full`: the column is `items-end`, which sizes every child to its own
+                      // content, so without a boundary the strip's own `flex-wrap` has nothing to
+                      // wrap against — a thirteen-sided wait drew its tiles in one line straight
+                      // across the felt and over the seat's river
+                      <div className="mt-auto max-w-full [--tile-w:calc(100cqw/22)]">
                         {seatInfoNodes[index]}
                       </div>
                     )}
