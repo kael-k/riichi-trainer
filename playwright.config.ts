@@ -14,7 +14,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
-  use: { baseURL, trace: 'on-first-retry' },
+  // a failing layout assertion is a picture, not a stack: the shot is what says *how* the board
+  // came out wrong
+  use: { baseURL, trace: 'on-first-retry', screenshot: 'only-on-failure' },
   projects: [
     { name: 'mobile', use: devices['iPhone 13'] },
     { name: 'mobile-landscape', use: devices['iPhone 13 landscape'] },
