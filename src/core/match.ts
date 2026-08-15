@@ -897,6 +897,168 @@ export function reconsiderClaim(state: MatchState, options: MatchOptions): Match
   return resolveReactions(state, options, claim.from, claim.tile, claim.answers)
 }
 
+/**
+ * Replays `log` from wherever `state` stands, driving every seat exactly as recorded — discard,
+ * pon/chi, kita, closed kan, riichi, tsumo accept/decline — never asking an algorithm (this is
+ * what makes a link immune to a later algorithm change): every seat's `algorithm` is forced to
+ * `'manual'` for the duration, which is what makes `finishTurn`'s `discard`/`declareRiichi`
+ * arguments, `answerClaim` and `beginTurn`'s `declineTsumo` the *only* things any decision can come
+ * from. Restored to each seat's real algorithm before returning, live-flip style (same
+ * override-then-restore shape `useTableRound.ts`'s D6 sync effect already uses).
+ *
+ * Stops quietly rather than throwing — same posture `replayDiscards` already has — whenever the
+ * hand ends, the log runs out, or the next entry doesn't describe what the hand is actually doing
+ * (a caller feeding it a log that doesn't match `state`). Two things are deliberately never read
+ * from the log because they're derivable from its *absence*: a claim (ron/pon/chi) nobody answered
+ * is a pass, and a tsumo the log doesn't show accepted at this exact draw is declined — see
+ * `resolveClaims` and the `acceptsTsumo` peek below. The one case that's neither "answer" nor
+ * "silently pass" is the log running out exactly *while* a claim is pending: that means the
+ * original recording stopped there because nothing had been decided yet, not because the answer
+ * was a pass, so replay stops with `state.claim` still set for the live UI to resume — it must
+ * never invent a pass there (a pass sets `missedWin`, poisoning the hand with furiten over a
+ * decision nobody made).
+ *
+ * `options.claims` is forced on for the duration too, alongside `algorithm`: `resolveReactions`'s
+ * ask-loop — and `claimOptions` underneath it — only ever suspends for a manual seat when
+ * `claims` is set, which is exactly the machinery a log-driven answer needs to hook into. Without
+ * it, a live match played entirely by algorithms (the ordinary case — nothing manual, `claims`
+ * off, `resolveReactions` resolves ron/call inline in the same `finishTurn` call) would replay
+ * with every claim silently auto-passed, since forcing `algorithm` alone doesn't reach the ask
+ * loop at all. The caller's real `options` (including its real `claims`) is what every seat is
+ * restored to read afterward — this override never escapes `replayLog` itself.
+ *
+ * Resumable by construction, with no cursor of its own to thread back in: every entry `replayLog`
+ * ever consumes corresponds to exactly one push onto `state.log` (a discard, a kan/kita, a ron, an
+ * accepted tsumo — the only things `i` ever advances past), and a decline or a synthesized pass
+ * advances neither. So `state.log.length` *is* how far replay has gotten, whether that's from an
+ * earlier call on this same `state` or from real live play before `replayLog` was ever called —
+ * calling it again with the same (or a longer) `log` simply picks up from there.
+ *
+ * Returns how many log entries have now been consumed in total, mirroring `replayDiscards`'s
+ * "played fewer than asked" bookkeeping.
+ */
+export function replayLog(
+  state: MatchState,
+  options: MatchOptions,
+  log: readonly LogEntry[],
+): number {
+  const originalAlgorithms = state.players.map((p) => p.algorithm)
+  for (const player of state.players) player.algorithm = 'manual'
+  const replayOptions: MatchOptions = { ...options, claims: true }
+  let i = state.log.length
+
+  // drains every claim `state` is currently suspended on, feeding each seat's answer from the log
+  // when present and synthesizing a pass when the log has more to say but not about this claim
+  // (D-L2/L4) — but never past the log's own end, per the doc comment above.
+  const resolveClaims = (): boolean => {
+    // once a real, log-matched ron or call has settled *this* discard, every seat still to be
+    // asked is provably irrelevant to the outcome — seat-order priority means the confirmed ron
+    // wins regardless of what a later seat would have said, and a confirmed call means the
+    // ron-loop already found nobody, so a later seat's own call preference never gets reached
+    // either. The original live match (almost always no seats manual, `claims` off) never even
+    // asked them — its non-manual ron/call loops `return` the instant a winner or caller is
+    // found, without ever touching a later seat's `couldHaveWon`. So once `resolved`, a pass is
+    // safe to synthesize even past the log's own end; before that, running out of log genuinely
+    // means "not decided yet" (see the doc comment above) — with one more exception: an empty
+    // live wall. Passing a claim nobody has claimed simply hands the turn to the next seat, and if
+    // the wall is already dry that seat's next `beginTurn` sets `state.ended = 'exhaustive'` on its
+    // own, no further log entry required — exactly why the *last* discard of an exhausted hand
+    // logs no claim resolution at all today, live or replayed.
+    let resolved = false
+    while (state.claim) {
+      const claim = state.claim
+      if (i >= log.length) {
+        if (!resolved && state.liveWall.length > 0) return false
+        answerClaim(state, replayOptions, { kind: 'pass' })
+        continue
+      }
+      const entry = log[i]
+      let answer: ClaimAnswer = { kind: 'pass' }
+      if (entry.kind === 'win' && entry.seat === claim.seat && entry.from === claim.from) {
+        answer = { kind: 'ron' }
+        i++
+        resolved = true
+      } else if (entry.kind === 'call' && entry.seat === claim.seat && entry.from === claim.from) {
+        answer = { kind: entry.call.kind, from: entry.call.from }
+        i++
+        resolved = true
+      }
+      answerClaim(state, replayOptions, answer)
+    }
+    return true
+  }
+
+  const restore = () => {
+    for (const [seat, algorithm] of originalAlgorithms.entries()) {
+      state.players[seat].algorithm = algorithm
+    }
+  }
+
+  if (!resolveClaims()) {
+    restore()
+    return i
+  }
+
+  // `i < log.length` alone would stop one turn too early on a hand that ran the wall dry: the
+  // very last turn of an exhausted hand logs nothing at all (nobody claims, nobody draws again),
+  // and `state.ended` only becomes 'exhaustive' once a `beginTurn` call actually finds the wall
+  // empty. The `liveWall.length === 0` half of this admits exactly that one extra step and
+  // nothing else — an *empty* wall means the next `beginTurn` can only ever end the hand or no-op
+  // (never draw a tile the log never recorded), which is what makes it safe to take even past a
+  // genuinely truncated log (mid-hand share link, or any other reason a caller stopped feeding
+  // entries). A non-empty wall past the log's end has no such guarantee, so it stops here instead.
+  while (!state.ended && (i < log.length || state.liveWall.length === 0)) {
+    const seat = state.seat
+    const next: LogEntry | undefined = log[i]
+    const acceptsTsumo = next?.kind === 'win' && next.seat === seat && next.from === undefined
+    beginTurn(state, replayOptions, !acceptsTsumo)
+    if (state.ended) {
+      if (acceptsTsumo) i++
+      break
+    }
+
+    // a kita/ankan pull draws a replacement, and — for an *AI*-decided seat — `beginTurn`'s own
+    // loop prices a tsumo off whatever tile that replacement turns out to be, same as the initial
+    // draw. Replaying a seat's own kita/ankan pulls one at a time via `callKita`/`callAnkan` (which
+    // never check for a win themselves — a real manual seat's tsumo off a kita pull isn't an
+    // engine-level concept at all, only an AI's automatic loop prices it) has to reproduce that
+    // same check by hand after each pull, or an AI seat's tsumo-off-a-kita-replacement never fires
+    // during replay.
+    while (i < log.length) {
+      const entry = log[i]
+      if (entry.kind === 'kita' && entry.seat === seat) callKita(state, replayOptions, seat)
+      else if (entry.kind === 'ankan' && entry.seat === seat) callAnkan(state, seat, entry.tile)
+      else break
+      i++
+
+      const afterPull: LogEntry | undefined = log[i]
+      const drawn = state.players[seat].hand.drawn
+      if (afterPull?.kind === 'win' && afterPull.seat === seat && afterPull.from === undefined && drawn) {
+        const win = tryWin(state, seat, replayOptions, drawn, true)
+        if (win) {
+          endWith(state, win)
+          i++
+        }
+      }
+    }
+    if (state.ended) break
+
+    const discardEntry = log[i]
+    if (!discardEntry || discardEntry.kind !== 'discard' || discardEntry.seat !== seat) break
+    finishTurn(
+      state,
+      replayOptions,
+      { tile: discardEntry.tile, fromDrawn: discardEntry.fromDrawn },
+      discardEntry.riichi,
+    )
+    i++
+    if (!resolveClaims()) break
+  }
+
+  restore()
+  return i
+}
+
 /** Seats in claim order starting after `seat` — the order ron and calls are resolved in. */
 function seatsFrom(state: MatchState, seat: number): number[] {
   const order: number[] = []

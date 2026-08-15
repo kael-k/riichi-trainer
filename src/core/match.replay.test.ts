@@ -1,0 +1,226 @@
+import { describe, expect, it } from 'vitest'
+import { tileCount } from './hand'
+import {
+  answerClaim,
+  beginTurn,
+  callAnkan,
+  callKita,
+  createMatch,
+  finishTurn,
+  playMatch,
+  replayLog,
+  type LogEntry,
+  type MatchOptions,
+  type MatchState,
+} from './match'
+import type { SeatAlgorithm } from './policy'
+import { HONOR, MAN, parseTenhou, SOU } from './tiles'
+import { INITIAL_HAND_SIZE, wallWithHand } from './wall'
+
+/**
+ * `replayLog`'s regression net (PLAN-action-log.md T2). Not a hash like `match.golden.test.ts` —
+ * a structural comparison between a live-played match's final state and the state a *fresh* match
+ * reaches by replaying that live match's own `log` from the same wall. `log` itself is excluded
+ * from the projection (that's `match.test.ts`'s job); this proves replay reproduces the *board*.
+ */
+
+function manual(...seats: number[]): SeatAlgorithm[] {
+  const algorithms: SeatAlgorithm[] = Array(Math.max(...seats) + 1).fill('efficiency')
+  for (const seat of seats) algorithms[seat] = 'manual'
+  return algorithms
+}
+
+const YONMA: MatchOptions = {
+  sanma: false,
+  aka: true,
+  round: HONOR,
+  deadWall: true,
+  calls: true,
+  riichi: true,
+  wins: true,
+}
+
+const SANMA: MatchOptions = { ...YONMA, sanma: true }
+
+/** Everything about a match that matters for "is this the same board" — hands, melds, rivers,
+ *  riichi/furiten state, dora, whose turn it is, whether it ended and how. Deliberately excludes
+ *  `log` (a separate concern, covered in `match.test.ts`) and `wall`/`liveWallSnapshot`/
+ *  `deadWallSnapshot` (identical by construction — both states are built from the same wall array). */
+function project(state: MatchState) {
+  return {
+    ended: state.ended,
+    win: state.win,
+    seat: state.seat,
+    turn: state.turn,
+    pendingDraw: state.pendingDraw,
+    claim: state.claim && { seat: state.claim.seat, from: state.claim.from, tile: state.claim.tile },
+    liveWallLength: state.liveWall.length,
+    doraIndicators: state.doraIndicators,
+    players: state.players.map((p) => ({
+      counts: Array.from(p.hand.counts),
+      drawn: p.hand.drawn,
+      reds: [...p.reds].sort((a, b) => a - b),
+      melds: p.melds,
+      river: p.river,
+      riichiAt: p.riichiAt,
+      missedWin: p.missedWin,
+      nuki: p.nuki,
+    })),
+  }
+}
+
+/** Replays `original`'s own log onto a fresh match dealt from the same wall, under the same
+ *  seeded algorithms `original` was built with (irrelevant to what gets replayed — `replayLog`
+ *  forces every seat manual regardless — but matching them is what makes the *restored* algorithm
+ *  after replay meaningful to assert on). */
+function replayed(original: MatchState, options: MatchOptions): MatchState {
+  const fresh = createMatch(original.wall, original.players.length, options)
+  replayLog(fresh, options, original.log)
+  return fresh
+}
+
+describe('replayLog', () => {
+  it('reproduces a live AI match exactly, from its own log', () => {
+    for (let i = 0; i < 20; i++) {
+      const { state } = playMatch(`replay-${i}`, 4, YONMA)
+      const fresh = replayed(state, YONMA)
+      expect(project(fresh), `seed replay-${i}`).toEqual(project(state))
+    }
+  })
+
+  it('reproduces a live sanma match exactly, including any AI kita pulls', () => {
+    for (let i = 0; i < 20; i++) {
+      const { state } = playMatch(`replay-sanma-${i}`, 3, SANMA)
+      const fresh = replayed(state, SANMA)
+      expect(project(fresh), `seed replay-sanma-${i}`).toEqual(project(state))
+    }
+  })
+
+  it('restores every seat to its pre-replay algorithm, win or no win', () => {
+    const options: MatchOptions = { ...YONMA, algorithms: ['efficiency', 'defense', 'tsumogiri'] }
+    const { state } = playMatch('replay-restore', 4, options)
+    const fresh = createMatch(state.wall, 4, options)
+    replayLog(fresh, options, state.log)
+    expect(fresh.players.map((p) => p.algorithm)).toEqual(['efficiency', 'defense', 'tsumogiri', 'efficiency'])
+  })
+
+  it('replays a defense seat declining a mid-hand tsumo — the log never claims it, and replay never takes it either', () => {
+    // shanpon tenpai on 1p/2p; the very next draw completes it, but a defense-algorithm seat
+    // never takes a win it draws into (D-L5's whole reason for existing)
+    const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'replay-decline')
+    wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
+    const options: MatchOptions = { ...YONMA, algorithms: ['defense'] }
+    const state = createMatch(wall, 4, options)
+
+    beginTurn(state, options)
+    expect(state.ended).toBeUndefined() // declined, as chosen
+    expect(tileCount(state.players[0].hand)).toBe(14)
+    finishTurn(state, options) // the same turn's own discard, from the now-14-tile hand
+
+    // play the hand on a few more turns so the log has real content past the decline
+    for (let t = 0; t < 8 && !state.ended; t++) {
+      beginTurn(state, options)
+      finishTurn(state, options)
+    }
+
+    expect(state.log.some((e) => e.kind === 'win' && e.seat === 0 && e.from === undefined)).toBe(
+      false,
+    )
+    const fresh = replayed(state, options)
+    expect(project(fresh)).toEqual(project(state))
+  })
+
+  it('replays a manual seat pulling kita then discarding', () => {
+    const wall = wallWithHand(0, parseTenhou('123456789m112p4z'), true, false, 'replay-kita')
+    const options: MatchOptions = { ...SANMA, algorithms: manual(0) }
+    const state = createMatch(wall, 3, options)
+
+    beginTurn(state, options)
+    callKita(state, options, 0)
+    finishTurn(state, options, { tile: { id: MAN, red: false }, fromDrawn: false })
+    for (let t = 0; t < 6 && !state.ended; t++) {
+      beginTurn(state, options)
+      finishTurn(state, options)
+    }
+
+    expect(state.log[0]).toEqual({ kind: 'kita', seat: 0 })
+    const fresh = replayed(state, options)
+    expect(project(fresh)).toEqual(project(state))
+  })
+
+  it('replays a manual seat closed-kanning then discarding, kan-dora included', () => {
+    const wall = wallWithHand(0, parseTenhou('111456789m1122p'), false, false, 'replay-ankan')
+    wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1m')[0]
+    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
+    const state = createMatch(wall, 4, options)
+
+    beginTurn(state, options)
+    callAnkan(state, 0, MAN)
+    finishTurn(state, options, { tile: state.players[0].hand.drawn!, fromDrawn: true })
+    for (let t = 0; t < 6 && !state.ended; t++) {
+      beginTurn(state, options)
+      finishTurn(state, options)
+    }
+
+    expect(state.log[0]).toEqual({ kind: 'ankan', seat: 0, tile: MAN })
+    const fresh = replayed(state, options)
+    expect(project(fresh)).toEqual(project(state))
+  })
+
+  it('replays two claims answered in sequence on the same discard', () => {
+    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1, 2) }
+    // seat 0 discards 9s; seat 1 (kamicha) can chi it with 7s8s, seat 2 can pon it with 99s —
+    // seat order asks 1 before 2, and only seat1's chi needs no extra copies of 9s itself, which
+    // is what keeps this within the 4-copy census (seat0's 1 + seat2's 2 = 3, one spare)
+    const wall = [
+      ...parseTenhou('2468m2468p9s2345z'),
+      ...parseTenhou('13579m13579p78s1z'),
+      ...parseTenhou('12345m123456p99s'),
+      ...parseTenhou('123456m123456p7z'),
+    ]
+    const state = createMatch(wall, 4, options, 'replay-two-claims')
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    expect(state.claim?.seat).toBe(1)
+    answerClaim(state, options, { kind: 'pass' }) // seat 1 declines the pon
+    expect(state.claim?.seat).toBe(2) // seat 2 is asked next
+    answerClaim(state, options, { kind: 'pass' })
+    for (let t = 0; t < 6 && !state.ended; t++) {
+      beginTurn(state, options)
+      finishTurn(state, options)
+    }
+
+    const fresh = replayed(state, options)
+    expect(project(fresh)).toEqual(project(state))
+  })
+
+  it('stops with the claim still pending when the log ends exactly there, and never invents a pass', () => {
+    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    const wall = [
+      ...parseTenhou('2468m2468p9s2345z'),
+      ...parseTenhou('13579m13579p99s1z'),
+      ...parseTenhou('123456m123456p7s'),
+      ...parseTenhou('123456m123456p7z'),
+    ]
+    const original = createMatch(wall, 4, options, 'replay-mid-claim')
+    beginTurn(original, options)
+    finishTurn(original, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    expect(original.claim?.seat).toBe(1)
+
+    // a link generated at exactly this moment: the discard is logged, nothing answers it yet
+    const truncatedLog: LogEntry[] = [...original.log]
+
+    const fresh = createMatch(wall, 4, options, 'replay-mid-claim')
+    const consumed = replayLog(fresh, options, truncatedLog)
+
+    expect(fresh.claim?.seat).toBe(1)
+    expect(fresh.claim?.from).toBe(0)
+    expect(fresh.players[1].missedWin).toBe(false) // no pass was invented
+    expect(consumed).toBe(truncatedLog.length)
+
+    // replaying the same (still-truncated) log again is a no-op past where it already stopped
+    const again = replayLog(fresh, options, truncatedLog)
+    expect(again).toBe(truncatedLog.length)
+    expect(fresh.claim?.seat).toBe(1)
+  })
+})
