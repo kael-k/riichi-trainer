@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Companion documents
+
+This file is **how the code works today**. Three others carry what it deliberately doesn't:
+
+- **`docs/adr/`** — *why* it works that way. One decision per file, superseded rather than edited.
+  Read the relevant ADR before proposing to change a design; write a new one when a decision moves.
+- **`docs/STRUCTURE.md`** — *where* things live: an annotated source map and the dependency rules.
+- **`docs/STATUS.md`** — what is shipped, what is in flight, what is known broken, and what is out
+  of scope on purpose. Read it before starting anything; update it when that changes.
+
+`docs/README.md` explains the precedence between them and the working rules (one plan file, one
+task per commit).
+
 ## Commands
 
 Node 26 (`.nvmrc`).
