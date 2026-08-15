@@ -743,6 +743,21 @@ export function answerClaim(
   return resolveReactions(state, options, claim.from, claim.tile, claim.answers)
 }
 
+/** Re-resolves the claim the board is waiting on from scratch, without adding an answer — for
+ *  when the seat currently being asked stops being manual while its answer is still pending
+ *  (a live algorithm flip, `useTableRound.ts`/`useFoldingRound.ts`): nobody will ever call
+ *  `answerClaim` for it now, so the new algorithm has to decide instead, through the exact same
+ *  restartable path `answerClaim` itself uses. Never invents a pass — that would set `missedWin`,
+ *  poisoning the hand with furiten over a decision the reader never made. A no-op when nothing is
+ *  pending. */
+export function reconsiderClaim(state: MatchState, options: MatchOptions): MatchEvent[] {
+  const claim = state.claim
+  if (!claim) return []
+  delete claim.answers[claim.seat]
+  state.claim = undefined
+  return resolveReactions(state, options, claim.from, claim.tile, claim.answers)
+}
+
 /** Seats in claim order starting after `seat` — the order ron and calls are resolved in. */
 function seatsFrom(state: MatchState, seat: number): number[] {
   const order: number[] = []

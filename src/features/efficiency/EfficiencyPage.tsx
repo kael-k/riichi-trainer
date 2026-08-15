@@ -16,7 +16,7 @@ import { ManualControls } from '../table/ManualControls'
 import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
-import { useTableSettings, type TableSettings } from '../settings/tableSettings'
+import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { DiscardFeedback } from './DiscardFeedback'
@@ -36,14 +36,8 @@ export function EfficiencyPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const { aka } = useAdvancedSettings()
-  const {
-    deadWall,
-    showWall,
-    showOpponentHands,
-    showSeatWaits,
-    seats: seatConfig,
-    seatsEnabled,
-  } = useTableSettings('efficiency')
+  const { deadWall, showWall, showOpponentHands, showSeatWaits, claims, seatsEnabled } =
+    useTableSettings('efficiency')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
   // `apps.efficiency` slice in first.
@@ -52,6 +46,12 @@ export function EfficiencyPage() {
       apps: { ...rawTable.apps, efficiency: { ...rawTable.apps.efficiency, ...patch } },
     })
 
+  // per-seat algorithms are board state, not a preference (D15): page state with the same
+  // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
+  // persisted. `claims` (above) is the one part of the old seat panel that *is* a reader
+  // preference, so it stays in settings.
+  const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
+
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<RoundOptions>(
     () => ({
@@ -59,9 +59,10 @@ export function EfficiencyPage() {
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
       seats: seatConfig,
+      claims,
       showSeatWaits,
     }),
-    [situation, deadWall, aka, sanma, seatConfig, showSeatWaits],
+    [situation, deadWall, aka, sanma, seatConfig, claims, showSeatWaits],
   )
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
@@ -74,10 +75,12 @@ export function EfficiencyPage() {
   if (situation !== lastSituation) {
     setLastSituation(situation)
     setViewSeat(null)
+    setSeatConfig(null)
   }
   const perspective = viewSeat ?? round.seatIndex
   const restart = () => {
     setViewSeat(null)
+    setSeatConfig(null)
     round.restart()
   }
 
@@ -227,7 +230,9 @@ export function EfficiencyPage() {
                     players={round.rivers.length}
                     defaultOrientation={round.seatIndex}
                     config={seatConfig}
-                    onChange={(next) => updateTable({ seats: next })}
+                    onChange={setSeatConfig}
+                    claims={claims}
+                    onClaimsChange={(v) => updateTable({ claims: v })}
                     viewSeat={perspective}
                     onWatch={setViewSeat}
                     read={round.seatReads[seat]}

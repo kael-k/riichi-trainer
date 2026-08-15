@@ -26,6 +26,7 @@ const OPTIONS: RoundOptions = {
   showOpponentHands: false,
   showSeatWaits: false,
   seats: null,
+  claims: false,
 }
 
 /** A deterministic pseudo-random full wall — not necessarily a worthwhile board on its own (a
@@ -309,10 +310,7 @@ describe('useFoldingRound', () => {
 
 describe('per-seat manual configuration', () => {
   it('every seat the panel marks manual plays for real, not only the drill’s own generated seat', async () => {
-    const seats = {
-      modes: ['manual', 'manual', 'manual', 'manual'] as SeatAlgorithm[],
-      claims: false,
-    }
+    const seats = { modes: ['manual', 'manual', 'manual', 'manual'] as SeatAlgorithm[] }
     const result = await deal({ wall: wall('manual-seat-seed') }, { ...OPTIONS, seats })
     expect([...result.current.manualSeats].sort()).toEqual([0, 1, 2, 3])
   })
@@ -326,7 +324,7 @@ describe('per-seat manual configuration', () => {
       ({ options }: { options: RoundOptions }) => useFoldingRound(urlData, options),
       {
         initialProps: {
-          options: { ...OPTIONS, seats: { modes: [], claims: false, orientation: 0 } },
+          options: { ...OPTIONS, seats: { modes: [] } },
         },
       },
     )
@@ -336,12 +334,38 @@ describe('per-seat manual configuration', () => {
     const turnAfterDiscard = result.current.turn
     const handAfterDiscard = result.current.hand
 
-    rerender({ options: { ...OPTIONS, seats: { modes: [], claims: false, orientation: 2 } } })
+    // a fresh `seats` object with the same modes — proof this is keyed by value, not identity
+    rerender({ options: { ...OPTIONS, seats: { modes: [] } } })
 
     // a rebuild would replay only `urlData.discards` (none here), landing back at the handover
     // turn with a fresh hand — so the turn/hand staying put is proof no rebuild happened
     expect(result.current.turn).toBe(turnAfterDiscard)
     expect(result.current.hand).toEqual(handAfterDiscard)
+  })
+
+  it('flipping a seat’s mode mid-hand patches the live match instead of rebuilding it (D6/D15)', async () => {
+    const urlData: FoldingUrl = { wall: wall('live-flip-seed') }
+    const { result, rerender } = renderHook(
+      ({ options }: { options: RoundOptions }) => useFoldingRound(urlData, options),
+      { initialProps: { options: OPTIONS } },
+    )
+    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 })
+    const { turn, hand, liveWall } = result.current
+    // any seat but the drill's own graded one — flipping that one is a different feature (D13)
+    const other = [0, 1, 2, 3].find((seat) => seat !== result.current.seatIndex)!
+    const flipped: SeatAlgorithm =
+      result.current.algorithms[other] === 'defense' ? 'efficiency' : 'defense'
+    const modes: SeatAlgorithm[] = []
+    modes[other] = flipped
+
+    rerender({ options: { ...OPTIONS, seats: { modes } } })
+
+    // the live-sync effect actually applied the flip...
+    expect(result.current.algorithms[other]).toBe(flipped)
+    // ...without rebuilding the round out from under it
+    expect(result.current.turn).toBe(turn)
+    expect(result.current.hand).toEqual(hand)
+    expect(result.current.liveWall).toEqual(liveWall)
   })
 
   it('answering with no claim pending is a no-op', async () => {

@@ -15,6 +15,7 @@ const BARE: RoundOptions = {
   showOpponentHands: false,
   showSeatWaits: false,
   seats: null,
+  claims: false,
 }
 
 /** Seat 0's pinned 13-tile hand: nine man kinds plus two honor kinds — 11 distinct kinds. */

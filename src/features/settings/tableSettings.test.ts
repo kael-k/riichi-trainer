@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  resolveSeatConfig,
   resolveTableSettings,
-  seatMatchOptions,
   TABLE_DEFAULTS,
   type SeatConfig,
   type TableApp,
@@ -64,28 +64,35 @@ describe('resolveTableSettings', () => {
   })
 })
 
-describe('seatMatchOptions', () => {
-  it('grades the default seat with no configuration at all', () => {
-    expect(seatMatchOptions(null, 4, 2).seatIndex).toBe(2)
+describe('resolveSeatConfig', () => {
+  it('puts every seat on efficiency but the default seat, with no configuration at all', () => {
+    expect(resolveSeatConfig(null, 4, 2).modes).toEqual([
+      'efficiency',
+      'efficiency',
+      'manual',
+      'efficiency',
+    ])
   })
 
-  it('keeps grading the default seat when a second seat is also manual', () => {
-    const config: SeatConfig = {
-      modes: ['efficiency', 'manual', 'manual', 'efficiency'],
-      claims: false,
-    }
-    expect(seatMatchOptions(config, 4, 2).seatIndex).toBe(2)
+  it('keeps a second manual seat alongside the default one', () => {
+    const config: SeatConfig = { modes: ['efficiency', 'manual', 'manual', 'efficiency'] }
+    expect(resolveSeatConfig(config, 4, 2).modes).toEqual(config.modes)
   })
 
-  it('falls back to the first manual seat when the default seat was given away', () => {
-    // seat 0 is the default, but the reader handed it to the efficiency AI and made seat 1
-    // manual instead — perspective never does this (it is view-only), but a raw config edit can
-    const config: SeatConfig = {
-      modes: ['efficiency', 'manual', 'efficiency', 'efficiency'],
-      claims: false,
-    }
-    const result = seatMatchOptions(config, 4, 0)
-    expect(result.algorithms).toEqual(['efficiency', 'manual', 'efficiency', 'efficiency'])
-    expect(result.seatIndex).toBe(1)
+  it('honours the default seat being given away, as long as another seat stays manual', () => {
+    // the graded seat number itself never moves with the config (D13) — resolveSeatConfig only
+    // ever fills in modes, it does not decide which seat is graded
+    const config: SeatConfig = { modes: ['efficiency', 'manual', 'efficiency', 'efficiency'] }
+    expect(resolveSeatConfig(config, 4, 0).modes).toEqual(config.modes)
+  })
+
+  it('forces the default seat back to manual when the config leaves nobody manual at all', () => {
+    const config: SeatConfig = { modes: ['efficiency', 'efficiency', 'efficiency', 'efficiency'] }
+    expect(resolveSeatConfig(config, 4, 2).modes).toEqual([
+      'efficiency',
+      'efficiency',
+      'manual',
+      'efficiency',
+    ])
   })
 })

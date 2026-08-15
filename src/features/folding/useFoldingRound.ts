@@ -9,6 +9,7 @@ import {
   createMatch,
   finishTurn,
   isManual,
+  reconsiderClaim,
   type ClaimAnswer,
   type MatchOptions,
   type MatchState,
@@ -62,8 +63,13 @@ export type RoundOptions = Settings['folding'] & {
   showSeatWaits: boolean
   /** Per-seat algorithm from the board's seat panel. Every seat can be set to `'manual'`, same as
    *  efficiency/lab — the drill's own generated seat (`RoundCore.seatIndex`) is just the one the
-   *  handover always includes, not the only one that may be manual. */
+   *  handover always includes, not the only one that may be manual. Page state (D15), not
+   *  settings — see `FoldingPage`. Read at generation time to seed the handover, and live
+   *  thereafter (D6): a change here never rebuilds the round. */
   seats: SeatConfig | null
+  /** Ask manual seats about other seats' discards (`TableSettings.claims`) — board-wide and
+   *  persisted, unlike `seats` itself (D14). */
+  claims: boolean
 }
 
 export interface FoldingUrl {
@@ -249,6 +255,7 @@ function playToRiichi(
   players: number,
   threats: number,
   seats: SeatConfig | null,
+  claims: boolean,
 ) {
   const match = createMatch(wall, players, options)
   // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
@@ -286,7 +293,7 @@ function playToRiichi(
     match.players[seatIndex].algorithm = 'manual'
     return {
       match,
-      options: { ...options, claims: seats?.claims ?? false },
+      options: { ...options, claims },
       seatIndex,
       handedOverAt: match.discards.filter((d) => d.seat === seatIndex).length,
     }
@@ -316,10 +323,11 @@ function buildRound(
   options: BoardOptions,
   discards: ParsedTile[] = [],
   seats: SeatConfig | null = null,
+  claims = false,
 ): RoundCore | null {
   const { sanma, threats } = options
   const players = sanma ? 3 : 4
-  const core = playToRiichi(wall, matchOptions(wall, options), players, threats, seats)
+  const core = playToRiichi(wall, matchOptions(wall, options), players, threats, seats, claims)
   if (!core || !worthwhile(core)) return null
   beginTurn(core.match, core.options)
   // fast-forward the link's own discards; stops quietly on one this board cannot honour
@@ -339,15 +347,16 @@ function buildRound(
 async function findRound(
   options: BoardOptions,
   seats: SeatConfig | null = null,
+  claims = false,
 ): Promise<{ core: RoundCore; wall: ParsedTile[]; threats: number } | null> {
   const { threats } = options
   for (let i = 0; i < 40 * threats; i++) {
     const wall = completeWall([], options.sanma, RULES.aka)
-    const core = buildRound(wall, options, [], seats)
+    const core = buildRound(wall, options, [], seats, claims)
     if (core) return { core, wall, threats }
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
-  return threats > 1 ? findRound({ ...options, threats: threats - 1 }, seats) : null
+  return threats > 1 ? findRound({ ...options, threats: threats - 1 }, seats, claims) : null
 }
 
 /** Your discard, then every other seat back round to you, then your next draw — or, once a
@@ -362,11 +371,15 @@ function advanceAfterDiscard(core: RoundCore, tile: ParsedTile, declareRiichi = 
 
 /** The shared tail of a turn: run the AI seats round, then draw for whichever seat is up next —
  *  unless a claim is now pending, in which case nothing draws until `answer` resolves it. Shared
- *  by `advanceAfterDiscard` and `answer` so a claim resolved mid-turn rejoins the identical path. */
+ *  by `advanceAfterDiscard`, `answer` and the live algorithm sync below, so a claim resolved
+ *  mid-turn rejoins the identical path. `match.drawn === undefined` is always true already at the
+ *  first two call sites (`finishTurn`/`answerClaim` both leave it cleared) — the guard exists for
+ *  the third: a live algorithm flip can land here with the acting seat's tile already drawn, and
+ *  `beginTurn` has no drawn-tile guard of its own. */
 function settleAfterClaim(core: RoundCore): void {
   const { match, options } = core
   goRound(core)
-  if (!match.ended && !match.claim && match.liveWall.length > 0) {
+  if (!match.ended && !match.claim && match.drawn === undefined && match.liveWall.length > 0) {
     beginTurn(match, options)
   }
 }
@@ -486,13 +499,6 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     setHandIndex(0)
   }
   const stats = useSessionStats()
-  // by value, not identity: the page rebuilds this object every render, and an identity dep
-  // would re-search for a whole new board each time it did. Orientation is deliberately left out:
-  // it is a pure viewing perspective (which seat `Table` draws at the bottom), not something the
-  // engine reads at all, so changing it must never re-search for a new hand
-  const seatKey = JSON.stringify(
-    options.seats && { modes: options.seats.modes, claims: options.seats.claims },
-  )
   const core = useRef<RoundCore>(undefined)
   const roundWall = useRef<ParsedTile[]>([])
   // the board actually built, which is not always the one asked for: the search falls back to
@@ -516,6 +522,11 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   const roundActionCount = useRef(0)
   const roundTotalMs = useRef(0)
 
+  // `options.seats`/`options.claims` are read below only as the *initial* algorithm/claims seed
+  // for a freshly generated hand (`playToRiichi`'s own handover logic) — deliberately absent from
+  // this effect's deps, same reasoning as the dropped `orientation`: a later change to either must
+  // never re-search for a new hand (D6/D15). The live-sync effect further down is what actually
+  // carries a later change onto the running match.
   useEffect(() => {
     const id = ++request.current
     setFailed(false)
@@ -535,11 +546,11 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     // hand-edited one (or a fresh "new situation" request) falls through to a search
     const pinned =
       urlData.wall.length > 0 && handIndex === 0
-        ? buildRound(urlData.wall, board, urlData.discards, options.seats)
+        ? buildRound(urlData.wall, board, urlData.discards, options.seats, options.claims)
         : null
     const found = pinned
       ? Promise.resolve({ core: pinned, wall: urlData.wall, threats: board.threats })
-      : findRound(board, options.seats)
+      : findRound(board, options.seats, options.claims)
 
     void found.then((result) => {
       if (id !== request.current) return
@@ -557,7 +568,40 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       setState(snapshot(result.core, options.sanma, options.showSeatWaits))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlData, handIndex, options.sanma, options.threats, options.opponentWins, seatKey])
+  }, [urlData, handIndex, options.sanma, options.threats, options.opponentWins])
+
+  // algorithm changes are live (D6/D15): flipping a seat's mode (or the claims toggle) must never
+  // rebuild the round — this writes the latest values straight onto the running match instead, the
+  // same live-sync `useTableRound` runs, adapted to folding's own turn-stepping (it drives
+  // `beginTurn`/`finishTurn` itself rather than going through that hook). Only the seats the panel
+  // actually named are touched, same raw (unresolved) reading `playToRiichi` itself uses at
+  // handover — a generic default here would stomp the blanket fold `playToRiichi` already applied
+  // to every seat the panel never touched (D6's "one algorithm changes" ⇒ nobody else's does).
+  const seatKey = JSON.stringify(options.seats?.modes ?? null)
+  useEffect(() => {
+    const r = core.current
+    if (!r || r.match.ended) return
+    let changed = r.options.claims !== options.claims
+    r.options.claims = options.claims
+    options.seats?.modes.forEach((algorithm, seat) => {
+      const player = r.match.players[seat]
+      if (player && player.algorithm !== algorithm) {
+        player.algorithm = algorithm
+        changed = true
+      }
+    })
+    if (!changed) return
+
+    // nobody will ever answer this seat's pending claim now that it has stopped being manual —
+    // re-resolve it through the same restartable path `answer` uses, never inventing a pass
+    // (which would set `missedWin`, poisoning the hand with furiten over a decision never made)
+    if (r.match.claim && !isManual(r.match, r.match.claim.seat)) {
+      reconsiderClaim(r.match, r.options)
+    }
+    settleAfterClaim(r)
+    setState((prev) => (prev ? snapshot(r, options.sanma, options.showSeatWaits, prev) : prev))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seatKey, options.claims])
 
   // `showSeatWaits` alone must not rejoin the search effect above (that would deal a new hand) —
   // this re-snapshots the board exactly as it stands, which is what makes toggling the setting

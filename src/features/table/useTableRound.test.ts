@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { evaluateDiscards } from '../../core/efficiency'
 import type { MatchOptions } from '../../core/match'
-import { HONOR, parseTenhou, type ParsedTile } from '../../core/tiles'
-import { INITIAL_HAND_SIZE, wallWithHand } from '../../core/wall'
+import { HONOR, parseTenhou, SOU, type ParsedTile } from '../../core/tiles'
+import { completeWall, INITIAL_HAND_SIZE, wallWithHand } from '../../core/wall'
 import { useTableRound, type DiscardStats } from './useTableRound'
 
 // wraps the real implementations in vi.fn so laziness (D-05) can be proved by call count, not
@@ -235,5 +235,126 @@ describe('useTableRound', () => {
     expect(onUserDraw).toHaveBeenCalledTimes(1)
     act(() => result.current.discard(0))
     expect(onUserDraw).toHaveBeenCalledTimes(2)
+  })
+})
+
+// D6: flipping a seat's algorithm mid-hand must never redeal — these prove the live-sync effect
+// (`useTableRound.ts`'s second `useEffect`) patches the running match in place instead.
+describe('live algorithm changes (D6)', () => {
+  it('flipping an opponent between two AI algorithms never touches the running match', () => {
+    const wall = tenpaiWall('live-general-seed')
+    const options: MatchOptions = {
+      ...BARE,
+      algorithms: ['manual', 'efficiency', 'efficiency', 'efficiency'],
+    }
+    const { result, rerender } = renderHook(
+      (props: { options: MatchOptions }) =>
+        useTableRound({ wall, players: 4, seatIndex: 0, options: props.options }),
+      { initialProps: { options } },
+    )
+    act(() => result.current.discard(0))
+    const { turn, rivers, liveWall, drawn } = result.current
+
+    rerender({
+      options: { ...options, algorithms: ['manual', 'defense', 'efficiency', 'efficiency'] },
+    })
+
+    expect(result.current.turn).toBe(turn)
+    expect(result.current.rivers).toEqual(rivers)
+    expect(result.current.liveWall).toEqual(liveWall)
+    expect(result.current.drawn).toEqual(drawn)
+  })
+
+  it('AI to manual: untouched immediately, then pauses for its own turn once it arrives', () => {
+    const wall = tenpaiWall('live-ai-to-manual-seed')
+    const options: MatchOptions = {
+      ...BARE,
+      algorithms: ['manual', 'efficiency', 'efficiency', 'efficiency'],
+    }
+    const { result, rerender } = renderHook(
+      (props: { options: MatchOptions }) =>
+        useTableRound({ wall, players: 4, seatIndex: 0, options: props.options }),
+      { initialProps: { options } },
+    )
+    const { turn, drawn, rivers } = result.current
+
+    // seat 1 hasn't acted yet this go-round — flipping it now must not disturb seat 0's own
+    // already-drawn tile (free, via `goRound`'s own guard: nothing to do until seat 1's turn)
+    rerender({
+      options: { ...options, algorithms: ['manual', 'manual', 'efficiency', 'efficiency'] },
+    })
+    expect(result.current.turn).toBe(turn)
+    expect(result.current.drawn).toEqual(drawn)
+    expect(result.current.rivers).toEqual(rivers)
+
+    // now that seat 1's turn actually arrives, it correctly pauses instead of autoplaying
+    act(() => result.current.discard(0))
+    expect(result.current.acting).toBe(1)
+    expect(result.current.drawn).toBeDefined()
+    expect(result.current.claim).toBeUndefined()
+  })
+
+  it('manual to AI: the already-drawn tile is played, not redrawn, and play moves on', () => {
+    const wall = tenpaiWall('live-manual-to-ai-seed')
+    const options: MatchOptions = {
+      ...BARE,
+      algorithms: ['manual', 'manual', 'efficiency', 'efficiency'],
+    }
+    const { result, rerender } = renderHook(
+      (props: { options: MatchOptions }) =>
+        useTableRound({ wall, players: 4, seatIndex: 0, options: props.options }),
+      { initialProps: { options } },
+    )
+    // hands the turn to seat 1, which pauses (still manual) with its own tile drawn
+    act(() => result.current.discard(0))
+    expect(result.current.acting).toBe(1)
+    expect(result.current.rivers[1]).toHaveLength(0)
+
+    rerender({
+      options: { ...options, algorithms: ['manual', 'efficiency', 'efficiency', 'efficiency'] },
+    })
+
+    // discarded straight out of the hand it already held — not a fresh draw — and the round
+    // carries on round the table back to seat 0
+    expect(result.current.rivers[1]).toHaveLength(1)
+    expect(result.current.acting).toBe(0)
+  })
+
+  it('a claim pending on a seat that stops being manual resolves through its new algorithm', () => {
+    const seat0Hand = parseTenhou('2468m2468p9s2345z') // scattered; only needs a spare 9s to discard
+    // chiitoitsu tenpai: six pairs plus the lone 9s, waiting to pair it
+    const seat1Hand = parseTenhou('1133557799m11p9s')
+    const wall = completeWall([...seat0Hand, ...seat1Hand], false, false, 'live-claim-seed')
+    const options: MatchOptions = {
+      sanma: false,
+      aka: false,
+      round: HONOR,
+      deadWall: false,
+      calls: false,
+      riichi: false,
+      wins: true,
+      claims: true,
+      algorithms: ['manual', 'manual', 'efficiency', 'efficiency'],
+    }
+    const { result, rerender } = renderHook(
+      (props: { options: MatchOptions }) =>
+        useTableRound({ wall, players: 4, seatIndex: 0, options: props.options }),
+      { initialProps: { options } },
+    )
+
+    const nineSou = result.current.hand.findIndex((t) => t.id === SOU + 8)
+    act(() => result.current.discard(nineSou))
+    expect(result.current.claim?.seat).toBe(1)
+
+    // nobody will ever answer seat 1's pending ron now — `reconsiderClaim` re-resolves it through
+    // the algorithm instead of leaving it stuck, or worse, inventing a pass that would poison the
+    // hand with furiten over a decision the reader never made
+    rerender({
+      options: { ...options, algorithms: ['manual', 'efficiency', 'efficiency', 'efficiency'] },
+    })
+
+    expect(result.current.claim).toBeUndefined()
+    expect(result.current.win?.seat).toBe(1)
+    expect(result.current.ended).toBe('win')
   })
 })

@@ -3,7 +3,7 @@ import { NORTH, type MatchOptions } from '../../core/match'
 import { shanten } from '../../core/shanten'
 import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { useSessionStats } from '../../lib/useSessionStats'
-import { seatMatchOptions, type SeatConfig } from '../settings/tableSettings'
+import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { useTableRound, type DiscardStats, type UserDrawContext } from '../table/useTableRound'
 import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
@@ -20,8 +20,12 @@ export interface RoundOptions {
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma: boolean
   /** Who plays which seat, from the board's seat panel; `null` is the shipped default (you at
-   *  the link's own seat, every other seat on the efficiency AI). */
+   *  the link's own seat, every other seat on the efficiency AI). Page state (D15), not settings
+   *  — see `EfficiencyPage`. */
   seats: SeatConfig | null
+  /** Ask manual seats about other seats' discards (`TableSettings.claims`) — board-wide and
+   *  persisted, unlike `seats` itself (D14). */
+  claims: boolean
   /** The seat panel's "show tenpai/waits" setting — threaded to `useTableRound`, which is where
    *  the per-seat cost of computing it is actually paid. */
   showSeatWaits: boolean
@@ -39,9 +43,11 @@ export function useEfficiencyRound(
   const players = options.sanma ? 3 : 4
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
-  // the seat panel's orientation wins over the link's own `?seat=` once someone picks a side;
-  // until then `seats` is null and this resolves back to exactly the link's seat
-  const { seatIndex, algorithms, claims } = seatMatchOptions(options.seats, players, linkSeat)
+  // the graded seat is decided by the link alone, never by the seat panel: flipping your own
+  // seat's algorithm live must freeze grading in place (D13), not move it to whichever other seat
+  // the panel happens to have marked manual — so this never goes through `options.seats`
+  const seatIndex = linkSeat
+  const algorithms = resolveSeatConfig(options.seats, players, seatIndex).modes
   const manualSeats = algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
   const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const matchOptions: MatchOptions = {
@@ -55,7 +61,7 @@ export function useEfficiencyRound(
     riichi: true,
     wins: false,
     algorithms,
-    claims,
+    claims: options.claims,
   }
 
   const log = useLog((s) => s.log)

@@ -10,7 +10,9 @@ import {
   createMatch,
   drawReplacement,
   finishTurn,
+  isManual,
   NORTH,
+  reconsiderClaim,
   type ClaimAnswer,
   type MatchOptions,
   type PlayerState,
@@ -296,9 +298,48 @@ export function useTableRound(input: TableRoundInput) {
     input.options.riichi,
     input.options.wins,
     input.options.claims,
-    algorithmsKey,
     restartCount,
   ])
+
+  // algorithm changes are live (D6): flipping a seat's algorithm must never redeal — this effect
+  // writes the latest values straight onto the running match's players instead. Most of the time
+  // that's the whole story: `goRound`/`finishTurn` already read `player.algorithm` fresh on every
+  // call, so a seat that only *becomes* relevant later (goRound hasn't reached it yet) just works
+  // the next time the board naturally advances. Two cases can't wait for that: a seat that just
+  // stopped being manual while its own drawn tile is already sitting there (`goRound`'s own
+  // `match.drawn` check is what stops it re-drawing) and a claim pending on a seat that just
+  // stopped being manual — nobody will ever call `answerClaim` for it now, so it is re-resolved
+  // through the restartable path `answerClaim` itself uses (`reconsiderClaim`). Never
+  // auto-passed: a pass sets `missedWin`, so a dropdown must never poison the hand with furiten by
+  // declining a ron on the reader's behalf.
+  useEffect(() => {
+    const c = core.current
+    const algorithms = input.options.algorithms
+    if (!c || !algorithms || c.match.ended) return
+    let changed = false
+    algorithms.forEach((algorithm, seat) => {
+      const player = c.match.players[seat]
+      if (player && player.algorithm !== algorithm) {
+        player.algorithm = algorithm
+        changed = true
+      }
+    })
+    if (!changed) return
+
+    if (c.match.claim && !isManual(c.match, c.match.claim.seat)) {
+      reconsiderClaim(c.match, c.options)
+    }
+    if (!maybeFireAgari(c) && !c.match.claim) {
+      goRound(c)
+      if (!maybeFireAgari(c) && !c.match.claim && c.match.drawn === undefined) {
+        beginTurn(c.match, c.options)
+        maybeFireAgari(c)
+      }
+    }
+    fireDraw(c)
+    setSnapshot(snapshotTable(c, input.showSeatWaits))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [algorithmsKey])
 
   // `showSeatWaits` alone must not run the rebuild effect above (that would redeal the match) —
   // this re-snapshots the board exactly as it stands instead, which is what makes toggling the

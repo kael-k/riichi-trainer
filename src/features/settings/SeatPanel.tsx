@@ -31,6 +31,11 @@ export interface SeatButtonProps {
    *  exactly one seat's discards against exactly one hand, so a second manual seat has nothing
    *  defined to score — the algorithm choice is still offered for every seat. */
   ownSeatOnlyManual?: boolean
+  /** Ask this manual seat about other seats' discards (`TableSettings.claims`) — board-wide and
+   *  persisted (D14), so it is threaded in and out separately from `config`/`onChange`, which
+   *  carry only the per-seat algorithms (page state, D15). */
+  claims: boolean
+  onClaimsChange: (claims: boolean) => void
 }
 
 /**
@@ -53,6 +58,8 @@ export function SeatButton({
   viewSeat,
   onWatch,
   ownSeatOnlyManual = false,
+  claims,
+  onClaimsChange,
 }: SeatButtonProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -149,10 +156,7 @@ export function SeatButton({
                         // stops the go-round loop and the hand would play itself out
                         disabled={mode === 'manual' && option !== 'manual' && manualCount === 1}
                         onClick={() =>
-                          onChange({
-                            modes: withSeatMode(config?.modes ?? [], seat, option),
-                            claims: config?.claims ?? false,
-                          })
+                          onChange({ modes: withSeatMode(config?.modes ?? [], seat, option) })
                         }
                       >
                         {t(`seats.mode.${option}`)}
@@ -169,10 +173,8 @@ export function SeatButton({
                   <SettingRow label={t('seats.claims')}>
                     <input
                       type="checkbox"
-                      checked={resolved.claims}
-                      onChange={(e) =>
-                        onChange({ modes: config?.modes ?? [], claims: e.target.checked })
-                      }
+                      checked={claims}
+                      onChange={(e) => onClaimsChange(e.target.checked)}
                       className="size-5"
                     />
                   </SettingRow>

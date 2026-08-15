@@ -70,7 +70,12 @@ export function goRound(core: TableCore): void {
   for (let guard = 0; guard < 8; guard++) {
     const { match, options } = core
     if (match.ended || match.claim || isManual(match, match.seat)) return
-    beginTurn(match, options)
+    // a seat that just stopped being manual mid-turn already has its draw sitting in `drawn` —
+    // calling `beginTurn` again would draw a second tile on top of it, since `pendingDraw` only
+    // ever comes back down after the *next* `finishTurn` moves the turn on. Skipping straight to
+    // `finishTurn` is what lets a live algorithm flip (`useTableRound.ts`) carry an already-drawn
+    // seat forward through this same loop rather than needing its own copy of it.
+    if (match.drawn === undefined) beginTurn(match, options)
     finishTurn(match, options)
   }
 }

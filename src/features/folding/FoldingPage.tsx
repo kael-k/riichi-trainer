@@ -12,7 +12,7 @@ import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
-import { useTableSettings, type TableSettings } from '../settings/tableSettings'
+import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { ManualControls } from '../table/ManualControls'
@@ -80,7 +80,7 @@ export function FoldingPage() {
     showSeatWaits,
     threats,
     opponentWins,
-    seats: seatConfig,
+    claims,
     seatsEnabled,
   } = useTableSettings('folding')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
@@ -88,6 +88,12 @@ export function FoldingPage() {
   // `apps.folding` slice in first.
   const updateTable = (patch: Partial<TableSettings>) =>
     update('table', { apps: { ...rawTable.apps, folding: { ...rawTable.apps.folding, ...patch } } })
+
+  // per-seat algorithms are board state, not a preference (D15): page state with the same
+  // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
+  // persisted. `claims` (above) is the one part of the old seat panel that *is* a reader
+  // preference, so it stays in settings.
+  const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
 
   const options = useMemo<RoundOptions>(() => {
     const isSanma = urlData.sanma ?? sanma
@@ -100,6 +106,7 @@ export function FoldingPage() {
       showOpponentHands,
       showSeatWaits,
       seats: seatConfig,
+      claims,
     }
   }, [
     urlData,
@@ -110,6 +117,7 @@ export function FoldingPage() {
     showOpponentHands,
     showSeatWaits,
     seatConfig,
+    claims,
   ])
 
   const round = useFoldingRound(urlData, options)
@@ -124,10 +132,12 @@ export function FoldingPage() {
   if (urlData !== lastUrlData) {
     setLastUrlData(urlData)
     setViewSeat(null)
+    setSeatConfig(null)
   }
   const perspective = viewSeat ?? round.seatIndex
   const nextHand = () => {
     setViewSeat(null)
+    setSeatConfig(null)
     round.next()
   }
 
@@ -306,8 +316,10 @@ export function FoldingPage() {
                     players={players}
                     defaultOrientation={round.seatIndex}
                     config={seatConfig}
-                    onChange={(next) => updateTable({ seats: next })}
+                    onChange={setSeatConfig}
                     fallbackModes={round.algorithms}
+                    claims={claims}
+                    onClaimsChange={(v) => updateTable({ claims: v })}
                     viewSeat={perspective}
                     onWatch={setViewSeat}
                     read={round.seatReads[seat]}

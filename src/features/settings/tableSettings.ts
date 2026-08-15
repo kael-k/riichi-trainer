@@ -1,19 +1,20 @@
 import type { SeatAlgorithm } from '../../core/policy'
 import { useSettings } from './settingsStore'
 
-/** Who plays which seat. Advanced-only, and `null` everywhere until someone opens the panel: the
- *  shipped behaviour is exactly "you sit where the trainer seats you, every other seat is the
- *  efficiency AI", which `resolveSeatConfig` below reproduces from `null`.
+/** Who plays which seat. Board state, not a preference (D15): it is never persisted, living
+ *  instead as page state with the same lifetime as `viewSeat` — seeded from the link, reset on
+ *  every new hand — and `null` until the reader opens the panel: the shipped behaviour is exactly
+ *  "you sit where the trainer seats you, every other seat is the efficiency AI", which
+ *  `resolveSeatConfig` below reproduces from `null`. Unlike `modes`, `claims` answers a question
+ *  about the *reader* rather than the board (D14), so it stays match-wide and persisted —
+ *  `TableSettings.claims` below, not a field here.
  *
- *  Perspective (which seat the board is drawn from) is not part of this: it is ephemeral page
- *  state, reset on every new hand, never persisted — "watch from here" stops meaning "play here",
- *  which comes only from a seat's `modes` entry being `'manual'`. */
+ *  Perspective (which seat the board is drawn from) is not part of this either: it is its own
+ *  ephemeral page state, reset on every new hand, never persisted — "watch from here" stops
+ *  meaning "play here", which comes only from a seat's `modes` entry being `'manual'`. */
 export interface SeatConfig {
   /** Indexed by seat; a seat past the end falls back to the default for its position. */
   modes: SeatAlgorithm[]
-  /** Ask the manual seats about pon/chi/ron on other seats' discards (`MatchOptions.claims`).
-   *  Off in the graded drills, which ask one question per turn; on in the free-play lab. */
-  claims: boolean
 }
 
 /** `SeatConfig` filled in for a real table: every seat named, and at least one manual seat
@@ -38,13 +39,13 @@ export function resolveSeatConfig(
       (seat === defaultSeat ? 'manual' : 'efficiency'),
   )
   if (!modes.includes('manual')) modes[defaultSeat] = 'manual'
-  return { modes, claims: config?.claims ?? false }
+  return { modes }
 }
 
 /** `modes` with `seat` set to `mode`, built off the *raw* array rather than a resolved one — a
- *  patch that writes back the resolved fallback modes is what silently re-searches the folding
- *  drill for a new hand (its `seatKey` reacts to any `modes` change), so every edit must send only
- *  what the reader actually changed. */
+ *  patch that writes back the resolved fallback modes would bake a mode the reader never actually
+ *  touched into page state that is meant to reflect only their own edits, so every edit must send
+ *  only what changed. */
 export function withSeatMode(
   modes: readonly SeatAlgorithm[],
   seat: number,
@@ -53,30 +54,6 @@ export function withSeatMode(
   const next = [...modes]
   next[seat] = mode
   return next
-}
-
-/** The `MatchOptions` fields a seat configuration decides, plus the seat the engine grades — the
- *  one place a `SeatConfig` is translated into what the engine actually reads. `modes` already
- *  *is* `MatchOptions.algorithms` (the merge is what lets this collapse to a pass-through);
- *  `seatIndex` keeps `defaultSeat` when it is itself manual, so a second manual seat never
- *  silently moves which seat a graded trainer scores (`useTableRound` anchors grading on
- *  `core.seatIndex`). */
-export function seatMatchOptions(
-  config: SeatConfig | null,
-  players: number,
-  defaultSeat: number,
-): {
-  seatIndex: number
-  algorithms: SeatAlgorithm[]
-  claims: boolean
-} {
-  const { modes, claims } = resolveSeatConfig(config, players, defaultSeat)
-  const manualSeats = modes.flatMap((mode, seat) => (mode === 'manual' ? [seat] : []))
-  return {
-    seatIndex: manualSeats.includes(defaultSeat) ? defaultSeat : (manualSeats[0] ?? defaultSeat),
-    algorithms: modes,
-    claims,
-  }
 }
 
 /** The settings every board-rendering trainer shares. One schema instead of each app growing its
@@ -106,10 +83,11 @@ export interface TableSettings {
   showSeatWaits: boolean
   /** Reveal the live (and, where applicable, dead) wall in draw order. */
   showWall: boolean
-  /** Who plays which seat (`SeatConfig`). `null` — the default everywhere — is the shipped
-   *  behaviour, spelled out by `resolveSeatConfig`. Advanced-only outside the lab: it is a
-   *  sandbox control, not something a first-time player should have to find. */
-  seats: SeatConfig | null
+  /** Ask manual seats about pon/chi/ron on other seats' discards (`MatchOptions.claims`). Stays
+   *  match-wide and persisted (D14, unlike the per-seat algorithms themselves — see `SeatConfig`)
+   *  since it answers a question about the reader, not about the board. Off in the graded drills,
+   *  which ask one question per turn; on in the free-play lab. */
+  claims: boolean
 }
 
 /** One id per board-rendering app. `lab` is the statistical lab (plan 01-07); it has no page yet
@@ -128,7 +106,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     showSeatWaits: false,
     showWall: false,
-    seats: null,
+    claims: false,
   },
   efficiencySolo: {
     opponentWins: false,
@@ -137,7 +115,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     showSeatWaits: false,
     showWall: false,
-    seats: null,
+    claims: false,
   },
   folding: {
     opponentWins: true,
@@ -146,7 +124,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     showSeatWaits: false,
     showWall: false,
-    seats: null,
+    claims: false,
   },
   scoring: {
     opponentWins: true,
@@ -155,7 +133,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     showSeatWaits: false,
     showWall: false,
-    seats: null,
+    claims: false,
   },
   lab: {
     opponentWins: false,
@@ -165,9 +143,9 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showSeatWaits: false,
     showWall: false,
     // the lab is the free-play board: manual seats are the point there, so it ships with the
-    // claim prompts on. No `orientation`/`modes` — those still come from the link and the
-    // shipped default until someone opens the panel
-    seats: { modes: [], claims: true },
+    // claim prompts on. Per-seat `modes` themselves are never a settings default — they are page
+    // state seeded from the link (D15), same as every other app
+    claims: true,
   },
 }
 
@@ -199,10 +177,9 @@ export function useTableSettings(app: TableApp): TableSettings & { seatsEnabled:
   return {
     ...resolved,
     showWall: advanced && resolved.showWall,
-    /** Whether the seat panel is offered at all. Distinct from `seats` being `null`, which means
-     *  "offered, nobody has configured it yet" — a hidden panel must not leave a live per-seat
-     *  configuration running underneath, so the value is dropped as well as the control. */
+    /** Whether the seat panel is offered at all — the per-seat algorithms themselves are page
+     *  state now (D15), not a settings value, so there is nothing here left to force off when the
+     *  panel is hidden. */
     seatsEnabled,
-    seats: seatsEnabled ? resolved.seats : null,
   }
 }

@@ -14,6 +14,7 @@ const BARE: RoundOptions = {
   aka: false,
   sanma: false,
   seats: null,
+  claims: false,
   showSeatWaits: false,
 }
 
@@ -221,6 +222,7 @@ describe('useEfficiencyRound', () => {
       aka: true,
       sanma: false,
       seats: null,
+      claims: false,
       showSeatWaits: false,
     }
     const a = renderHook(() => useEfficiencyRound(situation, opts, true))
@@ -236,6 +238,7 @@ describe('useEfficiencyRound', () => {
           aka: decoded.aka ?? false,
           sanma: decoded.sanma ?? false,
           seats: null,
+          claims: false,
           showSeatWaits: false,
         },
         true,

@@ -18,7 +18,7 @@ import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { ManualControls } from '../table/ManualControls'
 import { useSettings } from '../settings/settingsStore'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
-import { useTableSettings, type TableSettings } from '../settings/tableSettings'
+import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation, resolveSanma, WINDS, type Situation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { useLabRound, type RoundOptions } from './useLabRound'
@@ -135,7 +135,7 @@ export function LabPage() {
     opponentWins,
     showOpponentHands,
     showSeatWaits,
-    seats: seatConfig,
+    claims,
     seatsEnabled,
   } = useTableSettings('lab')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
@@ -143,6 +143,12 @@ export function LabPage() {
   // `apps.lab` slice in first.
   const updateTable = (patch: Partial<TableSettings>) =>
     update('table', { apps: { ...rawTable.apps, lab: { ...rawTable.apps.lab, ...patch } } })
+
+  // per-seat algorithms are board state, not a preference (D15): page state with the same
+  // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
+  // persisted. `claims` (above) is the one part of the old seat panel that *is* a reader
+  // preference, so it stays in settings.
+  const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
 
   const [wallInput, setWallInput] = useState('')
   // null: nothing hand-authored yet, fall back to the URL's own wall. Set once per Load/Build
@@ -195,8 +201,19 @@ export function LabPage() {
       showOpponentHands,
       showSeatWaits,
       seats: seatConfig,
+      claims,
     }),
-    [situation, deadWall, aka, sanma, opponentWins, showOpponentHands, showSeatWaits, seatConfig],
+    [
+      situation,
+      deadWall,
+      aka,
+      sanma,
+      opponentWins,
+      showOpponentHands,
+      showSeatWaits,
+      seatConfig,
+      claims,
+    ],
   )
 
   const round = useLabRound(situation, options)
@@ -209,6 +226,7 @@ export function LabPage() {
   if (situation !== lastSituation) {
     setLastSituation(situation)
     setViewSeat(null)
+    setSeatConfig(null)
   }
   const perspective = viewSeat ?? round.seatIndex
 
@@ -327,7 +345,9 @@ export function LabPage() {
                       players={round.rivers.length}
                       defaultOrientation={round.seatIndex}
                       config={seatConfig}
-                      onChange={(next) => updateTable({ seats: next })}
+                      onChange={setSeatConfig}
+                      claims={claims}
+                      onClaimsChange={(v) => updateTable({ claims: v })}
                       viewSeat={perspective}
                       onWatch={setViewSeat}
                       read={round.seatReads[seat]}
