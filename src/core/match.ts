@@ -498,8 +498,19 @@ function endWith(state: MatchState, win: WinRecord): MatchEvent[] {
   return [{ kind: 'win', win }]
 }
 
-/** Draws for the seat whose turn it is, and takes the tsumo if there is one. */
-export function beginTurn(state: MatchState, options: MatchOptions): MatchEvent[] {
+/** Draws for the seat whose turn it is, and takes the tsumo if there is one. `declineTsumo` only
+ *  ever matters for a manual seat: a manual seat's own win is otherwise unconditional (`tryWin`
+ *  skips the algorithm ask entirely once `algorithm === 'manual'` — a real person's legal tsumo is
+ *  never an explicit choice). Replay (`replayLog`) is the one caller that ever needs the opposite:
+ *  every seat is forced manual there (so no algorithm is ever consulted), yet the *original* live
+ *  play may have had this seat on `defense`/`tsumogiri` and genuinely declined a legal tsumo mid-
+ *  hand — an outcome only representable by asking `beginTurn` not to take it. Every other caller
+ *  omits the argument and gets exactly today's behaviour. */
+export function beginTurn(
+  state: MatchState,
+  options: MatchOptions,
+  declineTsumo = false,
+): MatchEvent[] {
   // a pending claim suspends the whole turn: the discard it hangs on may still be ronned or
   // called, which decides whose turn comes next. One guard here (and in `finishTurn`) rather
   // than one in each of the four callers that step a match
@@ -543,7 +554,7 @@ export function beginTurn(state: MatchState, options: MatchOptions): MatchEvent[
   }
 
   const win = tryWin(state, state.seat, options, tile, true)
-  if (win) return [...events, ...endWith(state, win)]
+  if (win && !declineTsumo) return [...events, ...endWith(state, win)]
   return events
 }
 

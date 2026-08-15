@@ -712,6 +712,34 @@ describe('manual riichi declaration', () => {
   })
 })
 
+describe('beginTurn declineTsumo', () => {
+  it('a manual seat auto-accepts a legal tsumo by default, unchanged from before this option existed', () => {
+    const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'decline-default')
+    wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
+    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
+    const state = createMatch(wall, 4, options)
+
+    beginTurn(state, options)
+
+    expect(state.ended).toBe('win')
+    expect(state.win?.seat).toBe(0)
+  })
+
+  it('declineTsumo: true keeps the same legal tsumo from ending the hand, and the turn continues', () => {
+    const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'decline-true')
+    wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
+    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
+    const state = createMatch(wall, 4, options)
+
+    beginTurn(state, options, true)
+
+    expect(state.ended).toBeUndefined()
+    expect(state.win).toBeUndefined()
+    expect(tileCount(state.players[0].hand)).toBe(14) // drawn tile still sitting in hand, ungraded
+    expect(state.log).toHaveLength(0) // nothing to log — the decline itself is never logged (D-L2)
+  })
+})
+
 describe('MatchState.log', () => {
   it('records one entry per discard/call/win, matching the returned event stream in order', () => {
     for (let i = 0; i < 10; i++) {
