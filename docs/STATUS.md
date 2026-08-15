@@ -98,10 +98,9 @@ Both re-verified present in the current tree:
   `_one` plurals). Believed intentional — those terms already read as their own words — but
   nothing distinguishes "deliberately locale-specific" from "someone forgot", so a genuinely new
   shared key could land in en/it only with nothing failing.
-- **Source comments cite deleted plan documents.** `urlCodec.ts` (`D-10`, `D-11`, `D-12`),
-  `useScoringRound.ts` (`D-09`), `useEfficiencyRound.ts` (`D13`), `wall.ts`, `tableSettings.ts` and
-  `match.ts` (`D-L2/L4`) all reference decision tables that no longer exist in the tree. Each has
-  an ADR to point at instead; mechanical, but it touches files the parallel session is working in.
+- **Source comments cite ADRs by number** since `0e224dc` (they used to cite the phase and plan
+  documents' D-numbers). When an ADR is superseded, grep `src/` for its number — a comment pointing
+  at a withdrawn decision is the same staleness one level down.
 
 ### CI
 
