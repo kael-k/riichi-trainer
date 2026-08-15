@@ -9,16 +9,15 @@ import { HONOR, isDragon, isTerminalOrHonor, suitOf, type RiverTile, type TileId
 /** How the engine plays a seat. `'defense'` is full betaori — the folding trainer switches every
  *  seat that missed its riichi target into this once the target is reached. `'manual'` is not an
  *  AI style at all but the absence of one: the engine stops deciding for that seat and asks
- *  instead. (The pure decision functions below only ever see `'efficiency'`/`'defense'` — T3
- *  moves them behind a proper per-algorithm dispatch; this file just carries the merged type for
- *  now.) */
+ *  instead. The dispatch itself (`ALGORITHMS`, one object per AI style) lives in
+ *  `core/algorithm.ts`, built on the pure functions below. */
 export type SeatAlgorithm = 'efficiency' | 'defense' | 'manual'
 
 /**
- * How a simulated player decides. Every function here is pure and total: the same inputs always
- * produce the same output, which is what lets a whole match be reproduced from its seed. That
- * rules out anything probabilistic, and it means every ranking needs a **total** order — ties
- * broken explicitly rather than left to sort stability.
+ * The moves `core/algorithm.ts`'s two `AIAlgorithm`s are written in terms of. Every function here
+ * is pure and total: the same inputs always produce the same output, which is what lets a whole
+ * match be reproduced from its seed. That rules out anything probabilistic, and it means every
+ * ranking needs a **total** order — ties broken explicitly rather than left to sort stability.
  */
 
 /** Winds that are worth a yaku to this player: the round wind, their seat wind, and dragons. */
@@ -96,7 +95,7 @@ export function chooseDiscard(hand: Hand, seen: Uint8Array, sanma: boolean): Dis
  *  it stays total with no threats — the ranking falls back to wall and shape alone. */
 export function chooseFold(
   hand: Hand,
-  threats: ThreatView[],
+  threats: readonly ThreatView[],
   seen: Uint8Array,
   sanma: boolean,
 ): TileId {
@@ -171,7 +170,7 @@ function shantenAfterCall(hand: Hand, call: Call): number {
  */
 export function chooseCall(
   hand: Hand,
-  melds: Meld[],
+  melds: readonly Meld[],
   tile: TileId,
   fromKamicha: boolean,
   round: TileId,

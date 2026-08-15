@@ -1,17 +1,8 @@
 import { decompose, type Meld } from './agari'
+import { ALGORITHMS, type SeatView, type WinCandidate } from './algorithm'
 import type { ThreatView } from './danger'
-import { evaluateDiscards, isBestDiscard } from './efficiency'
 import { addTile, createHand, removeTile, type Hand } from './hand'
-import {
-  availableCalls,
-  chooseCall,
-  chooseDiscard,
-  chooseFold,
-  isFuriten,
-  waits,
-  type Call,
-  type SeatAlgorithm,
-} from './policy'
+import { availableCalls, isFuriten, waits, type Call, type SeatAlgorithm } from './policy'
 import { scoreHand, type ScoreResult } from './score'
 import { shanten } from './shanten'
 import { HONOR, NUM_TILE_TYPES, type ParsedTile, type RiverTile, type TileId } from './tiles'
@@ -331,6 +322,50 @@ export function threatViews(state: MatchState): ThreatView[] {
   })
 }
 
+/** Builds `seat`'s `SeatView` (`core/algorithm.ts`) as `state` stands right now — call it again
+ *  after the board moves on rather than reusing an old one, since `seen`/`threats`/`furiten` cache
+ *  only their own first read (same discipline as `core/table.ts#analysisOf`'s `TableAnalysis`).
+ *  Lives here rather than in `algorithm.ts` itself so that module never has to import `MatchState`
+ *  back from this one — `algorithm.ts` imports nothing from `match.ts`, `match.ts` imports
+ *  `ALGORITHMS` from `algorithm.ts`, and importing back would be a cycle. */
+function seatView(state: MatchState, options: MatchOptions, seat: number): SeatView {
+  const player = state.players[seat]
+  let seenCache: Uint8Array | undefined
+  let threatsCache: ThreatView[] | undefined
+  let furitenCache: boolean | undefined
+  return {
+    seat,
+    hand: player.hand,
+    reds: player.reds,
+    melds: player.melds,
+    river: player.river,
+    riichi: player.riichiAt !== undefined,
+    nuki: player.nuki.length,
+    players: state.players.map((p) => ({
+      river: p.river,
+      melds: p.melds,
+      riichi: p.riichiAt !== undefined,
+      nuki: p.nuki.length,
+    })),
+    round: options.round,
+    seatWind: HONOR + seat,
+    turn: state.turn,
+    wallLeft: state.liveWall.length,
+    doraIndicators: state.doraIndicators,
+    sanma: options.sanma,
+    get seen() {
+      return (seenCache ??= seenBy(state, player))
+    },
+    get threats() {
+      return (threatsCache ??= threatViews(state))
+    },
+    get furiten() {
+      return (furitenCache ??=
+        isFuriten(waits(player.hand, options.sanma), player.river) || player.missedWin)
+    },
+  }
+}
+
 function buildContext(
   state: MatchState,
   seat: number,
@@ -371,13 +406,6 @@ function tryWin(
 ): WinRecord | null {
   if (!options.wins) return null
   const player = state.players[seat]
-  // a folding seat is trying to leave the hand, not win it — same reasoning as the riichi and
-  // call gates in finishTurn below, just reached from the draw/ron side instead of the discard
-  // side. 'manual' is a different algorithm value now, so this can never block a manual seat's
-  // own win even after a stray leftover 'defense' from the folding trainer's own handoff (see
-  // useFoldingRound.ts#playToRiichi) — the engine never decides for a manual seat in the first
-  // place.
-  if (player.algorithm === 'defense') return null
 
   // one shanten call gates the whole win check, and it fails for almost every seat on almost
   // every discard. Everything below — decompose, the wait set, scoring — is far more expensive,
@@ -418,6 +446,15 @@ function tryWin(
     rules: { kiriageMangan: false, honba: 0, sanma: options.sanma },
   })
   if (!score) return null
+
+  // a human's own win is never an explicit choice here — riichi.wiki agrees a legal tsumo always
+  // ends the hand, and a manual seat's own ron only ever reaches this function because the reader
+  // already asked for it (`answerClaim`). Every other seat's algorithm gets to see the priced
+  // candidate and decline it — an algorithm that can't see what it declines can't price it (D9).
+  if (player.algorithm !== 'manual') {
+    const candidate: WinCandidate = { tile, from, score }
+    if (!ALGORITHMS[player.algorithm].win(seatView(state, options, seat), candidate)) return null
+  }
 
   return {
     seat,
@@ -461,15 +498,17 @@ export function beginTurn(state: MatchState, options: MatchOptions): MatchEvent[
   let tile = take(state, player)!
   events.push({ kind: 'draw', seat: state.seat, tile })
 
-  // sanma nukidora: pulling a held north is graded exactly as the efficiency trainer grades a
-  // manual seat's own — north's own evaluateDiscards entry against the best discard — so the AI
-  // pulls whenever that entry is as good as the best line, and draws its replacement
-  while (options.sanma && !isManual(state, state.seat) && player.hand.counts[NORTH] > 0) {
-    const seen = seenBy(state, player)
-    const ranked = evaluateDiscards(player.hand, seen, options.sanma)
-    const north = ranked.find((o) => o.discard === NORTH)
-    if (!north || !isBestDiscard(north, ranked[0])) break
-
+  // sanma nukidora: whether to pull a held north is the algorithm's own call (D8) — `efficiency`
+  // prices it exactly as the efficiency trainer grades a manual seat's own pull, `defense` never
+  // pulls (leaving the hand, not chasing dora). A fresh `SeatView` every iteration, same discipline
+  // as `analysisOf`'s own doc comment: the hand (and `state.visible`) just changed underneath it,
+  // so a reused view's cached `seen` would go stale on a second pull in the same turn.
+  while (
+    options.sanma &&
+    player.algorithm !== 'manual' &&
+    player.hand.counts[NORTH] > 0 &&
+    ALGORITHMS[player.algorithm].kita(seatView(state, options, state.seat))
+  ) {
     removeTile(player.hand, NORTH)
     player.nuki.push({ id: NORTH, red: false })
     state.visible[NORTH]++
@@ -539,14 +578,15 @@ export function finishTurn(
   if (!tile) {
     if (forcedTsumogiri) {
       tile = state.drawn
-    } else if (player.algorithm === 'defense') {
-      const fold = chooseFold(player.hand, threatViews(state), seenBy(state, player), options.sanma)
-      tile = pickTile(player, fold)
     } else {
-      tile = pickTile(
-        player,
-        chooseDiscard(player.hand, seenBy(state, player), options.sanma).discard,
-      )
+      // no explicit discard and not forced tsumogiri: `finishTurn` is being driven mechanically
+      // (a test, `playMatch`'s bare loop, `useFoldingRound.ts`'s own generation) rather than
+      // through the interactive `discard()` path, which always supplies a tile for a real manual
+      // seat's own turn — `goRound` never reaches this function for a manual seat either (it stops
+      // at the top of its loop instead). A 'manual' seat caught here anyway still needs *some*
+      // discard to keep the simulation moving, so it borrows 'efficiency''s.
+      const algorithm = player.algorithm === 'manual' ? 'efficiency' : player.algorithm
+      tile = pickTile(player, ALGORITHMS[algorithm].discard(seatView(state, options, seat)))
     }
   }
   if (!tile) return events
@@ -557,10 +597,9 @@ export function finishTurn(
 
   // riichi is declared with the discard that reaches tenpai, so it is decided after the choice
   const declaring = canDeclareRiichi(state, options, seat)
-    ? isManual(state, seat)
+    ? player.algorithm === 'manual'
       ? declareRiichi
-      : // a folding seat must not declare — it is trying to leave the hand, not win it
-        player.algorithm !== 'defense'
+      : ALGORITHMS[player.algorithm].riichi(seatView(state, options, seat))
     : false
   if (declaring) {
     player.riichiAt = player.river.length
@@ -653,23 +692,18 @@ function resolveReactions(
     for (const other of order) {
       const caller = state.players[other]
       if (caller.riichiAt !== undefined) continue
-      // a folding seat does not call: every meld it opened is one more shape it might have to
-      // defend a wait with. A manual seat's algorithm is never consulted here — it was asked
-      // instead, and 'defense' can never coincide with 'manual' on the same seat.
-      if (caller.algorithm === 'defense') continue
+      // a manual seat's algorithm is never consulted here — it was asked instead
       const answer = answers[other]
-      const call: Call | null = isManual(state, other)
-        ? answer && (answer.kind === 'pon' || answer.kind === 'chi')
-          ? { kind: answer.kind, from: answer.from }
-          : null
-        : chooseCall(
-            caller.hand,
-            caller.melds,
-            tile.id,
-            other === (discarder + 1) % state.players.length,
-            options.round,
-            HONOR + other,
-          )
+      const call: Call | null =
+        caller.algorithm === 'manual'
+          ? answer && (answer.kind === 'pon' || answer.kind === 'chi')
+            ? { kind: answer.kind, from: answer.from }
+            : null
+          : ALGORITHMS[caller.algorithm].call(
+              seatView(state, options, other),
+              tile.id,
+              other === (discarder + 1) % state.players.length,
+            )
       if (!call) continue
 
       const meldTiles: ParsedTile[] = [{ id: tile.id, red: tile.red }]

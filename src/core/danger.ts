@@ -121,7 +121,7 @@ const NO_THREAT: ThreatView = { seat: -1, discards: [], passed: [] }
 
 export function assessDiscards(
   hand: Hand,
-  threats: ThreatView[],
+  threats: readonly ThreatView[],
   visible: Uint8Array,
   sanma: boolean,
 ): TileDanger[] {

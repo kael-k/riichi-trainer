@@ -9,6 +9,7 @@ import {
   createMatch,
   findMatch,
   finishTurn,
+  NORTH,
   playMatch,
   threatViews,
   wallDrawnCount,
@@ -385,6 +386,24 @@ describe('defensive policy', () => {
     expect(folding.ended).toBeUndefined()
     expect(folding.win).toBeUndefined()
     expect(tileCount(folding.players[0].hand)).toBe(14) // drawn tile still sitting in hand, ungraded
+  })
+
+  it('pulls a held north under efficiency; a defense seat never does (T3)', () => {
+    // tenpai (shanpon on 1s/2s) plus a pinned North draw: discarding North is the unique best
+    // line (every other discard breaks the tenpai), so pulling it — the same evaluateDiscards
+    // comparison a plain discard would make — is unambiguous, not just a tie
+    const hand = parseTenhou('123456789p1122s')
+    const wall = wallWithHand(0, hand, true, false, 'kita-t3-seed')
+    wall[3 * INITIAL_HAND_SIZE] = parseTenhou('4z')[0] // seat 0's draw: North
+
+    const pulling = createMatch(wall, 3, SANMA)
+    beginTurn(pulling, SANMA)
+    expect(pulling.players[0].nuki).toEqual([{ id: NORTH, red: false }])
+
+    const folding = createMatch(wall, 3, SANMA)
+    folding.players[0].algorithm = 'defense'
+    beginTurn(folding, SANMA)
+    expect(folding.players[0].nuki).toHaveLength(0)
   })
 })
 
