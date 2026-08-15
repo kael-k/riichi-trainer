@@ -153,13 +153,13 @@ describe('yourDiscards', () => {
     const match = createMatch(wall, 4, NO_WIN, 'table-yd-1')
     const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
     beginTurn(match, NO_WIN)
-    finishTurn(match, NO_WIN, { id: 0, red: false }) // discard 1m
+    finishTurn(match, NO_WIN, { tile: { id: 0, red: false }, fromDrawn: false }) // discard 1m
     for (let g = 0; g < 3; g++) {
       beginTurn(match, NO_WIN)
       finishTurn(match, NO_WIN)
     }
     beginTurn(match, NO_WIN)
-    finishTurn(match, NO_WIN, { id: 1, red: false }) // discard 2m
+    finishTurn(match, NO_WIN, { tile: { id: 1, red: false }, fromDrawn: false }) // discard 2m
     const played = yourDiscards(core)
     expect(played.map((t) => t.id)).toEqual([0, 1])
   })
@@ -169,13 +169,13 @@ describe('yourDiscards', () => {
     const match = createMatch(wall, 4, NO_WIN, 'table-yd-2')
     const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
     beginTurn(match, NO_WIN)
-    finishTurn(match, NO_WIN, { id: 0, red: false })
+    finishTurn(match, NO_WIN, { tile: { id: 0, red: false }, fromDrawn: false })
     for (let g = 0; g < 3; g++) {
       beginTurn(match, NO_WIN)
       finishTurn(match, NO_WIN)
     }
     beginTurn(match, NO_WIN)
-    finishTurn(match, NO_WIN, { id: 1, red: false })
+    finishTurn(match, NO_WIN, { tile: { id: 1, red: false }, fromDrawn: false })
     const played = yourDiscards(core, 1)
     expect(played.map((t) => t.id)).toEqual([1])
   })
@@ -264,7 +264,7 @@ describe('replayDiscards', () => {
     const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
     beginTurn(match, NO_WIN)
     const step = (c: TableCore, tile: { id: number; red: boolean }) => {
-      finishTurn(c.match, NO_WIN, tile)
+      finishTurn(c.match, NO_WIN, { tile, fromDrawn: false })
       for (let g = 0; g < 3; g++) {
         beginTurn(c.match, NO_WIN)
         finishTurn(c.match, NO_WIN)
@@ -288,7 +288,7 @@ describe('replayDiscards', () => {
     const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
     beginTurn(match, NO_WIN)
     const step = (c: TableCore, tile: { id: number; red: boolean }) => {
-      finishTurn(c.match, NO_WIN, tile)
+      finishTurn(c.match, NO_WIN, { tile, fromDrawn: false })
       for (let g = 0; g < 3; g++) {
         beginTurn(c.match, NO_WIN)
         finishTurn(c.match, NO_WIN)
@@ -313,7 +313,7 @@ describe('replayDiscards', () => {
     beginTurn(match, NO_WIN)
     let calls = 0
     const step = (c: TableCore, tile: { id: number; red: boolean }): boolean => {
-      finishTurn(c.match, NO_WIN, tile)
+      finishTurn(c.match, NO_WIN, { tile, fromDrawn: false })
       calls++
       return false
     }

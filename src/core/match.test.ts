@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from './danger'
-import { handFromTenhou, tileCount } from './hand'
+import { handFromTenhou, removeTile, tileCount } from './hand'
 import {
   answerClaim,
   beginTurn,
@@ -144,6 +144,49 @@ describe('playMatch', () => {
       expect(events.some((e) => e.kind === 'win')).toBe(false)
       expect(state.ended).toBe('exhaustive')
     }
+  })
+
+  it('marks tsumogiri from the discarded slot, not tile value — a duplicate-kind hand cannot fool it', () => {
+    // one 3s held, then a second 3s drawn: id+red alone can no longer tell tedashi from
+    // tsumogiri, which is exactly the bug T1/T3 fix — `fromDrawn` is the only source of truth now
+    const wall = wallWithHand(0, parseTenhou('12345678m1122p3s'), false, false, 'dup-kind-1')
+    wall[4 * INITIAL_HAND_SIZE] = parseTenhou('3s')[0]
+
+    const tedashi = createMatch(wall, 4, YONMA)
+    beginTurn(tedashi, YONMA)
+    finishTurn(tedashi, YONMA, { tile: { id: SOU + 2, red: false }, fromDrawn: false })
+    expect(tedashi.players[0].river[0]?.tsumogiri).toBeUndefined()
+
+    const tsumogiri = createMatch(wall, 4, YONMA)
+    beginTurn(tsumogiri, YONMA)
+    finishTurn(tsumogiri, YONMA, { tile: { id: SOU + 2, red: false }, fromDrawn: true })
+    expect(tsumogiri.players[0].river[0]?.tsumogiri).toBe(true)
+  })
+
+  it("an AI's mechanical discard reports tsumogiri from the tile it actually resolves through pickTile, not from an algorithm's kind-level guess", () => {
+    // three called-equivalent 5s already held (a complete triplet, three melds fixing the rest of
+    // the hand) plus a lone 9z: drawing a 4th 5s (the red one) is pure excess — efficiency cuts
+    // that kind (tenpai, tanki on 9z either way) — but `pickTile` always keeps a held red five
+    // over a duplicate plain one, so the tile that actually leaves is a *held* plain copy, not the
+    // drawn aka. Tedashi, even though the algorithm never distinguished the two by kind alone.
+    // riichi off: `isMenzen` reads the actual `melds` array, which this test never populates
+    // (only `hand.melds`, chooseDiscard's own input) — an unrelated auto-riichi would otherwise
+    // ride along on the same discard and clutter the assertion below
+    const options: MatchOptions = { ...YONMA, riichi: false }
+    const wall = wallWithHand(0, parseTenhou('123456789m555s9z'), false, true, 'aka-quad-1')
+    wall[4 * INITIAL_HAND_SIZE] = parseTenhou('0s')[0] // seat 0's draw: the red 5s
+    const state = createMatch(wall, 4, options)
+    const player = state.players[0]
+    // stand in for three called melds without actually calling them — chooseDiscard only reads
+    // `hand.melds`/`hand.counts`, so stripping the filler tiles and bumping `melds` is equivalent
+    for (const id of [0, 1, 2, 3, 4, 5, 6, 7, 8]) removeTile(player.hand, id)
+    player.hand.melds = 3
+
+    beginTurn(state, options)
+    finishTurn(state, options)
+
+    expect(player.river[0]).toEqual({ id: SOU + 4, red: false })
+    expect(player.reds.has(SOU + 4)).toBe(true) // the aka stayed in hand
   })
 
   it('forces tsumogiri after a riichi declaration', () => {
@@ -430,7 +473,7 @@ describe('manual claims', () => {
     const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
     const state = createMatch(wall, 4, options, 'claim-pon-offer')
     beginTurn(state, options)
-    finishTurn(state, options, { id: SOU + 8, red: false })
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
 
     expect(state.claim?.seat).toBe(1)
     expect(state.claim?.from).toBe(0)
@@ -451,7 +494,7 @@ describe('manual claims', () => {
     ]
     const state = createMatch(wall, 4, options, 'claim-pass')
     beginTurn(state, options)
-    finishTurn(state, options, { id: SOU + 1, red: false })
+    finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
 
     expect(state.claim?.seat).toBe(1)
     expect(state.claim?.options.some((o) => o.kind === 'ron')).toBe(true)
@@ -483,7 +526,7 @@ describe('manual claims', () => {
       claimOptions(state, options, 1, { id: SOU + 1, red: false }, 0).some((o) => o.kind === 'ron'),
     ).toBe(false)
 
-    finishTurn(state, options, { id: SOU + 1, red: false })
+    finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
 
     expect(state.claim).toBeUndefined()
     expect(state.win).toBeUndefined()
@@ -499,7 +542,7 @@ describe('manual claims', () => {
     ]
     const state = createMatch(wall, 4, options, 'claim-pass')
     beginTurn(state, options)
-    finishTurn(state, options, { id: SOU + 1, red: false })
+    finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
     answerClaim(state, options, { kind: 'pass' })
     expect(state.players[1].missedWin).toBe(true)
 
@@ -513,7 +556,7 @@ describe('manual claims', () => {
     const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
     const state = createMatch(wall, 4, options, 'claim-pon-answer')
     beginTurn(state, options)
-    finishTurn(state, options, { id: SOU + 8, red: false })
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
     const pon = state.claim?.options.find((o) => o.kind === 'pon')
     expect(pon).toBeDefined()
 
@@ -544,7 +587,7 @@ describe('manual claims', () => {
     ]
     const state = createMatch(wall, 4, options, 'claim-priority')
     beginTurn(state, options)
-    finishTurn(state, options, { id: SOU + 8, red: false })
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
 
     // seat 1 is asked first purely by seat order, and commits to the pon before seat 2 is even asked
     expect(state.claim?.seat).toBe(1)
@@ -564,7 +607,7 @@ describe('manual claims', () => {
     const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
     const state = createMatch(wall, 4, options, 'claim-noop')
     beginTurn(state, options)
-    finishTurn(state, options, { id: SOU + 8, red: false })
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
     expect(state.claim).toBeDefined()
 
     const before = {
@@ -638,13 +681,13 @@ describe('manual riichi declaration', () => {
   it('never auto-declares riichi for a manual seat, even reaching tenpai, unless the caller says so', () => {
     const { state, options } = tenpaiManualState('manual-riichi-1')
     // declareRiichi omitted — this is the same call playMatch makes every turn
-    finishTurn(state, options, { id: SOU + 8, red: false })
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: true })
     expect(state.players[0].riichiAt).toBeUndefined()
   })
 
   it('declares riichi for a manual seat once the caller passes declareRiichi and it is legal', () => {
     const { state, options } = tenpaiManualState('manual-riichi-2')
-    finishTurn(state, options, { id: SOU + 8, red: false }, true)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: true }, true)
     expect(state.players[0].riichiAt).toBe(0)
     expect(state.players[0].river[0]?.riichi).toBe(true)
     // canDeclareRiichi is the same legality check finishTurn just used — pinning it here is what

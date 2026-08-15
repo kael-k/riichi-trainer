@@ -50,7 +50,9 @@ describe('a new algorithm needs nothing from match.ts', () => {
     // `core/algorithm.ts` itself exports (T3's whole reason to exist)
     const passive: Algorithm = {
       discard: (view) => {
-        for (let id = 0; id < NUM_TILE_TYPES; id++) if (view.hand.counts[id] > 0) return id
+        for (let id = 0; id < NUM_TILE_TYPES; id++) {
+          if (view.hand.counts[id] > 0) return { tile: id, fromDrawn: id === view.hand.drawn?.id }
+        }
         throw new Error('empty hand')
       },
       call: () => null,
@@ -59,6 +61,6 @@ describe('a new algorithm needs nothing from match.ts', () => {
       kita: () => false,
     }
     const hand = handFromTenhou('19m19p19s1234567z')
-    expect(passive.discard(baseView({ hand }))).toBe(parseTenhou('1m')[0].id)
+    expect(passive.discard(baseView({ hand })).tile).toBe(parseTenhou('1m')[0].id)
   })
 })

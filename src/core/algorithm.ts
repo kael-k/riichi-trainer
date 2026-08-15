@@ -77,8 +77,12 @@ export interface WinCandidate {
  * never sort stability — which is what lets a whole match be reproduced from its seed.
  */
 export interface Algorithm {
-  /** 14-tile hand: which tile goes. */
-  discard(view: SeatView): TileId
+  /** 14-tile hand: which tile goes, and whether the algorithm sees no difference between that
+   *  kind and the one just drawn (`fromDrawn`) — advisory, not authoritative: `match.ts`'s own
+   *  `finishTurn` re-derives the river's actual tsumogiri flag from the tile it really discards,
+   *  since resolving *which* physical copy of a kind leaves (redness included) is `pickTile`'s
+   *  job, not the algorithm's — an algorithm decides at the kind level and never sees redness. */
+  discard(view: SeatView): { tile: TileId; fromDrawn: boolean }
   /** Someone else discarded `tile`: pon/chi it, or decline. */
   call(view: SeatView, tile: TileId, fromKamicha: boolean): Call | null
   /** The discard just made reaches tenpai and riichi is legal: declare? */
@@ -90,7 +94,14 @@ export interface Algorithm {
 }
 
 const efficiency: Algorithm = {
-  discard: (view) => chooseDiscard(view.hand, view.seen, view.sanma).discard,
+  // `fromDrawn` here is advisory only (see the `Algorithm.discard` doc comment) — this algorithm
+  // has no preference between two identical tiles, so reporting "the kind I picked is the kind I
+  // drew" is honest, even though `match.ts` still re-derives the river flag from the tile it
+  // actually resolves through `pickTile`
+  discard: (view) => {
+    const { discard: tile } = chooseDiscard(view.hand, view.seen, view.sanma)
+    return { tile, fromDrawn: tile === view.hand.drawn?.id }
+  },
   call: (view, tile, fromKamicha) =>
     chooseCall(view.hand, view.melds, tile, fromKamicha, view.round, view.seatWind),
   riichi: () => true,
@@ -105,7 +116,10 @@ const efficiency: Algorithm = {
 }
 
 const defense: Algorithm = {
-  discard: (view) => chooseFold(view.hand, view.threats, view.seen, view.sanma),
+  discard: (view) => {
+    const tile = chooseFold(view.hand, view.threats, view.seen, view.sanma)
+    return { tile, fromDrawn: tile === view.hand.drawn?.id }
+  },
   // every meld opened is one more shape to defend a wait with, and a folding seat is trying to
   // leave the hand, not develop it
   call: () => null,

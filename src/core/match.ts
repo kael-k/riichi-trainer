@@ -565,7 +565,7 @@ export function wallDrawnCount(state: MatchState): number {
 export function finishTurn(
   state: MatchState,
   options: MatchOptions,
-  discard?: ParsedTile,
+  discard?: { tile: ParsedTile; fromDrawn: boolean },
   declareRiichi = false,
 ): MatchEvent[] {
   if (state.ended || state.claim) return []
@@ -574,24 +574,35 @@ export function finishTurn(
   const events: MatchEvent[] = []
 
   const forcedTsumogiri = player.riichiAt !== undefined && player.hand.drawn !== undefined
-  let tile = discard
-  if (!tile) {
-    if (forcedTsumogiri) {
-      tile = player.hand.drawn
-    } else {
-      // no explicit discard and not forced tsumogiri: `finishTurn` is being driven mechanically
-      // (a test, `playMatch`'s bare loop, `useFoldingRound.ts`'s own generation) rather than
-      // through the interactive `discard()` path, which always supplies a tile for a real manual
-      // seat's own turn — `goRound` never reaches this function for a manual seat either (it stops
-      // at the top of its loop instead). A 'manual' seat caught here anyway still needs *some*
-      // discard to keep the simulation moving, so it borrows 'efficiency''s.
-      const algorithm = player.algorithm === 'manual' ? 'efficiency' : player.algorithm
-      tile = pickTile(player, ALGORITHMS[algorithm].discard(seatView(state, options, seat)))
-    }
+  let tile: ParsedTile | undefined
+  let fromDrawn: boolean
+  if (discard) {
+    tile = discard.tile
+    fromDrawn = discard.fromDrawn
+  } else if (forcedTsumogiri) {
+    tile = player.hand.drawn
+    fromDrawn = true
+  } else {
+    // no explicit discard and not forced tsumogiri: `finishTurn` is being driven mechanically
+    // (a test, `playMatch`'s bare loop, `useFoldingRound.ts`'s own generation) rather than
+    // through the interactive `discard()` path, which always supplies a tile for a real manual
+    // seat's own turn — `goRound` never reaches this function for a manual seat either (it stops
+    // at the top of its loop instead). A 'manual' seat caught here anyway still needs *some*
+    // discard to keep the simulation moving, so it borrows 'efficiency''s.
+    const algorithm = player.algorithm === 'manual' ? 'efficiency' : player.algorithm
+    const picked = ALGORITHMS[algorithm].discard(seatView(state, options, seat))
+    tile = pickTile(player, picked.tile)
+    // not `picked.fromDrawn` — an algorithm decides at the kind level (`chooseDiscard` never sees
+    // redness) and `pickTile` above always keeps a held red five over a duplicate plain one, which
+    // can silently swap *which* physical copy leaves even when the kind matches the drawn one (draw
+    // the aka, hold the plain: `pickTile` throws the plain copy, so it is tedashi, not tsumogiri).
+    // Full identity against the actual resolved tile is ground truth; the id-only comparison an
+    // algorithm can offer is not
+    const drawn = player.hand.drawn
+    fromDrawn = drawn !== undefined && tile.id === drawn.id && tile.red === drawn.red
   }
   if (!tile) return events
 
-  const tsumogiri = player.hand.drawn !== undefined && sameTile(tile, player.hand.drawn)
   removeTile(player.hand, tile.id)
   if (tile.red) player.reds.delete(tile.id)
   // cleared here, not at the end: a naive end-of-function clear would leave `hand.drawn` naming a
@@ -614,7 +625,7 @@ export function finishTurn(
   }
 
   const entry: RiverTile = { id: tile.id, red: tile.red }
-  if (tsumogiri) entry.tsumogiri = true
+  if (fromDrawn) entry.tsumogiri = true
   if (declaring) entry.riichi = true
   player.river.push(entry)
   state.discards.push({ seat, tile: entry })
@@ -810,10 +821,6 @@ function couldHaveWon(state: MatchState, seat: number, tile: TileId): boolean {
   const complete = decompose(player.hand.counts, player.melds).length > 0
   removeTile(player.hand, tile)
   return complete
-}
-
-function sameTile(a: ParsedTile, b: ParsedTile): boolean {
-  return a.id === b.id && a.red === b.red
 }
 
 /** The held copy of `id` being discarded. Only red when it is the last copy held — with several

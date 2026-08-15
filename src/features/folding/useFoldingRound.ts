@@ -330,9 +330,14 @@ function buildRound(
   const core = playToRiichi(wall, matchOptions(wall, options), players, threats, seats, claims)
   if (!core || !worthwhile(core)) return null
   beginTurn(core.match, core.options)
-  // fast-forward the link's own discards; stops quietly on one this board cannot honour
+  // fast-forward the link's own discards; stops quietly on one this board cannot honour. No
+  // recorded intent survives in a link yet (Phase 2's action log), so `fromDrawn` is
+  // reconstructed the same way the old value heuristic did — the best available approximation
+  // until replay carries its own tsumogiri flag.
   replayDiscards(core, discards, (_c, tile) => {
-    advanceAfterDiscard(core, tile)
+    const drawn = core.match.players[core.seatIndex].hand.drawn
+    const fromDrawn = drawn !== undefined && tile.id === drawn.id && tile.red === drawn.red
+    advanceAfterDiscard(core, tile, fromDrawn)
     return !core.match.ended
   })
   return core
@@ -363,9 +368,14 @@ async function findRound(
  *  discard leaves another manual seat a claim to answer, stops right there: `goRound` already
  *  returns immediately with `match.claim` set, and drawing into a suspended turn would corrupt
  *  it, so `settleAfterClaim` is what resumes this same tail once the claim is answered. */
-function advanceAfterDiscard(core: RoundCore, tile: ParsedTile, declareRiichi = false): void {
+function advanceAfterDiscard(
+  core: RoundCore,
+  tile: ParsedTile,
+  fromDrawn: boolean,
+  declareRiichi = false,
+): void {
   const { match, options } = core
-  finishTurn(match, options, tile, declareRiichi)
+  finishTurn(match, options, { tile, fromDrawn }, declareRiichi)
   settleAfterClaim(core)
 }
 
@@ -641,7 +651,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   function discard(index: number, declareRiichi = riichiArmed) {
     const r = core.current
     if (!r || !state || state.finished || state.loading || state.claim) return
-    const tile = index === state.hand.length ? state.drawn : state.hand[index]
+    const fromDrawn = index === state.hand.length
+    const tile = fromDrawn ? state.drawn : state.hand[index]
     if (!tile) return
     setRiichiArmed(false)
 
@@ -680,7 +691,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     roundActionCount.current++
     roundTotalMs.current += elapsed
 
-    advanceAfterDiscard(r, tile, declareRiichi)
+    advanceAfterDiscard(r, tile, fromDrawn, declareRiichi)
     const next = snapshot(r, options.sanma, options.showSeatWaits, state)
     if (next.end?.kind === 'dealIn') {
       writeLog(

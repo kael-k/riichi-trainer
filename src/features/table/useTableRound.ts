@@ -210,12 +210,13 @@ export function useTableRound(input: TableRoundInput) {
   function advance(
     c: TableCore,
     tile: ParsedTile,
+    fromDrawn: boolean,
     kind: DiscardStats['kind'] = 'discard',
     declareRiichi = false,
   ): boolean {
     const discarded = actingSeat(c)
     fireDiscard(c, tile, kind)
-    finishTurn(c.match, c.options, tile, declareRiichi)
+    finishTurn(c.match, c.options, { tile, fromDrawn }, declareRiichi)
     return settle(c, discarded)
   }
 
@@ -261,7 +262,14 @@ export function useTableRound(input: TableRoundInput) {
     beginTurn(c.match, c.options) // no-op when goRound already ended the match
 
     replaying.current = true
-    replayed.current = replayDiscards(c, input.replay ?? [], (rc, tile) => advance(rc, tile))
+    // no recorded intent survives in a link yet (Phase 2's action log), so `fromDrawn` is
+    // reconstructed the same way the old value heuristic did — the best available approximation
+    // until replay carries its own tsumogiri flag
+    replayed.current = replayDiscards(c, input.replay ?? [], (rc, tile) => {
+      const drawn = you(rc).hand.drawn
+      const fromDrawn = drawn !== undefined && tile.id === drawn.id && tile.red === drawn.red
+      return advance(rc, tile, fromDrawn)
+    })
     replaying.current = false
 
     return snapshotTable(c, input.showSeatWaits)
@@ -362,10 +370,11 @@ export function useTableRound(input: TableRoundInput) {
   function discard(index: number, declareRiichi = riichiArmed): void {
     const c = core.current
     if (!c || c.match.ended || c.match.claim || tileCount(you(c).hand) !== 14) return
-    const tile = index === snapshot.hand.length ? snapshot.drawn : snapshot.hand[index]
+    const fromDrawn = index === snapshot.hand.length
+    const tile = fromDrawn ? snapshot.drawn : snapshot.hand[index]
     if (!tile) return
     setRiichiArmed(false)
-    advance(c, tile, 'discard', declareRiichi)
+    advance(c, tile, fromDrawn, 'discard', declareRiichi)
     setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
 
