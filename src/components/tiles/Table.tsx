@@ -96,6 +96,12 @@ const INDICATOR_SLOTS = 5
  *  too; the strip has moved to the corner cells, and the board keeps the difference. */
 const SEAT_RING_FRACTION = 0.1
 
+/** How much of a seat's corner cell the meld stack may take, in felt widths (`cqw`). The cell is
+ *  4 board tiles deep — `4 * (100 - 2) / 14.6` ≈ 26.8cqw — and the seat's plate is pinned to the
+ *  far end of that same column, so the calls get the rest. Four calls is the case this exists for:
+ *  at the plain `100cqw/18` tile they need ~31cqw and land on the seat's own river instead. */
+const MELD_BAND = 17
+
 /** A betting stick, sized off the board's tile width like everything else here: 1000 points
  *  (one red dot) for a riichi bet, 100 points (plain) for an honba counter. It reads as a
  *  counter mark beside the tile icon, so it inherits whatever small `--tile-w` that row sets
@@ -252,6 +258,8 @@ export function Table({
             const slot = SLOTS[slotOf[(index - seatIndex + players) % players]]
             const wind = t(`wind.${WINDS[index]}`)
             const called = (seat.melds?.length ?? 0) + (seat.nuki?.length ?? 0) > 0
+            // every row the corner cell has to stack: one per meld, one for the nuki pile
+            const rows = (seat.melds?.length ?? 0) + (seat.nuki?.length ? 1 : 0) || 1
             return (
               <div key={index} className="contents">
                 {/* fixed at a full river's footprint (6 wide, 3 rows deep) rather than sized to
@@ -314,7 +322,20 @@ export function Table({
                      track (no `place-self-center`) so `mt-auto` has the corner to push against,
                      and the seat's own rotation carries "far" round with it for every seat */
                   <div
-                    className={`flex h-full w-full flex-col items-end justify-start gap-[0.5cqw] [--tile-w:calc(100cqw/18)] ${slot.melds} ${slot.spin}`}
+                    data-testid="corner"
+                    data-seat={index}
+                    style={
+                      {
+                        // the corner track is 4 board tiles deep and has to hold every call this
+                        // seat has made *plus* its plate. One meld row is 4/3 of a tile tall, so
+                        // `MELD_BAND` divided by that many rows is the widest tile that still fits;
+                        // `min()` keeps a seat with one or two calls at the size it always drew,
+                        // and only a heavily open hand pays. Without it a third call pushed the
+                        // stack out of the corner and across the seat's own river.
+                        '--tile-w': `min(calc(100cqw/18), calc(${MELD_BAND}cqw / ${rows * (4 / 3)}))`,
+                      } as CSSProperties
+                    }
+                    className={`flex h-full w-full flex-col items-end justify-start gap-[0.5cqw] ${slot.melds} ${slot.spin}`}
                   >
                     {seat.melds?.map((meld, i) => (
                       <MeldDisplay key={i} meld={meld} />

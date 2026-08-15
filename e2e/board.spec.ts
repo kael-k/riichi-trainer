@@ -34,6 +34,11 @@ function overlaps(a: { x: number; y: number; width: number; height: number }, b:
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
 }
 
+/** A shared folding link whose seats call heavily — the corner cell has to hold several melds and
+ *  the seat plate at once, which is the case that broke first. */
+const CALLED_BOARD =
+  '/folding?wall=0s32m4s2z3p98m9p2s9p44m8p5s32z6m45z1p8234s2z74p67m35s61z3p2m6p80m5z2s9m4s3p6z4s8p3m64z4m1z7s7473z2p1m2p3z36s5m8s1m7z8641p81s9m7p6s55m5z0p99s35p2m1z8p9s9m6s6m8s1z3s1m7z26p236m1s17p7s4m259s3m4z41975p25z7s7m4p1m95p7m2p8m3z7s6z8m6p161s7m&sanma=0&threats=1&wins=1'
+
 for (const trainer of TABLE_TRAINERS) {
   test(`${trainer}: the board is square`, async ({ page }) => {
     await page.goto(`/${trainer}`)
@@ -89,6 +94,58 @@ for (const trainer of TABLE_TRAINERS) {
     }
   })
 }
+
+test('a called hand keeps its melds and plate inside the felt', async ({ page }) => {
+  await page.goto(CALLED_BOARD)
+  const board = page.getByTestId('board').first()
+  await expect(board).toBeVisible()
+  const square = (await board.boundingBox())!
+
+  const rivers = await page.getByTestId('river').all()
+  const riverBoxes = (await Promise.all(rivers.map((r) => r.boundingBox()))).filter((b) => !!b)
+
+  // the fixture is only worth anything if it really is a heavily called board: a corner cell holds
+  // one child per call, plus the seat's own plate, so four children is three calls
+  const busiest = await page
+    .getByTestId('corner')
+    .evaluateAll((cells) => Math.max(...cells.map((c) => c.children.length)))
+  expect(
+    busiest,
+    'the fixture link no longer produces a heavily called board',
+  ).toBeGreaterThanOrEqual(4)
+
+  for (const corner of await page.getByTestId('corner').all()) {
+    const seat = await corner.getAttribute('data-seat')
+    // the cell's own box is its grid track; what can overflow is its content
+    const content = await corner.evaluate((el) => {
+      const rects = [...el.children].map((c) => c.getBoundingClientRect())
+      const x = Math.min(...rects.map((r) => r.left))
+      const y = Math.min(...rects.map((r) => r.top))
+      return {
+        x,
+        y,
+        width: Math.max(...rects.map((r) => r.right)) - x,
+        height: Math.max(...rects.map((r) => r.bottom)) - y,
+      }
+    })
+
+    expect(content.x, `seat ${seat} corner runs off the board`).toBeGreaterThanOrEqual(square.x - 1)
+    expect(content.y, `seat ${seat} corner runs off the board`).toBeGreaterThanOrEqual(square.y - 1)
+    expect(content.x + content.width).toBeLessThanOrEqual(square.x + square.width + 1)
+    expect(content.y + content.height).toBeLessThanOrEqual(square.y + square.height + 1)
+    for (const river of riverBoxes) {
+      expect(overlaps(content, river), `seat ${seat} corner overlaps a river`).toBe(false)
+    }
+  }
+})
+
+test('a phone-sized viewport comes up fullscreen', async ({ page, viewport }) => {
+  // held sideways is the viewport with the least room of all, so it is the one that most needs
+  // this — and on a width-only check it was the one that never auto-entered
+  test.skip(!viewport || (viewport.width > 640 && viewport.height > 520), 'not a phone viewport')
+  await page.goto('/efficiency')
+  await expect(page.getByTestId('hand-strip')).toBeVisible()
+})
 
 test('efficiency-solo: your river is on screen in fullscreen', async ({ page }) => {
   await page.goto('/efficiency-solo')

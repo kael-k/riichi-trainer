@@ -5,8 +5,12 @@ import { Link } from 'react-router'
 import { useSettings } from '../../features/settings/settingsStore'
 import { InfoButton, LogList, type TrainerIntro } from '../TrainerLayout'
 
-/** A phone-sized viewport — the breakpoint `mobileFullscreen` auto-enters at. */
-const MOBILE_QUERY = '(max-width: 640px)'
+/** A phone-sized viewport — the breakpoint `mobileFullscreen` auto-enters at. The height half is
+ *  the same 520px the `short:` variant keys on: a phone held sideways is the viewport with the
+ *  least room of all, and on the width test alone it was the one that never auto-entered — the
+ *  inline layout there spends its whole height budget on the header, the status row and the hand,
+ *  leaving a 214px board on a 750x342 screen. */
+const MOBILE_QUERY = '(max-width: 640px), (max-height: 520px)'
 
 interface BoardStageProps {
   /** The `Table` itself, built by the page. Omitted by the boardless trainers (shanten, solo):
