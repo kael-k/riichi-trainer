@@ -58,7 +58,8 @@ export function useEfficiencyRound(
     // opponents may open their hands and call, but nobody wins: a hand that ended on someone
     // else's tsumo would cut this per-turn drill short on a result the player did not cause
     calls: true,
-    riichi: true,
+    // efficiency reads no danger, so an opponent's riichi here was decoration, not signal
+    riichi: false,
     wins: false,
     algorithms,
     claims: options.claims,
