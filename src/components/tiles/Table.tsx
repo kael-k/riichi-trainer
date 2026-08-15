@@ -137,11 +137,20 @@ function Stick({
 /** One indicator row, rendered as two grid cells rather than its own flex box: the dora and ura
  *  rows then share a single label column and their tiles start at the same x. "Dora" and "Ura"
  *  are not the same width in any language, so laid out separately they never line up. */
-function IndicatorRow({ label, tiles }: { label: string; tiles: ParsedTile[] }) {
+function IndicatorRow({
+  label,
+  tiles,
+  testId,
+}: {
+  label: string
+  tiles: ParsedTile[]
+  /** Names the row for the UI suite — the visible label is translated, so it is no handle. */
+  testId: string
+}) {
   return (
     <>
       <span className="text-right text-neutral-500 dark:text-neutral-400">{label}</span>
-      <span className="flex items-center">
+      <span data-testid={testId} className="flex items-center">
         {tiles.map((tile, i) => (
           <Tile key={i} id={tile.id} red={tile.red} />
         ))}
@@ -409,10 +418,10 @@ export function Table({
             </span>
             <span className="grid grid-cols-[auto_auto] items-center justify-center gap-x-[0.6cqw] gap-y-[0.4cqw] [--tile-w:calc(100cqw/24)]">
               {doraIndicators.length > 0 && (
-                <IndicatorRow label={t('table.dora')} tiles={doraIndicators} />
+                <IndicatorRow label={t('table.dora')} tiles={doraIndicators} testId="dora-row" />
               )}
               {uraIndicators.length > 0 && (
-                <IndicatorRow label={t('table.ura')} tiles={uraIndicators} />
+                <IndicatorRow label={t('table.ura')} tiles={uraIndicators} testId="ura-row" />
               )}
             </span>
             {children}

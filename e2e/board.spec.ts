@@ -39,6 +39,139 @@ function overlaps(a: { x: number; y: number; width: number; height: number }, b:
 const CALLED_BOARD =
   '/folding?wall=0s32m4s2z3p98m9p2s9p44m8p5s32z6m45z1p8234s2z74p67m35s61z3p2m6p80m5z2s9m4s3p6z4s8p3m64z4m1z7s7473z2p1m2p3z36s5m8s1m7z8641p81s9m7p6s55m5z0p99s35p2m1z8p9s9m6s6m8s1z3s1m7z26p236m1s17p7s4m259s3m4z41975p25z7s7m4p1m95p7m2p8m3z7s6z8m6p161s7m&sanma=0&threats=1&wins=1'
 
+/** Every tile kind, in id order — the alphabet both the `wall` param and the `log` param are
+ *  written in (`core/tiles.ts#parseTenhou`). */
+const KINDS = [
+  ...['m', 'p', 's'].flatMap((suit) => Array.from({ length: 9 }, (_, i) => `${i + 1}${suit}`)),
+  ...Array.from({ length: 7 }, (_, i) => `${i + 1}z`),
+]
+
+/** Tiles to one ordered tenhou string (`111m5m…`) — runs of digits closed by their suit letter, so
+ *  draw order survives, which is the whole point of the `wall` param. */
+function tenhou(tiles: string[]): string {
+  let out = ''
+  let digits = ''
+  let suit = ''
+  for (const tile of tiles) {
+    if (suit && tile[1] !== suit) {
+      out += digits + suit
+      digits = ''
+    }
+    suit = tile[1]
+    digits += tile[0]
+  }
+  return out + digits + suit
+}
+
+/**
+ * A wall dealt so seat 0 kans its way to suukantsu: four concealed triplets and a lone 5m, then
+ * the fourth copy of each triplet arrives on its next four draws. Four ankan flip four more dora
+ * indicators on top of the opening one, so the board ends up drawing every indicator slot it has
+ * and one seat's corner has to hold four melds at once — the two extremes the corner cell is
+ * asked for, in one hand.
+ *
+ * The wall is given in full (136 tiles) rather than as a prefix on purpose: a short wall is
+ * completed at random, and the dead wall — which is where every kan replacement comes from — would
+ * then be tiles the `log` below could not name.
+ */
+function suukantsuBoard(): string {
+  // 13 each, in deal order. Seat 0's is the hand being built; the rest are junk that stays far
+  // from tenpai, so nobody claims a discard and derails the replay
+  const seat0 = ['1m', '1m', '1m', '2m', '2m', '2m', '3m', '3m', '3m', '4m', '4m', '4m', '5m']
+  const junkPin = [...Array.from({ length: 9 }, (_, i) => `${i + 1}p`), '1s', '2s', '3s', '4s']
+  const seat2 = [
+    ...Array.from({ length: 5 }, (_, i) => `${i + 5}s`),
+    ...Array.from({ length: 7 }, (_, i) => `${i + 1}z`),
+    '1z',
+  ]
+
+  // live draws, in turn order: seat 0 takes every fourth one and it is always the quad's last copy
+  const live = [
+    '1m',
+    '9m',
+    '9m',
+    '9m',
+    '2m',
+    '8m',
+    '8m',
+    '8m',
+    '3m',
+    '7m',
+    '7m',
+    '7m',
+    '4m',
+    '6m',
+    '6m',
+    '6m',
+  ]
+
+  // the last 14: five dora indicators, five ura, then the four replacement tiles a kan draws —
+  // popped off the end, so seat 0 discards 4z, 3z, 2z, 1z in that order
+  const dead = ['1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '1s', '1z', '2z', '3z', '4z']
+
+  const placed = [...seat0, ...junkPin, ...seat2, ...junkPin, ...live, ...dead]
+  const left = new Map(KINDS.map((kind) => [kind, 4]))
+  for (const tile of placed) left.set(tile, left.get(tile)! - 1)
+  // reverse id order, so the 5m copies land at the very end of the live wall rather than as seat
+  // 0's next draw — a fifth 5m in hand is not the tanki this board is posing
+  const filler = [...left.entries()]
+    .reverse()
+    .flatMap(([kind, count]) => Array.from({ length: count }, () => kind))
+
+  const wall = [...seat0, ...junkPin, ...seat2, ...junkPin, ...live, ...filler, ...dead]
+  const log = ['1m', '2m', '3m', '4m']
+    .map((quad, turn) => {
+      const replacement = ['4z', '3z', '2z', '1z'][turn]
+      const junk = ['9m', '8m', '7m', '6m'][turn]
+      return `A0${quad}D0${replacement}T` + [1, 2, 3].map((seat) => `D${seat}${junk}T`).join('')
+    })
+    .join('')
+
+  expect(wall, 'the fixture wall is not a full wall').toHaveLength(136)
+  for (const [kind, count] of left) expect(count, `${kind} is over-used`).toBeGreaterThanOrEqual(0)
+  return `/efficiency?wall=${tenhou(wall)}&log=${log}&seat=0&deadWall=1&aka=0&sanma=0`
+}
+
+test('four kans: the corner holds them all and every indicator flips', async ({ page }, info) => {
+  await page.goto(suukantsuBoard())
+  const board = page.getByTestId('board').first()
+  await expect(board).toBeVisible()
+
+  // four ankan in seat 0's corner, and the plate still beside them
+  const yours = page.locator('[data-testid=corner][data-seat="0"]')
+  await expect(yours.getByTestId('seat-strip')).toBeVisible()
+  expect(await yours.evaluate((el) => el.children.length), 'four melds and the plate').toBe(5)
+
+  // the opening indicator plus one per kan fills every slot the board has, so nothing in that row
+  // is still face down
+  const dora = page.getByTestId('dora-row')
+  await expect(dora.getByRole('img')).toHaveCount(5)
+  await expect(dora.getByRole('img', { name: 'Face-down tile' })).toHaveCount(0)
+
+  const square = (await board.boundingBox())!
+  const content = await yours.evaluate((el) => {
+    const rects = [...el.children].map((c) => c.getBoundingClientRect())
+    const x = Math.min(...rects.map((r) => r.left))
+    const y = Math.min(...rects.map((r) => r.top))
+    return {
+      x,
+      y,
+      width: Math.max(...rects.map((r) => r.right)) - x,
+      height: Math.max(...rects.map((r) => r.bottom)) - y,
+    }
+  })
+  expect(content.x).toBeGreaterThanOrEqual(square.x - 1)
+  expect(content.y).toBeGreaterThanOrEqual(square.y - 1)
+  expect(content.x + content.width).toBeLessThanOrEqual(square.x + square.width + 1)
+  expect(content.y + content.height).toBeLessThanOrEqual(square.y + square.height + 1)
+  for (const river of await page.getByTestId('river').all()) {
+    const r = await river.boundingBox()
+    if (r) expect(overlaps(content, r), 'the four-kan corner overlaps a river').toBe(false)
+  }
+
+  await page.screenshot({ path: info.outputPath('four-kans.png') })
+})
+
 for (const trainer of TABLE_TRAINERS) {
   test(`${trainer}: the board is square`, async ({ page }) => {
     await page.goto(`/${trainer}`)
