@@ -31,6 +31,8 @@ export default defineConfig({
     }),
   ],
   test: {
+    // Explicit, so vitest never collects `e2e/*.spec.ts` — those are Playwright's.
+    include: ['src/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',

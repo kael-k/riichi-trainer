@@ -16,7 +16,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "tiles": "node scripts/build-tile-sprite.mjs",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "ui-test": "playwright test"
   },
   "dependencies": {
     "i18next": "^26.3.6",
@@ -28,6 +29,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",

@@ -23,6 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
+# Playwright
+/test-results
+/playwright-report
+/blob-report
+/.playwright
+
 # Local agent tooling
 .claude/
 .gsd/
