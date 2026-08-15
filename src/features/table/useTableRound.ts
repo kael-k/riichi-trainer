@@ -13,7 +13,9 @@ import {
   isManual,
   NORTH,
   reconsiderClaim,
+  replayLog,
   type ClaimAnswer,
+  type LogEntry,
   type MatchOptions,
   type PlayerState,
   type WinRecord,
@@ -23,9 +25,7 @@ import {
   actingSeat,
   analysisOf,
   goRound,
-  replayDiscards,
   snapshotTable,
-  yourDiscards,
   type TableAnalysis,
   type TableCore,
   type TableSnapshot,
@@ -50,9 +50,11 @@ export interface TableRoundInput {
   players: number
   seatIndex: number
   options: MatchOptions
-  /** Discards already played, replayed silently (D-06) to fast-forward to a mid-round decision
-   *  point — a shared link or a log rewind, not extra tiles: each one must already be in hand. */
-  replay?: ParsedTile[]
+  /** Every seat's decisions so far, replayed silently (D-06) via `replayLog` to fast-forward to a
+   *  mid-round decision point — a shared link or a log rewind, consulting no algorithm at all
+   *  (which is what makes it immune to a later algorithm change), not extra tiles: everything
+   *  named here is already accounted for by `wall`. */
+  replay?: readonly LogEntry[]
   /** Stops the round the moment your own discard reaches tenpai, leaving the hand at 13 tiles
    *  (the efficiency trainers' drill) rather than playing the wall out. */
   stopAtTenpai?: boolean
@@ -137,10 +139,10 @@ export function useTableRound(input: TableRoundInput) {
   // same identity-keyed guard `logReplay` uses for its own log rows
   const builtFor = useRef<{ wall: ParsedTile[]; count: number } | undefined>(undefined)
 
-  // discards actually replayed on the last build (may fall short of `input.replay` when a
-  // recorded tile no longer matches the hand) — exposed so a consumer's own `logReplay` can put
-  // one log row per replayed discard without reaching back into `core/table.ts` itself
-  const replayed = useRef<ParsedTile[]>([])
+  // log entries actually replayed on the last build (may fall short of `input.replay` when the
+  // recording no longer matches the hand) — exposed so a consumer's own `logReplay` can put one
+  // log row per replayed discard of its own seat, without reaching back into `core/match.ts` itself
+  const replayed = useRef<readonly LogEntry[]>([])
 
   // joined, not the array itself: a caller builds this fresh from its settings on every render,
   // so an identity dep would redeal the board each time it rendered
@@ -258,19 +260,29 @@ export function useTableRound(input: TableRoundInput) {
     const match = createMatch(wall, input.players, input.options)
     const c: TableCore = { match, options: input.options, seatIndex: input.seatIndex }
     core.current = c
-    goRound(c)
-    beginTurn(c.match, c.options) // no-op when goRound already ended the match
 
     replaying.current = true
-    // no recorded intent survives in a link yet (Phase 2's action log), so `fromDrawn` is
-    // reconstructed the same way the old value heuristic did — the best available approximation
-    // until replay carries its own tsumogiri flag
-    replayed.current = replayDiscards(c, input.replay ?? [], (rc, tile) => {
-      const drawn = you(rc).hand.drawn
-      const fromDrawn = drawn !== undefined && tile.id === drawn.id && tile.red === drawn.red
-      return advance(rc, tile, fromDrawn)
-    })
+    const consumed = replayLog(c.match, c.options, input.replay ?? [])
+    replayed.current = (input.replay ?? []).slice(0, consumed)
     replaying.current = false
+
+    // the recorded log reconstructs every seat's turn exactly, consulting no algorithm at all
+    // (D-L4); once it runs out, live play picks up from wherever it stopped — every AI-decided
+    // seat plays on (`goRound`) and the next manual turn draws (`beginTurn`). Guarded on
+    // `hand.drawn`, unlike the pre-log version's unconditional call: `replayLog` (unlike
+    // `goRound`) can leave *any* seat, manual included, already mid-turn with its 14th tile
+    // sitting there and no logged discard for it — a bare `beginTurn` there would draw a second,
+    // uncorroborated tile on top.
+    if (!c.match.ended && !c.match.claim) {
+      goRound(c)
+      if (
+        !c.match.ended &&
+        !c.match.claim &&
+        c.match.players[c.match.seat].hand.drawn === undefined
+      ) {
+        beginTurn(c.match, c.options)
+      }
+    }
 
     return snapshotTable(c, input.showSeatWaits)
   }
@@ -439,13 +451,14 @@ export function useTableRound(input: TableRoundInput) {
     setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
 
-  /** Current round as a shareable `Situation`: the wall actually dealt and the discards your own
-   *  seat has played so far, ready for `encodeSituation`. */
+  /** Current round as a shareable `Situation`: the wall actually dealt and every seat's decision
+   *  since, ready for `encodeSituation`. Simpler than the pre-log version by construction — the
+   *  log already *is* the shareable record, no per-seat filtering needed. */
   function situation(): Situation {
     const c = core.current
     return {
       wall: c ? [...c.match.wall] : [...input.wall],
-      river: c ? yourDiscards(c) : [],
+      log: c ? [...c.match.log] : [],
       round: WINDS[input.options.round - HONOR] ?? 'E',
       seat: WINDS[input.seatIndex] ?? 'E',
       deadWall: input.options.deadWall,

@@ -206,7 +206,10 @@ describe('useEfficiencyRound', () => {
     const wall = wallWithHand(0, hand, false, false, 'replay-seed')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('9s')[0] // turn 1's own draw — unrelated to the replay
     situation.wall = wall
-    situation.river = parseTenhou('7z')
+    const discarded7z = parseTenhou('7z')[0]
+    situation.log = [
+      { kind: 'discard', seat: 0, tile: discarded7z, fromDrawn: false, riichi: false },
+    ]
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
 
     expect(result.current.turn).toBe(2)
@@ -267,7 +270,7 @@ describe('useEfficiencyRound', () => {
     const firstEntry = useLog.getState().entries.at(-1)!
     const decodedFirst = decodeSituation(new URLSearchParams(firstEntry.situation!))
     expect(decodedFirst.wall.slice(0, 13)).toEqual(situation.wall)
-    expect(decodedFirst.river).toHaveLength(0)
+    expect(decodedFirst.log).toHaveLength(0)
 
     // restart, so a later rewind has to reproduce a wall this hook chose at random rather than
     // the one the situation prop originally named
@@ -291,16 +294,22 @@ describe('useEfficiencyRound', () => {
     act(() => played.result.current.discard(0))
     act(() => played.result.current.discard(0))
     const shared = decodeSituation(new URLSearchParams(played.result.current.situationQuery()))
-    expect(shared.river).toHaveLength(2)
+    // the full log carries every seat's turns between your own two discards, not just yours —
+    // it's your own discard count that stays exactly two regardless of what opponents did
+    expect(shared.log.filter((e) => e.kind === 'discard' && e.seat === 0)).toHaveLength(2)
 
-    // opening that link replays the two discards and puts them on the log, each rewinding to the
-    // round as it stood before it — so the first carries no river and the second carries one tile
+    // opening that link replays every seat's recorded turn and puts your own two discards on the
+    // log, each rewinding to the round as it stood before it — so the first carries none of your
+    // own discards yet and the second carries one
     useLog.getState().clear()
     const link = renderHook(() => useEfficiencyRound(shared, BARE, true))
     const entries = useLog.getState().entries
     expect(entries.map((e) => e.key)).toEqual(['log.replay', 'log.replay'])
     expect(
-      entries.map((e) => decodeSituation(new URLSearchParams(e.situation!)).river.length),
+      entries.map((e) => {
+        const log = decodeSituation(new URLSearchParams(e.situation!)).log
+        return log.filter((entry) => entry.kind === 'discard' && entry.seat === 0).length
+      }),
     ).toEqual([0, 1])
     expect(link.result.current.hand).toEqual(played.result.current.hand)
     expect(link.result.current.turn).toBe(played.result.current.turn)

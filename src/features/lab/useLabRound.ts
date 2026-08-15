@@ -81,7 +81,7 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
     players,
     seatIndex,
     options: matchOptions,
-    replay: situation.river,
+    replay: situation.log,
     stopAtTenpai: false,
     showSeatWaits: options.showSeatWaits,
     onUserDraw(ctx: UserDrawContext) {

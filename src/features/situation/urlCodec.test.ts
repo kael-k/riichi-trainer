@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { handFromTenhou } from '../../core/hand'
-import { createMatch, type MatchOptions } from '../../core/match'
-import { HONOR, parseTenhou, serializeTenhouOrdered } from '../../core/tiles'
+import { createMatch, type LogEntry, type MatchOptions } from '../../core/match'
+import { HONOR, PIN, parseTenhou, serializeTenhouOrdered } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
 import {
   allTiles,
@@ -37,7 +37,10 @@ describe('urlCodec', () => {
     s.seed = 'abc'
     s.hand = parseTenhou('123m456p789s1122z')
     s.wall = parseTenhou('9m1z5s')
-    s.river = parseTenhou('1z9p')
+    s.log = [
+      { kind: 'discard', seat: 0, tile: { id: HONOR, red: false }, fromDrawn: false, riichi: false },
+      { kind: 'discard', seat: 1, tile: { id: PIN + 8, red: false }, fromDrawn: true, riichi: true },
+    ] satisfies LogEntry[]
     s.round = 'S'
     s.seat = 'W'
     s.deadWall = false

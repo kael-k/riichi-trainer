@@ -144,7 +144,7 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
         serializeTenhou(state.hand),
         // the hand as it was asked, so the row rewinds (and shares) back to this exact deal —
         // the tiles pin it outright, which is why no seed replay is involved
-        encodeSituation({ ...situation, hand: state.hand, wall: [], river: [] }),
+        encodeSituation({ ...situation, hand: state.hand, wall: [], log: [] }),
       )
       stats.record(correct, elapsed)
       // keep running: the feedback rides along with the hand dealt by the index bump

@@ -3,7 +3,7 @@ import { createElement, StrictMode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { evaluateDiscards } from '../../core/efficiency'
-import type { MatchOptions } from '../../core/match'
+import { beginTurn, createMatch, finishTurn, type LogEntry, type MatchOptions } from '../../core/match'
 import { HONOR, parseTenhou, SOU, type ParsedTile } from '../../core/tiles'
 import { completeWall, INITIAL_HAND_SIZE, wallWithHand } from '../../core/wall'
 import { useTableRound, type DiscardStats } from './useTableRound'
@@ -108,10 +108,17 @@ describe('useTableRound', () => {
 
   it('replaying discards fires zero onUserDraw/onUserDiscard, then exactly one onUserDraw for the live turn', () => {
     const wall = tenpaiWall('table-replay-seed')
-    const hand = wall.slice(0, INITIAL_HAND_SIZE)
+    // a real, playable-out log — every seat's turn, not just seat 0's — captured by driving the
+    // engine bare (BARE's calls/riichi/wins are all off, so nothing can interrupt the cycle):
+    // seat 0 discards, then 1/2/3 each take their own turn, then seat 0 discards again
+    const capture = createMatch(wall, 4, BARE)
+    for (let t = 0; t < 5; t++) {
+      beginTurn(capture, BARE)
+      finishTurn(capture, BARE)
+    }
     // identity-stable, like `wall` above — an inline array literal in the render callback would
     // fail the effect's own dependency check on every render and never settle
-    const replay: ParsedTile[] = [hand[0], hand[1]]
+    const replay: LogEntry[] = [...capture.log]
     const onUserDraw = vi.fn()
     const onUserDiscard = vi.fn()
     renderHook(() =>

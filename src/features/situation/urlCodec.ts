@@ -1,3 +1,5 @@
+import { decodeLog, encodeLog } from '../../core/actionLog'
+import type { LogEntry } from '../../core/match'
 import { parseTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
 import { validateWall, type WallError } from '../../core/wall'
 
@@ -23,9 +25,11 @@ export interface Situation {
    *  (contrast `parseTenhou`, which drops a malformed digit): a wall is positionally meaningful,
    *  so repairing it would hand back a different board than the link claimed to share. */
   wallError?: WallError
-  /** The user's own past discards, replayed from the deal to reach the situation's
-   *  decision point. Not extra tiles: each one must already be in hand/wall. */
-  river: ParsedTile[]
+  /** Every seat's decision from the deal to the situation's decision point — replayed by
+   *  `replayLog` (`core/match.ts`), which consults no algorithm at all, so a shared link
+   *  reproduces the exact hand that was played regardless of what any seat's algorithm is set to
+   *  today. Not extra tiles: everything named here is already accounted for by `wall`. */
+  log: LogEntry[]
   round: Wind
   seat: Wind
   /** Per-round overrides of the corresponding settings, pinned so a shared link
@@ -41,7 +45,7 @@ const FLAGS = ['deadWall', 'aka', 'sanma'] as const
 export function emptySituation(): Situation {
   return {
     wall: [],
-    river: [],
+    log: [],
     round: 'E',
     seat: 'E',
   }
@@ -54,7 +58,7 @@ export function decodeSituation(params: URLSearchParams): Situation {
   const hand = params.get('hand')
   if (hand !== null) s.hand = parseTenhou(hand)
   s.wall = parseTenhou(params.get('wall') ?? '')
-  s.river = parseTenhou(params.get('river') ?? '')
+  s.log = decodeLog(params.get('log') ?? '')
   const round = params.get('round') as Wind
   const seat = params.get('seat') as Wind
   if (WINDS.includes(round)) s.round = round
@@ -83,7 +87,7 @@ export function encodeSituation(s: Situation): string {
   if (s.seed) params.set('seed', s.seed)
   if (s.hand?.length) params.set('hand', serializeTenhouOrdered(s.hand))
   if (s.wall.length) params.set('wall', serializeTenhouOrdered(s.wall))
-  if (s.river.length) params.set('river', serializeTenhouOrdered(s.river))
+  if (s.log.length) params.set('log', encodeLog(s.log))
   if (s.round !== 'E') params.set('round', s.round)
   if (s.seat !== 'E') params.set('seat', s.seat)
   for (const flag of FLAGS) {

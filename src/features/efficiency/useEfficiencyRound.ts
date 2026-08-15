@@ -111,7 +111,7 @@ export function useEfficiencyRound(
     players,
     seatIndex,
     options: matchOptions,
-    replay: situation.river,
+    replay: situation.log,
     stopAtTenpai: true,
     showSeatWaits: options.showSeatWaits,
     onUserDraw(ctx: UserDrawContext) {
@@ -144,23 +144,28 @@ export function useEfficiencyRound(
     },
   })
 
-  /** Writes one log row per discard the round was fast-forwarded through, so a shared link (or a
-   *  rewind) arrives with the turns behind it on the record instead of a blank log. Keyed on the
-   *  situation's identity: this effect runs twice per mount (initial state, then mount) and four
-   *  times under StrictMode, all for the same round. */
+  /** Writes one log row per *your own* discard the round was fast-forwarded through, so a shared
+   *  link (or a rewind) arrives with the turns behind it on the record instead of a blank log —
+   *  `table.replayed` is every seat's replayed decision now (D-L1), filtered down to this seat's
+   *  own discards for the row itself, but each row's rewind link is the *full* log truncated to
+   *  that discard's actual position, not just "your discards so far": a mid-hand rewind has to
+   *  reproduce the opponents' own melds and discards exactly as they were, not re-simulate them.
+   *  Keyed on the situation's identity: this effect runs twice per mount (initial state, then
+   *  mount) and four times under StrictMode, all for the same round. */
   function logReplay() {
     if (loggedReplay.current === situation) return
     loggedReplay.current = situation
     const base = table.situation()
-    table.replayed.forEach((tile, i) =>
+    table.replayed.forEach((entry, i) => {
+      if (entry.kind !== 'discard' || entry.seat !== seatIndex) return
       log(
         'log.replay',
-        { tile: tileCode(tile.id, tile.red) },
-        [tile],
+        { tile: tileCode(entry.tile.id, entry.tile.red) },
+        [entry.tile],
         undefined,
-        encodeSituation({ ...base, river: table.replayed.slice(0, i) }),
-      ),
-    )
+        encodeSituation({ ...base, log: table.replayed.slice(0, i) }),
+      )
+    })
   }
 
   useEffect(() => {

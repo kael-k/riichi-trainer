@@ -91,7 +91,7 @@ export function useEfficiencySoloRound(
     players,
     seatIndex,
     options: matchOptions,
-    replay: situation.river,
+    replay: situation.log,
     stopAtTenpai: true,
     onUserDraw(ctx: UserDrawContext) {
       if (!pending.current) return
@@ -120,19 +120,22 @@ export function useEfficiencySoloRound(
     },
   })
 
+  // one seat, so every replayed discard is already this seat's own — see the table hook's own
+  // `logReplay` for why the rewind link is the full log truncated to that discard's position
   function logReplay() {
     if (loggedReplay.current === situation) return
     loggedReplay.current = situation
     const base = table.situation()
-    table.replayed.forEach((tile, i) =>
+    table.replayed.forEach((entry, i) => {
+      if (entry.kind !== 'discard') return
       log(
         'log.replay',
-        { tile: tileCode(tile.id, tile.red) },
-        [tile],
+        { tile: tileCode(entry.tile.id, entry.tile.red) },
+        [entry.tile],
         undefined,
-        encodeSituation({ ...base, river: table.replayed.slice(0, i) }),
-      ),
-    )
+        encodeSituation({ ...base, log: table.replayed.slice(0, i) }),
+      )
+    })
   }
 
   useEffect(() => {

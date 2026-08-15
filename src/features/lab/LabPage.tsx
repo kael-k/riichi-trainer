@@ -8,6 +8,7 @@ import { HandDisplay, Tile, UkeireTiles, WallDetails } from '../../components/ti
 import { TrainerLayout } from '../../components/TrainerLayout'
 import type { SafetyTier, TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
+import type { LogEntry } from '../../core/match'
 import { parseTenhou, serializeTenhouOrdered, tileCode, type ParsedTile } from '../../core/tiles'
 import { validateWall, wallWithHand, type WallError } from '../../core/wall'
 import { splitConcealedDrawn } from '../folding/useFoldingRound'
@@ -120,7 +121,7 @@ function wallErrorMessage(
 // useLabRound a fresh array identity every render — that would look like a new wall to
 // useTableRound and redeal on every render instead of once
 const EMPTY_WALL: ParsedTile[] = []
-const EMPTY_RIVER: ParsedTile[] = []
+const EMPTY_LOG: LogEntry[] = []
 
 export function LabPage() {
   const { t } = useTranslation()
@@ -185,7 +186,7 @@ export function LabPage() {
             ...urlSituation,
             wall: manual.wall,
             wallError: manual.error,
-            river: EMPTY_RIVER,
+            log: EMPTY_LOG,
             sanma: manual.sanma,
           }
         : urlSituation,
