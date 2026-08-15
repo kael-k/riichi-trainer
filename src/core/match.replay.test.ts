@@ -167,6 +167,25 @@ describe('replayLog', () => {
     expect(project(fresh)).toEqual(project(state))
   })
 
+  it("never leaves a claim stuck when the caller's real options.claims was off — forcing it on to drive replay must not invent a genuine pending decision the original recording never had", () => {
+    // claims stays unset (falsy) on every seed here — resolveReactions' ask-loop never suspends
+    // in these original matches at all, so any claim replayLog raises internally (via its own
+    // forced claims:true) must always resolve itself before returning, at every possible cut
+    // point, or a caller like useTableRound's buildRound would be left unable to draw the next
+    // live tile after replaying a link built under `claims: false` (the efficiency trainer's
+    // default) — this is the exact scenario that motivated the `options.claims` check.
+    for (let i = 0; i < 15; i++) {
+      const { state } = playMatch(`no-claims-${i}`, 4, YONMA)
+      for (let cut = 1; cut < state.log.length; cut += 3) {
+        const prefix = state.log.slice(0, cut)
+        const fresh = createMatch(state.wall, 4, YONMA)
+        const consumed = replayLog(fresh, YONMA, prefix)
+        expect(fresh.claim, `seed no-claims-${i} cut ${cut}`).toBeUndefined()
+        expect(consumed, `seed no-claims-${i} cut ${cut}`).toBeGreaterThanOrEqual(cut)
+      }
+    }
+  })
+
   it('replays two claims answered in sequence on the same discard', () => {
     const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1, 2) }
     // seat 0 discards 9s; seat 1 (kamicha) can chi it with 7s8s, seat 2 can pon it with 99s —

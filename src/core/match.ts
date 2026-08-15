@@ -959,16 +959,24 @@ export function replayLog(
     // asked them — its non-manual ron/call loops `return` the instant a winner or caller is
     // found, without ever touching a later seat's `couldHaveWon`. So once `resolved`, a pass is
     // safe to synthesize even past the log's own end; before that, running out of log genuinely
-    // means "not decided yet" (see the doc comment above) — with one more exception: an empty
-    // live wall. Passing a claim nobody has claimed simply hands the turn to the next seat, and if
+    // means "not decided yet" (see the doc comment above) — with two more exceptions. An empty
+    // live wall: passing a claim nobody has claimed simply hands the turn to the next seat, and if
     // the wall is already dry that seat's next `beginTurn` sets `state.ended = 'exhaustive'` on its
     // own, no further log entry required — exactly why the *last* discard of an exhausted hand
-    // logs no claim resolution at all today, live or replayed.
+    // logs no claim resolution at all today, live or replayed. And the caller's own real
+    // `options.claims` (not `replayOptions.claims`, which is always forced on): when it was false,
+    // the original recording could never have had a live human mid-decision here at all — every
+    // seat's ask-loop suspension is purely this function's own internal mechanism for asking a
+    // log instead of a person, so an unresolved claim at the log's end is proof the original
+    // resolved it silently within one `finishTurn` call (or never modelled asking about it in the
+    // first place), never a genuinely pending share link — safe to auto-pass regardless of the
+    // wall. Only when `options.claims` was really on can the log legitimately end exactly here
+    // because nobody had answered yet.
     let resolved = false
     while (state.claim) {
       const claim = state.claim
       if (i >= log.length) {
-        if (!resolved && state.liveWall.length > 0) return false
+        if (!resolved && options.claims && state.liveWall.length > 0) return false
         answerClaim(state, replayOptions, { kind: 'pass' })
         continue
       }
