@@ -34,6 +34,11 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    drawn tile moved onto `Hand` (`MatchState.drawn` deleted), `SeatView.dealer`,
    `Algorithm.discard` returning `{ tile, fromDrawn }`, and a fourth algorithm — `tsumogiri` —
    added as pure seam input with zero engine edits.
+3. **The full action log** (`PLAN-action-log.md`, uncommitted, T0–T9) — `MatchState.log`,
+   `replayLog` (consults no algorithm at all), `core/actionLog.ts`'s codec, and every wall-based
+   trainer's link (`Situation.log`, `FoldingUrl.log`) switched over. Scoring's wall link and
+   shanten's seed+hand format are untouched — nothing decision-shaped to log in either. mjai export
+   deferred as its own small follow-up. [ADR-0021](adr/0021-action-log-replay.md).
 
 ## In flight
 
@@ -93,10 +98,10 @@ Both re-verified present in the current tree:
   `_one` plurals). Believed intentional — those terms already read as their own words — but
   nothing distinguishes "deliberately locale-specific" from "someone forgot", so a genuinely new
   shared key could land in en/it only with nothing failing.
-- **`README.md` is stale.** It still documents the efficiency trainer's `opponents` toggle, the
-  old seed-and-wall-prefix situation format, and opponents that "tsumogiri every turn". It needs a
-  pass against the current routes and the wall-based URL format
-  ([ADR-0005](adr/0005-walls-not-seeds.md)).
+- **Source comments cite deleted plan documents.** `urlCodec.ts` (`D-10`, `D-11`, `D-12`),
+  `useScoringRound.ts` (`D-09`), `useEfficiencyRound.ts` (`D13`), `wall.ts`, `tableSettings.ts` and
+  `match.ts` (`D-L2/L4`) all reference decision tables that no longer exist in the tree. Each has
+  an ADR to point at instead; mechanical, but it touches files the parallel session is working in.
 
 ### CI
 
@@ -114,8 +119,6 @@ Not decided, deliberately not guessed:
   turn it off for the AI too. Known coarseness; no forcing case yet.
 - **Zero-manual boards** — watching a hand play itself out. Deferred to the lab with its own
   step/autoplay controls ([ADR-0011](adr/0011-at-least-one-manual-seat.md)).
-- **A replayable-match format** (rivers + calls dumped, so a mid-hand flip or a full played hand
-  is shareable). Needed by the lab; nothing in any URL records opponent lines today.
 - **Which browser-test framework** — Playwright, Cypress, Puppeteer, Selenium. `UX-TESTS-BUG.md`
   says pick one and stick to it. Lab tests are explicitly out of scope until the lab's design
   settles.
