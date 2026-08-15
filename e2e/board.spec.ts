@@ -139,12 +139,21 @@ test('a called hand keeps its melds and plate inside the felt', async ({ page })
   }
 })
 
-test('a phone-sized viewport comes up fullscreen', async ({ page, viewport }) => {
+test('only a phone-sized viewport comes up fullscreen', async ({ page, viewport }) => {
   // held sideways is the viewport with the least room of all, so it is the one that most needs
-  // this — and on a width-only check it was the one that never auto-entered
-  test.skip(!viewport || (viewport.width > 640 && viewport.height > 520), 'not a phone viewport')
+  // this — and on a width-only check it was the one that never auto-entered. Anywhere roomier the
+  // stage must stay inline until the reader asks for it, which is the same rule read the other way
+  const phone = !!viewport && (viewport.width <= 640 || viewport.height <= 520)
   await page.goto('/efficiency')
-  await expect(page.getByTestId('hand-strip')).toBeVisible()
+
+  const strip = page.getByTestId('hand-strip')
+  if (phone) {
+    await expect(strip).toBeVisible()
+    return
+  }
+  await expect(page.getByRole('button', { name: 'Full screen table' })).toBeVisible()
+  await expect(strip).toHaveCount(0)
+  await enterFullscreen(page)
 })
 
 test('efficiency-solo: your river is on screen in fullscreen', async ({ page }) => {
