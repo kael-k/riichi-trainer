@@ -348,6 +348,7 @@ function seatView(state: MatchState, options: MatchOptions, seat: number): SeatV
     })),
     round: options.round,
     seatWind: HONOR + seat,
+    dealer: seat === 0,
     turn: state.turn,
     wallLeft: state.liveWall.length,
     doraIndicators: state.doraIndicators,

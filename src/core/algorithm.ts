@@ -46,6 +46,9 @@ export interface SeatView {
   /** Board. */
   readonly round: TileId
   readonly seatWind: TileId
+  /** Whether this seat is the dealer this hand — `seatWind === HONOR`, free off `seatWind`
+   *  itself, added so no algorithm has to re-derive it. */
+  readonly dealer: boolean
   readonly turn: number
   readonly wallLeft: number
   readonly doraIndicators: readonly ParsedTile[]

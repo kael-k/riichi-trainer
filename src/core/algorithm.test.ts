@@ -20,6 +20,7 @@ function baseView(overrides: Partial<SeatView> = {}): SeatView {
     players: [],
     round: HONOR,
     seatWind: HONOR,
+    dealer: true,
     turn: 1,
     wallLeft: 70,
     doraIndicators: [],
