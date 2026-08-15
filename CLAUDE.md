@@ -103,9 +103,8 @@ between them, `seenBy` alone in three implementations.
 **`core/table.ts` is pure** and works over a `TableCore` (`match`, `options`, `seatIndex`, and the
 per-page bookkeeping around them): `actingSeat` (whose turn it is right now — see the match-engine
 section), `goRound` (play every AI-decided seat, stop at the next manual turn, a pending claim, or
-the hand's end), one canonical `seenBy`, `yourDiscards`, `snapshotTable` (the render-ready
-`TableSnapshot`, `seatRead` per seat folded in), `replayDiscards`, `splitDrawn`, and `analysisOf`
-returning a `TableAnalysis`. That analysis is **lazy getters, not eager fields** — solo never reads
+the hand's end), one canonical `seenBy`, `snapshotTable` (the render-ready `TableSnapshot`, with
+`seatRead` per seat folded in), `splitDrawn`, and `analysisOf` returning a `TableAnalysis`. That analysis is **lazy getters, not eager fields** — solo never reads
 danger, folding never reads ukeire, and `evaluateDiscards` costs ~476 shanten probes per turn.
 
 **`useTableRound(input)`** owns the round state for efficiency (both routes), scoring and the lab,

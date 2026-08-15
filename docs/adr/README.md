@@ -28,6 +28,7 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0003](0003-hand-counts-only.md)                            | `Hand` stores counts; redness travels beside it              | **TO REVIEW** |
 | [0004](0004-ordinal-danger.md)                              | Danger is ordinal — no EV, deal-in rates, or push/fold grading | **TO REVIEW** |
 | [0005](0005-walls-not-seeds.md)                             | Boards are shared as explicit validated walls, not seeds     | Accepted  |
+| [0021](0021-action-log-replay.md)                           | Shared links replay a full action log, not your own river    | Accepted  |
 | [0006](0006-one-match-engine.md)                            | One match engine; trainers differ only by stop condition     | Accepted  |
 
 ### Seats and algorithms
@@ -59,8 +60,8 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0019](0019-mobile-first-board.md)                          | Mobile-first: a square board and fullscreen as a place       | Accepted  |
 | [0020](0020-no-back-compat-pre-release.md)                  | No backward compatibility while pre-release                  | Accepted  |
 
-Numbering runs 0001–0020 with no gaps. Next new ADR is 0021 — take the next free number and do not
-reuse one, even if an ADR is later withdrawn.
+Numbering runs 0001–0021 with no gaps. Take the next free number, and never reuse one — not even
+if an ADR is later withdrawn.
 
 ## Template
 
