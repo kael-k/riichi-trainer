@@ -7,11 +7,12 @@ import { improvingTiles, totalRemaining, ukeire } from './ukeire'
 import { HONOR, isDragon, isTerminalOrHonor, suitOf, type RiverTile, type TileId } from './tiles'
 
 /** How the engine plays a seat. `'defense'` is full betaori — the folding trainer switches every
- *  seat that missed its riichi target into this once the target is reached. `'manual'` is not an
- *  AI style at all but the absence of one: the engine stops deciding for that seat and asks
+ *  seat that missed its riichi target into this once the target is reached. `'tsumogiri'`
+ *  discards whatever it drew, every turn, no hand management at all. `'manual'` is not an AI
+ *  style at all but the absence of one: the engine stops deciding for that seat and asks
  *  instead. The dispatch itself (`ALGORITHMS`, one object per AI style) lives in
  *  `core/algorithm.ts`, built on the pure functions below. */
-export type SeatAlgorithm = 'efficiency' | 'defense' | 'manual'
+export type SeatAlgorithm = 'efficiency' | 'defense' | 'tsumogiri' | 'manual'
 
 /**
  * The moves `core/algorithm.ts`'s two `AIAlgorithm`s are written in terms of. Every function here

@@ -129,6 +129,32 @@ const defense: Algorithm = {
   kita: () => false,
 }
 
+/** Lowest-id tile currently held — dependency-free, deterministic fallback for `tsumogiri` on the
+ *  one turn it has nothing to tsumogiri: no `drawn` at all. Reachable only by flipping a seat to
+ *  `tsumogiri` mid-hand right after it called (D6 — algorithms are live, so the flip can land
+ *  between a pon and this seat's own next draw). */
+function lowestHeld(hand: Hand): TileId {
+  for (let id = 0; id < hand.counts.length; id++) if (hand.counts[id] > 0) return id
+  throw new Error('lowestHeld: empty hand')
+}
+
+/** Discards whatever it just drew, every turn — no hand management at all. Proves the seam's
+ *  input, not just its shape: `SeatView.hand.drawn` is what makes "throw what I drew" expressible
+ *  in the first place (T1). Never calls, never declares, never wins — `win: false` is deliberate:
+ *  declining sets `missedWin`, so a tsumogiri seat goes furiten early and shows the badge for it.
+ *  Harmless, since it never wins anyway, but it does mean this seat overlaps `defense` on that one
+ *  axis. */
+const tsumogiri: Algorithm = {
+  discard: (view) =>
+    view.hand.drawn
+      ? { tile: view.hand.drawn.id, fromDrawn: true }
+      : { tile: lowestHeld(view.hand), fromDrawn: false },
+  call: () => null,
+  riichi: () => false,
+  win: () => false,
+  kita: () => false,
+}
+
 /** One object per AI algorithm. Adding a new one is this object plus its own `AIAlgorithm` member
  *  — nothing in `match.ts` changes. */
-export const ALGORITHMS: Record<AIAlgorithm, Algorithm> = { efficiency, defense }
+export const ALGORITHMS: Record<AIAlgorithm, Algorithm> = { efficiency, defense, tsumogiri }

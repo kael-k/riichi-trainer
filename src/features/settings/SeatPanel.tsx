@@ -7,7 +7,7 @@ import { SegmentedButton, SettingRow } from './SettingsDialog'
 import { resolveSeatConfig, withSeatMode, type SeatConfig } from './tableSettings'
 import type { SeatAlgorithm } from '../../core/policy'
 
-const MODES: SeatAlgorithm[] = ['efficiency', 'defense', 'manual']
+const MODES: SeatAlgorithm[] = ['efficiency', 'defense', 'tsumogiri', 'manual']
 
 export interface SeatButtonProps {
   /** The seat this button configures. */

@@ -65,11 +65,13 @@
     "mode": {
       "efficiency": "Efficiency",
       "defense": "Defend",
+      "tsumogiri": "Tsumogiri",
       "manual": "Manual"
     },
     "modeHint": {
       "efficiency": "Plays the most efficient discard every turn.",
       "defense": "Folds — plays the safest tile against every seat in riichi.",
+      "tsumogiri": "Discards whatever it just drew, every turn — no hand management at all.",
       "manual": "You play this seat: discards, calls and riichi are your choice."
     },
     "claims": "Ask me to call on other seats’ discards",

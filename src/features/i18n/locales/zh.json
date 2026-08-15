@@ -61,11 +61,13 @@
     "mode": {
       "efficiency": "效率",
       "defense": "防守",
+      "tsumogiri": "摸切",
       "manual": "手动"
     },
     "modeHint": {
       "efficiency": "每巡打出效率最高的牌。",
       "defense": "防守：对所有立直的对手打出最安全的牌。",
+      "tsumogiri": "每巡直接打出刚摸到的牌，完全不整理手牌。",
       "manual": "这个座位由你操作——打牌、鸣牌和立直都由你决定。"
     },
     "claims": "他家出牌时，先询问是否鸣牌",

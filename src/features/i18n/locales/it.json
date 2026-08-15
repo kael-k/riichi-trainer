@@ -65,11 +65,13 @@
     "mode": {
       "efficiency": "Efficienza",
       "defense": "Difesa",
+      "tsumogiri": "Tsumogiri",
       "manual": "Manuale"
     },
     "modeHint": {
       "efficiency": "Gioca lo scarto più efficiente ad ogni turno.",
       "defense": "Si difende: scarta la tessera più sicura contro ogni riichi in corso.",
+      "tsumogiri": "Scarta sempre la tessera appena pescata, senza gestire la mano.",
       "manual": "Giochi tu questo posto: scarti, chiamate e riichi sono una tua scelta."
     },
     "claims": "Chiedimi conferma prima di chiamare gli scarti degli altri posti",

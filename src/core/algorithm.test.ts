@@ -44,6 +44,37 @@ describe('ALGORITHMS.kita', () => {
   })
 })
 
+describe('ALGORITHMS.tsumogiri', () => {
+  it('discards exactly the drawn tile, marked fromDrawn, never calls/declares/wins/pulls', () => {
+    const hand = handFromTenhou('19m19p19s1234567z')
+    hand.drawn = parseTenhou('9s')[0]
+    const view = baseView({ hand })
+
+    expect(ALGORITHMS.tsumogiri.discard(view)).toEqual({
+      tile: parseTenhou('9s')[0].id,
+      fromDrawn: true,
+    })
+    expect(ALGORITHMS.tsumogiri.call(view, parseTenhou('1m')[0].id, true)).toBeNull()
+    expect(ALGORITHMS.tsumogiri.riichi(view)).toBe(false)
+    expect(ALGORITHMS.tsumogiri.win(view, { tile: parseTenhou('9s')[0], score: {} as never })).toBe(
+      false,
+    )
+    expect(ALGORITHMS.tsumogiri.kita(view)).toBe(false)
+  })
+
+  it('falls back to the lowest held tile, not marked fromDrawn, when there is nothing to tsumogiri', () => {
+    // reachable by flipping a seat to tsumogiri mid-hand right after it called (D6) — no `drawn`
+    // sits on the hand between a call and this seat's own next draw
+    const hand = handFromTenhou('19m19p19s1234567z')
+    const view = baseView({ hand })
+
+    expect(ALGORITHMS.tsumogiri.discard(view)).toEqual({
+      tile: parseTenhou('1m')[0].id,
+      fromDrawn: false,
+    })
+  })
+})
+
 describe('a new algorithm needs nothing from match.ts', () => {
   it('compiles and decides against the same SeatView/Algorithm contract the real two use', () => {
     // deliberately trivial — the point is only that authoring this needed nothing beyond what
