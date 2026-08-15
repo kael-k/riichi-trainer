@@ -663,6 +663,20 @@ describe('algorithms option', () => {
       expect(state.players[0].melds, `seed algorithm-defense-${i}`).toHaveLength(0)
     }
   })
+
+  it('a seat seeded on tsumogiri never declares riichi, never calls, and discards straight off every draw', () => {
+    for (let i = 0; i < 15; i++) {
+      const { state } = playMatch(`algorithm-tsumogiri-${i}`, 4, {
+        ...YONMA,
+        algorithms: ['tsumogiri'],
+      })
+      expect(state.players[0].riichiAt, `seed algorithm-tsumogiri-${i}`).toBeUndefined()
+      expect(state.players[0].melds, `seed algorithm-tsumogiri-${i}`).toHaveLength(0)
+      for (const tile of state.players[0].river) {
+        expect(tile.tsumogiri, `seed algorithm-tsumogiri-${i}`).toBe(true)
+      }
+    }
+  })
 })
 
 describe('manual riichi declaration', () => {

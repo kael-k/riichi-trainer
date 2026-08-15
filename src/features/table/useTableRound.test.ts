@@ -265,6 +265,33 @@ describe('live algorithm changes (D6)', () => {
     expect(result.current.drawn).toEqual(drawn)
   })
 
+  it('flipping an opponent to tsumogiri never touches the running match either (T4)', () => {
+    // tsumogiri's own discard reads `view.hand.drawn` directly rather than running
+    // chooseDiscard/chooseFold, so it gets its own regression rather than trusting the general
+    // efficiency<->defense case above to cover it
+    const wall = tenpaiWall('live-tsumogiri-seed')
+    const options: MatchOptions = {
+      ...BARE,
+      algorithms: ['manual', 'efficiency', 'efficiency', 'efficiency'],
+    }
+    const { result, rerender } = renderHook(
+      (props: { options: MatchOptions }) =>
+        useTableRound({ wall, players: 4, seatIndex: 0, options: props.options }),
+      { initialProps: { options } },
+    )
+    act(() => result.current.discard(0))
+    const { turn, rivers, liveWall, drawn } = result.current
+
+    rerender({
+      options: { ...options, algorithms: ['manual', 'tsumogiri', 'efficiency', 'efficiency'] },
+    })
+
+    expect(result.current.turn).toBe(turn)
+    expect(result.current.rivers).toEqual(rivers)
+    expect(result.current.liveWall).toEqual(liveWall)
+    expect(result.current.drawn).toEqual(drawn)
+  })
+
   it('AI to manual: untouched immediately, then pauses for its own turn once it arrives', () => {
     const wall = tenpaiWall('live-ai-to-manual-seed')
     const options: MatchOptions = {
