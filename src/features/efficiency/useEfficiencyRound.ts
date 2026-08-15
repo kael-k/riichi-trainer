@@ -20,11 +20,11 @@ export interface RoundOptions {
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma: boolean
   /** Who plays which seat, from the board's seat panel; `null` is the shipped default (you at
-   *  the link's own seat, every other seat on the efficiency AI). Page state (D15), not settings
+   *  the link's own seat, every other seat on the efficiency AI). Page state (ADR-0015), not settings
    *  — see `EfficiencyPage`. */
   seats: SeatConfig | null
   /** Ask manual seats about other seats' discards (`TableSettings.claims`) — board-wide and
-   *  persisted, unlike `seats` itself (D14). */
+   *  persisted, unlike `seats` itself (ADR-0015). */
   claims: boolean
   /** The seat panel's "show tenpai/waits" setting — threaded to `useTableRound`, which is where
    *  the per-seat cost of computing it is actually paid. */
@@ -44,7 +44,7 @@ export function useEfficiencyRound(
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
   // the graded seat is decided by the link alone, never by the seat panel: flipping your own
-  // seat's algorithm live must freeze grading in place (D13), not move it to whichever other seat
+  // seat's algorithm live must freeze grading in place (ADR-0008), not move it to whichever other seat
   // the panel happens to have marked manual — so this never goes through `options.seats`
   const seatIndex = linkSeat
   const algorithms = resolveSeatConfig(options.seats, players, seatIndex).modes
@@ -146,7 +146,7 @@ export function useEfficiencyRound(
 
   /** Writes one log row per *your own* discard the round was fast-forwarded through, so a shared
    *  link (or a rewind) arrives with the turns behind it on the record instead of a blank log —
-   *  `table.replayed` is every seat's replayed decision now (D-L1), filtered down to this seat's
+   *  `table.replayed` is every seat's replayed decision now (ADR-0021), filtered down to this seat's
    *  own discards for the row itself, but each row's rewind link is the *full* log truncated to
    *  that discard's actual position, not just "your discards so far": a mid-hand rewind has to
    *  reproduce the opponents' own melds and discards exactly as they were, not re-simulate them.

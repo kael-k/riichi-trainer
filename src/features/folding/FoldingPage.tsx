@@ -72,7 +72,7 @@ export function FoldingPage() {
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  // folding always shows the board (reading it is the drill); the D-14 reveal gate below
+  // folding always shows the board (reading it is the drill); the reveal gate below
   // withholds real tile ids until `round.finished` or `showOpponentHands`
   const {
     showWall,
@@ -89,7 +89,7 @@ export function FoldingPage() {
   const updateTable = (patch: Partial<TableSettings>) =>
     update('table', { apps: { ...rawTable.apps, folding: { ...rawTable.apps.folding, ...patch } } })
 
-  // per-seat algorithms are board state, not a preference (D15): page state with the same
+  // per-seat algorithms are board state, not a preference (ADR-0015): page state with the same
   // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
   // persisted. `claims` (above) is the one part of the old seat panel that *is* a reader
   // preference, so it stays in settings.
@@ -239,7 +239,7 @@ export function FoldingPage() {
       melds: round.melds[seat],
       nuki: round.nuki[seat],
       riichi: round.riichi[seat],
-      // `round.boardHands` is already the D-14 gate for a threat: face-down filler at the right
+      // `round.boardHands` is already the reveal gate for a threat: face-down filler at the right
       // count until `round.finished` or `showOpponentHands`, real tiles after (and always real
       // for a seat someone plays, `boardHandsOf`'s own `isManual` check). A bystander's tiles are
       // real throughout, same as an ordinary opponent's elsewhere
@@ -251,7 +251,7 @@ export function FoldingPage() {
   const answersHeld = settings.feedbackAtEnd && !round.finished
 
   // the bottom hand follows perspective, not the drill's own graded seat: rotating to watch
-  // another seat shows that seat's hand — `boardHands` already carries the D-14 reveal gate, so a
+  // another seat shows that seat's hand — `boardHands` already carries the reveal gate, so a
   // threat's tiles stay filler at the data level regardless of where the board is drawn from.
   // Only when the perspective is genuinely the seat whose turn it is can any of it be acted on
   const viewingManual = round.manualSeats.includes(perspective)

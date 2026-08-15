@@ -32,8 +32,8 @@ export interface SeatButtonProps {
    *  defined to score — the algorithm choice is still offered for every seat. */
   ownSeatOnlyManual?: boolean
   /** Ask this manual seat about other seats' discards (`TableSettings.claims`) — board-wide and
-   *  persisted (D14), so it is threaded in and out separately from `config`/`onChange`, which
-   *  carry only the per-seat algorithms (page state, D15). */
+   *  persisted (ADR-0015), so it is threaded in and out separately from `config`/`onChange`, which
+   *  carry only the per-seat algorithms (page state, ADR-0015). */
   claims: boolean
   onClaimsChange: (claims: boolean) => void
 }

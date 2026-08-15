@@ -41,7 +41,7 @@ import { WINDS, type Situation } from '../situation/urlCodec'
  * `core/table.ts` already centralizes. Scoring and folding are the two exceptions: scoring never
  * re-touches its match after generation (its only entry point is `onAgariCall`, Task 2 of this
  * plan), and folding drives `beginTurn`/`finishTurn` itself through its own thin hook on
- * `core/table.ts`'s primitives (REQ-07, D-08) because its mid-hand algorithm flip needs
+ * `core/table.ts`'s primitives (ADR-0012, ADR-0012) because its mid-hand algorithm flip needs
  * turn-granularity control this hook's three-callback contract does not offer.
  */
 
@@ -50,7 +50,7 @@ export interface TableRoundInput {
   players: number
   seatIndex: number
   options: MatchOptions
-  /** Every seat's decisions so far, replayed silently (D-06) via `replayLog` to fast-forward to a
+  /** Every seat's decisions so far, replayed silently (ADR-0012) via `replayLog` to fast-forward to a
    *  mid-round decision point — a shared link or a log rewind, consulting no algorithm at all
    *  (which is what makes it immune to a later algorithm change), not extra tiles: everything
    *  named here is already accounted for by `wall`. */
@@ -74,7 +74,7 @@ export interface UserDrawContext {
 
 /** `yours`/`best`/`danger` are getters over `analysis` — a consumer that only wants tiers never
  *  triggers the ukeire ranking, and one that only wants ukeire never triggers the danger
- *  assessment (D-05). `analysis` is the *same* object `onUserDraw` handed over: reading these
+ *  assessment (ADR-0012). `analysis` is the *same* object `onUserDraw` handed over: reading these
  *  getters synchronously inside `onUserDiscard`, before returning, is what keeps them measured
  *  against the pre-throw hand — `useTableRound` fires this callback before the discard itself
  *  mutates the board, but a consumer that stashes `DiscardStats` and reads it only after the
@@ -130,7 +130,7 @@ function statsFor(
 export function useTableRound(input: TableRoundInput) {
   const core = useRef<TableCore | undefined>(undefined)
   // suppresses onUserDraw/onUserDiscard/onAgariCall while a recorded discard list is being fast
-  // forwarded (D-06) — the board still advances underneath, only the callbacks stay silent
+  // forwarded (ADR-0012) — the board still advances underneath, only the callbacks stay silent
   const replaying = useRef(false)
   // the analysis handed to the most recent onUserDraw, so onUserDiscard grades the pre-throw hand
   const drawAnalysis = useRef<TableAnalysis | undefined>(undefined)
@@ -282,7 +282,7 @@ export function useTableRound(input: TableRoundInput) {
       shanten(c.match.players[input.seatIndex].hand) <= 0
 
     // the recorded log reconstructs every seat's turn exactly, consulting no algorithm at all
-    // (D-L4); once it runs out, live play picks up from wherever it stopped — every AI-decided
+    // (ADR-0021); once it runs out, live play picks up from wherever it stopped — every AI-decided
     // seat plays on (`goRound`) and the next manual turn draws (`beginTurn`). Guarded on
     // `hand.drawn`, unlike the pre-log version's unconditional call: `replayLog` (unlike
     // `goRound`) can leave *any* seat, manual included, already mid-turn with its 14th tile
@@ -336,7 +336,7 @@ export function useTableRound(input: TableRoundInput) {
     restartCount,
   ])
 
-  // algorithm changes are live (D6): flipping a seat's algorithm must never redeal — this effect
+  // algorithm changes are live (ADR-0008): flipping a seat's algorithm must never redeal — this effect
   // writes the latest values straight onto the running match's players instead. Most of the time
   // that's the whole story: `goRound`/`finishTurn` already read `player.algorithm` fresh on every
   // call, so a seat that only *becomes* relevant later (goRound hasn't reached it yet) just works

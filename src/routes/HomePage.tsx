@@ -10,7 +10,7 @@ import { SettingsButton } from '../features/settings/SettingsDialog'
 const REPO_URL = 'https://github.com/kael-k/riichi-trainer'
 
 /** Solitaire: one seat, no board — a phone-sized drill. Table: a full board with real seats.
- *  The route is the only thing that decides which drill a card opens (D-01) — the section a card
+ *  The route is the only thing that decides which drill a card opens (ADR-0013) — the section a card
  *  sits under is purely a home-page grouping, not a hidden setting. */
 const SOLITAIRE_MODES = [
   {

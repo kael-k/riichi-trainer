@@ -85,7 +85,7 @@ export function completeWall(
   return [...prefix, ...remainder]
 }
 
-/** A rejected wall, naming where the fault sits and never repaired into a playable one (D-12):
+/** A rejected wall, naming where the fault sits and never repaired into a playable one (ADR-0005):
  *  `zone` is which part of the wall the offending tile sits in, `seat` is set only for
  *  `zone: 'hand'`, and `tile` is unset only for a `'length'` fault, which has no single tile. */
 export interface WallError {
@@ -109,7 +109,7 @@ function zoneAt(
   return { zone: 'wall' }
 }
 
-/** Untrusted-input gate for a `wall=` link (D-12): length within bounds, no kind exceeding four
+/** Untrusted-input gate for a `wall=` link (ADR-0005): length within bounds, no kind exceeding four
  *  copies (exactly four once the wall reaches full length), at most one red per suit, no 2m-8m
  *  under sanma. Returns the first fault found, naming its zone and tile — never mutates `tiles`
  *  and never returns a repaired wall, since a repaired wall is a different board than the one the

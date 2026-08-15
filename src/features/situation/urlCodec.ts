@@ -17,10 +17,10 @@ export interface Situation {
   /** Explicit wall in draw order for wall-based trainers: seat 0's 13 tiles, seat 1's 13, …,
    *  then the live draws, then the last 14 tiles as the dead wall (dora indicator first). A
    *  short wall is a prefix — the remainder is completed at random from the copies it leaves
-   *  (D-11). This is the deal itself, not a "prefix consumed on next draw" the way `wall` used
-   *  to mean before this phase (D-10). */
+   *  (ADR-0005). This is the deal itself, not a "prefix consumed on next draw" the way `wall` used
+   *  to mean before this phase (ADR-0005). */
   wall: ParsedTile[]
-  /** Set when `wall` failed `validateWall` (D-12) — `wall` is then empty and must never reach
+  /** Set when `wall` failed `validateWall` (ADR-0005) — `wall` is then empty and must never reach
    *  `createMatch`. This is the one codec in the repo that rejects rather than silently drops
    *  (contrast `parseTenhou`, which drops a malformed digit): a wall is positionally meaningful,
    *  so repairing it would hand back a different board than the link claimed to share. */

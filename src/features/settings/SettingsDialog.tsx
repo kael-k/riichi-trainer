@@ -249,7 +249,7 @@ export function GlobalSettings() {
 /** The board-rendering settings shared by every trainer that draws a `Table` (efficiency, scoring,
  *  folding, the lab): whether opponent hands and the wall are shown. Its own section, separate
  *  from Global — these are about what the board shows, not the app as a whole. Edits the *global*
- *  layer of `table` (`tableSettings.ts`, D-13); the per-app override layer has no UI this phase
+ *  layer of `table` (`tableSettings.ts`, ADR-0015); the per-app override layer has no UI this phase
  *  (absent key means inherit — a three-state control is not needed). `'efficiency'` is an
  *  arbitrary representative app id: every field read here resolves off `global` alone, so which
  *  app id is passed only matters for a field that had a per-app override, and none does. */

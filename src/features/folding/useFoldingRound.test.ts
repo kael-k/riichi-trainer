@@ -344,7 +344,7 @@ describe('per-seat manual configuration', () => {
     expect(result.current.hand).toEqual(handAfterDiscard)
   })
 
-  it('flipping a seat’s mode mid-hand patches the live match instead of rebuilding it (D6/D15)', async () => {
+  it('flipping a seat’s mode mid-hand patches the live match instead of rebuilding it (ADR-0008, ADR-0015)', async () => {
     const urlData: FoldingUrl = { wall: wall('live-flip-seed') }
     const { result, rerender } = renderHook(
       ({ options }: { options: RoundOptions }) => useFoldingRound(urlData, options),
@@ -352,7 +352,7 @@ describe('per-seat manual configuration', () => {
     )
     await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 })
     const { turn, hand, liveWall } = result.current
-    // any seat but the drill's own graded one — flipping that one is a different feature (D13)
+    // any seat but the drill's own graded one — flipping that one is a different feature (ADR-0008)
     const other = [0, 1, 2, 3].find((seat) => seat !== result.current.seatIndex)!
     const flipped: SeatAlgorithm =
       result.current.algorithms[other] === 'defense' ? 'efficiency' : 'defense'
@@ -378,7 +378,7 @@ describe('per-seat manual configuration', () => {
   })
 })
 
-describe('boardHands (the D-14 reveal gate)', () => {
+describe('boardHands (the reveal gate)', () => {
   it('gives every threat face-down filler at the right count, mid-hand', async () => {
     const result = await deal({ wall: wall('boardhands-seed') })
     expect(result.current.threatSeats.length).toBeGreaterThan(0)

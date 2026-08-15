@@ -62,7 +62,7 @@ export interface SeatView {
 
 /** A win offered to `win()`: the tile, the discarder on a ron (absent on a tsumo), and how much
  *  it scores. `tryWin` (`match.ts`) has already computed all three by the time it asks — an
- *  algorithm that can't see what it declines can't price it (D9). */
+ *  algorithm that can't see what it declines can't price it (ADR-0009). */
 export interface WinCandidate {
   tile: ParsedTile
   /** Discarder's seat on a ron; absent on a tsumo. */
@@ -131,7 +131,7 @@ const defense: Algorithm = {
 
 /** Lowest-id tile currently held — dependency-free, deterministic fallback for `tsumogiri` on the
  *  one turn it has nothing to tsumogiri: no `drawn` at all. Reachable only by flipping a seat to
- *  `tsumogiri` mid-hand right after it called (D6 — algorithms are live, so the flip can land
+ *  `tsumogiri` mid-hand right after it called (ADR-0008 — algorithms are live, so the flip can land
  *  between a pon and this seat's own next draw). */
 function lowestHeld(hand: Hand): TileId {
   for (let id = 0; id < hand.counts.length; id++) if (hand.counts[id] > 0) return id

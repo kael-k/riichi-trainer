@@ -63,7 +63,7 @@ describe('ALGORITHMS.tsumogiri', () => {
   })
 
   it('falls back to the lowest held tile, not marked fromDrawn, when there is nothing to tsumogiri', () => {
-    // reachable by flipping a seat to tsumogiri mid-hand right after it called (D6) — no `drawn`
+    // reachable by flipping a seat to tsumogiri mid-hand right after it called (ADR-0008) — no `drawn`
     // sits on the hand between a call and this seat's own next draw
     const hand = handFromTenhou('19m19p19s1234567z')
     const view = baseView({ hand })

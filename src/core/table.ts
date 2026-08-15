@@ -181,7 +181,7 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
   }
 }
 
-/** Per-turn analysis for `core`'s own seat, computed lazily and cached per object (D-05): the
+/** Per-turn analysis for `core`'s own seat, computed lazily and cached per object (ADR-0012): the
  *  solitaire trainer never reads `danger`, the folding trainer never reads `ranked`, and
  *  `evaluateDiscards` costs roughly 476 shanten probes per turn — nobody should pay for analysis
  *  they never read. An analysis object is a snapshot of one moment: a consumer captures it at draw

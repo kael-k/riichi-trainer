@@ -52,7 +52,7 @@ export interface Settings {
      *  next turn, so the whole fold is read from the board. */
     feedbackAtEnd: boolean
   }
-  /** The six table settings shared by every board-rendering app (REQ-04, D-13): a global default
+  /** The six table settings shared by every board-rendering app (ADR-0015, ADR-0015): a global default
    *  layer plus a per-app override layer, both `Partial` since an absent key means inherit —
    *  resolved by `resolveTableSettings`/`useTableSettings` (`tableSettings.ts`), never read
    *  straight off this section. */

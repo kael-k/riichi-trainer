@@ -25,7 +25,7 @@ const FULL: RoundOptions = {
   testPoints: true,
 }
 
-/** A genuinely random hand — no wall pinned, matching D-09: with no wall in the link, the
+/** A genuinely random hand — no wall pinned, matching ADR-0005: with no wall in the link, the
  *  trainer loops fresh random-wall matches rather than reproducing from a seed. */
 const EMPTY_WALL: ParsedTile[] = []
 function generated(): ScoringUrl {
@@ -34,7 +34,7 @@ function generated(): ScoringUrl {
 
 /** A deterministic wall a test can pin, replacing the old seed-only setup — `completeWall`
  *  keeps backing reproducible test fixtures even though seeds are dropped as the shared/URL
- *  record (D-09/D-02). */
+ *  record (ADR-0005, ADR-0013). */
 function fixtureWall(seed: string, sanma = false, aka = true): ScoringUrl {
   return { wall: completeWall([], sanma, aka, seed), situation: null }
 }

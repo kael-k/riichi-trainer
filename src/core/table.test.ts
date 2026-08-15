@@ -16,7 +16,7 @@ import {
 } from './table'
 
 // wraps the real implementations in vi.fn so laziness can be proved by call count, not inspection
-// (D-05) — every other test in this file still gets the real analysis, since these pass through
+// (ADR-0012) — every other test in this file still gets the real analysis, since these pass through
 vi.mock('./efficiency', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./efficiency')>()
   return { ...actual, evaluateDiscards: vi.fn(actual.evaluateDiscards) }

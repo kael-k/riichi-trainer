@@ -1,12 +1,12 @@
 import type { SeatAlgorithm } from '../../core/policy'
 import { useSettings } from './settingsStore'
 
-/** Who plays which seat. Board state, not a preference (D15): it is never persisted, living
+/** Who plays which seat. Board state, not a preference (ADR-0015): it is never persisted, living
  *  instead as page state with the same lifetime as `viewSeat` — seeded from the link, reset on
  *  every new hand — and `null` until the reader opens the panel: the shipped behaviour is exactly
  *  "you sit where the trainer seats you, every other seat is the efficiency AI", which
  *  `resolveSeatConfig` below reproduces from `null`. Unlike `modes`, `claims` answers a question
- *  about the *reader* rather than the board (D14), so it stays match-wide and persisted —
+ *  about the *reader* rather than the board (ADR-0015), so it stays match-wide and persisted —
  *  `TableSettings.claims` below, not a field here.
  *
  *  Perspective (which seat the board is drawn from) is not part of this either: it is its own
@@ -57,7 +57,7 @@ export function withSeatMode(
 }
 
 /** The settings every board-rendering trainer shares. One schema instead of each app growing its
- *  own copy of the same questions (REQ-04, D-13). */
+ *  own copy of the same questions (ADR-0015, ADR-0015). */
 export interface TableSettings {
   /** Let the threats ron and tsumo. Off makes the drill a rehearsal — the same ranking and the
    *  same grading, but the hand plays to the wall instead of ending on a deal-in. On by
@@ -84,7 +84,7 @@ export interface TableSettings {
   /** Reveal the live (and, where applicable, dead) wall in draw order. */
   showWall: boolean
   /** Ask manual seats about pon/chi/ron on other seats' discards (`MatchOptions.claims`). Stays
-   *  match-wide and persisted (D14, unlike the per-seat algorithms themselves — see `SeatConfig`)
+   *  match-wide and persisted (ADR-0015, unlike the per-seat algorithms themselves — see `SeatConfig`)
    *  since it answers a question about the reader, not about the board. Off in the graded drills,
    *  which ask one question per turn; on in the free-play lab. */
   claims: boolean
@@ -144,13 +144,13 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showWall: false,
     // the lab is the free-play board: manual seats are the point there, so it ships with the
     // claim prompts on. Per-seat `modes` themselves are never a settings default — they are page
-    // state seeded from the link (D15), same as every other app
+    // state seeded from the link (ADR-0015), same as every other app
     claims: true,
   },
 }
 
 /** Resolves one app's table settings: app default, then the global override layer, then that
- *  app's own override layer (D-13). Both override layers are `Partial` — absent-key-means-inherit
+ *  app's own override layer (ADR-0015). Both override layers are `Partial` — absent-key-means-inherit
  *  is exactly plain object-spread semantics, which is what makes a three-state inherit/on/off
  *  control unnecessary: a key a reader never touched simply isn't in the object. */
 export function resolveTableSettings(
@@ -178,7 +178,7 @@ export function useTableSettings(app: TableApp): TableSettings & { seatsEnabled:
     ...resolved,
     showWall: advanced && resolved.showWall,
     /** Whether the seat panel is offered at all — the per-seat algorithms themselves are page
-     *  state now (D15), not a settings value, so there is nothing here left to force off when the
+     *  state now (ADR-0015), not a settings value, so there is nothing here left to force off when the
      *  panel is hidden. */
     seatsEnabled,
   }

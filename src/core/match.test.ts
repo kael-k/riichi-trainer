@@ -736,7 +736,7 @@ describe('beginTurn declineTsumo', () => {
     expect(state.ended).toBeUndefined()
     expect(state.win).toBeUndefined()
     expect(tileCount(state.players[0].hand)).toBe(14) // drawn tile still sitting in hand, ungraded
-    expect(state.log).toHaveLength(0) // nothing to log — the decline itself is never logged (D-L2)
+    expect(state.log).toHaveLength(0) // nothing to log — the decline itself is never logged (ADR-0021)
   })
 })
 

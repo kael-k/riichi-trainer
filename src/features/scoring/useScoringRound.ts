@@ -48,7 +48,7 @@ interface State {
   match: MatchState | null
   /** Seat that won; the table seats the player there. */
   seat: number
-  /** Wall that reproduces this exact match, for the share link (D-09) — replaces the old
+  /** Wall that reproduces this exact match, for the share link (ADR-0005) — replaces the old
    *  seed-based record, which searched seed suffixes rather than random walls. */
   matchWall: ParsedTile[] | null
   actual: ScoreResult
@@ -71,7 +71,7 @@ function scoreSituation(situation: ScoringSituation, options: RoundOptions): Sco
 }
 
 /** The board's own draw-order content, standing in for the seed a wall-based match no longer
- *  carries (D-09) — the same wall always hashes to the same key, which is what lets `matchOptions`
+ *  carries (ADR-0005) — the same wall always hashes to the same key, which is what lets `matchOptions`
  *  and `situationFromWin` reproduce the same round wind and honba roll from the wall alone. */
 function wallKey(wall: ParsedTile[]): string {
   return serializeTenhouOrdered(wall)
@@ -112,7 +112,7 @@ function situationFromWin(
   }
 }
 
-/** Deals a fresh random wall (D-09: generation via random walls, not seed suffixes) and plays it
+/** Deals a fresh random wall (ADR-0005: generation via random walls, not seed suffixes) and plays it
  *  out, until `accept` takes one — `findMatchAsync`'s shape (capped attempts, yielding between
  *  them), but each attempt is an independently random wall rather than a seed suffix, since walls
  *  are no longer named by a seed. */
@@ -176,7 +176,7 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     }
   }
 
-  // scoring never re-touches its match after generation (D-07) — this is its one entry point,
+  // scoring never re-touches its match after generation (ADR-0012) — this is its one entry point,
   // typed with `AgariCall` to match the contract `useTableRound` hands its own consumers. Nothing
   // else in this hook reads `outcome.state.win`/`win` directly.
   const onAgariCall: AgariCall = (win) => {

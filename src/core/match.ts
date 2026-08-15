@@ -472,7 +472,7 @@ function tryWin(
   // a human's own win is never an explicit choice here — riichi.wiki agrees a legal tsumo always
   // ends the hand, and a manual seat's own ron only ever reaches this function because the reader
   // already asked for it (`answerClaim`). Every other seat's algorithm gets to see the priced
-  // candidate and decline it — an algorithm that can't see what it declines can't price it (D9).
+  // candidate and decline it — an algorithm that can't see what it declines can't price it (ADR-0009).
   if (player.algorithm !== 'manual') {
     const candidate: WinCandidate = { tile, from, score }
     if (!ALGORITHMS[player.algorithm].win(seatView(state, options, seat), candidate)) return null
@@ -532,7 +532,7 @@ export function beginTurn(
   let tile = take(state, player)!
   events.push({ kind: 'draw', seat: state.seat, tile })
 
-  // sanma nukidora: whether to pull a held north is the algorithm's own call (D8) — `efficiency`
+  // sanma nukidora: whether to pull a held north is the algorithm's own call (ADR-0009) — `efficiency`
   // prices it exactly as the efficiency trainer grades a manual seat's own pull, `defense` never
   // pulls (leaving the hand, not chasing dora). A fresh `SeatView` every iteration, same discipline
   // as `analysisOf`'s own doc comment: the hand (and `state.visible`) just changed underneath it,
@@ -904,7 +904,7 @@ export function reconsiderClaim(state: MatchState, options: MatchOptions): Match
  * `'manual'` for the duration, which is what makes `finishTurn`'s `discard`/`declareRiichi`
  * arguments, `answerClaim` and `beginTurn`'s `declineTsumo` the *only* things any decision can come
  * from. Restored to each seat's real algorithm before returning, live-flip style (same
- * override-then-restore shape `useTableRound.ts`'s D6 sync effect already uses).
+ * override-then-restore shape `useTableRound.ts`'s ADR-0008 sync effect already uses).
  *
  * Stops quietly rather than throwing whenever the
  * hand ends, the log runs out, or the next entry doesn't describe what the hand is actually doing
@@ -949,7 +949,7 @@ export function replayLog(
 
   // drains every claim `state` is currently suspended on, feeding each seat's answer from the log
   // when present and synthesizing a pass when the log has more to say but not about this claim
-  // (D-L2/L4) — but never past the log's own end, per the doc comment above.
+  // (ADR-0021) — but never past the log's own end, per the doc comment above.
   const resolveClaims = (): boolean => {
     // once a real, log-matched ron or call has settled *this* discard, every seat still to be
     // asked is provably irrelevant to the outcome — seat-order priority means the confirmed ron
@@ -1127,7 +1127,7 @@ export function playMatch(
 }
 
 /** Plays a whole hand out from an explicit wall — the scoring trainer's random-wall search
- *  (D-09): unlike `playMatch`'s seed suffixing, a fresh wall is dealt per attempt by handing in a
+ *  (ADR-0005): unlike `playMatch`'s seed suffixing, a fresh wall is dealt per attempt by handing in a
  *  short/empty wall each time, and the wall actually dealt (`outcome.state.wall`) is what gets
  *  shared, not a seed. */
 export function playWall(

@@ -41,10 +41,10 @@ function parseWind(v: string | null): Wind {
 }
 
 export interface ScoringUrl {
-  /** Explicit wall in draw order, exactly `urlCodec.ts`'s `Situation.wall` (D-09/D-10): a full
+  /** Explicit wall in draw order, exactly `urlCodec.ts`'s `Situation.wall` (ADR-0005): a full
    *  wall, or a short prefix `createMatch` pads at random. Empty means "generate a fresh hand". */
   wall: ParsedTile[]
-  /** Set when `wall` failed `validateWall` (D-12) — `wall` is then empty and a generated hand
+  /** Set when `wall` failed `validateWall` (ADR-0005) — `wall` is then empty and a generated hand
    *  takes over, same as an empty link, rather than dealing an impossible board. */
   wallError?: WallError
   /** Null means "generate from `wall` (or fresh, when `wall` is empty)"; a pinned hand always
@@ -89,7 +89,7 @@ export function decodeScoringUrl(params: URLSearchParams): ScoringUrl {
   let wall = parseTenhou(params.get('wall') ?? '')
   let wallError: WallError | undefined
   // untrusted input: reject a malformed/over-counted wall by name rather than let it reach
-  // playWall (D-12) — see `urlCodec.decodeSituation`'s identical gate. No global setting is
+  // playWall (ADR-0005) — see `urlCodec.decodeSituation`'s identical gate. No global setting is
   // available at this pure-codec boundary, so a partial wall with no explicit sanma flag
   // validates against yonma.
   const resolvedSanma = resolveSanma(wall, sanma, false)

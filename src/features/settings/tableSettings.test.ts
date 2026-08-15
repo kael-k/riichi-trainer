@@ -80,7 +80,7 @@ describe('resolveSeatConfig', () => {
   })
 
   it('honours the default seat being given away, as long as another seat stays manual', () => {
-    // the graded seat number itself never moves with the config (D13) — resolveSeatConfig only
+    // the graded seat number itself never moves with the config (ADR-0008) — resolveSeatConfig only
     // ever fills in modes, it does not decide which seat is graded
     const config: SeatConfig = { modes: ['efficiency', 'manual', 'efficiency', 'efficiency'] }
     expect(resolveSeatConfig(config, 4, 0).modes).toEqual(config.modes)

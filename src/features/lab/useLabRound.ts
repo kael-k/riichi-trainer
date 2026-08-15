@@ -12,7 +12,7 @@ import { useTableRound, type UserDrawContext } from '../table/useTableRound'
 /**
  * The statistical lab's own round hook: full analysis, zero grading. Built on `useTableRound`
  * exactly like `useEfficiencyRound`, minus every bit of grading that hook layers on top — no
- * score, no correct/incorrect flag, no session counters, and no `useSessionStats` (D-15, D-16).
+ * score, no correct/incorrect flag, no session counters, and no `useSessionStats` (ADR-0004).
  * The lab plays the hand out (`stopAtTenpai: false`) rather than stopping at a drill's decision
  * point, since there is no drill here to end early.
  */
@@ -28,11 +28,11 @@ export interface RoundOptions {
    *  the hand ends. */
   showOpponentHands: boolean
   /** Who plays which seat, from the board's seat panel; `null` is the shipped default (you at
-   *  the link's own seat, every other seat on the efficiency AI). Page state (D15), not settings
+   *  the link's own seat, every other seat on the efficiency AI). Page state (ADR-0015), not settings
    *  — see `LabPage`. */
   seats: SeatConfig | null
   /** Ask manual seats about other seats' discards (`TableSettings.claims`) — board-wide and
-   *  persisted, unlike `seats` itself (D14). */
+   *  persisted, unlike `seats` itself (ADR-0015). */
   claims: boolean
   /** The seat panel's "show tenpai/waits" setting — threaded to `useTableRound`, which is where
    *  the per-seat cost of computing it is actually paid. */
@@ -41,7 +41,7 @@ export interface RoundOptions {
 
 /** The full analysis for the current 14-tile hand: `evaluateDiscards`'s whole ranking and
  *  `assessDiscards`'s whole tier list — the lab is the one consumer that wants both, read once
- *  per turn in `onUserDraw` (D-05) rather than during render. */
+ *  per turn in `onUserDraw` (ADR-0012) rather than during render. */
 export interface LabAnalysis {
   ranked: DiscardOption[]
   danger: TileDanger[]
@@ -55,7 +55,7 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
   // the graded seat is decided by the link alone, never by the seat panel: flipping your own
-  // seat's algorithm live must freeze grading in place (D13), not move it to whichever other seat
+  // seat's algorithm live must freeze grading in place (ADR-0008), not move it to whichever other seat
   // the panel happens to have marked manual — so this never goes through `options.seats`
   const seatIndex = linkSeat
   const algorithms = resolveSeatConfig(options.seats, players, seatIndex).modes

@@ -103,7 +103,7 @@ function DangerRow({ entry, seats }: { entry: TileDanger; seats: number[] }) {
   )
 }
 
-/** The inline, single-sentence wall-validation error (D-12): names the offending zone and tile,
+/** The inline, single-sentence wall-validation error (ADR-0005): names the offending zone and tile,
  *  in the same red the wrong-answer feedback rows already use — never a modal, never a repaired
  *  board. */
 function wallErrorMessage(
@@ -145,7 +145,7 @@ export function LabPage() {
   const updateTable = (patch: Partial<TableSettings>) =>
     update('table', { apps: { ...rawTable.apps, lab: { ...rawTable.apps.lab, ...patch } } })
 
-  // per-seat algorithms are board state, not a preference (D15): page state with the same
+  // per-seat algorithms are board state, not a preference (ADR-0015): page state with the same
   // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
   // persisted. `claims` (above) is the one part of the old seat panel that *is* a reader
   // preference, so it stays in settings.

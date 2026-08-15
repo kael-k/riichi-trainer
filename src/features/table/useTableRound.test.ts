@@ -8,7 +8,7 @@ import { HONOR, parseTenhou, SOU, type ParsedTile } from '../../core/tiles'
 import { completeWall, INITIAL_HAND_SIZE, wallWithHand } from '../../core/wall'
 import { useTableRound, type DiscardStats } from './useTableRound'
 
-// wraps the real implementations in vi.fn so laziness (D-05) can be proved by call count, not
+// wraps the real implementations in vi.fn so laziness (ADR-0012) can be proved by call count, not
 // inspection — every other test in this file still gets the real analysis, since these pass through
 vi.mock('../../core/efficiency', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../core/efficiency')>()
@@ -245,9 +245,9 @@ describe('useTableRound', () => {
   })
 })
 
-// D6: flipping a seat's algorithm mid-hand must never redeal — these prove the live-sync effect
+// ADR-0008: flipping a seat's algorithm mid-hand must never redeal — these prove the live-sync effect
 // (`useTableRound.ts`'s second `useEffect`) patches the running match in place instead.
-describe('live algorithm changes (D6)', () => {
+describe('live algorithm changes (ADR-0008)', () => {
   it('flipping an opponent between two AI algorithms never touches the running match', () => {
     const wall = tenpaiWall('live-general-seed')
     const options: MatchOptions = {
