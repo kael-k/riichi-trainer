@@ -33,35 +33,51 @@ Three layers: pure engine (`src/core/`), URL situation codec (`src/features/situ
 
 ### The match engine (`core/match.ts` + `core/policy.ts`)
 
-One deterministic hand of mahjong drives every trainer. `createMatch` deals (the pinned wall prefix goes in front _after_ the deal — it names what gets drawn next, not what lands in a starting hand), then `beginTurn` (draw) and `finishTurn` (discard, then everyone else's ron and calls) step it; `playMatch` loops both, and a `stop` predicate ends it early. That predicate is the only thing trainers differ by: `findMatch`/`findMatchAsync` replay `seed`, `seed#1`, `seed#2`… until an `accept` callback takes one, so scoring asks for "first win by any seat". (Folding needs a turn-boundary stop rather than an event one and drives `beginTurn`/`finishTurn` itself — see its section.) `MatchOptions.humans?: readonly number[]` names the seats the engine draws for but never decides for — no auto-kita, no auto-riichi (riichi locks every later discard to tsumogiri, so it must stay the player's choice), and no auto-pon/chi (a call opens a hand its player never chose to open) — checked everywhere through the exported predicate `isHuman(options, seat)`, never by comparing `seat` to a single index. `wins: false` lets opponents play without ending the drill.
+One deterministic hand of mahjong drives every trainer. `createMatch` deals (the pinned wall prefix goes in front _after_ the deal — it names what gets drawn next, not what lands in a starting hand), then `beginTurn` (draw) and `finishTurn` (discard, then everyone else's ron and calls) step it; `playMatch` loops both, and a `stop` predicate ends it early. That predicate is the only thing trainers differ by: `findMatch`/`findMatchAsync` replay `seed`, `seed#1`, `seed#2`… until an `accept` callback takes one, so scoring asks for "first win by any seat". (Folding needs a turn-boundary stop rather than an event one and drives `beginTurn`/`finishTurn` itself — see its section.)
 
-More than one seat can be human at once — a table setting (`features/settings/tableSettings.ts`'s `SeatConfig`), not a per-trainer concept. `MatchOptions.policies?: readonly SeatPolicy[]` seeds each `PlayerState.policy`; `MatchOptions.claims?: boolean` (default **false**, so every existing graded drill's behaviour stays bit-for-bit unchanged) makes a human seat get _asked_ about another seat's discard instead of being silently skipped. While an answer is pending, `MatchState.claim?: PendingClaim` is set and `beginTurn`/`finishTurn` are no-ops — one guard in the shared functions rather than one in every caller that steps a match. `claimOptions(state, options, seat, tile, from)` lists what a seat may call; `answerClaim(state, options, answer)` resolves it through an internal **restartable** `resolveReactions` that runs from the top on every answer, reading replies out of `claim.answers` and suspending again on the first seat that hasn't replied yet. Three phases, in this order, and the order is the point: ask every human first, then resolve rons in seat order, then calls — that is what stops a pon answered early from outranking a ron the seat order says comes first. Everything it re-runs is idempotent (`tryWin`/`couldHaveWon` restore the hand they probe; `missedWin` only ever goes true). Daiminkan is deliberately not offered — the engine models no called kan at all, so offering it to one human alone would be the one call the AI seats can't answer. `canDeclareRiichi(state, options, seat)` gates a human's own riichi declaration, read by `finishTurn`'s 4th argument (`declareRiichi`, human seats only) and by `riichiTiles()` in the round hooks below.
+Every seat is a **player**, and a player has an **algorithm**: `PlayerState.algorithm: SeatAlgorithm` (`'efficiency' | 'defense' | 'manual'`, `core/policy.ts`). `'manual'` is not "a human" — it is the algorithm "ask, don't decide". It is **live**: flip it mid-hand and the next turn obeys, no redeal, no new match, no re-search — changing a player's algorithm must never change the hand. `isManual(state, seat)` is the one predicate that reads it; the word "human" has left the codebase. `MatchOptions.algorithms?: readonly SeatAlgorithm[]` only *seeds* each player at `createMatch` — a seat with no entry starts on `'efficiency'` — the live value afterward lives on `PlayerState`, not on `MatchOptions`, and moves without touching options. A manual seat is one the engine draws for but never decides for: no auto-kita, no auto-riichi (riichi locks every later discard to tsumogiri, so it must stay the player's own choice), no auto-pon/chi (a call opens a hand its player never chose to open). More than one seat can be manual at once — a table setting (`features/settings/tableSettings.ts`'s `SeatConfig`), not a per-trainer concept; four manual seats is one person playing the whole table. `wins: false` lets opponents play without ending the drill.
+
+`MatchOptions.claims?: boolean` (default **false**, so every existing graded drill's behaviour stays bit-for-bit unchanged) makes a manual seat get _asked_ about another seat's discard instead of being silently skipped. While an answer is pending, `MatchState.claim?: PendingClaim` is set and `beginTurn`/`finishTurn` are no-ops — one guard in the shared functions rather than one in every caller that steps a match. `claimOptions(state, options, seat, tile, from)` lists what a seat may call; `answerClaim(state, options, answer)` resolves it through an internal **restartable** `resolveReactions` that runs from the top on every answer, reading replies out of `claim.answers` and suspending again on the first seat that hasn't replied yet. Three phases, in this order, and the order is the point: ask every manual seat first, then resolve rons in seat order, then calls — that is what stops a pon answered early from outranking a ron the seat order says comes first. Everything it re-runs is idempotent (`tryWin`/`couldHaveWon` restore the hand they probe; `missedWin` only ever goes true). Daiminkan is deliberately not offered — the engine models no called kan at all, so offering it to one manual seat alone would be the one call no algorithm can answer. `canDeclareRiichi(state, options, seat)` gates a manual seat's own riichi declaration, read by `finishTurn`'s 4th argument (`declareRiichi`, manual seats only) and by `riichiTiles()` in the round hooks below. When a seat stops being manual while its own claim answer is still pending, `reconsiderClaim(state, options)` re-enters `resolveReactions` from scratch through the exact same restartable path — it never invents a pass on the reader's behalf, since a pass sets `missedWin` and would poison the hand with furiten over a decision nobody made.
 
 Call and win permissions live entirely in `MatchOptions`, never in `Table` — the board is a pure
 view (see the `Table.tsx` note in the UI section) and has no concept of what a seat is allowed to
-do. Four flags, each shared by every seat rather than split by human/AI: `wins` gates `tryWin`
+do. Four flags, each shared by every seat rather than split by algorithm: `wins` gates `tryWin`
 itself (`match.ts`'s sole win evaluator), so `wins: false` blocks ron **and** tsumo for every seat
 and drops the ron entry from `claimOptions` outright — this is what `opponentWins: false` (folding)
 and the hardcoded `wins: false` (efficiency, since ending a per-turn drill on someone else's tsumo
 would cut it short) actually reach. `calls` and `claims` are two different gates on pon/chi: `calls`
-lets the AI call at all, `claims` is whether a human seat gets *asked* about one (§ above). `riichi`
-gates `canDeclareRiichi` for AI and human alike — there is no human-only variant today, so a trainer
-that wants no human riichi (only `useEfficiencySoloRound.ts` does) turns it off for the AI too.
-Daiminkan is never offered to anyone (§ above); a human's own tsumo is never an explicit choice —
-`beginTurn` wins the instant the draw completes the hand. Whether these four need finer, human/AI-
+lets an AI algorithm call at all, `claims` is whether a manual seat gets *asked* about one (§ above).
+`riichi` gates `canDeclareRiichi` for AI and manual seats alike — there is no algorithm-only variant
+today, so a trainer that wants no manual riichi (`useEfficiencySoloRound.ts`) turns it off for the
+AI too, and the efficiency trainer does the same for a different reason: it reads no danger, so an
+opponent's riichi there was decoration, not signal (`useEfficiencyRound.ts`). Layering is legality
+(`MatchOptions`) → choice (the algorithm) → prompt (`claims`, manual seats only) — with `wins: false`
+the engine never even asks an algorithm's `win`. Per-seat call permissions were considered and
+rejected: an algorithm that "can't pon" expresses that in its own logic (`defense.call` always
+returns `null`), not in a per-seat permission set `Table` would have to learn about. Daiminkan is
+never offered to anyone (§ above); a manual seat's own tsumo is never an explicit choice —
+`beginTurn` wins the instant the draw completes the hand. Whether these four need finer, per-algorithm
 split control (a call permissions review, not a `Table` prop) is open and tracked outside this file.
 
-`core/table.ts#actingSeat(core)` is "whose turn is this, right now": `core.seatIndex` in the ordinary single-manual-seat setup, some other manual seat once several are human, and `claim.seat` while a claim is suspended — every shared primitive (`seenBy`, `analysisOf`, `snapshotTable`) reads through it rather than `core.seatIndex` directly. `goRound(core)` plays every AI-decided seat and stops at the next human turn, a pending claim, or the hand's end; it is a no-op when it's already a human's turn. `core.seatIndex` is the seat the engine grades, decided by `seatMatchOptions` — not the same thing as which seat `Table` draws at the bottom, which is a page-local viewing perspective the engine never sees at all (see the `SeatConfig` note in the trainer-pattern section).
+`core/table.ts#actingSeat(core)` is "whose turn is this, right now": `core.seatIndex` in the ordinary single-manual-seat setup, some other manual seat once several are manual, and `claim.seat` while a claim is suspended — every shared primitive (`seenBy`, `analysisOf`, `snapshotTable`) reads through it rather than `core.seatIndex` directly. `goRound(core)` plays every AI-decided seat and stops at the next manual turn, a pending claim, or the hand's end; it is a no-op when it's already a manual seat's turn. `core.seatIndex` is the seat the engine grades — decided at generation time and never moved by a later algorithm flip (flipping your own graded seat to an algorithm simply freezes grading where it stood, since only a manual seat's turn ever reaches the interactive `discard()` path) — and it is not the same thing as which seat `Table` draws at the bottom, a page-local viewing perspective the engine never sees at all (see the `SeatConfig` note in the trainer-pattern section).
 
-`policy.ts` is the AI, pure and total — deterministic means every ranking needs an explicit tie-break, never sort stability. Calls happen only when they lower shanten **and** `hasYakuRoute` still holds; without that guard a shanten-chaser opens itself into hands that cannot legally win. Furiten is `waits()` (which is `improvingTiles` at tenpai) checked against your own river.
+`policy.ts` holds the pure, deterministic maths the two AI algorithms are written in terms of — `chooseDiscard`, `chooseFold`, `chooseCall`, `hasYakuRoute`, `waits`, `isFuriten` — every ranking with an explicit tie-break, never sort stability. Calls happen only when they lower shanten **and** `hasYakuRoute` still holds; without that guard a shanten-chaser opens itself into hands that cannot legally win. Furiten is `waits()` (which is `improvingTiles` at tenpai) checked against your own river. `core/algorithm.ts` is where those functions become decisions — see the decision-seam paragraph below.
 
-Each `PlayerState` carries a `policy: SeatPolicy` (`'efficiency' | 'defense'`), checked per seat and per discard rather than baked into `MatchOptions` — the folding trainer flips individual opponents mid-hand once its riichi target is reached, so it has to be a live field, not a match-wide setting. `'defense'` routes `finishTurn`'s discard through `chooseFold` (full betaori: `assessDiscards(...)[0].tile`, `policy.ts`) instead of `chooseDiscard`, and is also checked at the riichi gate, the call gate, and `tryWin` — a folding seat never declares, never calls, and never wins either; it is trying to leave the hand, not win it. `tryWin`'s gate excludes every seat `isHuman(options, seat)` names: a stray leftover `'defense'` from the folding handoff must never block a human seat's own win. A seat already in riichi is unaffected either way (`forcedTsumogiri` overrides both).
+`PlayerState.algorithm` is checked per seat rather than baked into `MatchOptions` because the folding trainer flips individual opponents mid-hand once its riichi target is reached, so it has to be a live field, not a match-wide setting. `'defense'` routes the discard decision through `chooseFold` (full betaori: `assessDiscards(...)[0].tile`, `policy.ts`) instead of `chooseDiscard`, and is also checked at the riichi gate, the call gate, and `tryWin` — a folding seat never declares, never calls, and never wins either; it is trying to leave the hand, not win it. A seat already in riichi is unaffected either way (`forcedTsumogiri` overrides both).
 
 Win legality is free from existing code: `decompose()` non-empty is the shape, `scoreHand()` returning null is "no yaku". Guard both behind a single `shanten()` call — that gate fails for almost every seat on almost every discard and everything past it is far more expensive.
 
 **Performance**: `standardShanten` decomposes each suit separately and merges (`groupTable`/`merge`), ~475x faster than searching all 34 kinds at once, because a draw probe only perturbs one suit and the other three come out of the cache. `referenceStandardShanten` is the old whole-hand search, kept solely as the specification the fast one is proved against over thousands of random hands in `shanten.test.ts` — change one, re-run that. Simulated players use `bestDiscards` (shanten only) and price ukeire just for the tiles already tied. A match is ~17ms; the census test in `match.test.ts` (every tile kind accounted for exactly four times) is what catches bookkeeping slips.
 
 Furiten invariant: ron legality lives in `tryWin` alone (own-river or `missedWin`), and `claimOptions` only ever offers `'ron'` when `tryWin` returns a record — so there is exactly one place that can offer a furiten seat a ron, and it never does. Covered by a regression test in `match.test.ts` rather than left to `seatRead`'s badge (`core/table.ts`) to imply correctness on its own.
+
+### The decision seam (`core/algorithm.ts`)
+
+Five decision points — discard, pon/chi, riichi declaration, take-a-win, kita — used to be five scattered conditionals inside `match.ts`, each hand-rolling its own `algorithm === 'defense'` check. They are now one dispatch table: `ALGORITHMS: Record<AIAlgorithm, Algorithm>` (`AIAlgorithm` is `SeatAlgorithm` minus `'manual'`, which is never a key here — `match.ts` short-circuits on `isManual` before ever reaching `ALGORITHMS`). `Algorithm` is five methods — `discard`, `call`, `riichi`, `win`, `kita` — and `match.ts`'s five call sites collapse to `ALGORITHMS[player.algorithm].<method>(view, …)`. Adding a third algorithm is one ~10-line object literal plus its own `AIAlgorithm` member; nothing in `match.ts` changes. No base class, no `Partial` merge — `efficiency` and `defense` are independent object literals.
+
+What an algorithm is allowed to know is a curated `SeatView` (`core/algorithm.ts#seatView`), never raw `MatchState` — a live view would let an algorithm read concealed hands. Public information only (every seat's river, melds, riichi, nuki) plus its own hand and the board; `seen` and `threats` are lazy getters, the same trick `TableAnalysis` uses, since the call gate builds a `SeatView` for every seat on every discard and both cost real work (`seenBy`, `threatViews`) an algorithm that never reads them shouldn't pay for. `win(view, candidate)` is the one method with a second argument: `WinCandidate { tile, from?, score }`, already priced by `tryWin` before it asks — an algorithm that can't see what it declines can't price it, which is what makes `defense.win` an honest `() => false` rather than a blanket carve-out in `tryWin` itself. Purity is unchanged from `policy.ts`: same view ⇒ same choice, every ranking a total order, which is what lets a whole match reproduce from its seed.
+
+Two behaviour changes rode in with the seam, not before: `defense.kita` is `false` (a folding player is leaving the hand, not chasing dora — every AI seat used to pull regardless), and declining a win is now expressible per algorithm (`win` receives the priced candidate) rather than a single hardcoded "defense never wins" in `tryWin`.
 
 ### The danger model (`core/danger.ts`) + the folding trainer
 
@@ -100,26 +116,32 @@ same view the folding trainer grades against.
 `findMatch`: `playMatch`'s `stop` fires per event _after_ the whole turn has run, so stopping on the
 riichi event would leave `match.discards` missing that turn's own discard and call while the rest of
 the state already reflects them. The moment its riichi target is reached, every seat that has not
-itself declared is switched to `policy: 'defense'` (`match.ts`'s `PlayerState.policy`) — otherwise
+itself declared and is not itself manual has its `algorithm` switched to `'defense'` — otherwise
 the opponents keep pushing for the rest of the hand, declaring further riichi and flooding the table
 with genbutsu the drill never earned. Generation searches `seed`, `seed#1`… for a hand that is worth
 drilling (not ended, the seat due to act is not itself in riichi, at least 1-shanten, enough wall
 left, and the ranking holds both a genbutsu and something bare), and **falls back to fewer threats**
 rather than failing, since three simultaneous riichi is too rare for any sane attempt budget. The
 board is then handed over a seeded 0…`players-2` turns later, so you are not the declarer's shimocha
-every single hand — the policy flip happens first, so those extra turns cannot add a threat the link
+every single hand — the algorithm flip happens first, so those extra turns cannot add a threat the link
 never promised. The attempt seed alone reproduces the board, round wind and seat included — both are
 seeded off that same attempt seed, which is what makes the share link exact; everything else a seed
 needs to deal the same board (`sanma`, `threats`, `wins`) travels with it as `BoardOptions`, and the
 discards played since the handover ride along as `discards` so a mid-hand turn is shareable and
-every log row rewindable.
+every log row rewindable. Generation's search key is only what shapes the hand — seed, `threats`,
+`sanma`, `wins` — never the per-seat algorithms: those are live, board state rather than search
+input (see the trainer-pattern section), so flipping one after generation applies to the hand
+already found rather than triggering a new search.
 
 Any seat can be manual, same as efficiency/lab — not only the drill's own generated seat
 (`RoundCore.seatIndex`, the seat `worthwhile`/`handedOverAt`/`endOf` still anchor to). The seat
-panel's raw config (`SeatConfig.modes`, never the resolved one) decides `MatchOptions.humans` at
-generation time in `playToRiichi`: every seat marked `'manual'` joins `seatIndex` as human, and an
+panel's raw config (`SeatConfig.modes`, never the resolved one) seeds `MatchOptions.algorithms` at
+generation time in `playToRiichi`: every seat marked `'manual'` joins `seatIndex` as manual, and an
 explicit per-seat choice there outranks the drill's own blanket "everyone who missed the riichi
-target folds" flip. `advanceAfterDiscard`'s tail (`settleAfterClaim`, shared with `answer`) must not
+target folds" flip. Past generation, a live algorithm flip (`useTableRound.ts`'s sync effect,
+mirrored in `useFoldingRound.ts`) writes straight onto the running `PlayerState.algorithm` and, if a
+claim was pending on the seat that just stopped being manual, re-resolves it through
+`reconsiderClaim` — no redeal, no re-search, per D6. `advanceAfterDiscard`'s tail (`settleAfterClaim`, shared with `answer`) must not
 `beginTurn` into a turn `match.claim` has suspended — folding drives `beginTurn`/`finishTurn`
 directly rather than through `useTableRound`, so it re-derives that one guard rather than getting it
 for free. Perspective (which seat `Table` draws at the bottom) never reaches this hook at all — it
@@ -185,20 +207,28 @@ Sanma (`options.sanma`, mirrored by the global `sanma` setting and the `sanma` s
 State stores are zustand: `settingsStore.ts` (persisted; has a custom section-wise `merge` so adding fields to `efficiency`/`shanten` survives old persisted schemas — extend that merge when adding a new section) and `store/log.ts` (session-only action log; entries can carry inline tiles and a `copyText` for a tenhou copy button). Log entries are written imperatively from user-triggered actions (inside `discard()` / `submit()`), never from `useEffect`s watching round state — effect-based logging inverts entry order and duplicates under StrictMode. The one exception is the round-build effect itself (`logReplay` in both `useEfficiencyRound.ts` and `useFoldingRound.ts`, which puts a shared link's replayed discards on the log under the shared `log.replay` key): it deduplicates on the decoded situation/link object's identity, since that effect runs twice per mount and four times under StrictMode for one and the same round — which is also why those objects come from `useUrlData` (memoised per navigation) rather than being rebuilt per render, the same identity the trainers' "reset `handIndex` while rendering" pattern keys on. That row is also why `TrainerLayout` clears the log during its first render rather than from a mount effect — effects run children-first, so a page that logs as its round mounts would have those rows wiped by its own layout a moment later.
 
 Per-seat table configuration (`features/settings/tableSettings.ts`) is one schema every
-board-rendering trainer shares: `SeatConfig { modes, claims }`, `SeatMode = SeatPolicy | 'manual'`.
-**`Table` itself has no concept of a "player"** — every seat, including the one a trainer generated
-for the reader, is just a seat with a `SeatMode`, and the only thing that makes a seat the one you
-play is `'manual'` landing in `MatchOptions.humans`. "Your seat" is a trainer-level idea (the
+board-rendering trainer shares: `SeatConfig { modes: SeatAlgorithm[] }`, plus `TableSettings.claims`
+alongside it (see below). **`Table` itself has no concept of a "player"** — every seat, including
+the one a trainer generated for the reader, is just a seat with an algorithm, and the only thing
+that makes a seat the one you play is `'manual'`. "Your seat" is a trainer-level idea (the
 generated seat `resolveSeatConfig` anchors its manual-seat guarantee to), not something `Table` or
 its `SeatView` reads or needs to know. The one standing restriction on that uniformity is the
 guarantee itself: at least one seat must stay manual, because with none nothing would stop
 `goRound` — so an advanced reader cannot yet put every seat, including their own, on an algorithm
 and simply watch a hand play itself out. Lifting that is real work (an autoplay or step-by-step
 path through every round hook), not a seat-panel tweak, and belongs with the call-permissions
-review above rather than being done piecemeal here.
+review above rather than being done piecemeal here (D12).
+
+**Seat algorithms are board state, not a preference, and are deliberately not persisted** (D15): a
+board opened three days later coming up with opponents nobody remembers choosing is the same bug as
+a stale perspective. `SeatConfig` lives as page state with the same lifetime as `viewSeat` — a
+`useState` seeded from the link, reset on every new hand — in `EfficiencyPage`, `FoldingPage` and
+`LabPage` alike; the settings store no longer holds a `modes` field at all. The one part of the old
+seat panel that *is* a reader preference and stays persisted is `TableSettings.claims` — it answers
+a question about the reader ("do I want to be offered pon/chi/ron"), not about the board (D14).
 
 Perspective (which seat `Table` draws at the bottom) is deliberately not part of this schema at
-all — it is ephemeral page state (each page's own `viewSeat` `useState`, defaulting to
+all — it is its own ephemeral page state (each page's own `viewSeat` `useState`, defaulting to
 `round.seatIndex` and reset on every new hand), never persisted, and view-only in every trainer
 including efficiency and the lab: "watch from here" stops meaning "play here", which comes only
 from a seat's `modes` entry being `'manual'`. The page's own `hand` slot (under the board, not on
@@ -217,18 +247,19 @@ fallbackModes?)` fills every seat and guarantees at least one manual seat, ancho
 (a link's `?seat=`, or the seat the trainer generated) rather than on perspective — with none,
 nothing would ever stop `goRound`; `fallbackModes` overrides the generic `'efficiency'` default for
 an unconfigured seat with what the board is _actually_ doing right now (folding's own live
-`policies`, since it flips non-declarers to `'defense'` at handover — the panel must not show a mode
-the board isn't really running). `seatMatchOptions` is the one place `SeatMode` becomes what the
-engine reads (`{ seatIndex, humans, policies, claims }`); `seatIndex` keeps `defaultSeat` when it is
-itself manual, and only falls back to the first manual seat when it was given away, so a second
-manual seat never silently moves which seat a graded trainer scores. Every patch a caller sends
-`onChange` is built off the _raw_ `SeatConfig`, never the resolved one (`withSeatMode` copies just
-the array a click actually touches) — writing the resolved fallback modes back on every edit is what
-used to make an unrelated change (like moving perspective) look like a real `modes` edit and
-re-search folding for a new hand. `useTableSettings(app)` adds `seatsEnabled` (`advanced || app ===
-'lab'`), distinct from `seats === null` ("offered, nobody has configured it yet") — when the panel
-isn't offered, `seats` is forced to `null` too, so a hidden panel never leaves a live per-seat
-configuration running underneath.
+`algorithms`, read straight off `PlayerState.algorithm` for every seat, since it flips non-declarers
+to `'defense'` at handover and the panel must not show an algorithm the board isn't really running).
+Each page builds `MatchOptions.algorithms` straight off `resolveSeatConfig(...).modes` at round-build
+time. The graded `seatIndex` itself is decided by the trainer (the link's `?seat=`, or the seat the
+drill generated) and never by the seat panel — flipping that seat's own algorithm away from
+`'manual'` cannot move which seat is graded, it only freezes grading in place (D13), so a second
+manual seat never silently moves which seat a graded trainer scores. Every patch a caller sends `onChange` is built off the _raw_ `SeatConfig`,
+never the resolved one (`withSeatMode` copies just the array a click actually touches) — writing the
+resolved fallback modes back on every edit is what used to make an unrelated change (like moving
+perspective) look like a real `modes` edit and re-search folding for a new hand. `useTableSettings(app)`
+adds `seatsEnabled` (`advanced || app === 'lab'`), which each page uses only to decide whether to
+render the `SeatButton` panel at all — the underlying `seatConfig` state is page-local and starts at
+`null` regardless, so there is nothing persisted for a hidden panel to leave running underneath.
 
 `SeatButton` (`features/settings/SeatPanel.tsx`) is the dialog; `SeatStrip`
 (`features/table/SeatStrip.tsx`) is the thin wrapper that places its trigger on the felt itself,
