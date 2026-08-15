@@ -1,6 +1,6 @@
 # Status
 
-_Last synthesised: 2026-08-15, against the git history through `116095d`._
+_Last synthesised: 2026-08-15, against the git history through `098b5e8`._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
@@ -25,7 +25,7 @@ seam, mobile fullscreen on every trainer.
 The **table-architecture centralization** work is complete: explicit walls, `core/table.ts`,
 `useTableRound`, folding's own hook, the efficiency split, the table-settings schema, the lab.
 
-**Two waves landed after it:**
+**Three waves landed after it:**
 
 1. **Seat algorithms** (`PLAN-seat-algorithms.md`, T0–T5, commits `4b39b28`…`d658a28`) — the
    `humans`/`policy` merge, live algorithm changes, the `ALGORITHMS` decision seam, efficiency's
