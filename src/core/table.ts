@@ -80,17 +80,6 @@ export function goRound(core: TableCore): void {
   }
 }
 
-/** Every tile `core`'s own seat has thrown, in order, from `core.match.discards` rather than its
- *  river: `finishTurn` pops a claimed discard out of the river, and it is still a tile that seat
- *  threw, so a replay built off the river would arrive at a different board. `from` skips the
- *  leading ones a caller has already accounted for (e.g. folding's handed-over-at index). */
-export function yourDiscards(core: TableCore, from = 0): ParsedTile[] {
-  return core.match.discards
-    .filter((d) => d.seat === core.seatIndex)
-    .slice(from)
-    .map((d) => ({ id: d.tile.id, red: d.tile.red }))
-}
-
 /** A render-ready mirror of the match, seat-index-first, with `core`'s own seat's drawn tile
  *  separated out into `drawn`. Every array is a fresh copy — mutating the match after a snapshot
  *  was taken never mutates that snapshot — except `liveWallSnapshot`/`deadWallSnapshot`/`wall`,
@@ -190,34 +179,6 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
       showSeatWaits || isManual(match, seat) ? seatRead(match, seat, options.sanma) : undefined,
     ),
   }
-}
-
-/** Fast-forwards `core`'s own seat through a recorded list of `discards`, generalising the two
- *  identical fast-forward loops both hooks wrote. Stops quietly — returning the tiles it actually
- *  played rather than throwing — when the match has ended, when the seat no longer holds that
- *  kind, or when `step` itself returns `false`. Redness is derived the same way both hooks derive
- *  it: the seat's own red copy only survives onto the replayed tile when it still holds that kind's
- *  red five. `step` is what actually advances the board (a discard alone does nothing without it) —
- *  that indirection is how efficiency keeps its tenpai stop and folding its hand-ended stop without
- *  this function knowing about either. The StrictMode-dedup mutable-ref guard that decides whether
- *  a replay gets *logged* stays in each React hook — that is a React concern, and this module is
- *  React-free. */
-export function replayDiscards(
-  core: TableCore,
-  discards: ParsedTile[],
-  step: (core: TableCore, tile: ParsedTile) => boolean | void,
-): ParsedTile[] {
-  const played: ParsedTile[] = []
-  for (const t of discards) {
-    const player = core.match.players[core.seatIndex]
-    if (core.match.ended || player.hand.counts[t.id] === 0) break
-    const red = player.reds.has(t.id) && (t.red || player.hand.counts[t.id] === 1)
-    const tile: ParsedTile = { id: t.id, red }
-    const keepGoing = step(core, tile)
-    played.push(tile)
-    if (keepGoing === false) break
-  }
-  return played
 }
 
 /** Per-turn analysis for `core`'s own seat, computed lazily and cached per object (D-05): the

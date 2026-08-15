@@ -147,7 +147,7 @@ export type MatchEvent =
  *  hardcodes `chankan: false`); no `pass`/decline — a claim nobody answered is already derivable
  *  by comparing who *could* have claimed against who's in the log (`resolveReactions` already does
  *  exactly this for `missedWin`), so logging silence would only be logging what `replayLog`
- *  (`core/table.ts`) can already recompute. */
+ *  (below) can already recompute. */
 export type LogEntry =
   | { kind: 'discard'; seat: number; tile: ParsedTile; fromDrawn: boolean; riichi: boolean }
   | { kind: 'call'; seat: number; from: number; call: Call }
@@ -906,7 +906,7 @@ export function reconsiderClaim(state: MatchState, options: MatchOptions): Match
  * from. Restored to each seat's real algorithm before returning, live-flip style (same
  * override-then-restore shape `useTableRound.ts`'s D6 sync effect already uses).
  *
- * Stops quietly rather than throwing — same posture `replayDiscards` already has — whenever the
+ * Stops quietly rather than throwing whenever the
  * hand ends, the log runs out, or the next entry doesn't describe what the hand is actually doing
  * (a caller feeding it a log that doesn't match `state`). Two things are deliberately never read
  * from the log because they're derivable from its *absence*: a claim (ron/pon/chi) nobody answered
@@ -934,8 +934,8 @@ export function reconsiderClaim(state: MatchState, options: MatchOptions): Match
  * earlier call on this same `state` or from real live play before `replayLog` was ever called —
  * calling it again with the same (or a longer) `log` simply picks up from there.
  *
- * Returns how many log entries have now been consumed in total, mirroring `replayDiscards`'s
- * "played fewer than asked" bookkeeping.
+ * Returns how many log entries have now been consumed in total, so a caller can tell a replay
+ * fell short of what it asked for.
  */
 export function replayLog(
   state: MatchState,

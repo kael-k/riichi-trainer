@@ -8,12 +8,10 @@ import {
   actingSeat,
   analysisOf,
   goRound,
-  replayDiscards,
   seatRead,
   seenBy,
   snapshotTable,
   splitDrawn,
-  yourDiscards,
   type TableCore,
 } from './table'
 
@@ -121,10 +119,6 @@ describe('goRound', () => {
   })
 })
 
-// no calls/riichi/wins: isolates seat 0's own discard bookkeeping from opponent behaviour that
-// would otherwise vary the number of turns played per seed
-const NO_WIN: MatchOptions = { ...YONMA, calls: false, riichi: false, wins: false }
-
 describe('actingSeat', () => {
   it('returns seatIndex when only that seat is manual', () => {
     const match = createMatch([], 4, YOU_AT_0, 'table-acting-1')
@@ -144,40 +138,6 @@ describe('actingSeat', () => {
     goRound(core)
     expect(match.seat).toBe(2)
     expect(actingSeat(core)).toBe(2)
-  })
-})
-
-describe('yourDiscards', () => {
-  it('returns every tile thrown, in order, including one called out of the river', () => {
-    const wall = parseTenhou('123456789m1122p')
-    const match = createMatch(wall, 4, NO_WIN, 'table-yd-1')
-    const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
-    beginTurn(match, NO_WIN)
-    finishTurn(match, NO_WIN, { tile: { id: 0, red: false }, fromDrawn: false }) // discard 1m
-    for (let g = 0; g < 3; g++) {
-      beginTurn(match, NO_WIN)
-      finishTurn(match, NO_WIN)
-    }
-    beginTurn(match, NO_WIN)
-    finishTurn(match, NO_WIN, { tile: { id: 1, red: false }, fromDrawn: false }) // discard 2m
-    const played = yourDiscards(core)
-    expect(played.map((t) => t.id)).toEqual([0, 1])
-  })
-
-  it('skips the first `from` discards', () => {
-    const wall = parseTenhou('123456789m1122p')
-    const match = createMatch(wall, 4, NO_WIN, 'table-yd-2')
-    const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
-    beginTurn(match, NO_WIN)
-    finishTurn(match, NO_WIN, { tile: { id: 0, red: false }, fromDrawn: false })
-    for (let g = 0; g < 3; g++) {
-      beginTurn(match, NO_WIN)
-      finishTurn(match, NO_WIN)
-    }
-    beginTurn(match, NO_WIN)
-    finishTurn(match, NO_WIN, { tile: { id: 1, red: false }, fromDrawn: false })
-    const played = yourDiscards(core, 1)
-    expect(played.map((t) => t.id)).toEqual([1])
   })
 })
 
@@ -254,79 +214,6 @@ describe('splitDrawn', () => {
   it('returns drawn as given, and tiles unchanged, when the tile is not found', () => {
     const stray = { id: 33, red: false } // outside `tiles`'s own kinds
     expect(splitDrawn(tiles, stray)).toEqual({ tiles, drawn: stray })
-  })
-})
-
-describe('replayDiscards', () => {
-  it('plays every tile through step and returns them all when the board can honour them', () => {
-    const wall = parseTenhou('123456789m1122p')
-    const match = createMatch(wall, 4, NO_WIN, 'table-replay-1')
-    const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
-    beginTurn(match, NO_WIN)
-    const step = (c: TableCore, tile: { id: number; red: boolean }) => {
-      finishTurn(c.match, NO_WIN, { tile, fromDrawn: false })
-      for (let g = 0; g < 3; g++) {
-        beginTurn(c.match, NO_WIN)
-        finishTurn(c.match, NO_WIN)
-      }
-      beginTurn(c.match, NO_WIN)
-    }
-    const played = replayDiscards(
-      core,
-      [
-        { id: 0, red: false },
-        { id: 1, red: false },
-      ],
-      step,
-    )
-    expect(played.map((t) => t.id)).toEqual([0, 1])
-  })
-
-  it('stops quietly, returning what it managed, on a tile the seat does not hold', () => {
-    const wall = parseTenhou('123456789m1122p')
-    const match = createMatch(wall, 4, NO_WIN, 'table-replay-2')
-    const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
-    beginTurn(match, NO_WIN)
-    const step = (c: TableCore, tile: { id: number; red: boolean }) => {
-      finishTurn(c.match, NO_WIN, { tile, fromDrawn: false })
-      for (let g = 0; g < 3; g++) {
-        beginTurn(c.match, NO_WIN)
-        finishTurn(c.match, NO_WIN)
-      }
-      beginTurn(c.match, NO_WIN)
-    }
-    // id 33 (a tile not in the hand) never gets reached
-    const input = [
-      { id: 0, red: false },
-      { id: 33, red: false },
-      { id: 1, red: false },
-    ]
-    const played = replayDiscards(core, input, step)
-    expect(played.length).toBeLessThan(input.length)
-    expect(match.ended).toBeUndefined()
-  })
-
-  it('stops when step returns false, after playing the tile it was given', () => {
-    const wall = parseTenhou('123456789m1122p')
-    const match = createMatch(wall, 4, NO_WIN, 'table-replay-3')
-    const core: TableCore = { match, options: NO_WIN, seatIndex: 0 }
-    beginTurn(match, NO_WIN)
-    let calls = 0
-    const step = (c: TableCore, tile: { id: number; red: boolean }): boolean => {
-      finishTurn(c.match, NO_WIN, { tile, fromDrawn: false })
-      calls++
-      return false
-    }
-    const played = replayDiscards(
-      core,
-      [
-        { id: 0, red: false },
-        { id: 1, red: false },
-      ],
-      step,
-    )
-    expect(calls).toBe(1)
-    expect(played.map((t) => t.id)).toEqual([0])
   })
 })
 

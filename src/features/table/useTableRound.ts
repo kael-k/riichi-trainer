@@ -204,11 +204,11 @@ export function useTableRound(input: TableRoundInput) {
     return c.match.ended !== undefined
   }
 
-  /** Discards `tile` for your seat (or replays one already recorded), grades it, lets the table
-   *  play back around to you, and draws your next tile — or stops when the round is over:
-   *  `stopAtTenpai` reaching tenpai, the wall running dry, or anyone winning. Shared by `discard()`
-   *  and `replayDiscards`'s step, so a live discard and a replayed one advance the board through
-   *  the identical path. */
+  /** Discards `tile` for your seat live, grades it, lets the table play back around to you, and
+   *  draws your next tile — or stops when the round is over: `stopAtTenpai` reaching tenpai, the
+   *  wall running dry, or anyone winning. A replayed discard never reaches this path — `buildRound`
+   *  drives the whole recorded log through `replayLog` directly, silently, before any live turn
+   *  begins. */
   function advance(
     c: TableCore,
     tile: ParsedTile,
