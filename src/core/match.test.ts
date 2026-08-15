@@ -4,6 +4,8 @@ import { handFromTenhou, removeTile, tileCount } from './hand'
 import {
   answerClaim,
   beginTurn,
+  callAnkan,
+  callKita,
   canDeclareRiichi,
   claimOptions,
   createMatch,
@@ -19,7 +21,7 @@ import {
 } from './match'
 import type { SeatAlgorithm } from './policy'
 import { scoreHand } from './score'
-import { HONOR, inTileSet, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
+import { HONOR, inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
 import { INITIAL_HAND_SIZE, TILES_PER_KIND, wallWithHand } from './wall'
 
 /** `MatchOptions.algorithms` naming just the manual seats — every other seat defaults to
@@ -707,5 +709,81 @@ describe('manual riichi declaration', () => {
     // canDeclareRiichi is the same legality check finishTurn just used — pinning it here is what
     // makes the UI's riichi button trustworthy: it never offers a declaration finishTurn refuses
     expect(canDeclareRiichi(state, options, 0)).toBe(false) // riichiAt is now set, so it's done
+  })
+})
+
+describe('MatchState.log', () => {
+  it('records one entry per discard/call/win, matching the returned event stream in order', () => {
+    for (let i = 0; i < 10; i++) {
+      const { state, events } = playMatch(`log-${i}`, 4, YONMA)
+      const expected = events.filter(
+        (e) => e.kind === 'discard' || e.kind === 'call' || e.kind === 'win',
+      )
+      expect(state.log, `seed log-${i}`).toHaveLength(expected.length)
+      expected.forEach((e, idx) => {
+        const entry = state.log[idx]
+        expect(entry.kind, `seed log-${i} entry ${idx}`).toBe(e.kind)
+        expect(entry.seat, `seed log-${i} entry ${idx}`).toBe(e.kind === 'win' ? e.win.seat : e.seat)
+      })
+    }
+  })
+
+  it("logs an AI seat's sanma kita pull without adding a distinct MatchEvent (T0 hazard)", () => {
+    // beginTurn's own kita loop must keep returning `draw` events only — state.log is a second,
+    // additive output, never something the golden-hash test's `serialize` can see move
+    for (let i = 0; i < 40; i++) {
+      const { state, events } = playMatch(`log-sanma-${i}`, 3, SANMA)
+      if (state.log.some((e) => e.kind === 'kita')) {
+        expect(events.some((e) => e.kind === 'kita')).toBe(false)
+        return
+      }
+    }
+    throw new Error('no seed in range pulled kita under sanma — widen the search')
+  })
+
+  it('callKita logs the pull and draws a replacement for a manual seat', () => {
+    const options: MatchOptions = { ...SANMA, algorithms: manual(0) }
+    const wall = wallWithHand(0, parseTenhou('123456789m112p4z'), true, false, 'kita-manual')
+    const state = createMatch(wall, 3, options)
+    beginTurn(state, options)
+    const before = state.log.length
+
+    const events = callKita(state, options, 0)
+
+    expect(events.map((e) => e.kind)).toContain('kita')
+    expect(state.log.slice(before)).toEqual([{ kind: 'kita', seat: 0 }])
+    expect(state.players[0].nuki).toEqual([{ id: NORTH, red: false }])
+    expect(state.players[0].hand.counts[NORTH]).toBe(0)
+  })
+
+  it('callAnkan logs the kan, flips a kan-dora, and draws a replacement', () => {
+    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
+    const wall = wallWithHand(0, parseTenhou('111456789m1122p'), false, false, 'ankan-manual')
+    wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1m')[0] // the fourth 1m, drawn next as seat 0's turn
+    const state = createMatch(wall, 4, options)
+    const indicatorsBefore = state.doraIndicators.length
+    beginTurn(state, options)
+    const before = state.log.length
+
+    const events = callAnkan(state, MAN, 0)
+
+    expect(events.map((e) => e.kind)).toContain('ankan')
+    expect(state.log.slice(before)).toEqual([{ kind: 'ankan', seat: 0, tile: MAN }])
+    expect(state.players[0].hand.counts[MAN]).toBe(0)
+    expect(state.players[0].melds).toEqual([
+      { kind: 'ankan', tiles: expect.arrayContaining([{ id: MAN, red: false }]) },
+    ])
+    expect(state.doraIndicators.length).toBe(indicatorsBefore + 1)
+  })
+
+  it('is a no-op off-turn or once the hand has ended', () => {
+    const options: MatchOptions = { ...SANMA, algorithms: manual(0) }
+    const wall = wallWithHand(0, parseTenhou('123456789m112p4z'), true, false, 'kita-off-turn')
+    const state = createMatch(wall, 3, options)
+    beginTurn(state, options)
+
+    expect(callKita(state, options, 1)).toEqual([]) // seat 1 is not the acting seat
+    expect(callAnkan(state, 1, MAN)).toEqual([])
+    expect(state.log).toHaveLength(0)
   })
 })

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Meld } from '../../core/agari'
 import type { TileDanger } from '../../core/danger'
 import { evaluateKan, type DiscardOption } from '../../core/efficiency'
 import { addTile, removeTile, tileCount } from '../../core/hand'
 import {
   answerClaim,
   beginTurn,
+  callAnkan,
+  callKita,
   canDeclareRiichi,
   createMatch,
-  drawReplacement,
   finishTurn,
   isManual,
   NORTH,
@@ -414,16 +414,12 @@ export function useTableRound(input: TableRoundInput) {
   function kita(): void {
     const c = core.current
     if (!c || !c.options.sanma || c.match.ended || c.match.claim) return
+    const seat = actingSeat(c)
     if (tileCount(you(c).hand) !== 14) return
     if (you(c).hand.counts[NORTH] === 0) return
-    const northTile: ParsedTile = { id: NORTH, red: false }
-    fireDiscard(c, northTile, 'kita')
+    fireDiscard(c, { id: NORTH, red: false }, 'kita')
 
-    const player = you(c)
-    removeTile(player.hand, NORTH)
-    player.nuki.push(northTile)
-    c.match.visible[NORTH]++
-    drawReplacement(c.match, player)
+    callKita(c.match, c.options, seat)
     fireDraw(c)
     setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
@@ -433,33 +429,12 @@ export function useTableRound(input: TableRoundInput) {
   function kan(id: TileId): void {
     const c = core.current
     if (!c || c.match.ended || c.match.claim || tileCount(you(c).hand) !== 14) return
+    const seat = actingSeat(c)
     if (you(c).hand.counts[id] !== 4) return
-    const player = you(c)
-    const red = player.reds.has(id)
-    const kanTile: ParsedTile = { id, red }
-    fireDiscard(c, kanTile, 'kan')
+    const red = you(c).reds.has(id)
+    fireDiscard(c, { id, red }, 'kan')
 
-    for (let k = 0; k < 4; k++) removeTile(player.hand, id)
-    player.hand.melds++
-    player.reds.delete(id)
-    c.match.visible[id] += 4
-    const meld: Meld = {
-      kind: 'ankan',
-      tiles: [
-        { id, red },
-        { id, red: false },
-        { id, red: false },
-        { id, red: false },
-      ],
-    }
-    player.melds.push(meld)
-
-    const indicator = c.match.doraStack.shift()
-    if (indicator) {
-      c.match.doraIndicators.push(indicator)
-      c.match.visible[indicator.id]++
-    }
-    drawReplacement(c.match, player)
+    callAnkan(c.match, seat, id)
     fireDraw(c)
     setSnapshot(snapshotTable(c, input.showSeatWaits))
   }

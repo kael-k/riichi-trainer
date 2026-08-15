@@ -137,6 +137,23 @@ export type MatchEvent =
   | { kind: 'call'; seat: number; from: number; meld: Meld }
   | { kind: 'win'; win: WinRecord }
   | { kind: 'exhaustive' }
+  | { kind: 'kita'; seat: number; tile: ParsedTile | undefined }
+  | { kind: 'ankan'; seat: number; tile: TileId; replacement: ParsedTile | undefined }
+
+/** One seat's decision, logged the instant it's made — discard (with `fromDrawn`/`riichi`, the
+ *  ground truth Phase 1 put on `Hand.drawn`), pon/chi (`Call` reused verbatim from `policy.ts`,
+ *  since it's already the exact shape a replayed claim answer needs), kita, closed kan, and a win
+ *  (tsumo when `from` is absent). No `kakan` — nothing in this engine models one (`buildContext`
+ *  hardcodes `chankan: false`); no `pass`/decline — a claim nobody answered is already derivable
+ *  by comparing who *could* have claimed against who's in the log (`resolveReactions` already does
+ *  exactly this for `missedWin`), so logging silence would only be logging what `replayLog`
+ *  (`core/table.ts`) can already recompute. */
+export type LogEntry =
+  | { kind: 'discard'; seat: number; tile: ParsedTile; fromDrawn: boolean; riichi: boolean }
+  | { kind: 'call'; seat: number; from: number; call: Call }
+  | { kind: 'kita'; seat: number }
+  | { kind: 'ankan'; seat: number; tile: TileId }
+  | { kind: 'win'; seat: number; from?: number }
 
 export interface MatchState {
   players: PlayerState[]
@@ -165,6 +182,10 @@ export interface MatchState {
    *  out of `river` (below) and it is still a tile that seat threw, which genbutsu depends on.
    *  Never popped — anything counting tiles must read the rivers and melds, not this. */
   discards: { seat: number; tile: RiverTile }[]
+  /** Every seat's decision, in order, from the top of the hand — the full record `replayLog`
+   *  (`core/table.ts`) plays back. Sibling to `discards`, not its replacement: `discards`/`river`
+   *  still feed genbutsu (`threatViews`), this feeds replay. Never popped. */
+  log: LogEntry[]
   seat: number
   turn: number
   /** Cleared right after a call — the caller already holds 14 tiles and does not draw. */
@@ -250,6 +271,7 @@ export function createMatch(
     doraIndicators,
     visible,
     discards: [],
+    log: [],
     seat: 0,
     turn: 1,
     pendingDraw: true,
@@ -472,6 +494,7 @@ function tryWin(
 function endWith(state: MatchState, win: WinRecord): MatchEvent[] {
   state.ended = 'win'
   state.win = win
+  state.log.push({ kind: 'win', seat: win.seat, from: win.from })
   return [{ kind: 'win', win }]
 }
 
@@ -512,6 +535,7 @@ export function beginTurn(state: MatchState, options: MatchOptions): MatchEvent[
     removeTile(player.hand, NORTH)
     player.nuki.push({ id: NORTH, red: false })
     state.visible[NORTH]++
+    state.log.push({ kind: 'kita', seat: state.seat })
     const replacement = drawReplacement(state, player)
     if (!replacement) break
     tile = replacement
@@ -541,6 +565,61 @@ export function drawReplacement(state: MatchState, player: PlayerState): ParsedT
     tile = take(state, player)
   }
   return tile
+}
+
+/** A manual (or replayed) seat pulling a held north — the mutation and its log entry together, so
+ *  a caller can't do one without the other. `beginTurn`'s own kita loop covers AI seats; this is
+ *  the entry point for everyone else, formerly hand-mutated by `useTableRound.ts#kita`. A no-op
+ *  (`[]`) on an illegal call — wrong turn, hand already ended, a claim pending, no north held —
+ *  same "untrusted caller" posture as `finishTurn`/`answerClaim`, rather than throwing. */
+export function callKita(state: MatchState, options: MatchOptions, seat: number): MatchEvent[] {
+  if (state.ended || state.claim || seat !== state.seat || !options.sanma) return []
+  const player = state.players[seat]
+  if (player.hand.counts[NORTH] === 0) return []
+  removeTile(player.hand, NORTH)
+  player.nuki.push({ id: NORTH, red: false })
+  state.visible[NORTH]++
+  state.log.push({ kind: 'kita', seat })
+  const tile = drawReplacement(state, player)
+  return [{ kind: 'kita', seat, tile }, ...(tile ? [{ kind: 'draw', seat, tile } as const] : [])]
+}
+
+/** A manual (or replayed) seat calling a closed kan on a held quad — same reasoning as `callKita`:
+ *  mutation and log entry together, formerly hand-mutated by `useTableRound.ts#kan`. No `options`
+ *  parameter — unlike every other decision point here, nothing about ankan's legality or effect
+ *  depends on any `MatchOptions` field (no wait-preserving-kan rule is modelled, same as kakan
+ *  simply not existing) — so it is deliberately absent rather than threaded in unused. */
+export function callAnkan(state: MatchState, seat: number, id: TileId): MatchEvent[] {
+  if (state.ended || state.claim || seat !== state.seat) return []
+  const player = state.players[seat]
+  if (player.hand.counts[id] !== 4) return []
+  const red = player.reds.has(id)
+  for (let k = 0; k < 4; k++) removeTile(player.hand, id)
+  player.hand.melds++
+  player.reds.delete(id)
+  state.visible[id] += 4
+  const meld: Meld = {
+    kind: 'ankan',
+    tiles: [
+      { id, red },
+      { id, red: false },
+      { id, red: false },
+      { id, red: false },
+    ],
+  }
+  player.melds.push(meld)
+
+  const indicator = state.doraStack.shift()
+  if (indicator) {
+    state.doraIndicators.push(indicator)
+    state.visible[indicator.id]++
+  }
+  state.log.push({ kind: 'ankan', seat, tile: id })
+  const replacement = drawReplacement(state, player)
+  return [
+    { kind: 'ankan', seat, tile: id, replacement },
+    ...(replacement ? [{ kind: 'draw', seat, tile: replacement } as const] : []),
+  ]
 }
 
 /** How many tiles have left `liveWallSnapshot` from the front — real draws, as opposed to the
@@ -629,6 +708,7 @@ export function finishTurn(
   if (declaring) entry.riichi = true
   player.river.push(entry)
   state.discards.push({ seat, tile: entry })
+  state.log.push({ kind: 'discard', seat, tile: { id: tile.id, red: tile.red }, fromDrawn, riichi: declaring })
   state.visible[tile.id]++
   if (declaring) events.push({ kind: 'riichi', seat })
   events.push({ kind: 'discard', seat, tile: entry })
@@ -729,6 +809,7 @@ function resolveReactions(
       const meld: Meld = { kind: call.kind, tiles: meldTiles }
       caller.melds.push(meld)
       caller.hand.melds++
+      state.log.push({ kind: 'call', seat: other, from: discarder, call })
       // the claimed tile leaves the river and lives in the meld from here on — leaving it in
       // both is a duplicate copy of that tile on the table
       state.players[discarder].river.pop()
