@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { handFromTenhou } from '../../core/hand'
+import type { LogEntry } from '../../core/match'
 import type { SeatAlgorithm } from '../../core/policy'
 import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
@@ -121,7 +122,7 @@ describe('useFoldingRound', () => {
       act(() => first.current.discard(indexOf(first.current.hand, first.current.drawn, safe.tile)))
     }
     const query = first.current.situationQuery()
-    expect(new URLSearchParams(query).get('discards')).toBeTruthy()
+    expect(new URLSearchParams(query).get('log')).toBeTruthy()
 
     act(() => useLog.getState().clear())
     const shared = await deal(decodeFoldingUrl(new URLSearchParams(query)))
@@ -131,7 +132,7 @@ describe('useFoldingRound', () => {
     // the replayed turns land on the log, each rewindable to the turn before it
     const replayed = useLog.getState().entries.filter((e) => e.key === 'log.replay')
     expect(replayed).toHaveLength(2)
-    expect(new URLSearchParams(replayed[0].situation!).get('discards')).toBeNull()
+    expect(new URLSearchParams(replayed[0].situation!).get('log')).toBeNull()
   })
 
   it('grades a safest-tier discard correct and anything else wrong', async () => {
@@ -337,8 +338,8 @@ describe('per-seat manual configuration', () => {
     // a fresh `seats` object with the same modes — proof this is keyed by value, not identity
     rerender({ options: { ...OPTIONS, seats: { modes: [] } } })
 
-    // a rebuild would replay only `urlData.discards` (none here), landing back at the handover
-    // turn with a fresh hand — so the turn/hand staying put is proof no rebuild happened
+    // a rebuild would replay only `urlData.log` (none here), landing back at the handover turn
+    // with a fresh hand — so the turn/hand staying put is proof no rebuild happened
     expect(result.current.turn).toBe(turnAfterDiscard)
     expect(result.current.hand).toEqual(handAfterDiscard)
   })
@@ -474,15 +475,18 @@ describe('the folding link', () => {
       sanma: true,
       wins: true,
       threats: 2,
-      discards: undefined,
+      log: undefined,
     })
   })
 
-  it('round-trips the discards played since the handover', () => {
+  it('round-trips the log played since the handover', () => {
     const w = wall('link-seed-2')
-    const discards = parseTenhou('1m9p7z')
-    const query = encodeFoldingUrl(w, { sanma: false, threats: 1, wins: true }, discards)
-    expect(decodeFoldingUrl(new URLSearchParams(query)).discards).toEqual(discards)
+    const played: LogEntry[] = [
+      { kind: 'discard', seat: 0, tile: { id: 0, red: false }, fromDrawn: false, riichi: false },
+      { kind: 'discard', seat: 1, tile: { id: 8, red: false }, fromDrawn: true, riichi: false },
+    ]
+    const query = encodeFoldingUrl(w, { sanma: false, threats: 1, wins: true }, played)
+    expect(decodeFoldingUrl(new URLSearchParams(query)).log).toEqual(played)
   })
 
   it('leaves unset rules undefined, so the reader keeps their own settings', () => {
@@ -491,7 +495,7 @@ describe('the folding link', () => {
       sanma: undefined,
       wins: undefined,
       threats: undefined,
-      discards: undefined,
+      log: undefined,
     })
   })
 

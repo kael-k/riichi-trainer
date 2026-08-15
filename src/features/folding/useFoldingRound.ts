@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { decodeLog, encodeLog } from '../../core/actionLog'
 import { dangerScore, type TileDanger } from '../../core/danger'
 import { addTile, removeTile, tileCount } from '../../core/hand'
 import {
@@ -10,7 +11,9 @@ import {
   finishTurn,
   isManual,
   reconsiderClaim,
+  replayLog,
   type ClaimAnswer,
+  type LogEntry,
   type MatchOptions,
   type MatchState,
 } from '../../core/match'
@@ -21,10 +24,8 @@ import {
   actingSeat,
   analysisOf,
   goRound,
-  replayDiscards,
   snapshotTable,
   splitDrawn,
-  yourDiscards,
   type TableCore,
   type TableSnapshot,
 } from '../../core/table'
@@ -86,9 +87,10 @@ export interface FoldingUrl {
   /** Threats the link was generated with; replayed verbatim, since the same wall only reproduces
    *  the same board when the search stops at the same declaration. */
   threats?: number
-  /** Your own discards since the board was handed to you, replayed from the declaration to
-   *  reach a mid-hand turn. Not extra tiles: the wall already dealt them. */
-  discards?: ParsedTile[]
+  /** Every seat's decision since the board was handed to you, replayed via `replayLog` — which
+   *  consults no algorithm at all — to reach a mid-hand turn. Not extra tiles: the wall already
+   *  dealt them. */
+  log?: LogEntry[]
 }
 
 export interface TurnResult {
@@ -140,8 +142,8 @@ export interface RoundEnd {
  *  field that is folding's own. `threatViews` (from `match.ts`, read inside `analysisOf`) reads
  *  its genbutsu straight off `match.discards`, so this hook carries no event log of its own. */
 interface RoundCore extends TableCore {
-  /** How many discards your seat had already made when the drill was handed over — everything
-   *  before that was the engine's, so only what follows belongs in a mid-hand link. */
+  /** `match.log.length` at the moment the drill was handed over — everything before that index
+   *  was generation's own doing, so only what follows belongs in a mid-hand link. */
   handedOverAt: number
 }
 
@@ -295,7 +297,7 @@ function playToRiichi(
       match,
       options: { ...options, claims },
       seatIndex,
-      handedOverAt: match.discards.filter((d) => d.seat === seatIndex).length,
+      handedOverAt: match.log.length,
     }
   }
   return null
@@ -321,7 +323,7 @@ function worthwhile(core: RoundCore): boolean {
 function buildRound(
   wall: ParsedTile[],
   options: BoardOptions,
-  discards: ParsedTile[] = [],
+  log: LogEntry[] = [],
   seats: SeatConfig | null = null,
   claims = false,
 ): RoundCore | null {
@@ -329,17 +331,16 @@ function buildRound(
   const players = sanma ? 3 : 4
   const core = playToRiichi(wall, matchOptions(wall, options), players, threats, seats, claims)
   if (!core || !worthwhile(core)) return null
-  beginTurn(core.match, core.options)
-  // fast-forward the link's own discards; stops quietly on one this board cannot honour. No
-  // recorded intent survives in a link yet (Phase 2's action log), so `fromDrawn` is
-  // reconstructed the same way the old value heuristic did — the best available approximation
-  // until replay carries its own tsumogiri flag.
-  replayDiscards(core, discards, (_c, tile) => {
-    const drawn = core.match.players[core.seatIndex].hand.drawn
-    const fromDrawn = drawn !== undefined && tile.id === drawn.id && tile.red === drawn.red
-    advanceAfterDiscard(core, tile, fromDrawn)
-    return !core.match.ended
-  })
+  // `replayLog`'s cursor is an absolute position in the *whole* log, so the link's own
+  // post-handover `log` has to be appended to what generation already wrote, not replayed on its
+  // own — it consults no algorithm at all, which is what makes a link immune to a later algorithm
+  // change, and stops quietly (never throws) the first entry it can't honour against this board.
+  // `settleAfterClaim` is the same tail every other post-turn step in this hook already uses to
+  // reach the next live decision point — here, drawing for the handed-over seat once nothing more
+  // is left to replay (an empty `log` is the common case: `playToRiichi` deliberately never draws
+  // for the seat it hands off to).
+  replayLog(core.match, core.options, [...core.match.log, ...log])
+  settleAfterClaim(core)
   return core
 }
 
@@ -459,7 +460,7 @@ export function decodeFoldingUrl(params: URLSearchParams): FoldingUrl {
     return value === null ? undefined : value !== '0'
   }
   const threats = Number(params.get('threats'))
-  const discards = parseTenhou(params.get('discards') ?? '')
+  const log = decodeLog(params.get('log') ?? '')
   const sanmaFlag = flag('sanma')
   const wall = parseTenhou(params.get('wall') ?? '')
 
@@ -475,26 +476,27 @@ export function decodeFoldingUrl(params: URLSearchParams): FoldingUrl {
     sanma: sanmaFlag,
     wins: flag('wins'),
     threats: Number.isInteger(threats) && threats > 0 ? threats : undefined,
-    discards: discards.length > 0 ? discards : undefined,
+    log: log.length > 0 ? log : undefined,
   }
   if (error) result.wallError = error
   return result
 }
 
-/** A match replays from its wall, rivers and all, so a link carries no tiles of its own beyond
- *  the wall itself — the two things that change what that wall deals, and the discards you have
- *  played since, which are what makes a mid-hand turn shareable (and a log row rewindable). */
+/** A match replays from its wall and every seat's log entries since handover, so a link carries
+ *  no tiles of its own beyond the wall itself — the two things that change what that wall deals,
+ *  and what's happened since, which are what make a mid-hand turn shareable (and a log row
+ *  rewindable). */
 export function encodeFoldingUrl(
   wall: ParsedTile[],
   options: BoardOptions,
-  discards: ParsedTile[] = [],
+  log: LogEntry[] = [],
 ): string {
   const params = new URLSearchParams()
   params.set('wall', serializeTenhouOrdered(wall))
   params.set('sanma', options.sanma ? '1' : '0')
   params.set('threats', String(options.threats))
   params.set('wins', options.wins ? '1' : '0')
-  if (discards.length > 0) params.set('discards', serializeTenhouOrdered(discards))
+  if (log.length > 0) params.set('log', encodeLog(log))
   return params.toString()
 }
 
@@ -558,11 +560,11 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       wins: urlData.wins ?? options.opponentWins,
     }
 
-    // a link's wall is already an accepted board, so replay it as-is — discards included; only a
+    // a link's wall is already an accepted board, so replay it as-is — its log included; only a
     // hand-edited one (or a fresh "new situation" request) falls through to a search
     const pinned =
       urlData.wall.length > 0 && handIndex === 0
-        ? buildRound(urlData.wall, board, urlData.discards, options.seats, options.claims)
+        ? buildRound(urlData.wall, board, urlData.log, options.seats, options.claims)
         : null
     const found = pinned
       ? Promise.resolve({ core: pinned, wall: urlData.wall, threats: board.threats })
@@ -629,23 +631,27 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.showSeatWaits])
 
-  /** Writes one log row per discard the link was fast-forwarded through, so a shared link (or a
-   *  rewind) arrives with the turns behind it on the record instead of a blank log. Keyed on the
-   *  link's identity: the effect above runs twice per mount and four times under StrictMode, all
-   *  for one and the same board. */
+  /** Writes one log row per *your own* discard the link was fast-forwarded through, so a shared
+   *  link (or a rewind) arrives with the turns behind it on the record instead of a blank log —
+   *  each row's rewind link is the full since-handover log truncated to that discard's actual
+   *  position, not just "your discards so far" (same reasoning as the table hook's own
+   *  `logReplay`): a mid-hand rewind has to reproduce a threat's own melds and discards exactly as
+   *  they were. Keyed on the link's identity: the effect above runs twice per mount and four times
+   *  under StrictMode, all for one and the same board. */
   function logReplay(built: RoundCore) {
     if (loggedReplay.current === urlData) return
     loggedReplay.current = urlData
-    const played = yourDiscards(built, built.handedOverAt)
-    played.forEach((tile, i) =>
+    const sinceHandover = built.match.log.slice(built.handedOverAt)
+    sinceHandover.forEach((entry, i) => {
+      if (entry.kind !== 'discard' || entry.seat !== built.seatIndex) return
       log(
         'log.replay',
-        { tile: tileCode(tile.id, tile.red) },
-        [tile],
+        { tile: tileCode(entry.tile.id, entry.tile.red) },
+        [entry.tile],
         undefined,
-        encodeFoldingUrl(roundWall.current, roundBoard.current!, played.slice(0, i)),
-      ),
-    )
+        encodeFoldingUrl(roundWall.current, roundBoard.current!, sinceHandover.slice(0, i)),
+      )
+    })
   }
 
   function discard(index: number, declareRiichi = riichiArmed) {
@@ -852,7 +858,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       ? encodeFoldingUrl(
           roundWall.current,
           roundBoard.current,
-          core.current ? yourDiscards(core.current, core.current.handedOverAt) : [],
+          core.current ? core.current.match.log.slice(core.current.handedOverAt) : [],
         )
       : ''
   }
