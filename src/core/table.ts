@@ -1,6 +1,7 @@
 import type { Meld } from './agari'
 import { assessDiscards, type TileDanger } from './danger'
 import { evaluateDiscards, type DiscardOption } from './efficiency'
+import type { Hand } from './hand'
 import {
   concealedTiles,
   isManual,
@@ -13,7 +14,7 @@ import {
   type PendingClaim,
   type WinRecord,
 } from './match'
-import { isFuriten, waits } from './policy'
+import { isFuriten, waits, type SeatAlgorithm } from './policy'
 import type { ParsedTile, RiverTile, TileId } from './tiles'
 import { INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
 
@@ -26,30 +27,29 @@ import { INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
  * consumer; this module holds only the mechanics every consumer shares.
  */
 
-/** The three fields every consumer needs to step or read a match: the state itself, the rules it
- *  is running under, and which seat is "yours". */
+/** The two fields every consumer needs to step or read a match: the state itself and the rules it
+ *  is running under. There is deliberately no "your seat" here — which seat a trainer grades and
+ *  which seat a page draws the board from are both that consumer's own business, and a layer-1
+ *  function that had an opinion about it is what made grading and perspective the same field for
+ *  as long as they were. */
 export interface TableCore {
   match: MatchState
   options: MatchOptions
-  seatIndex: number
 }
 
-/** The seat being played right now, which is `core.seatIndex` in the ordinary single-manual-seat
- *  setup and stays so for every existing trainer. It differs only once more than one seat is set
- *  to manual: the board is still drawn from `seatIndex`, but the hand on screen, the analysis and
- *  the discard all belong to whichever manual seat the turn has reached. A pending claim wins
- *  over the turn order — the seat being asked is the one holding the decision. */
+/** Whose turn it is right now: `match.seat`, except that a pending claim outranks the turn order
+ *  — the seat being asked is the one holding the decision, and nothing draws or discards until it
+ *  answers. One expression, but the override is easy to re-derive wrongly, and every reader of
+ *  "the current seat" has to agree about it. */
 export function actingSeat(core: TableCore): number {
-  const { match, seatIndex } = core
-  if (match.claim) return match.claim.seat
-  return isManual(match, match.seat) ? match.seat : seatIndex
+  return core.match.claim?.seat ?? core.match.seat
 }
 
-/** What the seat being played can see: every face-up tile plus its own hand. Thin wrapper over
- *  `match.ts`'s exported `seenBy` — the canonical computation lives there (not here) because this
- *  module imports the stepper from `match.ts`, and `match.ts` must not import back. */
-export function seenBy(core: TableCore): Uint8Array {
-  return seenByMatch(core.match, core.match.players[actingSeat(core)])
+/** What `seat` can see: every face-up tile plus its own hand. Thin wrapper over `match.ts`'s
+ *  exported `seenBy` — the canonical computation lives there (not here) because this module
+ *  imports the stepper from `match.ts`, and `match.ts` must not import back. */
+export function seenBy(core: TableCore, seat: number): Uint8Array {
+  return seenByMatch(core.match, core.match.players[seat])
 }
 
 /** Plays every seat the engine decides for, stopping at the next manual seat — or when the hand
@@ -71,17 +71,17 @@ export function goRound(core: TableCore): void {
   for (const _event of stepMatch(core.match, core.options, (s) => !isManual(s, s.seat)));
 }
 
-/** A render-ready mirror of the match, seat-index-first, with `core`'s own seat's drawn tile
- *  separated out into `drawn`. Every array is a fresh copy — mutating the match after a snapshot
- *  was taken never mutates that snapshot — except `liveWallSnapshot`/`deadWallSnapshot`/`wall`,
- *  passed through by reference since `createMatch` never mutates them once the deal is done.
- *  Carries no trainer-specific field — no score, no clock, no grading result and no `finished`
- *  flag: each consumer derives its own end condition (efficiency: hand below 14 tiles; folding:
- *  `match.ended`/wall-out). `melds`/`nuki` are per-seat here, where the efficiency hook keeps only
- *  its own — that hook indexes its seat out of these. */
+/** A render-ready mirror of the match. Every array is a fresh copy — mutating the match after a
+ *  snapshot was taken never mutates that snapshot — except `liveWallSnapshot`/`deadWallSnapshot`/
+ *  `wall`, passed through by reference since `createMatch` never mutates them once the deal is
+ *  done. Carries no trainer-specific field — no score, no clock, no grading result and no
+ *  `finished` flag: each consumer derives its own end condition (efficiency: hand below 14 tiles;
+ *  folding: `match.ended`/wall-out).
+ *
+ *  Uniformly per-seat: there is no `hand`/`drawn` pair naming one privileged seat any more. A page
+ *  showing a hand picks the seat it wants and splits its 14th tile itself with `splitDrawn`, which
+ *  is what lets perspective move without the snapshot having an opinion about it. */
 export interface TableSnapshot {
-  hand: ParsedTile[]
-  drawn: ParsedTile | undefined
   turn: number
   doraIndicators: ParsedTile[]
   rivers: RiverTile[][]
@@ -89,7 +89,9 @@ export interface TableSnapshot {
   melds: Meld[][]
   nuki: ParsedTile[][]
   riichi: boolean[]
-  seatIndex: number
+  /** What each seat is actually being played by right now, read off the live `PlayerState` — the
+   *  seat panel shows it, and folding's reveal gate keys "a seat somebody plays" off it. */
+  algorithms: SeatAlgorithm[]
   liveWall: ParsedTile[]
   deadWall: ParsedTile[]
   liveWallSnapshot: ParsedTile[]
@@ -103,17 +105,18 @@ export interface TableSnapshot {
    *  display draws greyed-out ahead of the live pool, so it can show the whole wall as built rather
    *  than just what is left to draw. */
   dealtTiles: ParsedTile[]
-  /** Whose hand `hand`/`drawn` above actually are — `seatIndex` in every single-manual-seat
-   *  setup, and some other manual seat only once the reader is playing more than one. */
-  acting: number
+  /** Whose turn it is right now (`actingSeat`) — the seat a discard would come from, or the seat
+   *  a pending claim is waiting on. Not "your seat": nothing here knows which seat a trainer
+   *  grades or which one a page draws at the bottom. */
+  seat: number
   /** The claim the board is waiting on, if any: while it is set nothing draws and nothing
    *  discards until it is answered. */
   claim: PendingClaim | undefined
-  /** Whose turn `drawn` belongs to — `undefined` whenever nothing is currently drawn (mid-claim,
-   *  or between hands). A page drawing a seat other than `acting` needs this to know whether
-   *  *that* seat's 14th tile should be shown split out: `hands[seat]` always has it mixed in
-   *  (`concealedTiles`, sorted), since only `hand`/`drawn` above ever get it spliced out. */
-  drawnSeat: number | undefined
+  /** The 14th tile currently in somebody's hand, and whose it is — `undefined` whenever nothing is
+   *  drawn (mid-claim, or between hands). `hands[seat]` always has it mixed in (`concealedTiles`,
+   *  sorted), so a page that wants it shown apart passes this through `splitDrawn` for the seat it
+   *  is drawing. */
+  drawn: { seat: number; tile: ParsedTile } | undefined
   /** Each seat's own tenpai/waits/furiten (`seatRead`). Always present for a seat the reader
    *  plays — a manual seat's own furiten is legitimate information a real client shows, and one
    *  more `waits` call is negligible next to the analysis that seat's own turn already pays for
@@ -125,8 +128,8 @@ export interface TableSnapshot {
 /** Separates a drawn tile out of a hand for display — the 14th tile shown apart from the rest,
  *  which is how tedashi/tsumogiri reads on a felt. `drawn` is returned exactly as given (even when
  *  it isn't found in `tiles`, which should not normally happen): only whether `tiles` itself gets
- *  spliced depends on the lookup. Shared by `snapshotTable` (the acting seat) and any page that
- *  wants the same split for another seat, keyed off `TableSnapshot.drawnSeat`. */
+ *  spliced depends on the lookup. Every page that shows a hand goes through this, keyed off
+ *  `TableSnapshot.drawn` — the snapshot itself no longer splits one privileged seat out. */
 export function splitDrawn(
   tiles: ParsedTile[],
   drawn: ParsedTile | undefined,
@@ -138,13 +141,9 @@ export function splitDrawn(
 
 /** Builds a `TableSnapshot` for `core` as the match stands right now. */
 export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnapshot {
-  const { match, seatIndex, options } = core
-  const acting = actingSeat(core)
-  const player = match.players[acting]
-  const { tiles: hand, drawn } = splitDrawn(concealedTiles(player), player.hand.drawn)
+  const { match, options } = core
+  const drawnTile = match.players[match.seat].hand.drawn
   return {
-    hand,
-    drawn,
     turn: match.turn,
     doraIndicators: [...match.doraIndicators],
     rivers: match.players.map((p) => [...p.river]),
@@ -152,7 +151,7 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
     melds: match.players.map((p) => [...p.melds]),
     nuki: match.players.map((p) => [...p.nuki]),
     riichi: match.players.map((p) => p.riichiAt !== undefined),
-    seatIndex,
+    algorithms: match.players.map((p) => p.algorithm),
     liveWall: [...match.liveWall],
     deadWall: [...match.deadWall],
     liveWallSnapshot: match.liveWallSnapshot,
@@ -163,22 +162,27 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
     win: match.win,
     wall: match.wall,
     dealtTiles: match.wall.slice(0, match.players.length * INITIAL_HAND_SIZE),
-    acting,
+    seat: actingSeat(core),
     claim: match.claim,
-    drawnSeat: match.players[match.seat].hand.drawn ? match.seat : undefined,
+    drawn: drawnTile ? { seat: match.seat, tile: drawnTile } : undefined,
     seatReads: match.players.map((_, seat) =>
       showSeatWaits || isManual(match, seat) ? seatRead(match, seat, options.sanma) : undefined,
     ),
   }
 }
 
-/** Per-turn analysis for `core`'s own seat, computed lazily and cached per object (ADR-0012): the
+/** Per-turn analysis for one seat, computed lazily and cached per object (ADR-0012): the
  *  solitaire trainer never reads `danger`, the folding trainer never reads `ranked`, and
  *  `evaluateDiscards` costs roughly 476 shanten probes per turn — nobody should pay for analysis
- *  they never read. An analysis object is a snapshot of one moment: a consumer captures it at draw
- *  time and hands the *same* object to its discard grading, which is what stops the numbers being
- *  recomputed against an already-13-tile hand after the throw. */
+ *  they never read. An analysis object is a snapshot of one moment in the strong sense: it holds
+ *  its own copy of the hand, so its numbers describe the board as it stood when it was built no
+ *  matter how much later a getter is first read. That is what lets a discard be graded against the
+ *  14-tile hand that made it even though the engine reports the discard once the tile has already
+ *  gone. */
 export interface TableAnalysis {
+  /** The seat's own hand at the moment this was built — a copy, so it still reads as 14 tiles
+   *  after the discard it is grading has left the live one. */
+  readonly hand: Hand
   readonly seen: Uint8Array
   readonly ranked: DiscardOption[]
   readonly danger: TileDanger[]
@@ -209,30 +213,36 @@ export function seatRead(state: MatchState, seat: number, sanma: boolean): SeatR
   }
 }
 
-/** Builds a fresh `TableAnalysis` for `core` as it stands right now — call it again after the
- *  board moves on rather than reusing an old one, since each object's members cache only their own
- *  first read. */
-export function analysisOf(core: TableCore): TableAnalysis {
-  const player = core.match.players[actingSeat(core)]
-  let seenCache: Uint8Array | undefined
+/** Builds a `TableAnalysis` pinned to `seat`'s hand as it stands right now.
+ *
+ *  The hand is **copied**, not referenced: `evaluateDiscards`/`assessDiscards` run whenever a
+ *  getter is first read, which for a discard is after `finishTurn` has already taken the tile out
+ *  of the live hand — ranking that would score 13 tiles and silently mis-grade every throw. A
+ *  34-byte `Uint8Array` copy per turn is nothing next to the ~476 shanten probes it protects, and
+ *  it turns "read these getters synchronously or else" from a rule every consumer had to remember
+ *  into one that cannot be broken. `seen` is likewise read at build time.
+ *
+ *  Still per-moment: build a new one after the board moves rather than reusing an old one. */
+export function analysisOf(core: TableCore, seat: number): TableAnalysis {
+  const player = core.match.players[seat]
+  const hand: Hand = {
+    counts: new Uint8Array(player.hand.counts),
+    melds: player.hand.melds,
+    drawn: player.hand.drawn,
+  }
+  const threats = threatViews(core.match)
+  const seen = seenBy(core, seat)
   let rankedCache: DiscardOption[] | undefined
   let dangerCache: TileDanger[] | undefined
-  const getSeen = () => (seenCache ??= seenBy(core))
 
   return {
-    get seen() {
-      return getSeen()
-    },
+    hand,
+    seen,
     get ranked() {
-      return (rankedCache ??= evaluateDiscards(player.hand, getSeen(), core.options.sanma))
+      return (rankedCache ??= evaluateDiscards(hand, seen, core.options.sanma))
     },
     get danger() {
-      return (dangerCache ??= assessDiscards(
-        player.hand,
-        threatViews(core.match),
-        getSeen(),
-        core.options.sanma,
-      ))
+      return (dangerCache ??= assessDiscards(hand, threats, seen, core.options.sanma))
     },
   }
 }

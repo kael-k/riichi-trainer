@@ -13,7 +13,6 @@ import { HONOR, serializeTenhou, serializeTenhouOrdered, type ParsedTile } from 
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
 import type { Settings } from '../settings/settingsStore'
-import type { AgariCall } from '../table/useTableRound'
 import { completeWall } from '../../core/wall'
 import { encodeScoringUrl, encodeScoringWallUrl, type ScoringUrl } from './scoringUrl'
 
@@ -152,8 +151,7 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
   // a resolution that arrives after the seed moved on belongs to a hand nobody is looking at
   const request = useRef(0)
   // the wall/match/invalidLink a pending win came from — stashed immediately before invoking
-  // `onAgariCall` below, since `AgariCall`'s signature (`(win: WinRecord) => void`, shared with
-  // `useTableRound`) carries only the WinRecord itself
+  // `onAgariCall` below, whose signature carries only the WinRecord itself
   const pending = useRef<{ wall: ParsedTile[]; match: MatchState | null; invalidLink: boolean }>({
     wall: [],
     match: null,
@@ -176,10 +174,11 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     }
   }
 
-  // scoring never re-touches its match after generation (ADR-0012) — this is its one entry point,
-  // typed with `AgariCall` to match the contract `useTableRound` hands its own consumers. Nothing
-  // else in this hook reads `outcome.state.win`/`win` directly.
-  const onAgariCall: AgariCall = (win) => {
+  // scoring never re-touches its match after generation (ADR-0012): it plays a wall out with
+  // `playWall`, keeps the win, and never steps that match again — so it is the one board-rendering
+  // trainer that does not drive `useMatch` at all, and `<Table>` here is purely presentational.
+  // This is its single entry point; nothing else in this hook reads `outcome.state.win` directly.
+  const onAgariCall = (win: WinRecord) => {
     const { wall, match, invalidLink } = pending.current
     const situation = situationFromWin(win, wall, options)
     setState((prev) => ({

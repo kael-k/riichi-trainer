@@ -49,7 +49,9 @@ export function useFullscreenBoard() {
   // from a page navigation that itself isn't a gesture the Fullscreen API accepts) and the real
   // API hasn't caught up yet; false (a no-op wait) once `document.fullscreenElement` is already
   // set, since a route change within an already-fullscreen tab needs no new request at all
-  const enteredWithoutGesture = useRef(full && typeof document !== 'undefined' && !document.fullscreenElement)
+  const enteredWithoutGesture = useRef(
+    full && typeof document !== 'undefined' && !document.fullscreenElement,
+  )
 
   useEffect(() => {
     if (!full) {

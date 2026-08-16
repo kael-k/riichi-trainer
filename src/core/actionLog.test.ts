@@ -24,8 +24,20 @@ describe('encodeLog / decodeLog', () => {
   it('round-trips one entry of every kind', () => {
     const log: LogEntry[] = [
       { kind: 'discard', seat: 0, tile: { id: MAN, red: false }, fromDrawn: false, riichi: false },
-      { kind: 'discard', seat: 1, tile: { id: PIN + 4, red: true }, fromDrawn: true, riichi: false },
-      { kind: 'discard', seat: 2, tile: { id: SOU + 8, red: false }, fromDrawn: true, riichi: true },
+      {
+        kind: 'discard',
+        seat: 1,
+        tile: { id: PIN + 4, red: true },
+        fromDrawn: true,
+        riichi: false,
+      },
+      {
+        kind: 'discard',
+        seat: 2,
+        tile: { id: SOU + 8, red: false },
+        fromDrawn: true,
+        riichi: true,
+      },
       { kind: 'call', seat: 3, from: 2, call: { kind: 'pon', from: [SOU + 8, SOU + 8] } },
       { kind: 'call', seat: 0, from: 3, call: { kind: 'chi', from: [MAN + 1, MAN + 2] } },
       { kind: 'kita', seat: 1 },
@@ -38,7 +50,13 @@ describe('encodeLog / decodeLog', () => {
 
   it('round-trips a red five with no other flags, and one with both', () => {
     const log: LogEntry[] = [
-      { kind: 'discard', seat: 0, tile: { id: PIN + 4, red: true }, fromDrawn: false, riichi: false },
+      {
+        kind: 'discard',
+        seat: 0,
+        tile: { id: PIN + 4, red: true },
+        fromDrawn: false,
+        riichi: false,
+      },
       { kind: 'discard', seat: 1, tile: { id: PIN + 4, red: true }, fromDrawn: true, riichi: true },
     ]
     expect(decodeLog(encodeLog(log))).toEqual(log)

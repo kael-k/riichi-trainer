@@ -719,7 +719,13 @@ export function finishTurn(
   if (declaring) entry.riichi = true
   player.river.push(entry)
   state.discards.push({ seat, tile: entry })
-  state.log.push({ kind: 'discard', seat, tile: { id: tile.id, red: tile.red }, fromDrawn, riichi: declaring })
+  state.log.push({
+    kind: 'discard',
+    seat,
+    tile: { id: tile.id, red: tile.red },
+    fromDrawn,
+    riichi: declaring,
+  })
   state.visible[tile.id]++
   if (declaring) events.push({ kind: 'riichi', seat })
   events.push({ kind: 'discard', seat, tile: entry })
@@ -941,7 +947,17 @@ export function replayLog(
   state: MatchState,
   options: MatchOptions,
   log: readonly LogEntry[],
+  onEvent?: (event: MatchEvent) => void,
 ): number {
+  /** Forwards whatever a replayed step really emitted. Restored turns produce the *same* events a
+   *  live turn does — that is the point of replaying through the engine rather than patching state
+   *  — so a consumer can rebuild from one event stream instead of needing a second path for links
+   *  (ADR-0012). Synthesizing these from `LogEntry` was impossible anyway: a logged call carries a
+   *  `Call`, not the `Meld` it becomes, and a logged win carries no `WinRecord` at all. */
+  const emit = (events: MatchEvent[]): MatchEvent[] => {
+    if (onEvent) for (const event of events) onEvent(event)
+    return events
+  }
   const originalAlgorithms = state.players.map((p) => p.algorithm)
   for (const player of state.players) player.algorithm = 'manual'
   const replayOptions: MatchOptions = { ...options, claims: true }
@@ -977,7 +993,7 @@ export function replayLog(
       const claim = state.claim
       if (i >= log.length) {
         if (!resolved && options.claims && state.liveWall.length > 0) return false
-        answerClaim(state, replayOptions, { kind: 'pass' })
+        emit(answerClaim(state, replayOptions, { kind: 'pass' }))
         continue
       }
       const entry = log[i]
@@ -991,7 +1007,7 @@ export function replayLog(
         i++
         resolved = true
       }
-      answerClaim(state, replayOptions, answer)
+      emit(answerClaim(state, replayOptions, answer))
     }
     return true
   }
@@ -1019,7 +1035,7 @@ export function replayLog(
     const seat = state.seat
     const next: LogEntry | undefined = log[i]
     const acceptsTsumo = next?.kind === 'win' && next.seat === seat && next.from === undefined
-    beginTurn(state, replayOptions, !acceptsTsumo)
+    emit(beginTurn(state, replayOptions, !acceptsTsumo))
     if (state.ended) {
       if (acceptsTsumo) i++
       break
@@ -1034,17 +1050,23 @@ export function replayLog(
     // during replay.
     while (i < log.length) {
       const entry = log[i]
-      if (entry.kind === 'kita' && entry.seat === seat) callKita(state, replayOptions, seat)
-      else if (entry.kind === 'ankan' && entry.seat === seat) callAnkan(state, seat, entry.tile)
+      if (entry.kind === 'kita' && entry.seat === seat) emit(callKita(state, replayOptions, seat))
+      else if (entry.kind === 'ankan' && entry.seat === seat)
+        emit(callAnkan(state, seat, entry.tile))
       else break
       i++
 
       const afterPull: LogEntry | undefined = log[i]
       const drawn = state.players[seat].hand.drawn
-      if (afterPull?.kind === 'win' && afterPull.seat === seat && afterPull.from === undefined && drawn) {
+      if (
+        afterPull?.kind === 'win' &&
+        afterPull.seat === seat &&
+        afterPull.from === undefined &&
+        drawn
+      ) {
         const win = tryWin(state, seat, replayOptions, drawn, true)
         if (win) {
-          endWith(state, win)
+          emit(endWith(state, win))
           i++
         }
       }
@@ -1053,11 +1075,13 @@ export function replayLog(
 
     const discardEntry = log[i]
     if (!discardEntry || discardEntry.kind !== 'discard' || discardEntry.seat !== seat) break
-    finishTurn(
-      state,
-      replayOptions,
-      { tile: discardEntry.tile, fromDrawn: discardEntry.fromDrawn },
-      discardEntry.riichi,
+    emit(
+      finishTurn(
+        state,
+        replayOptions,
+        { tile: discardEntry.tile, fromDrawn: discardEntry.fromDrawn },
+        discardEntry.riichi,
+      ),
     )
     i++
     if (!resolveClaims()) break

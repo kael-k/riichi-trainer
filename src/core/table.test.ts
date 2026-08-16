@@ -48,13 +48,13 @@ describe('seenBy', () => {
   it('equals visible + hand counts, clamped, at every turn of 20 seeded matches', () => {
     for (let i = 0; i < 20; i++) {
       const match = createMatch([], 4, YONMA, `table-seenby-${i}`)
-      const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+      const core: TableCore = { match, options: YONMA }
       // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
       for (let guard = 0; guard < 80 && !match.ended; guard++) {
         beginTurn(match, YONMA)
         finishTurn(match, YONMA)
         const player = match.players[0]
-        const seen = seenBy(core)
+        const seen = seenBy(core, 0)
         for (let id = 0; id < NUM_TILE_TYPES; id++) {
           const unclamped = match.visible[id] + player.hand.counts[id]
           expect(seen[id], `tile ${id} in seed table-seenby-${i}`).toBe(Math.min(4, unclamped))
@@ -76,11 +76,11 @@ const YOU_AT_0: MatchOptions = { ...YONMA, algorithms: manual(0) }
 describe('goRound', () => {
   it('leaves match.seat at the manual seat when the hand is still running', () => {
     const match = createMatch([], 4, YOU_AT_0, 'table-goround-1')
-    const core: TableCore = { match, options: YOU_AT_0, seatIndex: 0 }
+    const core: TableCore = { match, options: YOU_AT_0 }
     beginTurn(match, YOU_AT_0)
     finishTurn(match, YOU_AT_0)
     goRound(core)
-    expect(match.ended !== undefined || match.seat === core.seatIndex).toBe(true)
+    expect(match.ended !== undefined || match.seat === 0).toBe(true)
   })
 
   it('stops at whichever manual seat comes first, not only at seatIndex', () => {
@@ -88,7 +88,7 @@ describe('goRound', () => {
     // turn over at seat 2 rather than playing straight past it back round to seat 0
     const options: MatchOptions = { ...YONMA, algorithms: manual(0, 2) }
     const match = createMatch([], 4, options, 'table-goround-multi')
-    const core: TableCore = { match, options, seatIndex: 0 }
+    const core: TableCore = { match, options }
     beginTurn(match, options)
     finishTurn(match, options)
     goRound(core)
@@ -98,7 +98,7 @@ describe('goRound', () => {
   it('is a no-op on a one-seat match', () => {
     const options: MatchOptions = { ...YOU_AT_0, calls: false, riichi: false }
     const match = createMatch([], 1, options, 'table-goround-solo')
-    const core: TableCore = { match, options, seatIndex: 0 }
+    const core: TableCore = { match, options }
     const before = match.turn
     goRound(core)
     expect(match.seat).toBe(0)
@@ -111,7 +111,7 @@ describe('goRound', () => {
     // 400-turn backstop catches a rule bug that never hands the turn back
     const options: MatchOptions = { ...YONMA }
     const match = createMatch([], 4, options, 'table-goround-guard')
-    const core: TableCore = { match, options, seatIndex: 99 }
+    const core: TableCore = { match, options }
     goRound(core)
     expect(match.ended).toBeDefined()
   })
@@ -120,7 +120,7 @@ describe('goRound', () => {
 describe('actingSeat', () => {
   it('returns seatIndex when only that seat is manual', () => {
     const match = createMatch([], 4, YOU_AT_0, 'table-acting-1')
-    const core: TableCore = { match, options: YOU_AT_0, seatIndex: 0 }
+    const core: TableCore = { match, options: YOU_AT_0 }
     expect(actingSeat(core)).toBe(0)
   })
 
@@ -130,7 +130,7 @@ describe('actingSeat', () => {
     // follow the turn, not the board
     const options: MatchOptions = { ...YONMA, algorithms: manual(0, 2) }
     const match = createMatch([], 4, options, 'table-acting-2')
-    const core: TableCore = { match, options, seatIndex: 0 }
+    const core: TableCore = { match, options }
     beginTurn(match, options)
     finishTurn(match, options)
     goRound(core)
@@ -140,30 +140,39 @@ describe('actingSeat', () => {
 })
 
 describe('snapshotTable', () => {
-  it('separates the drawn tile out of hand into .drawn', () => {
+  it("names the drawn tile and whose it is, leaving it mixed into that seat's hand", () => {
     const match = createMatch([], 4, YONMA, 'table-snap-1')
-    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    const core: TableCore = { match, options: YONMA }
     beginTurn(match, YONMA)
     const snap = snapshotTable(core)
     const drawn = match.players[match.seat].hand.drawn
-    expect(snap.drawn).toEqual(drawn)
-    expect(snap.hand.some((t) => t.id === drawn!.id && t.red === drawn!.red)).toBe(false)
-    // whoever's turn it is right now — the seat a page must split *its own* hand for when
-    // watching it from another perspective
-    expect(snap.drawnSeat).toBe(match.seat)
+    expect(snap.drawn).toEqual({ seat: match.seat, tile: drawn })
+    // the snapshot no longer splits one privileged seat's hand — `hands[seat]` keeps every tile
+    // and a page separates the 14th itself with `splitDrawn`, which is what lets perspective move
+    expect(snap.hands[match.seat].some((t) => t.id === drawn!.id)).toBe(true)
+    const split = splitDrawn(snap.hands[match.seat], drawn)
+    expect(split.tiles.some((t) => t.id === drawn!.id && t.red === drawn!.red)).toBe(false)
   })
 
-  it('leaves drawnSeat undefined between turns', () => {
+  it('leaves drawn undefined between turns', () => {
     const match = createMatch([], 4, YONMA, 'table-snap-nodraw')
-    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    const core: TableCore = { match, options: YONMA }
     const snap = snapshotTable(core)
     expect(match.players[match.seat].hand.drawn).toBeUndefined()
-    expect(snap.drawnSeat).toBeUndefined()
+    expect(snap.drawn).toBeUndefined()
+  })
+
+  it("reports whose turn it is, and every seat's algorithm", () => {
+    const options: MatchOptions = { ...YONMA, algorithms: manual(0, 2) }
+    const match = createMatch([], 4, options, 'table-snap-seat')
+    const snap = snapshotTable({ match, options })
+    expect(snap.seat).toBe(match.seat)
+    expect(snap.algorithms).toEqual(['manual', 'efficiency', 'manual', 'efficiency'])
   })
 
   it('mirrors every seat with one entry per player, for both 4-seat and 3-seat tables', () => {
     const match4 = createMatch([], 4, YONMA, 'table-snap-4')
-    const snap4 = snapshotTable({ match: match4, options: YONMA, seatIndex: 0 })
+    const snap4 = snapshotTable({ match: match4, options: YONMA })
     expect(snap4.rivers.length).toBe(match4.players.length)
     expect(snap4.hands.length).toBe(match4.players.length)
     expect(snap4.melds.length).toBe(match4.players.length)
@@ -172,13 +181,13 @@ describe('snapshotTable', () => {
 
     const sanma = { ...YONMA, sanma: true }
     const match3 = createMatch([], 3, sanma, 'table-snap-3')
-    const snap3 = snapshotTable({ match: match3, options: sanma, seatIndex: 0 })
+    const snap3 = snapshotTable({ match: match3, options: sanma })
     expect(snap3.rivers.length).toBe(match3.players.length)
   })
 
   it('copies every array defensively: mutating the match after a snapshot leaves it unchanged', () => {
     const match = createMatch([], 4, { ...YONMA, wins: false }, 'table-snap-copy')
-    const core: TableCore = { match, options: { ...YONMA, wins: false }, seatIndex: 0 }
+    const core: TableCore = { match, options: { ...YONMA, wins: false } }
     beginTurn(match, core.options)
     finishTurn(match, core.options)
     const before = snapshotTable(core)
@@ -218,44 +227,44 @@ describe('splitDrawn', () => {
 describe('analysisOf', () => {
   it('caches .ranked: reading it twice returns the identical array reference', () => {
     const match = createMatch([], 4, YONMA, 'table-analysis-1')
-    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    const core: TableCore = { match, options: YONMA }
     beginTurn(match, YONMA)
-    const analysis = analysisOf(core)
+    const analysis = analysisOf(core, 0)
     expect(analysis.ranked).toBe(analysis.ranked)
   })
 
   it('never calls evaluateDiscards when only .danger is read', () => {
     vi.clearAllMocks()
     const match = createMatch([], 4, YONMA, 'table-analysis-2')
-    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    const core: TableCore = { match, options: YONMA }
     beginTurn(match, YONMA)
-    void analysisOf(core).danger
+    void analysisOf(core, 0).danger
     expect(vi.mocked(evaluateDiscards)).not.toHaveBeenCalled()
   })
 
   it('never calls assessDiscards when only .ranked is read', () => {
     vi.clearAllMocks()
     const match = createMatch([], 4, YONMA, 'table-analysis-3')
-    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    const core: TableCore = { match, options: YONMA }
     beginTurn(match, YONMA)
-    void analysisOf(core).ranked
+    void analysisOf(core, 0).ranked
     expect(vi.mocked(assessDiscards)).not.toHaveBeenCalled()
   })
 
   it('returns a distinct object each call, so an earlier capture keeps its pre-throw numbers', () => {
     const match = createMatch([], 4, YONMA, 'table-analysis-4')
-    const core: TableCore = { match, options: YONMA, seatIndex: 0 }
+    const core: TableCore = { match, options: YONMA }
     beginTurn(match, YONMA)
-    expect(analysisOf(core)).not.toBe(analysisOf(core))
+    expect(analysisOf(core, 0)).not.toBe(analysisOf(core, 0))
   })
 
   it('with nobody in riichi, .danger still returns one entry per held kind', () => {
     const match = createMatch([], 4, { ...YONMA, riichi: false }, 'table-analysis-5')
-    const core: TableCore = { match, options: { ...YONMA, riichi: false }, seatIndex: 0 }
+    const core: TableCore = { match, options: { ...YONMA, riichi: false } }
     beginTurn(match, core.options)
     const player = match.players[0]
     const distinctKinds = player.hand.counts.filter((c) => c > 0).length
-    expect(analysisOf(core).danger.length).toBe(distinctKinds)
+    expect(analysisOf(core, 0).danger.length).toBe(distinctKinds)
   })
 })
 

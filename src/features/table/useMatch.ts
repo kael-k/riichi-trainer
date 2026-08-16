@@ -1,0 +1,474 @@
+import { useEffect, useRef, useState } from 'react'
+import {
+  answerClaim,
+  beginTurn,
+  callAnkan,
+  callKita,
+  canDeclareRiichi,
+  createMatch,
+  finishTurn,
+  isManual,
+  NORTH,
+  reconsiderClaim,
+  replayLog,
+  stepMatch,
+  type ClaimAnswer,
+  type LogEntry,
+  type MatchEvent,
+  type MatchOptions,
+  type MatchState,
+} from '../../core/match'
+import { addTile, removeTile, tileCount } from '../../core/hand'
+import {
+  actingSeat,
+  analysisOf,
+  snapshotTable,
+  type TableAnalysis,
+  type TableCore,
+  type TableSnapshot,
+} from '../../core/table'
+import { HONOR, type ParsedTile, type TileId } from '../../core/tiles'
+import { WINDS, type Situation } from '../situation/urlCodec'
+
+/**
+ * The React layer over `core/table.ts`. It drives a match and **reports what the engine did**; it
+ * has no opinion about what any of it means (ADR-0012). Every trainer built on a real match —
+ * efficiency (both routes), folding, scoring's replay, the lab — subscribes to one callback,
+ * `onEvent`, and decides for itself which seat it grades, when a round is over, and whether a
+ * board is worth keeping.
+ *
+ * That is the whole contract. There is no `onUserDraw`/`onUserDiscard`/`onAgariCall` triple and no
+ * `stopAtTenpai` flag, because "your seat" and "the drill ends here" were never this layer's to
+ * know — a hook that filtered events down to one designated seat is what made folding unable to
+ * use it, since folding grades a seat the panel can move and searches for boards by playing them.
+ *
+ * A handler steers the round by what it returns (`MatchCommand`): nothing to carry on, `{ stop }`
+ * to halt where the board stands, `{ restart }` to throw this deal away and take a new wall. The
+ * driver is async and yields to the browser between restarts, so a rejection-sampling search
+ * (folding's "find me a hand worth drilling") runs through this hook without freezing the page.
+ */
+
+/** What a handler returns to steer the round. `undefined` carries on.
+ *
+ *  `stop` halts the driver where the board stands — a real action rather than the caller simply
+ *  declining to continue, since the turn's own draw has to be cleared for the hand to read as
+ *  finished. `restart` abandons this deal and builds a fresh one from `wall` (empty means "deal me
+ *  a random one"), which is how a search rejects a board it does not want. */
+export type MatchCommand = void | { stop: true } | { restart: ParsedTile[] }
+
+/** An engine event plus the context a handler needs to judge it.
+ *
+ *  `core` is the live `TableCore`, so a handler can call `analysisOf`/`snapshotTable`/`shanten` on
+ *  the board as it stands at exactly this moment. `replaying` marks an event reconstructed by
+ *  `replayLog` rather than played live (ADR-0021): the board really did reach this state, so a
+ *  handler deriving *state* should treat it like any other event, while one that grades or writes
+ *  a log row must skip it. Suppressing replayed events outright was this layer deciding a grading
+ *  policy on the consumer's behalf, and it left folding unable to see the riichi its own drill is
+ *  built around.
+ *
+ *  `analysis` is present on `discard` events only, and is the one thing a handler genuinely
+ *  cannot rebuild for itself: by the time a discard is reported the tile has left the hand, so
+ *  ranking it again would score 13 tiles. It is captured before `finishTurn` runs and is lazy —
+ *  a handler that ignores it pays nothing. */
+export interface MatchEventContext {
+  event: MatchEvent
+  core: TableCore
+  replaying: boolean
+  analysis: TableAnalysis | undefined
+  /** How long `core.match.log` was when the acting seat's current turn began — the cut a rewind
+   *  link needs. By the time any event is reported the whole turn has been applied, reactions
+   *  included (`finishTurn` resolves them before returning), so `match.log` already holds this
+   *  turn's own discard and anything it triggered; slicing here is what reproduces the board as it
+   *  stood *before* the decision being reported. */
+  logLength: number
+}
+
+export type MatchEventHandler = (ctx: MatchEventContext) => MatchCommand
+
+export interface UseMatchInput {
+  wall: ParsedTile[]
+  players: number
+  options: MatchOptions
+  /** Every seat's decisions so far, replayed via `replayLog` to fast-forward to a mid-round
+   *  decision point — a shared link or a log rewind. Consults no algorithm at all, which is what
+   *  makes it immune to a later algorithm change (ADR-0021), and adds no tiles: everything named
+   *  is already accounted for by `wall`. */
+  replay?: readonly LogEntry[]
+  /** Threaded straight to `snapshotTable`, which is where the per-seat `waits` cost is paid. */
+  showSeatWaits?: boolean
+  onEvent?: MatchEventHandler
+}
+
+/** Whether `state` is mid-turn for a seat nobody will decide for automatically. */
+function awaitingManual(state: MatchState): boolean {
+  return isManual(state, state.seat)
+}
+
+export function useMatch(input: UseMatchInput) {
+  const core = useRef<TableCore | undefined>(undefined)
+  const [restartCount, setRestartCount] = useState(0)
+  // "the next discard declares riichi", armed from the UI's riichi button — the declaration rides
+  // on the discard the reader was going to make anyway rather than needing its own call site
+  const [riichiArmed, setRiichiArmed] = useState(false)
+  // log entries actually replayed on the last build (may fall short of `input.replay` when the
+  // recording no longer matches the hand), so a consumer can put one row per replayed decision on
+  // its own log without reaching back into `core/match.ts`
+  const replayed = useRef<readonly LogEntry[]>([])
+  // the analysis captured at the top of the current turn, handed to that turn's discard event so
+  // grading measures the pre-throw hand. Keyed by seat: several seats can be manual at once
+  const pending = useRef<{ seat: number; analysis: TableAnalysis; logLength: number } | undefined>(
+    undefined,
+  )
+  // guards the mount effect against StrictMode's double invoke for one and the same build
+  const builtFor = useRef<{ wall: ParsedTile[]; count: number } | undefined>(undefined)
+  // replayed events waiting to be handed to the handler from the mount effect; see `build`
+  const queued = useRef<MatchEvent[]>([])
+  // a restart mid-drive must abandon the drive it came from
+  const generation = useRef(0)
+
+  // joined, not the array itself: a caller builds this fresh from its settings on every render, so
+  // an identity dep would redeal the board each time it rendered
+  const algorithmsKey = input.options.algorithms?.join()
+
+  const [lastWall, setLastWall] = useState(input.wall)
+  if (input.wall !== lastWall) {
+    setLastWall(input.wall)
+    setRestartCount(0)
+  }
+
+  const handler = useRef<MatchEventHandler | undefined>(input.onEvent)
+  handler.current = input.onEvent
+
+  /** Reports one event and returns whatever the handler wants done about it.
+   *
+   *  A draw is the moment a hand is complete and untouched, so the turn's analysis is pinned here
+   *  — before the handler sees the draw, and once for every seat rather than only the ones a
+   *  person plays. Pinning it any later would rank the hand a discard has already left; pinning it
+   *  only for manual seats would leave an AI seat's discard reported with a stale one. */
+  function report(c: TableCore, event: MatchEvent, replaying: boolean): MatchCommand {
+    if (event.kind === 'draw') {
+      pending.current = {
+        seat: event.seat,
+        analysis: analysisOf(c, event.seat),
+        logLength: c.match.log.length,
+      }
+    }
+    return handler.current?.({
+      event,
+      core: c,
+      replaying,
+      analysis: analysisFor(c, event),
+      logLength: pending.current?.logLength ?? c.match.log.length,
+    })
+  }
+
+  /** The analysis of the seat's own 14-tile hand, on the draw that completed it and on the three
+   *  events that spend it — a discard, a kita pull, a closed kan. `undefined` for every other
+   *  kind. Read off the capture taken at the draw, so it describes the hand that made the decision
+   *  rather than what is left after it. */
+  function analysisFor(c: TableCore, event: MatchEvent): TableAnalysis | undefined {
+    if (
+      event.kind !== 'draw' &&
+      event.kind !== 'discard' &&
+      event.kind !== 'kita' &&
+      event.kind !== 'ankan'
+    ) {
+      return undefined
+    }
+    const held = pending.current
+    return held && held.seat === event.seat ? held.analysis : analysisOf(c, event.seat)
+  }
+
+  /** Captures the acting seat's analysis while its hand is still 14 tiles, so the discard that
+   *  follows is graded against the hand that made it. */
+  function capture(c: TableCore): void {
+    const seat = actingSeat(c)
+    const player = c.match.players[seat]
+    pending.current =
+      tileCount(player.hand) === 14
+        ? { seat, analysis: analysisOf(c, seat), logLength: c.match.log.length }
+        : undefined
+  }
+
+  /**
+   * Runs the match forward until a person has to decide, the hand ends, or a handler says stop.
+   * Yields to the browser between restarts so a search can run through here without freezing the
+   * page — and only between restarts, since a single hand is fast and an await per turn would
+   * make every ordinary discard wait a frame.
+   */
+  async function drive(c: TableCore, replaying = false): Promise<void> {
+    const mine = ++generation.current
+    let current = c
+    for (;;) {
+      let restart: ParsedTile[] | undefined
+      let halted = false
+
+      /** Feeds one step's events to the handler; false means the drive is over. */
+      const pump = (events: MatchEvent[]): boolean => {
+        for (const event of events) {
+          const command = report(current, event, replaying)
+          if (generation.current !== mine) return false
+          if (command && 'stop' in command) {
+            current.match.players[current.match.seat].hand.drawn = undefined
+            halted = true
+            return false
+          }
+          if (command && 'restart' in command) {
+            restart = command.restart
+            return false
+          }
+        }
+        return true
+      }
+
+      let running = true
+      for (const event of stepMatch(current.match, current.options, (s) => !awaitingManual(s))) {
+        if (!pump([event])) {
+          running = false
+          break
+        }
+      }
+
+      // `stepMatch` stops *before* a manual seat acts, and a manual seat is one the engine draws
+      // for but never decides for — so the draw itself still has to happen, or the reader is asked
+      // to discard from thirteen tiles. Guarded on `hand.drawn` because a replayed log can leave
+      // any seat already holding its 14th.
+      if (
+        running &&
+        !current.match.ended &&
+        !current.match.claim &&
+        awaitingManual(current.match) &&
+        current.match.players[current.match.seat].hand.drawn === undefined
+      ) {
+        pump(beginTurn(current.match, current.options))
+      }
+      if (generation.current !== mine) return
+      if (halted) {
+        setSnapshot(snapshotTable(current, input.showSeatWaits))
+        return
+      }
+      if (!restart) break
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      if (generation.current !== mine) return
+      current = {
+        match: createMatch(restart, input.players, input.options),
+        options: input.options,
+      }
+      core.current = current
+    }
+    if (generation.current !== mine) return
+    capture(current)
+    setSnapshot(snapshotTable(current, input.showSeatWaits))
+  }
+
+  /**
+   * Deals and replays the recorded log. Called from the render that first needs a board and then
+   * skipped by the mount effect, rather than run in both — the old hook did exactly that and dealt
+   * two independently-filled walls per mount when the wall was unpinned (the double-build defect
+   * in `docs/STATUS.md`).
+   *
+   * Replayed events are queued rather than reported: a build has to be able to happen during
+   * render (a page needs rivers and a hand on its very first paint), and calling a consumer's
+   * handler from there would log and grade mid-render, twice over under StrictMode. The effect
+   * drains the queue instead, once per distinct build.
+   */
+  function build(): TableCore {
+    const wall = restartCount === 0 ? input.wall : []
+    const c: TableCore = {
+      match: createMatch(wall, input.players, input.options),
+      options: input.options,
+    }
+    core.current = c
+    queued.current = []
+
+    // `replayLog` reconstructs every seat's turn exactly, consulting no algorithm (ADR-0021), and
+    // hands back the events those turns really emitted — the same shapes a live turn produces, so
+    // a consumer rebuilds from one stream rather than needing a second path for links. A command
+    // is not honoured mid-replay: the recording says what happened, and a handler cannot stop or
+    // redeal a board that already played out this way.
+    const log = input.replay ?? []
+    const consumed = replayLog(c.match, c.options, log, (event) => queued.current.push(event))
+    replayed.current = log.slice(0, consumed)
+    capture(c)
+    return c
+  }
+
+  /** The board for the current inputs, building it only if this exact round has not been built. */
+  function ensureBuilt(): TableCore {
+    const already =
+      core.current && builtFor.current?.wall === input.wall && builtFor.current?.count === restartCount
+    if (already) return core.current!
+    builtFor.current = { wall: input.wall, count: restartCount }
+    return build()
+  }
+
+  const [snapshot, setSnapshot] = useState<TableSnapshot>(() =>
+    snapshotTable(ensureBuilt(), input.showSeatWaits),
+  )
+
+  useEffect(() => {
+    const c = ensureBuilt()
+    // the replayed decisions reach the handler here, in play order, exactly once per build
+    const pending = queued.current
+    queued.current = []
+    for (const event of pending) report(c, event, true)
+    setSnapshot(snapshotTable(c, input.showSeatWaits))
+    void drive(c)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    input.wall,
+    input.replay,
+    input.players,
+    input.options.sanma,
+    input.options.aka,
+    input.options.round,
+    input.options.deadWall,
+    input.options.calls,
+    input.options.riichi,
+    input.options.wins,
+    restartCount,
+  ])
+
+  // algorithm and claims changes are live (ADR-0008, ADR-0015): neither may redeal, so both are
+  // written straight onto the running match. Two cases can't wait for the board to advance on its
+  // own: a seat that stopped being manual with its draw already sitting there (`stepMatch`'s own
+  // `hand.drawn` guard stops it re-drawing), and a claim pending on a seat that stopped being
+  // manual — nobody will call `answerClaim` for it now, so it is re-resolved through the same
+  // restartable path (`reconsiderClaim`). Never auto-passed: a pass sets `missedWin`, so a
+  // dropdown must not poison the hand with furiten over a decision nobody made.
+  useEffect(() => {
+    const c = core.current
+    if (!c || c.match.ended) return
+    let changed = c.options.claims !== input.options.claims
+    c.options.claims = input.options.claims
+    input.options.algorithms?.forEach((algorithm, seat) => {
+      const player = c.match.players[seat]
+      if (player && player.algorithm !== algorithm) {
+        player.algorithm = algorithm
+        changed = true
+      }
+    })
+    if (!changed) return
+    if (c.match.claim && !isManual(c.match, c.match.claim.seat)) {
+      reconsiderClaim(c.match, c.options)
+    }
+    void drive(c)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [algorithmsKey, input.options.claims])
+
+  // `showSeatWaits` alone must not rebuild (that would redeal) — re-snapshot the board as it
+  // stands, which is what makes toggling the setting live rather than waiting for the next discard
+  useEffect(() => {
+    const c = core.current
+    if (c) setSnapshot(snapshotTable(c, input.showSeatWaits))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.showSeatWaits])
+
+  /** Discards `tile` for the seat currently acting, declaring riichi with it when asked. */
+  function discard(tile: ParsedTile, fromDrawn: boolean, declareRiichi = riichiArmed): void {
+    const c = core.current
+    if (!c || c.match.ended || c.match.claim) return
+    const seat = actingSeat(c)
+    if (!isManual(c.match, seat) || tileCount(c.match.players[seat].hand) !== 14) return
+    setRiichiArmed(false)
+    for (const event of finishTurn(c.match, c.options, { tile, fromDrawn }, declareRiichi)) {
+      const command = report(c, event, false)
+      if (command && 'stop' in command) {
+        c.match.players[c.match.seat].hand.drawn = undefined
+        setSnapshot(snapshotTable(c, input.showSeatWaits))
+        return
+      }
+    }
+    void drive(c)
+  }
+
+  /** Answers the claim the board is waiting on — ron, pon, chi or pass — and plays on. */
+  function answer(claimAnswer: ClaimAnswer): void {
+    const c = core.current
+    if (!c || !c.match.claim) return
+    for (const event of answerClaim(c.match, c.options, claimAnswer)) {
+      report(c, event, false)
+    }
+    void drive(c)
+  }
+
+  /** Pulls a held north (sanma only). */
+  function kita(): void {
+    const c = core.current
+    if (!c || !c.options.sanma || c.match.ended || c.match.claim) return
+    const seat = actingSeat(c)
+    if (!isManual(c.match, seat) || tileCount(c.match.players[seat].hand) !== 14) return
+    if (c.match.players[seat].hand.counts[NORTH] === 0) return
+    for (const event of callKita(c.match, c.options, seat)) report(c, event, false)
+    capture(c)
+    setSnapshot(snapshotTable(c, input.showSeatWaits))
+  }
+
+  /** Calls a closed kan on a held quad. */
+  function kan(id: TileId): void {
+    const c = core.current
+    if (!c || c.match.ended || c.match.claim) return
+    const seat = actingSeat(c)
+    if (!isManual(c.match, seat) || tileCount(c.match.players[seat].hand) !== 14) return
+    if (c.match.players[seat].hand.counts[id] !== 4) return
+    for (const event of callAnkan(c.match, seat, id)) report(c, event, false)
+    capture(c)
+    setSnapshot(snapshotTable(c, input.showSeatWaits))
+  }
+
+  /** Tiles the acting seat could discard *and* declare riichi on, read off the same captured
+   *  ranking a discard is graded against so the two can never disagree about which reach tenpai;
+   *  the rest of the legality is `canDeclareRiichi`'s, probed against the hand as it will stand. */
+  function riichiTiles(): TileId[] {
+    const c = core.current
+    const held = pending.current
+    if (!c || !held || c.match.ended || c.match.claim) return []
+    const seat = held.seat
+    const player = c.match.players[seat]
+    if (tileCount(player.hand) !== 14) return []
+    return held.analysis.ranked
+      .filter((option) => {
+        if (option.shanten !== 0) return false
+        removeTile(player.hand, option.discard)
+        const legal = canDeclareRiichi(c.match, c.options, seat)
+        addTile(player.hand, option.discard)
+        return legal
+      })
+      .map((option) => option.discard)
+  }
+
+  /** The round as a shareable `Situation`: the wall actually dealt and every seat's decision
+   *  since. Read off the live core rather than a snapshot — a record, not a render artifact. */
+  function situation(seatIndex: number, log?: readonly LogEntry[]): Situation {
+    const c = core.current
+    return {
+      wall: c ? [...c.match.wall] : [...input.wall],
+      log: [...(log ?? c?.match.log ?? [])],
+      round: WINDS[input.options.round - HONOR] ?? 'E',
+      seat: WINDS[seatIndex] ?? 'E',
+      deadWall: input.options.deadWall,
+      aka: input.options.aka,
+      sanma: input.options.sanma,
+    }
+  }
+
+  return {
+    snapshot,
+    core: core.current,
+    /** The analysis for the turn currently in progress, if a seat is holding 14 tiles. */
+    analysis: pending.current?.analysis,
+    discard,
+    answer,
+    riichiTiles,
+    riichiArmed,
+    armRiichi: setRiichiArmed,
+    kita,
+    kan,
+    restart: () => setRestartCount((n) => n + 1),
+    /** A function, not a value: the log is replayed in the mount effect, which runs *after* the
+     *  render that would have captured it — a consumer reading this from its own effect needs the
+     *  live ref, not an empty array snapshotted a moment too early. */
+    replayed: () => replayed.current,
+    situation,
+  }
+}

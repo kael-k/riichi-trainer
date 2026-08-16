@@ -786,7 +786,9 @@ describe('MatchState.log', () => {
       expected.forEach((e, idx) => {
         const entry = state.log[idx]
         expect(entry.kind, `seed log-${i} entry ${idx}`).toBe(e.kind)
-        expect(entry.seat, `seed log-${i} entry ${idx}`).toBe(e.kind === 'win' ? e.win.seat : e.seat)
+        expect(entry.seat, `seed log-${i} entry ${idx}`).toBe(
+          e.kind === 'win' ? e.win.seat : e.seat,
+        )
       })
     }
   })

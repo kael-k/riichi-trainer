@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { evaluateDiscards, evaluateKan, type DiscardOption } from '../../core/efficiency'
+import { evaluateDiscards, type DiscardOption } from '../../core/efficiency'
 import { addTile, createHand, type Hand } from '../../core/hand'
 import { NORTH } from '../../core/match'
 import { HONOR, parseTenhou } from '../../core/tiles'
-import type { DiscardStats } from '../table/useTableRound'
-import { efficiencyLogRows, gradeAction, handFromSnapshot, lostVs } from './grade'
+import {
+  actionStats,
+  efficiencyLogRows,
+  gradeAction,
+  handFromSnapshot,
+  lostVs,
+  type ActionStats,
+} from './grade'
 
 function handFrom(tenhou: string): Hand {
   const hand = createHand()
@@ -12,23 +18,21 @@ function handFrom(tenhou: string): Hand {
   return hand
 }
 
-/** Builds the `DiscardStats` `gradeAction` expects, off a real 14-tile hand — mirrors what
- *  `useTableRound`'s `statsFor` hands a consumer, without going through a live match. */
+/** Builds the `ActionStats` `gradeAction` expects off a real 14-tile hand, through the same
+ *  `actionStats` both efficiency routes use — without going through a live match. */
 function statsFor(
   hand: Hand,
-  kind: DiscardStats['kind'],
+  kind: ActionStats['kind'],
   discardId: number,
   sanma = false,
-): DiscardStats {
+): ActionStats {
   const seen = hand.counts.slice()
-  const ranked = evaluateDiscards(hand, seen, sanma)
-  const yours: DiscardOption =
-    kind === 'kita'
-      ? ranked.find((o) => o.discard === NORTH)!
-      : kind === 'kan'
-        ? evaluateKan(hand, seen, sanma).find((o) => o.discard === discardId)!
-        : ranked.find((o) => o.discard === discardId)!
-  return { kind, analysis: { seen, ranked, danger: [] }, yours, best: ranked[0], danger: undefined }
+  return actionStats(
+    { hand, seen, ranked: evaluateDiscards(hand, seen, sanma), danger: [] },
+    kind,
+    discardId,
+    sanma,
+  )
 }
 
 describe('grade', () => {
@@ -52,7 +56,7 @@ describe('grade', () => {
       // ryanmen — the best line (ukeire 6), beating either pair-based shanpon this hand also has
       const hand = handFrom('123456789m11223p')
       const stats = statsFor(hand, 'discard', 10) // 2p
-      const result = gradeAction(stats, 3, hand, false)
+      const result = gradeAction(stats, 3, false)
       expect(result.grade).toBe('ok')
       expect(result.missed).toBeUndefined()
     })
@@ -60,7 +64,7 @@ describe('grade', () => {
     it('grades a discard that loses shanten/ukeire as error', () => {
       const hand = handFrom('123456789m11223p')
       const stats = statsFor(hand, 'discard', 9) // 1p: also tenpai, but the worse shanpon wait
-      const result = gradeAction(stats, 3, hand, false)
+      const result = gradeAction(stats, 3, false)
       expect(result.grade).toBe('error')
     })
 
@@ -69,7 +73,7 @@ describe('grade', () => {
       // so discarding it plainly ties the best line while pulling it (kita) ties it too
       const hand = handFrom('123456789p123s1z4z')
       const stats = statsFor(hand, 'discard', NORTH, true)
-      const result = gradeAction(stats, 5, hand, true)
+      const result = gradeAction(stats, 5, true)
       expect(result.grade).toBe('warning')
       expect(result.missed).toEqual({ kind: 'kita', tile: NORTH })
     })
@@ -79,7 +83,7 @@ describe('grade', () => {
       // (6s/9s), tying the line kanning the quad would also reach
       const hand = handFrom('123456m78s22p3333z')
       const stats = statsFor(hand, 'discard', HONOR + 2) // 3z
-      const result = gradeAction(stats, 4, hand, false)
+      const result = gradeAction(stats, 4, false)
       expect(result.grade).toBe('warning')
       expect(result.missed).toEqual({ kind: 'kan', tile: HONOR + 2 })
     })
@@ -87,12 +91,12 @@ describe('grade', () => {
     it('never grades a kita pull warning — only ok or error', () => {
       const hand = handFrom('123456789p123s1z4z')
       const good = statsFor(hand, 'kita', NORTH, true)
-      expect(gradeAction(good, 5, hand, true).grade).toBe('ok')
+      expect(gradeAction(good, 5, true).grade).toBe('ok')
 
       // pulling a North that is load-bearing (the hand's head) costs shanten
       const pairHand = handFrom('123456789p239s44z')
       const bad = statsFor(pairHand, 'kita', NORTH, true)
-      const badResult = gradeAction(bad, 5, pairHand, true)
+      const badResult = gradeAction(bad, 5, true)
       expect(badResult.grade).toBe('error')
       expect(badResult.missed).toBeUndefined()
     })
@@ -100,14 +104,14 @@ describe('grade', () => {
     it('never grades a kan call warning — only ok or error', () => {
       const hand = handFrom('123456m78s22p3333z')
       const good = statsFor(hand, 'kan', HONOR + 2)
-      const goodResult = gradeAction(good, 4, hand, false)
+      const goodResult = gradeAction(good, 4, false)
       expect(goodResult.grade).toBe('ok')
       expect(goodResult.missed).toBeUndefined()
 
       // 788889s decomposes losslessly as 789s + 888s; kanning the four 8s strands the 7s/9s
       const badHand = handFrom('123456m78889s19p8s')
       const bad = statsFor(badHand, 'kan', 25) // 8s
-      const badResult = gradeAction(bad, 1, badHand, false)
+      const badResult = gradeAction(bad, 1, false)
       expect(badResult.grade).toBe('error')
       expect(badResult.missed).toBeUndefined()
     })
@@ -126,7 +130,7 @@ describe('grade', () => {
     it('emits a discardBest row with the drawn tile when best, no drawn-tile variant otherwise', () => {
       const hand = handFrom('123456789m11223p')
       const stats = statsFor(hand, 'discard', 10)
-      const result = gradeAction(stats, 3, hand, false)
+      const result = gradeAction(stats, 3, false)
       const tile = { id: 10, red: false }
 
       const withDraw = efficiencyLogRows(result, { id: 10, red: false }, tile)
@@ -139,7 +143,7 @@ describe('grade', () => {
     it('emits a tenpai row once the graded discard reaches tenpai', () => {
       const hand = handFrom('123456789m11223p')
       const stats = statsFor(hand, 'discard', 10)
-      const result = gradeAction(stats, 3, hand, false)
+      const result = gradeAction(stats, 3, false)
       const rows = efficiencyLogRows(result, undefined, { id: 10, red: false })
       expect(rows.some(([key]) => key === 'log.efficiency.tenpai')).toBe(true)
     })
@@ -147,7 +151,7 @@ describe('grade', () => {
     it('emits a missedKan row for a warning-graded discard', () => {
       const hand = handFrom('123456m78s22p3333z')
       const stats = statsFor(hand, 'discard', HONOR + 2)
-      const result = gradeAction(stats, 4, hand, false)
+      const result = gradeAction(stats, 4, false)
       const rows = efficiencyLogRows(result, undefined, { id: HONOR + 2, red: false })
       expect(rows.some(([key]) => key === 'log.efficiency.missedKan')).toBe(true)
     })

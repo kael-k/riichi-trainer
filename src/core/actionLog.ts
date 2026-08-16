@@ -95,7 +95,13 @@ export function decodeLog(s: string): LogEntry[] {
       const callKind = CALL_CHAR_KINDS[s[i + 3]]
       const a = tileAt(s, i + 4)
       const b = tileAt(s, i + 6)
-      if (seat === undefined || from === undefined || !callKind || a === undefined || b === undefined) {
+      if (
+        seat === undefined ||
+        from === undefined ||
+        !callKind ||
+        a === undefined ||
+        b === undefined
+      ) {
         break
       }
       log.push({ kind: 'call', seat, from, call: { kind: callKind, from: [a, b] } })

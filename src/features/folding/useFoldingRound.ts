@@ -1,18 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { decodeLog, encodeLog } from '../../core/actionLog'
 import { dangerScore, type TileDanger } from '../../core/danger'
-import { addTile, removeTile, tileCount } from '../../core/hand'
 import {
-  answerClaim,
   beginTurn,
-  canDeclareRiichi,
   concealedTiles,
   createMatch,
   finishTurn,
   isManual,
-  reconsiderClaim,
-  replayLog,
-  type ClaimAnswer,
   type LogEntry,
   type MatchOptions,
   type MatchState,
@@ -20,15 +14,7 @@ import {
 import { waits } from '../../core/policy'
 import { mulberry32 } from '../../core/rng'
 import { shanten } from '../../core/shanten'
-import {
-  actingSeat,
-  analysisOf,
-  goRound,
-  snapshotTable,
-  splitDrawn,
-  type TableCore,
-  type TableSnapshot,
-} from '../../core/table'
+import { analysisOf, splitDrawn, type TableCore } from '../../core/table'
 import {
   HONOR,
   parseTenhou,
@@ -39,6 +25,7 @@ import {
 } from '../../core/tiles'
 import { completeWall, validateWall, type WallError } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
+import { useMatch, type MatchCommand, type MatchEventContext } from '../table/useMatch'
 import { useLog } from '../../store/log'
 import { resolveSanma } from '../situation/urlCodec'
 import type { Settings } from '../settings/settingsStore'
@@ -138,33 +125,22 @@ export interface RoundEnd {
   threats: ThreatReveal[]
 }
 
-/** A real hand of mahjong plus which seat is yours — `core/table.ts`'s `TableCore` plus the one
- *  field that is folding's own. `threatViews` (from `match.ts`, read inside `analysisOf`) reads
- *  its genbutsu straight off `match.discards`, so this hook carries no event log of its own. */
-interface RoundCore extends TableCore {
-  /** `match.log.length` at the moment the drill was handed over — everything before that index
-   *  was generation's own doing, so only what follows belongs in a mid-hand link. */
+/** Everything generation settles about a board, and nothing about how it is then played. The
+ *  match itself is rebuilt by `useMatch` from exactly these four things — the wall it was dealt
+ *  from, the algorithms each seat ended up on, the seat the drill grades, and generation's own log
+ *  — which is what lets folding share the one React match layer instead of stepping turns itself
+ *  (ADR-0012). `replayLog` consults no algorithm, so replaying that log reproduces the handed-over
+ *  board exactly rather than re-deciding it. */
+interface RoundBoard {
+  wall: ParsedTile[]
+  board: BoardOptions
+  options: MatchOptions
+  seatIndex: number
+  /** `match.log.length` at handover — everything before it was generation's doing, so only what
+   *  follows belongs in a mid-hand link. */
   handedOverAt: number
-}
-
-/** `TableSnapshot` plus folding's own grading/session fields. */
-interface RoundState extends TableSnapshot {
-  round: TileId
-  /** Seats currently threatening — everyone in riichi. Grows if someone else declares. */
-  threatSeats: number[]
-  lastResult: TurnResult | null
-  /** Every graded turn of this hand, oldest first — what the end-of-hand review reads when
-   *  feedback is held back until then. */
-  results: TurnResult[]
-  finished: boolean
-  end: RoundEnd | null
-  /** Searching for a hand: the board is not up and the clock has not started. */
-  loading: boolean
-  /** Every seat's hand as the board may show it right now : your own seat and, once
-   *  `finished`, every seat, get `concealedTiles` — everyone else gets `BACK_TILE` filler at the
-   *  same count. The gate lives here, below the settings layer, so no reveal setting or override
-   *  can put a threat's real tile ids on screen before the hand is over. */
-  boardHands: ParsedTile[][]
+  /** Generation's own log, then the link's decisions since: what `useMatch` replays. */
+  replay: LogEntry[]
 }
 
 /** Face-down filler: a back has no identity, and mid-hand the board must not be holding one.
@@ -198,12 +174,12 @@ export function splitConcealedDrawn(
  *  showOpponentHands`: the hand ending unlocks it same as always, and so does the board's own
  *  debug reveal switch — that switch is a "show me everything" toggle, not a "show me everything
  *  except the answer key" one, so it does not carve the declarer out. */
-function boardHandsOf(core: RoundCore, reveal: boolean): ParsedTile[][] {
-  const threats = new Set(riichiSeats(core.match))
-  return core.match.players.map((player, seat) => {
-    // `isManual` rather than `seat === core.seatIndex`: a seat the reader plays is their own hand
+function boardHandsOf(match: MatchState, reveal: boolean): ParsedTile[][] {
+  const threats = new Set(riichiSeats(match))
+  return match.players.map((player, seat) => {
+    // `isManual` rather than "the drill's own seat": a seat the reader plays is their own hand
     // wherever it sits, and there can be more than one of them (see `RoundOptions.seats`)
-    if (isManual(core.match, seat) || reveal || !threats.has(seat)) return concealedTiles(player)
+    if (isManual(match, seat) || reveal || !threats.has(seat)) return concealedTiles(player)
     return concealedTiles(player).map(() => BACK_TILE)
   })
 }
@@ -304,15 +280,15 @@ function playToRiichi(
 }
 
 /** A situation only teaches something when the answer is neither forced nor obvious. */
-function worthwhile(core: RoundCore): boolean {
-  const { match, seatIndex } = core
+function worthwhile(core: TableCore, seatIndex: number): boolean {
+  const { match } = core
   const player = match.players[seatIndex]
   if (match.ended) return false
   // the seat due to act can itself be an earlier declarer once two riichi are out
   if (player.riichiAt !== undefined) return false
   if (shanten(player.hand) < 1) return false
   if (match.liveWall.length < 4 * match.players.length) return false
-  const ranked = analysisOf(core).danger
+  const ranked = analysisOf(core, seatIndex).danger
   // a hand with no safe tile has no lesson in it, and one with nothing dangerous has no question
   return (
     ranked[0]?.tier === 'genbutsu' &&
@@ -323,25 +299,28 @@ function worthwhile(core: RoundCore): boolean {
 function buildRound(
   wall: ParsedTile[],
   options: BoardOptions,
-  log: LogEntry[] = [],
   seats: SeatConfig | null = null,
   claims = false,
-): RoundCore | null {
+): RoundBoard | null {
   const { sanma, threats } = options
   const players = sanma ? 3 : 4
-  const core = playToRiichi(wall, matchOptions(wall, options), players, threats, seats, claims)
-  if (!core || !worthwhile(core)) return null
-  // `replayLog`'s cursor is an absolute position in the *whole* log, so the link's own
-  // post-handover `log` has to be appended to what generation already wrote, not replayed on its
-  // own — it consults no algorithm at all, which is what makes a link immune to a later algorithm
-  // change, and stops quietly (never throws) the first entry it can't honour against this board.
-  // `settleAfterClaim` is the same tail every other post-turn step in this hook already uses to
-  // reach the next live decision point — here, drawing for the handed-over seat once nothing more
-  // is left to replay (an empty `log` is the common case: `playToRiichi` deliberately never draws
-  // for the seat it hands off to).
-  replayLog(core.match, core.options, [...core.match.log, ...log])
-  settleAfterClaim(core)
-  return core
+  const generated = playToRiichi(wall, matchOptions(wall, options), players, threats, seats, claims)
+  if (!generated) return null
+  const { match, options: matchOpts, seatIndex } = generated
+  if (!worthwhile({ match, options: matchOpts }, seatIndex)) return null
+  return {
+    wall,
+    board: options,
+    // the algorithms each seat actually ended up on — the blanket fold `playToRiichi` applied to
+    // every non-declarer, with the panel's own choices layered over it — seeded back through
+    // `MatchOptions` so the rebuilt match starts exactly where generation left off. The flip
+    // itself never needs replaying: `replayLog` puts every seat on manual for the duration, so
+    // only the *starting* algorithms of live play matter
+    options: { ...matchOpts, algorithms: match.players.map((p) => p.algorithm) },
+    seatIndex,
+    handedOverAt: match.log.length,
+    replay: [...match.log],
+  }
 }
 
 /**
@@ -354,59 +333,26 @@ async function findRound(
   options: BoardOptions,
   seats: SeatConfig | null = null,
   claims = false,
-): Promise<{ core: RoundCore; wall: ParsedTile[]; threats: number } | null> {
+): Promise<RoundBoard | null> {
   const { threats } = options
   for (let i = 0; i < 40 * threats; i++) {
     const wall = completeWall([], options.sanma, RULES.aka)
-    const core = buildRound(wall, options, [], seats, claims)
-    if (core) return { core, wall, threats }
+    const built = buildRound(wall, options, seats, claims)
+    // the search stays a plain loop rather than being driven through `useMatch`'s `{ restart }`
+    // command: rejection here is `worthwhile` failing at the handover point, not a hand ending,
+    // and running up to 120 full simulations through React state would cost a render apiece
+    if (built) return { ...built, board: { ...options, threats } }
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
   return threats > 1 ? findRound({ ...options, threats: threats - 1 }, seats, claims) : null
 }
 
-/** Your discard, then every other seat back round to you, then your next draw — or, once a
- *  discard leaves another manual seat a claim to answer, stops right there: `goRound` already
- *  returns immediately with `match.claim` set, and drawing into a suspended turn would corrupt
- *  it, so `settleAfterClaim` is what resumes this same tail once the claim is answered. */
-function advanceAfterDiscard(
-  core: RoundCore,
-  tile: ParsedTile,
-  fromDrawn: boolean,
-  declareRiichi = false,
-): void {
-  const { match, options } = core
-  finishTurn(match, options, { tile, fromDrawn }, declareRiichi)
-  settleAfterClaim(core)
-}
-
-/** The shared tail of a turn: run the AI seats round, then draw for whichever seat is up next —
- *  unless a claim is now pending, in which case nothing draws until `answer` resolves it. Shared
- *  by `advanceAfterDiscard`, `answer` and the live algorithm sync below, so a claim resolved
- *  mid-turn rejoins the identical path. The acting seat's `hand.drawn === undefined` is always
- *  true already at the first two call sites (`finishTurn`/`answerClaim` both leave it cleared) —
- *  the guard exists for
- *  the third: a live algorithm flip can land here with the acting seat's tile already drawn, and
- *  `beginTurn` has no drawn-tile guard of its own. */
-function settleAfterClaim(core: RoundCore): void {
-  const { match, options } = core
-  goRound(core)
-  if (
-    !match.ended &&
-    !match.claim &&
-    match.players[match.seat].hand.drawn === undefined &&
-    match.liveWall.length > 0
-  ) {
-    beginTurn(match, options)
-  }
-}
-
 /** The reveal: what each threat was really holding, and which of your discards were in its wait.
  *  Only ever built once the hand is over — showing it mid-fold would hand over every later turn. */
-function revealOf(core: RoundCore, sanma: boolean): ThreatReveal[] {
-  const river = core.match.players[core.seatIndex].river
-  return riichiSeats(core.match).map((seat) => {
-    const player = core.match.players[seat]
+function revealOf(match: MatchState, seatIndex: number, sanma: boolean): ThreatReveal[] {
+  const river = match.players[seatIndex].river
+  return riichiSeats(match).map((seat) => {
+    const player = match.players[seat]
     const waitTiles = waits(player.hand, sanma)
     return {
       seat,
@@ -417,9 +363,8 @@ function revealOf(core: RoundCore, sanma: boolean): ThreatReveal[] {
   })
 }
 
-function endOf(core: RoundCore, sanma: boolean): RoundEnd | null {
-  const { match, seatIndex } = core
-  const threats = revealOf(core, sanma)
+function endOf(match: MatchState, seatIndex: number, sanma: boolean): RoundEnd | null {
+  const threats = revealOf(match, seatIndex, sanma)
   if (match.win) {
     const { seat, from, score } = match.win
     const kind = seat === seatIndex ? 'won' : from === seatIndex ? 'dealIn' : 'lost'
@@ -428,30 +373,6 @@ function endOf(core: RoundCore, sanma: boolean): RoundEnd | null {
   if (match.ended === 'exhaustive') return { kind: 'exhaustive', threats }
   if (match.liveWall.length === 0) return { kind: 'wall', threats }
   return null
-}
-
-function snapshot(
-  core: RoundCore,
-  sanma: boolean,
-  showSeatWaits: boolean,
-  prev?: RoundState,
-): RoundState {
-  const end = endOf(core, sanma)
-  const finished = end !== null
-  return {
-    ...snapshotTable(core, showSeatWaits),
-    round: core.options.round,
-    threatSeats: riichiSeats(core.match),
-    lastResult: prev?.lastResult ?? null,
-    results: prev?.results ?? [],
-    finished,
-    end,
-    loading: false,
-    // baked off `finished` alone — the live board's own reveal switch overrides this at the
-    // hook's return below, off `core.current` rather than a stale snapshot, so toggling it
-    // mid-hand doesn't wait for the next discard to take effect
-    boardHands: boardHandsOf(core, finished),
-  }
 }
 
 export function decodeFoldingUrl(params: URLSearchParams): FoldingUrl {
@@ -506,6 +427,18 @@ export function encodeFoldingUrl(
  * out as the hand goes on, which is the lesson; what the threat actually held is revealed only
  * once the hand is over.
  */
+/** What `useMatch` is handed before the search has produced anything: one manual seat, so its
+ *  driver stops immediately instead of playing a whole throwaway hand while the page shows its
+ *  dealing state. */
+const IDLE: MatchOptions = {
+  ...RULES,
+  sanma: false,
+  wins: false,
+  round: HONOR,
+  algorithms: ['manual'],
+}
+const NO_WALL: ParsedTile[] = []
+
 export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   const [handIndex, setHandIndex] = useState(0)
   // handIndex counts "new situation" presses this mount, but a link (or a rewind out of the log)
@@ -517,17 +450,15 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     setHandIndex(0)
   }
   const stats = useSessionStats()
-  const core = useRef<RoundCore>(undefined)
-  const roundWall = useRef<ParsedTile[]>([])
-  // the board actually built, which is not always the one asked for: the search falls back to
-  // fewer threats rather than failing, and a link has to carry what it got
-  const roundBoard = useRef<BoardOptions>(undefined)
-  const [state, setState] = useState<RoundState | null>(null)
+  // the board the search settled on. Identity-stable per round, which is what keeps `useMatch`
+  // from rebuilding underneath it every render
+  const [round, setRound] = useState<RoundBoard | null>(null)
+  // a search is running: the board on screen (if any) belongs to the hand being replaced, so the
+  // page must show its dealing state rather than letting the old one read as the new one
+  const [searching, setSearching] = useState(true)
   const [failed, setFailed] = useState(false)
-  // "the next discard declares riichi", armed from the UI's riichi button — same trick
-  // `useTableRound` uses, so the declaration rides on the discard the reader was going to make
-  // anyway rather than needing its own call site
-  const [riichiArmed, setRiichiArmed] = useState(false)
+  const [lastResult, setLastResult] = useState<TurnResult | null>(null)
+  const [results, setResults] = useState<TurnResult[]>([])
   const log = useLog((s) => s.log)
   // a round that resolves after the seed moved on belongs to a hand nobody is looking at
   const request = useRef(0)
@@ -542,16 +473,17 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
 
   // `options.seats`/`options.claims` are read below only as the *initial* algorithm/claims seed
   // for a freshly generated hand (`playToRiichi`'s own handover logic) — deliberately absent from
-  // this effect's deps, same reasoning as the dropped `orientation`: a later change to either must
-  // never re-search for a new hand (ADR-0008, ADR-0015). The live-sync effect further down is what actually
-  // carries a later change onto the running match.
+  // this effect's deps: a later change to either must never re-search for a new hand (ADR-0008,
+  // ADR-0015). `useMatch`'s own live-sync effect carries later changes onto the running match.
   useEffect(() => {
     const id = ++request.current
     setFailed(false)
+    setSearching(true)
+    setLastResult(null)
+    setResults([])
     // a hand left behind (rewind, new deal) takes its held rows with it: they belong to a board
     // nobody is looking at any more
     held.current = []
-    setState((prev) => (prev ? { ...prev, loading: true } : prev))
     // a link pins the rules its board was built under; without them the same wall deals a
     // different hand for the reader
     const board: BoardOptions = {
@@ -560,113 +492,58 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
       wins: urlData.wins ?? options.opponentWins,
     }
 
-    // a link's wall is already an accepted board, so replay it as-is — its log included; only a
-    // hand-edited one (or a fresh "new situation" request) falls through to a search
+    // a link's wall is already an accepted board, so replay it as-is; only a hand-edited one (or a
+    // fresh "new situation" request) falls through to a search
     const pinned =
       urlData.wall.length > 0 && handIndex === 0
-        ? buildRound(urlData.wall, board, urlData.log, options.seats, options.claims)
+        ? buildRound(urlData.wall, board, options.seats, options.claims)
         : null
-    const found = pinned
-      ? Promise.resolve({ core: pinned, wall: urlData.wall, threats: board.threats })
-      : findRound(board, options.seats, options.claims)
+    const found = pinned ? Promise.resolve(pinned) : findRound(board, options.seats, options.claims)
 
     void found.then((result) => {
       if (id !== request.current) return
       if (!result) {
         setFailed(true)
+        setSearching(false)
         return
       }
-      core.current = result.core
-      roundWall.current = result.wall
-      roundBoard.current = { ...board, threats: result.threats }
-      logReplay(result.core)
+      // the link's own post-handover decisions are appended to generation's log: `replayLog`'s
+      // cursor is an absolute position in the whole log, so the two replay as one
+      setRound({ ...result, replay: [...result.replay, ...(urlData.log ?? [])] })
+      setSearching(false)
       stats.startClock()
       roundActionCount.current = 0
       roundTotalMs.current = 0
-      setState(snapshot(result.core, options.sanma, options.showSeatWaits))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlData, handIndex, options.sanma, options.threats, options.opponentWins])
 
-  // algorithm changes are live (ADR-0008, ADR-0015): flipping a seat's mode (or the claims toggle) must never
-  // rebuild the round — this writes the latest values straight onto the running match instead, the
-  // same live-sync `useTableRound` runs, adapted to folding's own turn-stepping (it drives
-  // `beginTurn`/`finishTurn` itself rather than going through that hook). Only the seats the panel
-  // actually named are touched, same raw (unresolved) reading `playToRiichi` itself uses at
-  // handover — a generic default here would stomp the blanket fold `playToRiichi` already applied
-  // to every seat the panel never touched (ADR-0008's "one algorithm changes" ⇒ nobody else's does).
-  const seatKey = JSON.stringify(options.seats?.modes ?? null)
-  useEffect(() => {
-    const r = core.current
-    if (!r || r.match.ended) return
-    let changed = r.options.claims !== options.claims
-    r.options.claims = options.claims
-    options.seats?.modes.forEach((algorithm, seat) => {
-      const player = r.match.players[seat]
-      if (player && player.algorithm !== algorithm) {
-        player.algorithm = algorithm
-        changed = true
-      }
-    })
-    if (!changed) return
+  const seatIndex = round?.seatIndex ?? 0
 
-    // nobody will ever answer this seat's pending claim now that it has stopped being manual —
-    // re-resolve it through the same restartable path `answer` uses, never inventing a pass
-    // (which would set `missedWin`, poisoning the hand with furiten over a decision never made)
-    if (r.match.claim && !isManual(r.match, r.match.claim.seat)) {
-      reconsiderClaim(r.match, r.options)
+  /** Grades this drill's own seat and nothing else, on danger rather than efficiency. */
+  function onEvent({
+    event,
+    core,
+    replaying,
+    analysis,
+    logLength,
+  }: MatchEventContext): MatchCommand {
+    if (replaying || !round) return
+    // the log names each turn's safest tile, so under `feedbackAtEnd` it is one more place the
+    // answer leaks: the rows wait with the panel and land in play order once the hand is over
+    if (event.kind === 'win' || event.kind === 'exhaustive') {
+      flushLog()
+      return
     }
-    settleAfterClaim(r)
-    setState((prev) => (prev ? snapshot(r, options.sanma, options.showSeatWaits, prev) : prev))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seatKey, options.claims])
+    if (event.kind !== 'discard' || event.seat !== seatIndex || !analysis) return
 
-  // `showSeatWaits` alone must not rejoin the search effect above (that would deal a new hand) —
-  // this re-snapshots the board exactly as it stands, which is what makes toggling the setting
-  // live rather than waiting for the next discard to pick it up
-  useEffect(() => {
-    const r = core.current
-    if (r)
-      setState((prev) => (prev ? snapshot(r, options.sanma, options.showSeatWaits, prev) : prev))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options.showSeatWaits])
-
-  /** Writes one log row per *your own* discard the link was fast-forwarded through, so a shared
-   *  link (or a rewind) arrives with the turns behind it on the record instead of a blank log —
-   *  each row's rewind link is the full since-handover log truncated to that discard's actual
-   *  position, not just "your discards so far" (same reasoning as the table hook's own
-   *  `logReplay`): a mid-hand rewind has to reproduce a threat's own melds and discards exactly as
-   *  they were. Keyed on the link's identity: the effect above runs twice per mount and four times
-   *  under StrictMode, all for one and the same board. */
-  function logReplay(built: RoundCore) {
-    if (loggedReplay.current === urlData) return
-    loggedReplay.current = urlData
-    const sinceHandover = built.match.log.slice(built.handedOverAt)
-    sinceHandover.forEach((entry, i) => {
-      if (entry.kind !== 'discard' || entry.seat !== built.seatIndex) return
-      log(
-        'log.replay',
-        { tile: tileCode(entry.tile.id, entry.tile.red) },
-        [entry.tile],
-        undefined,
-        encodeFoldingUrl(roundWall.current, roundBoard.current!, sinceHandover.slice(0, i)),
-      )
-    })
-  }
-
-  function discard(index: number, declareRiichi = riichiArmed) {
-    const r = core.current
-    if (!r || !state || state.finished || state.loading || state.claim) return
-    const fromDrawn = index === state.hand.length
-    const tile = fromDrawn ? state.drawn : state.hand[index]
-    if (!tile) return
-    setRiichiArmed(false)
-
-    // captured before anything below advances the board, so it reproduces the turn exactly as it
-    // stood right before this discard
-    const situationBefore = situationQuery()
-
-    const ranked = analysisOf(r).danger
+    const situationBefore = encodeFoldingUrl(
+      round.wall,
+      round.board,
+      core.match.log.slice(round.handedOverAt, logLength),
+    )
+    const tile = event.tile
+    const ranked = analysis.danger
     const yours = ranked.find((entry) => entry.tile === tile.id)!
     const safest = ranked.filter((entry) => entry.rank === 0)
     const correct = yours.rank === 0
@@ -676,14 +553,12 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     // everything is genbutsu has nothing to be wrong about, so it scores full marks
     const worst = Math.max(...ranked.map(dangerScore))
     const quality = worst > 0 ? (worst - dangerScore(yours)) / worst : 1
-    const result: TurnResult = { turn: r.match.turn, yours, safest, correct, quality }
+    const result: TurnResult = { turn: core.match.turn, yours, safest, correct, quality }
 
-    // logged here, not from an effect watching round state: effect-based logging inverts entry
-    // order and duplicates under StrictMode. Raw params, so a language switch re-translates.
     writeLog(
       'log.folding.discard',
       {
-        turn: r.match.turn,
+        turn: core.match.turn,
         tile: tileCode(tile.id, tile.red),
         tier: yours.tier,
         best: tileCode(safest[0].tile),
@@ -697,58 +572,90 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
     roundActionCount.current++
     roundTotalMs.current += elapsed
 
-    advanceAfterDiscard(r, tile, fromDrawn, declareRiichi)
-    const next = snapshot(r, options.sanma, options.showSeatWaits, state)
-    if (next.end?.kind === 'dealIn') {
+    const end = endOf(core.match, seatIndex, options.sanma)
+    if (end?.kind === 'dealIn') {
       writeLog(
         'log.folding.dealIn',
-        { seat: next.end.seat, points: next.end.points, tile: tileCode(tile.id, tile.red) },
+        { seat: end.seat, points: end.points, tile: tileCode(tile.id, tile.red) },
         [tile],
         situationBefore,
       )
     }
-    // the log names the safest tile of every turn, so under `feedbackAtEnd` it is one more place
-    // the answer leaks; the rows wait with the panel and land in play order once the hand is over
-    if (next.end) flushLog()
     stats.startClock()
-    setState({ ...next, lastResult: result, results: [...state.results, result] })
+    setLastResult(result)
+    setResults((prev) => [...prev, result])
   }
 
-  /** Answers the claim the board is waiting on — ron, pon, chi or pass — and plays on. Only ever
-   *  pending when a second manual seat's own discard left a third seat a call to make; it never
-   *  interrupts the seat being graded, whose own discards are what `discard` above scores. */
-  function answer(claimAnswer: ClaimAnswer) {
-    const r = core.current
-    if (!r || !r.match.claim || !state) return
-    answerClaim(r.match, r.options, claimAnswer)
-    settleAfterClaim(r)
-    const next = snapshot(r, options.sanma, options.showSeatWaits, state)
-    if (next.end) flushLog()
-    setState(next)
+  // the panel's own per-seat choices, laid over the algorithms generation settled on. Only the
+  // seats it actually names are overridden: a generic default would stomp the blanket fold
+  // `playToRiichi` applied to every seat nobody touched (ADR-0008's "one algorithm changes"
+  // means nobody else's does). `useMatch`'s live-sync effect is what carries a later change onto
+  // the running match — this never rebuilds the round.
+  const liveOptions: MatchOptions | undefined = round
+    ? {
+        ...round.options,
+        algorithms: (round.options.algorithms ?? []).map(
+          (algorithm, seat) => options.seats?.modes[seat] ?? algorithm,
+        ),
+        claims: options.claims,
+      }
+    : undefined
+
+  const table = useMatch({
+    wall: round?.wall ?? NO_WALL,
+    players: options.sanma ? 3 : 4,
+    options: liveOptions ?? IDLE,
+    replay: round?.replay,
+    showSeatWaits: options.showSeatWaits,
+    onEvent,
+  })
+
+  const snapshot = round ? table.snapshot : undefined
+  const match = round ? table.core?.match : undefined
+  const end = match ? endOf(match, seatIndex, options.sanma) : null
+  const finished = end !== null
+  const loading = !failed && (searching || !round || !snapshot)
+
+  // the reveal gate is recomputed every render off the live match, not baked into a snapshot, so
+  // toggling the board's own reveal switch takes effect at once rather than waiting for the next
+  // discard — a debug switch that only sometimes shows the board isn't one you can trust
+  const boardHands: ParsedTile[][] = match
+    ? boardHandsOf(match, finished || options.showOpponentHands)
+    : []
+
+  // the bottom-of-page hand belongs to whichever seat is acting, split like any other seat's
+  const acting = snapshot?.seat ?? seatIndex
+  const { tiles: hand, drawn } = splitConcealedDrawn(
+    boardHands[acting] ?? [],
+    snapshot?.drawn?.seat === acting ? snapshot.drawn.tile : undefined,
+  )
+
+  /** Writes one log row per *your own* discard the link was fast-forwarded through, so a shared
+   *  link (or a rewind) arrives with the turns behind it on the record instead of a blank log —
+   *  each row's rewind link is the full since-handover log truncated to that discard's actual
+   *  position: a mid-hand rewind has to reproduce a threat's own melds and discards exactly as
+   *  they were. Keyed on the link's identity, since the build effect runs several times per mount
+   *  for one and the same board. */
+  function logReplay(built: RoundBoard) {
+    if (loggedReplay.current === urlData) return
+    loggedReplay.current = urlData
+    const sinceHandover = built.replay.slice(built.handedOverAt)
+    sinceHandover.forEach((entry, i) => {
+      if (entry.kind !== 'discard' || entry.seat !== built.seatIndex) return
+      log(
+        'log.replay',
+        { tile: tileCode(entry.tile.id, entry.tile.red) },
+        [entry.tile],
+        undefined,
+        encodeFoldingUrl(built.wall, built.board, sinceHandover.slice(0, i)),
+      )
+    })
   }
 
-  /** Tiles the acting seat could discard *and* declare riichi on — same computation
-   *  `useTableRound#riichiTiles` runs, memoised on the turn/seat/claim rather than recomputed on
-   *  every render: `evaluateDiscards` is the app's most expensive call, and this hook (unlike
-   *  `useTableRound`) has no draw-time analysis cached to reuse. */
-  const riichiTilesMemo = useMemo((): TileId[] => {
-    const r = core.current
-    if (!r || !state || state.finished || state.claim) return []
-    const seat = actingSeat(r)
-    const player = r.match.players[seat]
-    if (tileCount(player.hand) !== 14) return []
-    const analysis = analysisOf(r)
-    return analysis.ranked
-      .filter((option) => {
-        if (option.shanten !== 0) return false
-        removeTile(player.hand, option.discard)
-        const legal = canDeclareRiichi(r.match, r.options, seat)
-        addTile(player.hand, option.discard)
-        return legal
-      })
-      .map((option) => option.discard)
+  useEffect(() => {
+    if (round) logReplay(round)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state?.turn, state?.acting, state?.claim, state?.finished])
+  }, [round])
 
   /** One log row, held back until the hand ends when the drill is running answers-at-the-end. */
   function writeLog(
@@ -769,63 +676,55 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   }
 
   return {
-    ...(state ?? {
-      hand: [],
-      drawn: undefined,
-      turn: 1,
-      rivers: [],
-      melds: [],
-      nuki: [],
-      hands: [],
-      riichi: [],
-      doraIndicators: [],
-      liveWall: [],
-      deadWall: [],
-      liveWallSnapshot: [],
-      liveWallDrawn: 0,
-      deadWallSnapshot: [],
-      replacements: 0,
-      seatIndex: 0,
-      acting: 0,
-      claim: undefined,
-      drawnSeat: undefined,
-      ended: undefined,
-      win: undefined,
-      wall: [],
-      dealtTiles: [],
-      round: HONOR,
-      threatSeats: [] as number[],
-      lastResult: null,
-      results: [],
-      finished: false,
-      end: null,
-      boardHands: [],
-      seatReads: [],
-    }),
-    loading: !failed && (state === null || state.loading),
+    turn: snapshot?.turn ?? 1,
+    doraIndicators: snapshot?.doraIndicators ?? [],
+    rivers: snapshot?.rivers ?? [],
+    hands: snapshot?.hands ?? [],
+    melds: snapshot?.melds ?? [],
+    nuki: snapshot?.nuki ?? [],
+    riichi: snapshot?.riichi ?? [],
+    liveWall: snapshot?.liveWall ?? [],
+    deadWall: snapshot?.deadWall ?? [],
+    liveWallSnapshot: snapshot?.liveWallSnapshot ?? [],
+    liveWallDrawn: snapshot?.liveWallDrawn ?? 0,
+    deadWallSnapshot: snapshot?.deadWallSnapshot ?? [],
+    replacements: snapshot?.replacements ?? 0,
+    dealtTiles: snapshot?.dealtTiles ?? [],
+    wall: snapshot?.wall ?? [],
+    ended: snapshot?.ended,
+    win: snapshot?.win,
+    claim: snapshot?.claim,
+    seatReads: snapshot?.seatReads ?? [],
+    hand,
+    drawn,
+    seatIndex,
+    acting,
+    drawnSeat: snapshot?.drawn?.seat,
+    round: round?.options.round ?? HONOR,
+    /** Seats currently threatening — everyone in riichi. Grows if someone else declares. */
+    threatSeats: match ? riichiSeats(match) : [],
+    lastResult,
+    /** Every graded turn of this hand, oldest first — what the end-of-hand review reads when
+     *  feedback is held back until then. */
+    results,
+    finished,
+    end,
+    loading,
     /** No seed in the budget produced a drillable hand — the page offers another deal. */
     failed,
-    // recomputed fresh every render (not baked into `state` above) off `core.current`, so
-    // toggling the board's own reveal switch takes effect immediately rather than waiting for
-    // the next discard to re-snapshot — a debug switch that only sometimes shows the board isn't
-    // one you can trust
-    boardHands: core.current
-      ? boardHandsOf(core.current, (state?.finished ?? false) || options.showOpponentHands)
-      : [],
-    /** Seats a person plays: the drill's own generated seat, plus any other seat the panel set
-     *  to `'manual'`. */
-    manualSeats: core.current
-      ? core.current.match.players.flatMap((p, seat) => (p.algorithm === 'manual' ? [seat] : []))
+    boardHands,
+    /** Seats a person plays: the drill's own generated seat, plus any other seat set to manual. */
+    manualSeats: snapshot
+      ? snapshot.algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
       : [],
     /** How the board is actually playing each seat right now — the algorithm `finishTurn` reads
-     *  (which flips non-declarers to `'defense'` at handover, `playToRiichi` above), not the
-     *  generic default `resolveSeatConfig` would otherwise show while a seat is unconfigured.
-     *  Fed to `SeatButton` as `fallbackModes` so the panel never lies about what the seat is
-     *  doing. */
-    algorithms: core.current ? core.current.match.players.map((p) => p.algorithm) : [],
+     *  (which flips non-declarers to `'defense'` at handover), not the generic default
+     *  `resolveSeatConfig` would show while a seat is unconfigured. Fed to `SeatButton` as
+     *  `fallbackModes` so the panel never lies about what the seat is doing. */
+    algorithms: snapshot?.algorithms ?? [],
     elapsedNow: stats.elapsedNow,
     /** Whether the clock is ticking: a board is up, unfinished and unpaused. */
-    running: !!state && !state.finished && !state.loading && !stats.paused,
+    running: !!snapshot && !finished && !loading && !stats.paused,
     correctCount: stats.correctCount,
     totalCount: stats.totalCount,
     averageTime: stats.averageTime,
@@ -837,14 +736,18 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
      *  relative to the safest and the most dangerous tile each hand actually held. */
     accuracy: stats.averageQuality,
     /** The hand ranked as it stands. Deliberately not rendered before the answer — markers on the
-     *  tiles turn the drill into reading a hint — but it is what `discard` grades against. */
-    ranked: (): TileDanger[] => (core.current ? analysisOf(core.current).danger : []),
-    discard,
-    answer,
-    riichiTiles: () => riichiTilesMemo,
-    riichiArmed,
-    /** Arms/disarms "the next discard declares riichi"; the discard itself carries it. */
-    armRiichi: setRiichiArmed,
+     *  tiles turn the drill into reading a hint — but it is what `onEvent` grades against. */
+    ranked: (): TileDanger[] => (table.core && round ? analysisOf(table.core, acting).danger : []),
+    discard: (index: number, declareRiichi?: boolean) => {
+      if (finished || loading) return
+      const fromDrawn = index === hand.length
+      const tile = fromDrawn ? drawn : hand[index]
+      if (tile) table.discard(tile, fromDrawn, declareRiichi)
+    },
+    answer: table.answer,
+    riichiTiles: table.riichiTiles,
+    riichiArmed: table.riichiArmed,
+    armRiichi: table.armRiichi,
     next: () => setHandIndex((n) => n + 1),
     paused: stats.paused,
     togglePause: () => (stats.paused ? stats.resume() : stats.pause()),
@@ -852,14 +755,13 @@ export function useFoldingRound(urlData: FoldingUrl, options: RoundOptions) {
   }
 
   /** The round as it stands right now: the accepted wall, the rules it was built under, and the
-   *  discards you have played since — enough to replay a mid-hand turn. */
+   *  discards played since handover — enough to replay a mid-hand turn. */
   function situationQuery(): string {
-    return roundWall.current.length > 0 && roundBoard.current
-      ? encodeFoldingUrl(
-          roundWall.current,
-          roundBoard.current,
-          core.current ? core.current.match.log.slice(core.current.handedOverAt) : [],
-        )
-      : ''
+    if (!round) return ''
+    return encodeFoldingUrl(
+      round.wall,
+      round.board,
+      match ? match.log.slice(round.handedOverAt) : [],
+    )
   }
 }

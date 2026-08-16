@@ -38,8 +38,20 @@ describe('urlCodec', () => {
     s.hand = parseTenhou('123m456p789s1122z')
     s.wall = parseTenhou('9m1z5s')
     s.log = [
-      { kind: 'discard', seat: 0, tile: { id: HONOR, red: false }, fromDrawn: false, riichi: false },
-      { kind: 'discard', seat: 1, tile: { id: PIN + 8, red: false }, fromDrawn: true, riichi: true },
+      {
+        kind: 'discard',
+        seat: 0,
+        tile: { id: HONOR, red: false },
+        fromDrawn: false,
+        riichi: false,
+      },
+      {
+        kind: 'discard',
+        seat: 1,
+        tile: { id: PIN + 8, red: false },
+        fromDrawn: true,
+        riichi: true,
+      },
     ] satisfies LogEntry[]
     s.round = 'S'
     s.seat = 'W'

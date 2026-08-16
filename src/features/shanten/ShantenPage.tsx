@@ -143,10 +143,7 @@ export function ShantenPage() {
             // rather than `hand`: shanten has no felt, and this is what fullscreen centres in the
             // viewport instead of pinning it to the hand strip at the bottom — `full` only widens
             // the gap below the tiles here, since that's the one shape this page actually changes.
-            <div
-              data-testid="shanten-hand"
-              className={`flex flex-col ${full ? 'gap-8' : 'gap-4'}`}
-            >
+            <div data-testid="shanten-hand" className={`flex flex-col ${full ? 'gap-8' : 'gap-4'}`}>
               <HandDisplay tiles={round.hand} concealed={round.concealed} />
 
               {!round.concealed && (

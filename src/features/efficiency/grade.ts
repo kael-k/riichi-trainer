@@ -1,9 +1,9 @@
 import { evaluateKan, isBestDiscard, type DiscardOption } from '../../core/efficiency'
 import { addTile, createHand, type Hand } from '../../core/hand'
 import { NORTH } from '../../core/match'
+import type { TableAnalysis } from '../../core/table'
 import { tileCode, type ParsedTile, type TileId } from '../../core/tiles'
 import type { VerdictSeverity } from '../table/Verdict'
-import type { DiscardStats } from '../table/useTableRound'
 
 /**
  * Pure grading shared by both efficiency apps (table and solitaire) — no React, no zustand, no
@@ -64,16 +64,39 @@ export function handFromSnapshot(
   return h
 }
 
-/** Grades one discard/kita/kan against the draw-time `DiscardStats` a `useTableRound` consumer
- *  is handed by `onUserDiscard` — `hand` is the pre-throw 14-tile hand (see `handFromSnapshot`),
- *  needed only to look for a same-value kan a plain discard passed up. */
-export function gradeAction(
-  stats: DiscardStats,
-  turn: number,
-  hand: Hand,
+/** What an efficiency drill needs to know about one action to grade it: the ranking as it stood
+ *  before the tile left the hand, plus that action's own entry in it and the best available. Both
+ *  efficiency routes build this from a `discard`/`kita`/`ankan` event's `analysis` (`useMatch`) —
+ *  it is this trainer's grading vocabulary, not something the match layer knows about. */
+export interface ActionStats {
+  kind: TurnResult['kind']
+  analysis: TableAnalysis
+  yours: DiscardOption
+  best: DiscardOption
+}
+
+/** Locates `tile`'s own entry in the pre-action ranking. A kita is priced by north's own
+ *  `evaluateDiscards` entry ("what pulling it costs") and a kan by `evaluateKan`, both against the
+ *  same `ranked[0]` a plain discard is compared to — `ranked[0]` is already the global optimum, so
+ *  no special tie-break is needed. */
+export function actionStats(
+  analysis: TableAnalysis,
+  kind: TurnResult['kind'],
+  tile: TileId,
   sanma: boolean,
-): TurnResult {
-  const { kind, yours, best } = stats
+): ActionStats {
+  const yours =
+    kind === 'kita'
+      ? analysis.ranked.find((o) => o.discard === NORTH)!
+      : kind === 'kan'
+        ? evaluateKan(analysis.hand, analysis.seen, sanma).find((o) => o.discard === tile)!
+        : analysis.ranked.find((o) => o.discard === tile)!
+  return { kind, analysis, yours, best: analysis.ranked[0] }
+}
+
+/** Grades one discard/kita/kan against the pre-action ranking. */
+export function gradeAction(stats: ActionStats, turn: number, sanma: boolean): TurnResult {
+  const { kind, yours, best, analysis } = stats
   const isBest = isBestDiscard(yours, best)
 
   // isBest doesn't mean nothing was left on the table: a kan/kita tied for best too, and was
@@ -81,11 +104,11 @@ export function gradeAction(
   // plain discard can pass up a call this way: kita/kan are themselves the call.
   let missed: TurnResult['missed']
   if (kind === 'discard' && isBest) {
-    const northOption = sanma ? stats.analysis.ranked.find((o) => o.discard === NORTH) : undefined
+    const northOption = sanma ? analysis.ranked.find((o) => o.discard === NORTH) : undefined
     if (northOption && isBestDiscard(northOption, best)) {
       missed = { kind: 'kita', tile: NORTH }
     } else {
-      const kanOption = evaluateKan(hand, stats.analysis.seen, sanma).find((o) =>
+      const kanOption = evaluateKan(analysis.hand, analysis.seen, sanma).find((o) =>
         isBestDiscard(o, best),
       )
       if (kanOption) missed = { kind: 'kan', tile: kanOption.discard }

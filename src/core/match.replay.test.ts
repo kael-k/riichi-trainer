@@ -53,7 +53,11 @@ function project(state: MatchState) {
     seat: state.seat,
     turn: state.turn,
     pendingDraw: state.pendingDraw,
-    claim: state.claim && { seat: state.claim.seat, from: state.claim.from, tile: state.claim.tile },
+    claim: state.claim && {
+      seat: state.claim.seat,
+      from: state.claim.from,
+      tile: state.claim.tile,
+    },
     liveWallLength: state.liveWall.length,
     doraIndicators: state.doraIndicators,
     players: state.players.map((p) => ({
@@ -101,7 +105,12 @@ describe('replayLog', () => {
     const { state } = playMatch('replay-restore', 4, options)
     const fresh = createMatch(state.wall, 4, options)
     replayLog(fresh, options, state.log)
-    expect(fresh.players.map((p) => p.algorithm)).toEqual(['efficiency', 'defense', 'tsumogiri', 'efficiency'])
+    expect(fresh.players.map((p) => p.algorithm)).toEqual([
+      'efficiency',
+      'defense',
+      'tsumogiri',
+      'efficiency',
+    ])
   })
 
   it('replays a defense seat declining a mid-hand tsumo — the log never claims it, and replay never takes it either', () => {
