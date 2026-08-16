@@ -50,10 +50,13 @@ Trainers read their whole scenario from the query string, so one URL fully repro
 | `log`                       | every seat's decisions from the deal to this point, replayed to land on a specific mid-hand turn                            |
 | `round`, `seat`             | round wind and which seat is yours                                                                                         |
 | `deadwall`, `aka`, `sanma`  | `1`/`0` — pin the round rules into the link, overriding the receiver's settings so it reproduces exactly                    |
+| `kyoku`, `honba`, `dealerrepeat`, `dealer`, `riichisticks`, `points` | the match the round sits inside: which hand within the round wind (East **1**), the honba and dealer-repeat counters, the dealer's seat, sticks on the table, and every seat's score as a comma-separated list |
 
 A **short wall is a prefix**: the tiles you give are dealt in order and the rest is completed at random from the copies they leave, so a link can pin a starting hand (the first 13 tiles for seat 0) and leave the remaining 123 to chance. A wall's length settles the ruleset on its own — 136 tiles is yonma, 108 is sanma — and a loaded wall wins over the receiver's setting.
 
 Walls are validated on load and **rejected by name**, never silently repaired: over-count a tile kind, claim two red fives of one suit, include 2m–8m under sanma, or overrun the length, and the page tells you which zone and which tile is wrong. A wall is positionally meaningful, so quietly fixing one would hand back a different board than the link claimed to share.
+
+The match params are all optional and each is left out when it is at its default (East 1, every counter zero, dealer at seat 0, 25000 points each in yonma and 35000 in sanma), so an ordinary link is exactly as short as it always was. They are context the round is played *in* — the board shows the round number and each seat's score, a riichi declaration there costs 1000 and puts a stick on the table, and honba is paid out in the score — but nothing advances between hands yet: no dealer rotation, no honba increment, no settlement.
 
 `log` is what makes a mid-hand link exact. It records each seat's actual decisions — discards (with tedashi/tsumogiri and riichi marked), calls, kita, closed kans, the win — and replaying it consults **no algorithm at all**, so the hand comes back as it was really played rather than as today's algorithms would play it. Each replayed action is written to the log panel as it is fast-forwarded, so a shared link arrives with its turns already on the record.
 

@@ -1,18 +1,18 @@
 # Source map
 
 One line per file. What each thing *does* is here; *how it works* is `CLAUDE.md`; *why* is
-`docs/adr/`. 31 `*.test.ts(x)` files sit beside the sources they cover; every file in `src/core/`
+`docs/adr/`. 34 `*.test.ts(x)` files sit beside the sources they cover; every file in `src/core/`
 has one.
 
 ## `src/core/` — the engine
 
 Pure TypeScript. Zero dependencies, no React, no imports from `features/` or `components/`
-([ADR-0001](adr/0001-three-layers.md)). Deterministic: same wall in, same match out.
+([ADR-0001](adr/0001-three-layers.md)). Deterministic: same wall in, same round out.
 
 | File            | Role                                                                                                  |
 | --------------- | ----------------------------------------------------------------------------------------------------- |
 | `tiles.ts`      | `TileId` 0–33, suit offsets, tenhou parse/serialize, `inTileSet` (sanma exclusion)                     |
-| `hand.ts`       | `Hand` — `Uint8Array(34)` counts + meld count + `drawn` ([ADR-0003](adr/0003-hand-counts-only.md))     |
+| `hand.ts`       | `Hand` — `Uint8Array(34)` counts + meld count, nothing else ([ADR-0022](adr/0022-stored-redness.md))   |
 | `rng.ts`        | `mulberry32` seeded by string hash, Fisher-Yates `shuffle`                                            |
 | `wall.ts`       | `buildWall`, `completeWall`, `wallWithHand`, `deal` — wall construction and prefix completion         |
 | `shanten.ts`    | Per-suit 5-block decomposition + chiitoi + kokushi; `referenceStandardShanten` is its spec            |
@@ -24,12 +24,20 @@ Pure TypeScript. Zero dependencies, no React, no imports from `features/` or `co
 | `danger.ts`     | `assessDiscards` — ordinal danger tiers ([ADR-0004](adr/0004-ordinal-danger.md))                       |
 | `policy.ts`     | The pure maths algorithms are written in: `chooseDiscard`, `chooseFold`, `chooseCall`, `waits`, …     |
 | `algorithm.ts`  | The decision seam: `SeatView`, `Algorithm`, `ALGORITHMS` ([ADR-0009](adr/0009-decision-seam.md))       |
-| `match.ts`      | The match engine: `createMatch`/`beginTurn`/`finishTurn`/`playMatch`/`findMatch`, claims, `isManual`  |
+| `round.ts`      | The round engine (one deal): `createRound`/`beginTurn`/`finishTurn`/`playRound`/`stepRound`, claims, `isManual` |
+| `match.ts`      | The game a round sits inside: `MatchState`, `createMatch` — carry-in only ([ADR-0023](adr/0023-round-inside-match.md)) |
 | `table.ts`      | Pure table layer: `actingSeat`, `goRound`, `seenBy`, `snapshotTable`, `seatRead`, per-seat analysis   |
 | `generateHand.ts` | Winning-hand generation for the scoring trainer                                                     |
 
-`match.golden.test.ts` freezes an event-stream hash per seed — the regression net for any change
-to a tie-break ([ADR-0016](adr/0016-testing-strategy.md)).
+**Round ⊂ match** is the naming model throughout ([ADR-0023](adr/0023-round-inside-match.md)): a
+round is one deal, a match is the game. ADRs written before it (0006, 0007, 0009, 0010, 0012) say
+`MatchState`/`MatchOptions`/`useMatch` for what the code now calls `RoundState`/`RoundOptions`/
+`useRound`; the decisions stand, only the words moved.
+
+`round.golden.test.ts` freezes an event-stream hash per seed — the regression net for any change
+to a tie-break ([ADR-0016](adr/0016-testing-strategy.md)). `round.test.ts`'s census is the other
+half: every tile kind accounted for exactly four times, and each player's `concealed` still
+agreeing with `hand.counts` ([ADR-0022](adr/0022-stored-redness.md)).
 
 ## `src/features/` — trainers and shared feature code
 
@@ -41,7 +49,7 @@ setting ([ADR-0013](adr/0013-efficiency-split.md)).
 | `shanten/`         | `/shanten`         | `useShantenRound`           | Boardless, continuous hand stream               |
 | `efficiency-solo/` | `/efficiency-solo` | `useEfficiencySoloRound`    | Boardless, one seat                            |
 | `efficiency/`      | `/efficiency`      | `useEfficiencyRound`        | Board, opponents, graded per discard           |
-| `folding/`         | `/folding`         | `useFoldingRound`           | Grading + a pure board search on `useMatch`; see ADR-0012 |
+| `folding/`         | `/folding`         | `useFoldingRound`           | Grading + a pure board search on `useRound`; see ADR-0012 |
 | `scoring/`         | `/scoring`         | `useScoringRound`           | Generates a finished hand, never steps it      |
 | `lab/`             | `/lab`             | `useLabRound`               | Free play, no grading                          |
 
@@ -49,7 +57,7 @@ Shared:
 
 | Path                            | Role                                                                            |
 | ------------------------------- | --------------------------------------------------------------------------------- |
-| `table/useMatch.ts`             | React owner of a stepped round; reports engine events through one `onEvent`      |
+| `table/useRound.ts`             | React owner of a stepped round; reports engine events through one `onEvent`      |
 | `table/ManualControls.tsx`      | Riichi arm, claim prompt, playing/watching lines                                 |
 | `table/SeatStrip.tsx`           | The per-seat strip on the felt (algorithm badge, waits, furiten)                 |
 | `table/Verdict.tsx`             | One-line compact feedback for fullscreen                                          |

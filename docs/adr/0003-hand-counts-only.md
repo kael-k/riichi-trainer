@@ -1,6 +1,6 @@
 # ADR-0003 — `Hand` stores counts; redness travels beside it
 
-**Status:** Accepted · **TO REVIEW** · **Date:** 2026-08-11
+**Status:** Superseded by [ADR-0022](0022-stored-redness.md) · **Date:** 2026-08-11
 **Source:** `core/hand.ts`, `core/match.ts` (`PlayerState.reds`)
 
 ## Context

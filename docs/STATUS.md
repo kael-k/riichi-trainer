@@ -1,6 +1,6 @@
 # Status
 
-_Last synthesised: 2026-08-15, against the git history through `098b5e8`._
+_Last synthesised: 2026-08-16, against the git history through `ad902b9`._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
@@ -23,30 +23,36 @@ dark mode, PWA + GitHub Pages deploy, sanma throughout, per-seat algorithms with
 seam, mobile fullscreen on every trainer.
 
 The **table-architecture centralization** work is complete: explicit walls, `core/table.ts`,
-`useMatch`, the efficiency split, the table-settings schema, the lab.
+`useRound`, the efficiency split, the table-settings schema, the lab.
 
-**Three waves landed after it:**
+**Four waves landed after it:**
 
 1. **Seat algorithms** (`PLAN-seat-algorithms.md`, T0–T5, commits `4b39b28`…`d658a28`) — the
    `humans`/`policy` merge, live algorithm changes, the `ALGORITHMS` decision seam, efficiency's
    riichi removal, docs. ADRs [0007](adr/0007-every-seat-is-a-player.md)–[0011](adr/0011-at-least-one-manual-seat.md).
 2. **A follow-up wave** (commits `07569cc`…`116095d`), whose plan file is not in the tree: the
-   drawn tile moved onto `Hand` (`MatchState.drawn` deleted), `SeatView.dealer`,
+   drawn tile moved onto `Hand` (`MatchState.drawn` deleted — and moved again in wave 4, to
+   `PlayerState.drawn`), `SeatView.dealer`,
    `Algorithm.discard` returning `{ tile, fromDrawn }`, and a fourth algorithm — `tsumogiri` —
    added as pure seam input with zero engine edits.
-3. **The full action log** (`PLAN-action-log.md`, uncommitted, T0–T9) — `MatchState.log`,
+3. **The full action log** (`PLAN-action-log.md`, uncommitted, T0–T9) — `RoundState.log`,
    `replayLog` (consults no algorithm at all), `core/actionLog.ts`'s codec, and every wall-based
    trainer's link (`Situation.log`, `FoldingUrl.log`) switched over. Scoring's wall link and
    shanten's seed+hand format are untouched — nothing decision-shaped to log in either. mjai export
    deferred as its own small follow-up. [ADR-0021](adr/0021-action-log-replay.md).
+4. **Match context + stored redness** (`PLAN-match-context.md`, T0–T7, commits `27bf71c`…`48f4ab1`) —
+   the round/match rename cascade, `PlayerState.concealed` replacing `PlayerState.reds` and
+   `Hand.drawn`, a real `core/match.ts` (`MatchState`, `createMatch`), that state plumbed through
+   options/state/`SeatView`/snapshot/link, riichi deducting 1000 and adding a stick, and the board
+   showing round number and per-seat points. [ADR-0022](adr/0022-stored-redness.md),
+   [ADR-0023](adr/0023-round-inside-match.md).
 
 ## In flight
 
-- **`PLAN-seat-algorithms.md`** — root, uncommitted. All six tasks appear committed; confirm with
-  the parallel session before deleting it.
-- **`UX-TESTS-BUG.md`** — root, uncommitted, **not started**. Adds a browser-test framework and
-  fixes the mobile layout bugs listed below. Explicitly marked "DO NOT COMMIT".
-- `UX-SPECS.md` was consumed and deleted by the parallel session; nothing references it now.
+- Nothing. `PLAN-match-context.md` was the last plan file in the tree and went with T7, per
+  `docs/README.md`'s one-plan-file rule. `PLAN-seat-algorithms.md`, `UX-TESTS-BUG.md` and
+  `UX-SPECS.md` are all gone from root; the mobile-layout items `UX-TESTS-BUG.md` carried are
+  recorded under known defects below, and the CI gap under CI.
 
 Two sessions run concurrently on `main` in this repo. Commits are rebased and GPG-signed
 separately, so **do not push**.
@@ -55,7 +61,8 @@ separately, so **do not push**.
 
 ### Mobile layout — the highest-value cluster
 
-From `UX-TESTS-BUG.md`, none fixed. This is the area the project cares most about and tests least
+Originally from `UX-TESTS-BUG.md` (no longer in the tree), none fixed. This is the area the
+project cares most about and tests least
 ([ADR-0019](adr/0019-mobile-first-board.md)):
 
 - **The board is not square** on phones, in either orientation, fullscreen or not. It must always
@@ -74,7 +81,7 @@ From `UX-TESTS-BUG.md`, none fixed. This is the area the project cares most abou
 Both re-verified present in the current tree:
 
 - ~~**`useTableRound` deals the round twice on every mount**~~ — fixed by
-  [ADR-0012](adr/0012-shared-table-layer.md)'s rewrite. `useMatch` builds once, during the render
+  [ADR-0012](adr/0012-shared-table-layer.md)'s rewrite. `useRound` builds once, during the render
   that first needs a board, and the mount effect reuses it (`ensureBuilt`, keyed on wall identity
   and restart count). Replayed events are queued by the build and drained by the effect, so
   nothing grades or logs mid-render.
@@ -127,9 +134,13 @@ Not decided, deliberately not guessed:
 Recorded so they stop being re-proposed:
 
 - **EV, deal-in probabilities, win-rate modelling, push/fold grading** —
-  [ADR-0004](adr/0004-ordinal-danger.md).
-- **Points, honba, riichi sticks, placement** — not modelled anywhere in the engine, and no
-  placeholder fields ([ADR-0009](adr/0009-decision-seam.md)).
+  [ADR-0004](adr/0004-ordinal-danger.md). Unblocked by the match state below, deliberately not
+  adopted with it.
+- **Round sequencing** — `nextRound()`, dealer rotation, honba/repeat increment, payout settlement,
+  the winner collecting riichi sticks, end-of-match detection. `MatchState` is carry-in context
+  plus the one within-round mutation (riichi); nothing steps between rounds
+  ([ADR-0023](adr/0023-round-inside-match.md)).
+- **Placement/uma/oka** — a function of settled points, so it waits on sequencing too.
 - **Backward compatibility** for old links or persisted keys while pre-release —
   [ADR-0020](adr/0020-no-back-compat-pre-release.md).
 - **Restructuring the scoring trainer** — it generates a frozen result and renders `<Table>`

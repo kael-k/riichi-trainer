@@ -2,6 +2,9 @@
 
 **Status:** Accepted · **Date:** 2026-08-15
 **Source:** `core/algorithm.ts`; commits `afff775`, `9196285`, `e8774eb`
+**Amended by** [ADR-0023](0023-round-inside-match.md): the last rejected row below (points, honba
+and riichi sticks off the view) no longer holds — `SeatView.match` carries them, now that
+`core/match.ts` models them and no field is left permanently `undefined`.
 
 ## Context
 
