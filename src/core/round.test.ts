@@ -85,7 +85,7 @@ describe('stepRound', () => {
     // the turn is genuinely half-done: drawn but not discarded. The old eager `[...beginTurn(),
     // ...finishTurn()]` could not express this, which is why stopping at a manual seat needed a
     // second loop of its own
-    expect(state.players[state.seat].hand.drawn).toBeDefined()
+    expect(state.players[state.seat].drawn).toBeDefined()
     expect(state.players[state.seat].river).toHaveLength(0)
   })
 
@@ -94,7 +94,7 @@ describe('stepRound', () => {
     const wall = state.liveWall.length
     expect([...stepRound(state, YONMA, () => false)]).toEqual([])
     expect(state.liveWall).toHaveLength(wall)
-    expect(state.players[state.seat].hand.drawn).toBeUndefined()
+    expect(state.players[state.seat].drawn).toBeUndefined()
     expect(state.players.every((p) => p.river.length === 0)).toBe(true)
   })
 
@@ -103,7 +103,7 @@ describe('stepRound', () => {
     for (const event of stepRound(state, { ...YONMA, algorithms: manual(0) })) {
       if (event.kind === 'discard') break
     }
-    expect(state.players[0].hand.drawn).toBeUndefined()
+    expect(state.players[0].drawn).toBeUndefined()
   })
 })
 
@@ -223,7 +223,7 @@ describe('playRound', () => {
     finishTurn(state, options)
 
     expect(player.river[0]).toEqual({ id: SOU + 4, red: false })
-    expect(player.reds.has(SOU + 4)).toBe(true) // the aka stayed in hand
+    expect(player.concealed.some((t) => t.id === SOU + 4 && t.red)).toBe(true) // the aka stayed in hand
   })
 
   it('forces tsumogiri after a riichi declaration', () => {
@@ -268,14 +268,17 @@ describe('playRound', () => {
 
 describe('createRound', () => {
   it('seeds exactly one red five per suit when aka is on, and none when it is off', () => {
-    // a red copy is either still in a pile, or held — `reds` names the kinds a player holds one
-    // of, and there is at most one red per kind, so the two counts add up exactly
+    // a red copy is either still in a pile, or held — there is at most one red per kind, so the
+    // two counts add up exactly
     const reds = (options: RoundOptions, players: number) => {
       const state = createRound([], players, options, 'aka-seed')
       const inPiles = [state.liveWall, state.deadWall, state.doraStack, state.uraStack]
         .flat()
         .filter((t) => t.red).length
-      const held = state.players.reduce((sum, p) => sum + p.reds.size, 0)
+      const held = state.players.reduce(
+        (sum, p) => sum + p.concealed.filter((t) => t.red).length,
+        0,
+      )
       return inPiles + held
     }
     expect(reds(YONMA, 4)).toBe(3)

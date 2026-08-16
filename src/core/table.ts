@@ -142,7 +142,7 @@ export function splitDrawn(
 /** Builds a `TableSnapshot` for `core` as the match stands right now. */
 export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnapshot {
   const { round, options } = core
-  const drawnTile = round.players[round.seat].hand.drawn
+  const drawnTile = round.players[round.seat].drawn
   return {
     turn: round.turn,
     doraIndicators: [...round.doraIndicators],
@@ -183,6 +183,9 @@ export interface TableAnalysis {
   /** The seat's own hand at the moment this was built — a copy, so it still reads as 14 tiles
    *  after the discard it is grading has left the live one. */
   readonly hand: Hand
+  /** The 14th tile, captured alongside `hand` rather than on it — `Hand` itself tracks no
+   *  redness or draw identity any more (T1), so this is where that moment's answer lives. */
+  readonly drawn?: ParsedTile
   readonly seen: Uint8Array
   readonly ranked: DiscardOption[]
   readonly danger: TileDanger[]
@@ -228,7 +231,6 @@ export function analysisOf(core: TableCore, seat: number): TableAnalysis {
   const hand: Hand = {
     counts: new Uint8Array(player.hand.counts),
     melds: player.hand.melds,
-    drawn: player.hand.drawn,
   }
   const threats = threatViews(core.round)
   const seen = seenBy(core, seat)
@@ -237,6 +239,7 @@ export function analysisOf(core: TableCore, seat: number): TableAnalysis {
 
   return {
     hand,
+    drawn: player.drawn,
     seen,
     get ranked() {
       return (rankedCache ??= evaluateDiscards(hand, seen, core.options.sanma))

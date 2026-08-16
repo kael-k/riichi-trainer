@@ -173,7 +173,7 @@ export function useEfficiencyRound(
       pending.current = { result, tile, situationBefore }
       return
     }
-    settle(result, analysis.hand.drawn, tile, situationBefore)
+    settle(result, analysis.drawn, tile, situationBefore)
 
     // a per-turn drill ends at the discard that reaches tenpai, leaving 13 tiles so it reads as
     // finished. Only this seat's own tenpai: an AI seat reaching tenpai plays on

@@ -209,7 +209,7 @@ export function useRound(input: UseRoundInput) {
           const command = report(current, event, replaying)
           if (generation.current !== mine) return false
           if (command && 'stop' in command) {
-            current.round.players[current.round.seat].hand.drawn = undefined
+            current.round.players[current.round.seat].drawn = undefined
             halted = true
             return false
           }
@@ -231,14 +231,14 @@ export function useRound(input: UseRoundInput) {
 
       // `stepRound` stops *before* a manual seat acts, and a manual seat is one the engine draws
       // for but never decides for — so the draw itself still has to happen, or the reader is asked
-      // to discard from thirteen tiles. Guarded on `hand.drawn` because a replayed log can leave
+      // to discard from thirteen tiles. Guarded on `drawn` because a replayed log can leave
       // any seat already holding its 14th.
       if (
         running &&
         !current.round.ended &&
         !current.round.claim &&
         awaitingManual(current.round) &&
-        current.round.players[current.round.seat].hand.drawn === undefined
+        current.round.players[current.round.seat].drawn === undefined
       ) {
         pump(beginTurn(current.round, current.options))
       }
@@ -332,7 +332,7 @@ export function useRound(input: UseRoundInput) {
   // algorithm and claims changes are live (ADR-0008, ADR-0015): neither may redeal, so both are
   // written straight onto the running match. Two cases can't wait for the board to advance on its
   // own: a seat that stopped being manual with its draw already sitting there (`stepRound`'s own
-  // `hand.drawn` guard stops it re-drawing), and a claim pending on a seat that stopped being
+  // `drawn` guard stops it re-drawing), and a claim pending on a seat that stopped being
   // manual — nobody will call `answerClaim` for it now, so it is re-resolved through the same
   // restartable path (`reconsiderClaim`). Never auto-passed: a pass sets `missedWin`, so a
   // dropdown must not poison the hand with furiten over a decision nobody made.
@@ -374,7 +374,7 @@ export function useRound(input: UseRoundInput) {
     for (const event of finishTurn(c.round, c.options, { tile, fromDrawn }, declareRiichi)) {
       const command = report(c, event, false)
       if (command && 'stop' in command) {
-        c.round.players[c.round.seat].hand.drawn = undefined
+        c.round.players[c.round.seat].drawn = undefined
         setSnapshot(snapshotTable(c, input.showSeatWaits))
         return
       }

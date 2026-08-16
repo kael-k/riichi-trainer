@@ -12,7 +12,7 @@ function baseView(overrides: Partial<SeatView> = {}): SeatView {
   return {
     seat: 0,
     hand: createHand(),
-    reds: new Set(),
+    concealed: [],
     melds: [],
     river: [],
     riichi: false,
@@ -47,8 +47,8 @@ describe('ALGORITHMS.kita', () => {
 describe('ALGORITHMS.tsumogiri', () => {
   it('discards exactly the drawn tile, marked fromDrawn, never calls/declares/wins/pulls', () => {
     const hand = handFromTenhou('19m19p19s1234567z')
-    hand.drawn = parseTenhou('9s')[0]
-    const view = baseView({ hand })
+    const drawn = parseTenhou('9s')[0]
+    const view = baseView({ hand, drawn })
 
     expect(ALGORITHMS.tsumogiri.discard(view)).toEqual({
       tile: parseTenhou('9s')[0].id,
@@ -82,7 +82,7 @@ describe('a new algorithm needs nothing from round.ts', () => {
     const passive: Algorithm = {
       discard: (view) => {
         for (let id = 0; id < NUM_TILE_TYPES; id++) {
-          if (view.hand.counts[id] > 0) return { tile: id, fromDrawn: id === view.hand.drawn?.id }
+          if (view.hand.counts[id] > 0) return { tile: id, fromDrawn: id === view.drawn?.id }
         }
         throw new Error('empty hand')
       },

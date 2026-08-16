@@ -5,13 +5,6 @@ export interface Hand {
   counts: Uint8Array
   /** Number of already-fixed (called) melds; each counts as one complete set. */
   melds: number
-  /** The tile that brought this hand to 14, still counted in `counts` above. `ParsedTile`, not
-   *  `TileId`: redness of the draw is not reconstructable from `reds`, which tracks kinds, not
-   *  copies. A narrow, deliberate exception to "`Hand` tracks no redness" — one optional tile
-   *  beside the count array doesn't touch the shanten hot path. Informational only: `removeTile`
-   *  deliberately does not clear it, so a probe (`ukeire`/`efficiency`) may leave it briefly
-   *  stale; nothing reads it there. Set by `take`/`drawReplacement`, cleared by `finishTurn`. */
-  drawn?: ParsedTile
 }
 
 export function createHand(): Hand {
@@ -40,12 +33,12 @@ export function tileCount(hand: Hand): number {
   return sum
 }
 
-/** Sorted tile list for display. `reds` names the kinds whose red copy is held — the `Hand`
- *  itself only keeps counts, so redness rides along separately and lands on the first copy. */
-export function handToTiles(hand: Hand, reds?: ReadonlySet<TileId>): ParsedTile[] {
+/** Sorted tile list for display, counts only — the `Hand` itself tracks no redness, so every
+ *  copy comes back plain. Callers that need redness read `PlayerState.concealed` instead. */
+export function handToTiles(hand: Hand): ParsedTile[] {
   const tiles: ParsedTile[] = []
   for (let id = 0; id < NUM_TILE_TYPES; id++) {
-    for (let k = 0; k < hand.counts[id]; k++) tiles.push({ id, red: k === 0 && !!reds?.has(id) })
+    for (let k = 0; k < hand.counts[id]; k++) tiles.push({ id, red: false })
   }
   return tiles
 }

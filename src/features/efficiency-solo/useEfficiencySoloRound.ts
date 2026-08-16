@@ -134,7 +134,7 @@ export function useEfficiencySoloRound(
       pending.current = { result, tile, situationBefore }
       return
     }
-    settle(result, analysis.hand.drawn, tile, situationBefore)
+    settle(result, analysis.drawn, tile, situationBefore)
 
     // the drill is one turn at a time: reaching tenpai ends it, leaving 13 tiles so it reads as
     // finished. Derived here rather than flagged into `useRound` — where a round stops is this

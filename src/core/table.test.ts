@@ -145,7 +145,7 @@ describe('snapshotTable', () => {
     const core: TableCore = { round, options: YONMA }
     beginTurn(round, YONMA)
     const snap = snapshotTable(core)
-    const drawn = round.players[round.seat].hand.drawn
+    const drawn = round.players[round.seat].drawn
     expect(snap.drawn).toEqual({ seat: round.seat, tile: drawn })
     // the snapshot no longer splits one privileged seat's hand — `hands[seat]` keeps every tile
     // and a page separates the 14th itself with `splitDrawn`, which is what lets perspective move
@@ -158,7 +158,7 @@ describe('snapshotTable', () => {
     const round = createRound([], 4, YONMA, 'table-snap-nodraw')
     const core: TableCore = { round, options: YONMA }
     const snap = snapshotTable(core)
-    expect(round.players[round.seat].hand.drawn).toBeUndefined()
+    expect(round.players[round.seat].drawn).toBeUndefined()
     expect(snap.drawn).toBeUndefined()
   })
 

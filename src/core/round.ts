@@ -67,8 +67,17 @@ export function isManual(state: RoundState, seat: number): boolean {
 
 export interface PlayerState {
   hand: Hand
-  /** Kinds whose red copy this player holds — `Hand` only keeps counts. */
-  reds: Set<TileId>
+  /** Concealed tiles as actually held, redness included — `hand` stays counts-only for the
+   *  shanten/ukeire hot path. Kept sorted (ascending id, a kind's red copy first) except for its
+   *  very last element while `drawn` is set, which is that 14th tile appended rather than sorted
+   *  in (T1 — this is what lets a discard know tedashi from tsumogiri without inferring it). */
+  concealed: ParsedTile[]
+  /** The 14th tile that brought the hand to 14, if one is currently held — always
+   *  `concealed.at(-1)` when set. Cleared the moment the tile leaves (a discard, kita, ankan),
+   *  before any algorithm decision reads it. Replaces the old `Hand.drawn` (ADR-0003's own
+   *  exception): the reason it lived beside `Hand` — that redness of the draw specifically isn't
+   *  reconstructable from a kinds-only red set — is moot now that `concealed` tracks instances. */
+  drawn?: ParsedTile
   melds: Meld[]
   river: RiverTile[]
   /** River index of the riichi declaration tile; unset while not riichi. */
@@ -204,7 +213,7 @@ export interface RoundState {
 function createPlayer(algorithm: SeatAlgorithm = 'efficiency'): PlayerState {
   return {
     hand: createHand(),
-    reds: new Set(),
+    concealed: [],
     melds: [],
     river: [],
     ippatsu: false,
@@ -282,7 +291,7 @@ export function createRound(
     const player = state.players[i]
     for (const t of full.slice(i * INITIAL_HAND_SIZE, (i + 1) * INITIAL_HAND_SIZE)) {
       addTile(player.hand, t.id)
-      if (t.red) player.reds.add(t.id)
+      insertConcealed(player, t)
     }
   }
   // captured after the deal, not before: the snapshot is the wall play will actually draw from
@@ -294,20 +303,46 @@ function take(state: RoundState, player: PlayerState): ParsedTile | undefined {
   const tile = state.liveWall.shift()
   if (!tile) return undefined
   addTile(player.hand, tile.id)
-  if (tile.red) player.reds.add(tile.id)
-  player.hand.drawn = tile
+  player.concealed.push(tile)
+  player.drawn = tile
   return tile
 }
 
-/** Concealed tiles as display/scoring tiles, with the held red copies marked. */
-export function concealedTiles(player: PlayerState): ParsedTile[] {
-  const tiles: ParsedTile[] = []
-  for (let id = 0; id < NUM_TILE_TYPES; id++) {
-    for (let k = 0; k < player.hand.counts[id]; k++) {
-      tiles.push({ id, red: k === 0 && player.reds.has(id) })
-    }
+/** Inserts `tile` into `player.concealed` in sorted position (ascending id, a kind's red copy
+ *  first) — used only for tiles that settle straight into the hand rather than sitting as the
+ *  14th (the deal, and a ron tile's temporary probe in `tryWin`): a real draw instead appends via
+ *  `player.drawn`, deliberately out of this order (see `PlayerState.concealed`). */
+function insertConcealed(player: PlayerState, tile: ParsedTile): void {
+  let i = player.concealed.length
+  while (i > 0) {
+    const prev = player.concealed[i - 1]
+    if (prev.id < tile.id || (prev.id === tile.id && (prev.red || !tile.red))) break
+    i--
   }
-  return tiles
+  player.concealed.splice(i, 0, tile)
+}
+
+/** Removes the one held copy matching `tile` exactly (id and redness) from `player.concealed`. */
+function removeConcealed(player: PlayerState, tile: ParsedTile): void {
+  const i = player.concealed.findIndex((t) => t.id === tile.id && t.red === tile.red)
+  if (i >= 0) player.concealed.splice(i, 1)
+}
+
+/** The 14th tile has left, or was never really this seat's to hold (a call landing the turn on it
+ *  without a draw) — clears `drawn` and restores the sorted invariant, since the one tile allowed
+ *  to sit unsorted at the end was exactly the one this just unset. A no-op resort when nothing was
+ *  out of place, which is the common case (the removal above already took the trailing element). */
+function clearDrawn(player: PlayerState): void {
+  player.drawn = undefined
+  player.concealed.sort((a, b) => a.id - b.id || Number(b.red) - Number(a.red))
+}
+
+/** Concealed tiles for display/scoring: sorted (ascending id, a kind's red copy first) even while
+ *  `player.concealed`'s own last slot is a not-yet-sorted 14th tile — every consumer here expects
+ *  the drawn tile in its natural position among the rest and splits it back out by identity
+ *  (`splitDrawn`), not by array position. */
+export function concealedTiles(player: PlayerState): ParsedTile[] {
+  return [...player.concealed].sort((a, b) => a.id - b.id || Number(b.red) - Number(a.red))
 }
 
 /** What this seat can see when deciding: every face-up tile plus its own hand. Clamped to
@@ -357,7 +392,8 @@ function seatView(state: RoundState, options: RoundOptions, seat: number): SeatV
   return {
     seat,
     hand: player.hand,
-    reds: player.reds,
+    concealed: player.concealed,
+    drawn: player.drawn,
     melds: player.melds,
     river: player.river,
     riichi: player.riichiAt !== undefined,
@@ -435,17 +471,15 @@ function tryWin(
   if (shanten(player.hand) !== (tsumo ? -1 : 0)) return null
 
   // a ron tile is scored as part of the hand, redness included, then taken back out
-  let addedRed = false
   if (!tsumo) {
     addTile(player.hand, tile.id)
-    addedRed = tile.red && !player.reds.has(tile.id)
-    if (addedRed) player.reds.add(tile.id)
+    insertConcealed(player, tile)
   }
   const complete = decompose(player.hand.counts, player.melds).length > 0
   const concealed = complete ? concealedTiles(player) : []
   if (!tsumo) {
     removeTile(player.hand, tile.id)
-    if (addedRed) player.reds.delete(tile.id)
+    removeConcealed(player, tile)
   }
   if (!complete) return null
   // furiten is only worth computing once the tile is known to complete the hand
@@ -520,7 +554,7 @@ export function beginTurn(
 
   if (!state.pendingDraw) {
     state.pendingDraw = true
-    player.hand.drawn = undefined
+    clearDrawn(player)
     return []
   }
   if (state.liveWall.length === 0) {
@@ -544,6 +578,7 @@ export function beginTurn(
     ALGORITHMS[player.algorithm].kita(seatView(state, options, state.seat))
   ) {
     removeTile(player.hand, NORTH)
+    removeConcealed(player, { id: NORTH, red: false })
     player.nuki.push({ id: NORTH, red: false })
     state.visible[NORTH]++
     state.log.push({ kind: 'kita', seat: state.seat })
@@ -570,8 +605,8 @@ export function drawReplacement(state: RoundState, player: PlayerState): ParsedT
     const backfill = state.liveWall.pop()
     if (backfill) state.deadWall.unshift(backfill)
     addTile(player.hand, tile.id)
-    if (tile.red) player.reds.add(tile.id)
-    player.hand.drawn = tile
+    player.concealed.push(tile)
+    player.drawn = tile
   } else {
     tile = take(state, player)
   }
@@ -588,6 +623,7 @@ export function callKita(state: RoundState, options: RoundOptions, seat: number)
   const player = state.players[seat]
   if (player.hand.counts[NORTH] === 0) return []
   removeTile(player.hand, NORTH)
+  removeConcealed(player, { id: NORTH, red: false })
   player.nuki.push({ id: NORTH, red: false })
   state.visible[NORTH]++
   state.log.push({ kind: 'kita', seat })
@@ -604,10 +640,12 @@ export function callAnkan(state: RoundState, seat: number, id: TileId): RoundEve
   if (state.ended || state.claim || seat !== state.seat) return []
   const player = state.players[seat]
   if (player.hand.counts[id] !== 4) return []
-  const red = player.reds.has(id)
-  for (let k = 0; k < 4; k++) removeTile(player.hand, id)
+  const red = player.concealed.some((t) => t.id === id && t.red)
+  for (let k = 0; k < 4; k++) {
+    removeTile(player.hand, id)
+    removeConcealed(player, { id, red: k === 0 && red })
+  }
   player.hand.melds++
-  player.reds.delete(id)
   state.visible[id] += 4
   const meld: Meld = {
     kind: 'ankan',
@@ -663,14 +701,14 @@ export function finishTurn(
   const player = state.players[seat]
   const events: RoundEvent[] = []
 
-  const forcedTsumogiri = player.riichiAt !== undefined && player.hand.drawn !== undefined
+  const forcedTsumogiri = player.riichiAt !== undefined && player.drawn !== undefined
   let tile: ParsedTile | undefined
   let fromDrawn: boolean
   if (discard) {
     tile = discard.tile
     fromDrawn = discard.fromDrawn
   } else if (forcedTsumogiri) {
-    tile = player.hand.drawn
+    tile = player.drawn
     fromDrawn = true
   } else {
     // no explicit discard and not forced tsumogiri: `finishTurn` is being driven mechanically
@@ -688,16 +726,16 @@ export function finishTurn(
     // the aka, hold the plain: `pickTile` throws the plain copy, so it is tedashi, not tsumogiri).
     // Full identity against the actual resolved tile is ground truth; the id-only comparison an
     // algorithm can offer is not
-    const drawn = player.hand.drawn
+    const drawn = player.drawn
     fromDrawn = drawn !== undefined && tile.id === drawn.id && tile.red === drawn.red
   }
   if (!tile) return events
 
   removeTile(player.hand, tile.id)
-  if (tile.red) player.reds.delete(tile.id)
-  // cleared here, not at the end: a naive end-of-function clear would leave `hand.drawn` naming a
+  removeConcealed(player, tile)
+  // cleared here, not at the end: a naive end-of-function clear would leave `drawn` naming a
   // tile no longer in the hand while the riichi decision below builds its `SeatView`
-  player.hand.drawn = undefined
+  clearDrawn(player)
 
   // riichi is declared with the discard that reaches tenpai, so it is decided after the choice
   const declaring = canDeclareRiichi(state, options, seat)
@@ -818,9 +856,10 @@ function resolveReactions(
 
       const meldTiles: ParsedTile[] = [{ id: tile.id, red: tile.red }]
       for (const id of call.from) {
-        meldTiles.push({ id, red: caller.reds.has(id) })
+        const held: ParsedTile = { id, red: caller.concealed.some((t) => t.id === id && t.red) }
+        meldTiles.push(held)
         removeTile(caller.hand, id)
-        caller.reds.delete(id)
+        removeConcealed(caller, held)
       }
       meldTiles.sort((a, b) => a.id - b.id)
       const meld: Meld = { kind: call.kind, tiles: meldTiles }
@@ -1057,7 +1096,7 @@ export function replayLog(
       i++
 
       const afterPull: LogEntry | undefined = log[i]
-      const drawn = state.players[seat].hand.drawn
+      const drawn = state.players[seat].drawn
       if (
         afterPull?.kind === 'win' &&
         afterPull.seat === seat &&
@@ -1109,10 +1148,14 @@ function couldHaveWon(state: RoundState, seat: number, tile: TileId): boolean {
   return complete
 }
 
-/** The held copy of `id` being discarded. Only red when it is the last copy held — with several
- *  in hand the red one is the one you keep, and `reds` tracks kinds rather than copies. */
+/** The held copy of `id` to discard — an explicit policy over `concealed` now that it names each
+ *  copy directly: with more than one held, the plain one goes and the red one stays; with exactly
+ *  one, whichever it is leaves. Read-only, same as before — `finishTurn` still does the actual
+ *  removal once it has the resolved tile. */
 function pickTile(player: PlayerState, id: TileId): ParsedTile {
-  return { id, red: player.reds.has(id) && player.hand.counts[id] === 1 }
+  const copies = player.concealed.filter((t) => t.id === id)
+  if (copies.length === 0) return { id, red: false }
+  return copies.length > 1 ? (copies.find((t) => !t.red) ?? copies[0]) : copies[0]
 }
 
 export interface RoundOutcome {
@@ -1138,7 +1181,7 @@ export interface RoundOutcome {
  * `claim` are re-checked each turn rather than trusted from the last one: `beginTurn` can end the
  * hand on a tsumo, and a claim suspends everything until `answerClaim` resolves it.
  *
- * The `hand.drawn` check is what makes the generator safe to *resume* into a turn somebody else
+ * The `drawn` check is what makes the generator safe to *resume* into a turn somebody else
  * started: a seat that stopped being manual mid-turn, or one `replayLog` left holding its 14th
  * tile, already has its draw sitting there, and `beginTurn` would happily take a second one on top
  * (`pendingDraw` only comes back down after the next `finishTurn`). One guard here rather than a
@@ -1152,7 +1195,7 @@ export function* stepRound(
   for (let guard = 0; guard < 400; guard++) {
     if (state.ended || state.claim) return
     if (canAct && !canAct(state)) return
-    if (state.players[state.seat].hand.drawn === undefined) yield* beginTurn(state, options)
+    if (state.players[state.seat].drawn === undefined) yield* beginTurn(state, options)
     yield* finishTurn(state, options)
   }
 }

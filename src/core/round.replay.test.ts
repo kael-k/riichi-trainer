@@ -62,8 +62,8 @@ function project(state: RoundState) {
     doraIndicators: state.doraIndicators,
     players: state.players.map((p) => ({
       counts: Array.from(p.hand.counts),
-      drawn: p.hand.drawn,
-      reds: [...p.reds].sort((a, b) => a - b),
+      drawn: p.drawn,
+      concealed: p.concealed,
       melds: p.melds,
       river: p.river,
       riichiAt: p.riichiAt,
@@ -165,7 +165,7 @@ describe('replayLog', () => {
 
     beginTurn(state, options)
     callAnkan(state, 0, MAN)
-    finishTurn(state, options, { tile: state.players[0].hand.drawn!, fromDrawn: true })
+    finishTurn(state, options, { tile: state.players[0].drawn!, fromDrawn: true })
     for (let t = 0; t < 6 && !state.ended; t++) {
       beginTurn(state, options)
       finishTurn(state, options)

@@ -29,7 +29,11 @@ export interface SeatView {
   /** This player. */
   readonly seat: number
   readonly hand: Hand
-  readonly reds: ReadonlySet<TileId>
+  /** Concealed tiles as held, redness included — `hand` is counts-only. */
+  readonly concealed: readonly ParsedTile[]
+  /** The 14th tile currently held, if any — `hand`/`concealed` still count it; this just names
+   *  it, the same role `Hand.drawn` used to play before redness moved off `Hand` (T1). */
+  readonly drawn?: ParsedTile
   readonly melds: readonly Meld[]
   readonly river: readonly RiverTile[]
   readonly riichi: boolean
@@ -100,7 +104,7 @@ const efficiency: Algorithm = {
   // actually resolves through `pickTile`
   discard: (view) => {
     const { discard: tile } = chooseDiscard(view.hand, view.seen, view.sanma)
-    return { tile, fromDrawn: tile === view.hand.drawn?.id }
+    return { tile, fromDrawn: tile === view.drawn?.id }
   },
   call: (view, tile, fromKamicha) =>
     chooseCall(view.hand, view.melds, tile, fromKamicha, view.round, view.seatWind),
@@ -118,7 +122,7 @@ const efficiency: Algorithm = {
 const defense: Algorithm = {
   discard: (view) => {
     const tile = chooseFold(view.hand, view.threats, view.seen, view.sanma)
-    return { tile, fromDrawn: tile === view.hand.drawn?.id }
+    return { tile, fromDrawn: tile === view.drawn?.id }
   },
   // every meld opened is one more shape to defend a wait with, and a folding seat is trying to
   // leave the hand, not develop it
@@ -139,15 +143,15 @@ function lowestHeld(hand: Hand): TileId {
 }
 
 /** Discards whatever it just drew, every turn — no hand management at all. Proves the seam's
- *  input, not just its shape: `SeatView.hand.drawn` is what makes "throw what I drew" expressible
+ *  input, not just its shape: `SeatView.drawn` is what makes "throw what I drew" expressible
  *  in the first place (T1). Never calls, never declares, never wins — `win: false` is deliberate:
  *  declining sets `missedWin`, so a tsumogiri seat goes furiten early and shows the badge for it.
  *  Harmless, since it never wins anyway, but it does mean this seat overlaps `defense` on that one
  *  axis. */
 const tsumogiri: Algorithm = {
   discard: (view) =>
-    view.hand.drawn
-      ? { tile: view.hand.drawn.id, fromDrawn: true }
+    view.drawn
+      ? { tile: view.drawn.id, fromDrawn: true }
       : { tile: lowestHeld(view.hand), fromDrawn: false },
   call: () => null,
   riichi: () => false,
