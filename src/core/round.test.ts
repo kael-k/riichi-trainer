@@ -47,10 +47,17 @@ const YONMA: RoundOptions = {
 const SANMA: RoundOptions = { ...YONMA, sanma: true, match: createMatch(true) }
 
 /** Every copy of every kind has to be somewhere, exactly once — the invariant that catches
- *  almost any bookkeeping slip in the simulator. */
+ *  almost any bookkeeping slip in the simulator. Also the drift guard for the one deliberate
+ *  duplication in `PlayerState`: `concealed` (tiles as held, redness included) is maintained
+ *  beside `hand.counts` (the counts-only hot path), so every census asserts the two still agree
+ *  per kind, and that `drawn` is exactly `concealed`'s last element whenever it is set. */
 function census(state: RoundState): Uint8Array {
   const counts = new Uint8Array(NUM_TILE_TYPES)
   for (const player of state.players) {
+    const held = new Uint8Array(NUM_TILE_TYPES)
+    for (const t of player.concealed) held[t.id]++
+    expect(held).toEqual(player.hand.counts)
+    expect(player.drawn === undefined || player.concealed.at(-1) === player.drawn).toBe(true)
     for (let id = 0; id < NUM_TILE_TYPES; id++) counts[id] += player.hand.counts[id]
     for (const meld of player.melds) for (const t of meld.tiles) counts[t.id]++
     for (const t of player.river) counts[t.id]++
@@ -88,6 +95,9 @@ describe('stepRound', () => {
     // second loop of its own
     expect(state.players[state.seat].drawn).toBeDefined()
     expect(state.players[state.seat].river).toHaveLength(0)
+    // the one place a census runs mid-turn: `concealed`/`counts`/`drawn` have to agree while a
+    // hand is at 14, which is the only state the end-of-round censuses never see
+    for (const count of census(state)) expect(count).toBe(TILES_PER_KIND)
   })
 
   it('canAct refuses a turn before anything is drawn', () => {
