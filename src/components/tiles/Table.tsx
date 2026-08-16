@@ -42,11 +42,6 @@ interface TableProps {
   honba?: number
   /** Extra centre content — the scoring trainer's win-condition badges. */
   children?: ReactNode
-  /** Buttons that belong to the board (the fullscreen toggle), drawn in a row above it. They live
-   *  *inside* the width-capped box on purpose: the box is the only element that knows how wide the
-   *  board actually is, and a wrapper around it would have to guess — guessing wrong is what
-   *  collapses the square when the board is a flex item. */
-  controls?: ReactNode
   /** One seat's own info strip — the settings button plus its furiten/algorithm/wait reads —
    *  drawn in that seat's own corner cell, above its melds, like the player plate on a Mahjong
    *  Soul table. It sat one ring *outboard* of the seat's hand before, which cost the board a 16%
@@ -180,7 +175,6 @@ export function Table({
   wallCount,
   honba,
   children,
-  controls,
   seatInfo,
 }: TableProps) {
   const { t } = useTranslation()
@@ -204,19 +198,12 @@ export function Table({
     // itself: beside the hand the board is a flex item, where a `w-full` child would have
     // nothing to resolve against and collapse to nothing
     <div
-      // `--board-controls` is a class, not part of the style object below, so the `short:` variant
-      // can zero it: held sideways the row moves off the top of the board into the gutter beside
-      // it, and a row that costs nothing vertically must not still be charged for
       // `100cqh` is the real height left for the board wherever an ancestor declares itself a
       // size container (the fullscreen stage does), so the square fits what is actually there
       // rather than what `--board-max-h` guessed the chrome and the hand would take. With no such
       // ancestor the unit falls back to the small viewport, which is larger than the guess and so
       // changes nothing for the inline layout
-      className={`relative mx-auto w-full max-w-[min(100%,calc(100cqh-var(--board-controls,0px)),calc(var(--board-max-h,calc(100svh-8rem))-var(--board-controls,0px)),var(--table-max,var(--table-cap)))] shrink-0 ${
-        controls
-          ? '[--board-controls:2.75rem] short:[--board-controls:0px]'
-          : '[--board-controls:0px]'
-      }`}
+      className="relative mx-auto w-full max-w-[min(100%,100cqh,var(--board-max-h,calc(100svh-8rem)),var(--table-max,var(--table-cap)))] shrink-0"
       style={
         {
           // the revealed hands are paid for out of the board's own footprint (the 10% below), so
@@ -229,16 +216,6 @@ export function Table({
         } as CSSProperties
       }
     >
-      {/* a row above the board normally; held sideways, a column standing in the gutter to its
-          left (`right-full`, so it hugs the square's edge whatever the square's size), wrapping
-          into a second column rather than running off the bottom. Height is the only axis a
-          square board is ever short of, and the width beside it is doing nothing. The seat panel
-          no longer lives here — each seat's own strip, on the felt itself, replaced it */}
-      {controls && (
-        <div className="flex items-center gap-1 short:absolute short:top-0 short:right-full short:h-full short:flex-col short:flex-wrap short:content-end short:items-center short:gap-0">
-          <div className="ml-auto flex items-center gap-1 short:contents">{controls}</div>
-        </div>
-      )}
       {/* the revealed hands sit outside the felt, so the square gives up a margin's worth of its
           own width to hold them — only while they are actually shown, so an ordinary board is
           exactly as big as it was. The border box stays square either way, which is what keeps

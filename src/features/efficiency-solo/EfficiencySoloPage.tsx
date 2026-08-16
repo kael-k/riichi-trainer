@@ -3,10 +3,12 @@ import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
+import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { Verdict } from '../table/Verdict'
@@ -98,15 +100,24 @@ export function EfficiencySoloPage() {
     </>
   )
 
-  // the same start/pause and reset the status bar draws, so the fullscreen chrome can draw them
-  // too rather than sending you back out to the page for them
+  const { full, toggle: toggleFull } = useFullscreenBoard()
+  const { canBack, back } = useLogBack()
+
+  // the same command bar the status bar draws, so the fullscreen chrome can draw them too rather
+  // than sending you back out to the page for them
   const toggles = {
     showToggle: settings.timerEnabled,
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
+    canBack,
+    onBack: back,
+    backLabel: t('common.undoAction'),
     onReset: round.restart,
     resetLabel: t('common.resetHand'),
+    full,
+    onToggleFull: toggleFull,
+    fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
   return (
@@ -154,6 +165,7 @@ export function EfficiencySoloPage() {
         <BoardStage
           title={t('trainer.efficiencySolo.title')}
           intro={{ text: t('trainer.efficiencySolo.intro'), wikiUrl: TRAINER_WIKI.efficiencySolo }}
+          full={full}
           chrome={
             <>
               <SettingsButton title={t('trainer.efficiencySolo.title')}>

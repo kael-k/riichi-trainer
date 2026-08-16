@@ -3,8 +3,10 @@ import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
+import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, UkeireTiles, WallDetails } from '../../components/tiles/Tile'
+import { BackButton, FullscreenToggle } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import type { SafetyTier, TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
@@ -22,6 +24,7 @@ import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation, resolveSanma, WINDS, type Situation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
+import { useLogBack } from '../../lib/useLogBack'
 import { useLabRound, type RoundOptions } from './useLabRound'
 
 /** Only the tiers with a glossary entry get the popover — same subset `FoldFeedback` uses, since
@@ -219,6 +222,8 @@ export function LabPage() {
 
   const round = useLabRound(situation, options)
   const threatSeats = round.riichi.flatMap((inRiichi, seat) => (inRiichi ? [seat] : []))
+  const { full, toggle: toggleFull } = useFullscreenBoard()
+  const { canBack, back } = useLogBack()
 
   // perspective is view-only and ephemeral: the page's own state, never the round's — reset to
   // the drill's own seat on every new hand, never persisted
@@ -332,89 +337,117 @@ export function LabPage() {
         {!wallError && !loaded && <p className="text-sm text-neutral-500">{t('lab.empty')}</p>}
 
         {loaded && (
-          <BoardStage
-            title={t('trainer.lab.title')}
-            intro={{ text: t('trainer.lab.intro'), wikiUrl: TRAINER_WIKI.lab }}
-            chrome={<SettingsButton title={t('trainer.lab.title')}>{settingsRows}</SettingsButton>}
-            board={(controls) => (
-              <Table
-                controls={controls}
-                seatInfo={(seat) =>
-                  seatsEnabled && (
-                    <SeatStrip
-                      seat={seat}
-                      players={round.rivers.length}
-                      defaultOrientation={round.seatIndex}
-                      config={seatConfig}
-                      onChange={setSeatConfig}
-                      claims={claims}
-                      onClaimsChange={(v) => updateTable({ claims: v })}
-                      viewSeat={perspective}
-                      onWatch={setViewSeat}
-                      read={round.seatReads[seat]}
-                      showWaits={showSeatWaits}
-                    />
-                  )
-                }
-                seats={seats}
-                seatIndex={perspective}
-                round={situation.round}
-                doraIndicators={round.doraIndicators}
-                wallCount={round.liveWall.length}
+          <>
+            {/* lab has no session clock to pause/reset — just undo and fullscreen, the same
+                buttons every other trainer's command bar draws */}
+            <div className="flex items-center gap-1">
+              <BackButton canBack={canBack} onBack={back} backLabel={t('common.undoAction')} />
+              <FullscreenToggle
+                full={full}
+                onToggleFull={toggleFull}
+                fullscreenLabel={t(full ? 'table.exitFullscreen' : 'table.fullscreen')}
               />
-            )}
-            hand={
-              <div className="flex flex-col gap-4">
-                <ManualControls
-                  seatIndex={round.seatIndex}
-                  acting={round.acting}
-                  claim={round.claim}
-                  riichiTiles={round.riichiTiles()}
-                  riichiArmed={round.riichiArmed}
-                  onArmRiichi={round.armRiichi}
-                  onAnswer={round.answer}
-                  viewSeat={perspective}
-                  onReturn={() => setViewSeat(null)}
-                />
-                <HandDisplay
-                  tiles={bottomHand}
-                  drawn={bottomDrawn}
-                  concealed={bottomConcealed}
-                  onTileClick={canAct ? (i) => round.discard(i) : undefined}
-                />
-              </div>
-            }
-          >
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-medium text-neutral-500">{t('lab.ranking')}</span>
-              <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
-                {round.ranked.map((option) => (
-                  <RankedRow key={option.discard} option={option} />
-                ))}
-              </div>
             </div>
-
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-medium text-neutral-500">{t('lab.danger')}</span>
-              <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
-                {round.danger.map((entry) => (
-                  <DangerRow key={entry.tile} entry={entry} seats={threatSeats} />
-                ))}
+            <BoardStage
+              title={t('trainer.lab.title')}
+              intro={{ text: t('trainer.lab.intro'), wikiUrl: TRAINER_WIKI.lab }}
+              full={full}
+              chrome={
+                <>
+                  <SettingsButton title={t('trainer.lab.title')}>{settingsRows}</SettingsButton>
+                  <BackButton
+                    canBack={canBack}
+                    onBack={back}
+                    backLabel={t('common.undoAction')}
+                    compact
+                  />
+                  <FullscreenToggle
+                    full={full}
+                    onToggleFull={toggleFull}
+                    fullscreenLabel={t(full ? 'table.exitFullscreen' : 'table.fullscreen')}
+                    compact
+                  />
+                </>
+              }
+              board={
+                <Table
+                  seatInfo={(seat) =>
+                    seatsEnabled && (
+                      <SeatStrip
+                        seat={seat}
+                        players={round.rivers.length}
+                        defaultOrientation={round.seatIndex}
+                        config={seatConfig}
+                        onChange={setSeatConfig}
+                        claims={claims}
+                        onClaimsChange={(v) => updateTable({ claims: v })}
+                        viewSeat={perspective}
+                        onWatch={setViewSeat}
+                        read={round.seatReads[seat]}
+                        showWaits={showSeatWaits}
+                      />
+                    )
+                  }
+                  seats={seats}
+                  seatIndex={perspective}
+                  round={situation.round}
+                  doraIndicators={round.doraIndicators}
+                  wallCount={round.liveWall.length}
+                />
+              }
+              hand={
+                <div className="flex flex-col gap-4">
+                  <ManualControls
+                    seatIndex={round.seatIndex}
+                    acting={round.acting}
+                    claim={round.claim}
+                    riichiTiles={round.riichiTiles()}
+                    riichiArmed={round.riichiArmed}
+                    onArmRiichi={round.armRiichi}
+                    onAnswer={round.answer}
+                    viewSeat={perspective}
+                    onReturn={() => setViewSeat(null)}
+                  />
+                  <HandDisplay
+                    tiles={bottomHand}
+                    drawn={bottomDrawn}
+                    concealed={bottomConcealed}
+                    onTileClick={canAct ? (i) => round.discard(i) : undefined}
+                  />
+                </div>
+              }
+            >
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-neutral-500">{t('lab.ranking')}</span>
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+                  {round.ranked.map((option) => (
+                    <RankedRow key={option.discard} option={option} />
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {showWall && (
-              <WallDetails
-                dealt={round.dealtTiles}
-                liveWall={round.liveWallSnapshot}
-                liveWallDrawn={round.liveWallDrawn}
-                deadWall={round.deadWallSnapshot}
-                replacements={round.replacements}
-              />
-            )}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-neutral-500">{t('lab.danger')}</span>
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+                  {round.danger.map((entry) => (
+                    <DangerRow key={entry.tile} entry={entry} seats={threatSeats} />
+                  ))}
+                </div>
+              </div>
 
-            <CopyLinkButton query={round.situationQuery} />
-          </BoardStage>
+              {showWall && (
+                <WallDetails
+                  dealt={round.dealtTiles}
+                  liveWall={round.liveWallSnapshot}
+                  liveWallDrawn={round.liveWallDrawn}
+                  deadWall={round.deadWallSnapshot}
+                  replacements={round.replacements}
+                />
+              )}
+
+              <CopyLinkButton query={round.situationQuery} />
+            </BoardStage>
+          </>
         )}
       </div>
     </TrainerLayout>

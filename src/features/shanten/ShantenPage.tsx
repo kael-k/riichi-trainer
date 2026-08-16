@@ -3,10 +3,12 @@ import { CheckCircle2, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BoardStage } from '../../components/tiles/BoardStage'
+import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
@@ -65,8 +67,11 @@ export function ShantenPage() {
     </SettingRow>
   )
 
-  // the same reveal/pause and stop the status bar draws, so the fullscreen chrome can draw them
-  // too rather than sending you back out to the page for them
+  const { full, toggle: toggleFull } = useFullscreenBoard()
+  const { canBack, back } = useLogBack()
+
+  // the same command bar the status bar draws, so the fullscreen chrome can draw them too rather
+  // than sending you back out to the page for them
   const toggles = {
     showToggle: true,
     paused: !round.revealed || round.paused,
@@ -74,8 +79,14 @@ export function ShantenPage() {
     toggleLabel: !round.revealed
       ? t('shanten.revealHand')
       : t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
+    canBack,
+    onBack: back,
+    backLabel: t('common.undoAction'),
     onReset: round.stop,
     resetLabel: t('common.resetHand'),
+    full,
+    onToggleFull: toggleFull,
+    fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
   return (
@@ -102,6 +113,7 @@ export function ShantenPage() {
         <BoardStage
           title={t('trainer.shanten.title')}
           intro={{ text: t('trainer.shanten.intro'), wikiUrl: TRAINER_WIKI.shanten }}
+          full={full}
           chrome={
             <>
               <SettingsButton title={t('trainer.shanten.title')}>{settingsRows}</SettingsButton>

@@ -22,6 +22,7 @@
     "aboutTrainerTitle": "Informazioni: {{title}}",
     "learnMoreWiki": "Approfondisci su riichi.wiki",
     "rewind": "Torna indietro a prima di questa azione",
+    "undoAction": "Annulla ultima azione",
     "iosInstallHint": "Aggiungi questa app alla schermata Home per eliminare le barre di Safari: tocca Condividi, poi \"Aggiungi a Home\"."
   },
   "settings": {
@@ -488,6 +489,7 @@
   },
   "log": {
     "rewound": "Tornato indietro alla voce {{number}}",
+    "wentBack": "Tornato indietro di un passo",
     "replay": "Scarto ripetuto {{tile}}",
     "lab": {
       "discard": "Turno {{turn}}: scartato {{tile}}"

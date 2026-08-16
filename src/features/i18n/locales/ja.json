@@ -18,6 +18,7 @@
     "dealtMarker": "配牌",
     "deadWallMarker": "王牌",
     "rewind": "この操作の前まで巻き戻す",
+    "undoAction": "直前の操作を取り消す",
     "iosInstallHint": "ホーム画面に追加するとSafariのバーが消えます。共有ボタンから「ホーム画面に追加」を選んでください。"
   },
   "settings": {
@@ -386,6 +387,7 @@
   },
   "log": {
     "rewound": "{{number}}件目の記録まで巻き戻しました",
+    "wentBack": "1つ前に戻りました",
     "replay": "リプレイ: {{tile}}を捨てた",
     "lab": {
       "discard": "{{turn}}巡目: {{tile}}を切った"

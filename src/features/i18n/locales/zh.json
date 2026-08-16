@@ -18,6 +18,7 @@
     "dealtMarker": "配牌",
     "deadWallMarker": "死墙",
     "rewind": "撤回到此操作之前",
+    "undoAction": "撤销上一步操作",
     "iosInstallHint": "将本应用添加到主屏幕即可去掉Safari的工具栏——点击“分享”,然后选择“添加到主屏幕”。"
   },
   "settings": {
@@ -386,6 +387,7 @@
   },
   "log": {
     "rewound": "已撤回到第 {{number}} 条记录",
+    "wentBack": "已后退一步",
     "replay": "回放：打出 {{tile}}",
     "lab": {
       "discard": "第{{turn}}巡: 打出{{tile}}"

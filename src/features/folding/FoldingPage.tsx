@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { BoardStage } from '../../components/tiles/BoardStage'
+import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
@@ -121,6 +123,9 @@ export function FoldingPage() {
   ])
 
   const round = useFoldingRound(urlData, options)
+  // hooks, so called unconditionally ahead of the loading/failed early return below
+  const { full, toggle: toggleFull } = useFullscreenBoard()
+  const { canBack, back } = useLogBack()
   const players = options.sanma ? 3 : 4
   // perspective is a pure viewing choice — which seat `Table` draws at the bottom — held as the
   // page's own ephemeral state, never the round's or the settings store's: it never reaches
@@ -212,15 +217,21 @@ export function FoldingPage() {
     )
   }
 
-  // the same start/pause and reset the status bar draws, so the fullscreen board can draw them
-  // too rather than sending you back out to the page for them
+  // the same command bar the status bar draws, so the fullscreen board can draw them too rather
+  // than sending you back out to the page for them
   const toggles = {
     showToggle: settings.timerEnabled,
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
+    canBack,
+    onBack: back,
+    backLabel: t('common.undoAction'),
     onReset: nextHand,
     resetLabel: t('common.resetHand'),
+    full,
+    onToggleFull: toggleFull,
+    fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
   const seats: SeatView[] = round.rivers.map((river, seat) => {
@@ -299,6 +310,7 @@ export function FoldingPage() {
         <BoardStage
           title={t('trainer.folding.title')}
           intro={{ text: t('trainer.folding.intro'), wikiUrl: TRAINER_WIKI.folding }}
+          full={full}
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
           chrome={
             <>
@@ -306,9 +318,8 @@ export function FoldingPage() {
               <TrainerToggles {...toggles} compact />
             </>
           }
-          board={(controls) => (
+          board={
             <Table
-              controls={controls}
               seatInfo={(seat) =>
                 seatsEnabled && (
                   <SeatStrip
@@ -333,7 +344,7 @@ export function FoldingPage() {
               doraIndicators={round.doraIndicators}
               wallCount={round.liveWall.length}
             />
-          )}
+          }
           hand={
             <div className="flex flex-col gap-4">
               <ManualControls

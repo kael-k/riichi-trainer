@@ -1,6 +1,21 @@
-import { Pause, Play, RotateCcw } from 'lucide-react'
+import { Dices, Maximize2, Minimize2, Pause, Play, Undo2 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { formatElapsedMs } from '../lib/formatElapsed'
+
+/** Drawn small enough to sit in the fullscreen board's chrome, where every other button is a
+ *  44px icon rather than the status bar's roomier 48px pair — shared by every button in this
+ *  file so the command bar reads as one row whichever context it's in. Deliberately no text
+ *  color of its own: `SettingsButton`/`InfoButton` (the other buttons sharing this same row in
+ *  fullscreen, `BoardStage.tsx`) set none either, and a gray-vs-default split between otherwise
+ *  identical icon buttons read as "some of these are disabled" when none of them were. */
+function buttonClasses(compact: boolean): { box: string; icon: string } {
+  return {
+    box: compact
+      ? 'flex size-11 shrink-0 items-center justify-center'
+      : 'flex size-12 items-center justify-center',
+    icon: compact ? 'size-5' : 'size-6',
+  }
+}
 
 /** Display refresh of the live clock; the graded time itself is read straight off the trainer's
  *  own clock at submit, so it never inherits this granularity. */
@@ -25,52 +40,121 @@ export function Timer({ elapsedNow, running }: { elapsedNow: () => number; runni
   return <span className="font-mono tabular-nums text-neutral-500">{formatElapsedMs(ms)}</span>
 }
 
-export interface TrainerTogglesProps {
-  /** Whether the toggle button (and, when `timerEnabled`, the clock) is shown at all. Every
-   *  trainer but shanten ties this straight to its own timer setting — pausing a clock nobody is
-   *  showing has nothing to do. Shanten's toggle is also its reveal control, so it stays on
-   *  regardless of the timer setting: reveal is a core mechanic, not a timer convenience. */
+interface CompactProps {
+  compact?: boolean
+}
+
+interface PauseToggleProps extends CompactProps {
+  /** Whether this button (and, when `timerEnabled`, the clock) is shown at all. Every trainer
+   *  but shanten ties this straight to its own timer setting — pausing a clock nobody is showing
+   *  has nothing to do. Shanten's toggle is also its reveal control, so it stays on regardless of
+   *  the timer setting: reveal is a core mechanic, not a timer convenience. */
   showToggle: boolean
   paused: boolean
   onToggle: () => void
   toggleLabel: string
-  onReset: () => void
-  resetLabel: string
-  /** Drawn small enough to sit in the fullscreen board's chrome, where every other button is a
-   *  44px icon rather than the status bar's roomier 48px pair. */
-  compact?: boolean
 }
 
-/** Start/pause and reset, on their own. The status bar draws them beside the clock; the
- *  fullscreen board draws the same two in its chrome, so a hand can be paused or abandoned
- *  without leaving the table to do it. */
-export function TrainerToggles({
+/** Start/pause (or, for shanten, reveal/pause). */
+export function PauseToggle({
   showToggle,
   paused,
   onToggle,
   toggleLabel,
-  onReset,
-  resetLabel,
-  compact = false,
-}: TrainerTogglesProps) {
-  const box = compact
-    ? 'flex size-11 shrink-0 items-center justify-center text-neutral-500'
-    : 'flex size-12 items-center justify-center'
-  const icon = compact ? 'size-5' : 'size-6'
+  compact,
+}: PauseToggleProps) {
+  if (!showToggle) return null
+  const { box, icon } = buttonClasses(!!compact)
+  return (
+    <button type="button" onClick={onToggle} aria-label={toggleLabel} className={box}>
+      {paused ? (
+        <Play className={`${icon} fill-current`} />
+      ) : (
+        <Pause className={`${icon} fill-current`} />
+      )}
+    </button>
+  )
+}
+
+interface BackButtonProps extends CompactProps {
+  /** Whether there is a previous decision to undo — disabled (not hidden) otherwise, so the
+   *  command bar's layout never shifts as history accumulates. */
+  canBack: boolean
+  onBack: () => void
+  backLabel: string
+}
+
+/** Undoes the reader's own last graded decision, one at a time — see `useLogBack`. */
+export function BackButton({ canBack, onBack, backLabel, compact }: BackButtonProps) {
+  const { box, icon } = buttonClasses(!!compact)
+  return (
+    <button
+      type="button"
+      onClick={onBack}
+      disabled={!canBack}
+      aria-label={backLabel}
+      className={`${box} disabled:opacity-30`}
+    >
+      <Undo2 className={icon} />
+    </button>
+  )
+}
+
+interface ResetButtonProps extends CompactProps {
+  onReset: () => void
+  resetLabel: string
+}
+
+/** Abandons the current hand and deals a fresh one. */
+export function ResetButton({ onReset, resetLabel, compact }: ResetButtonProps) {
+  const { box, icon } = buttonClasses(!!compact)
+  return (
+    <button type="button" onClick={onReset} aria-label={resetLabel} className={box}>
+      <Dices className={icon} />
+    </button>
+  )
+}
+
+interface FullscreenToggleProps extends CompactProps {
+  full: boolean
+  onToggleFull: () => void
+  fullscreenLabel: string
+}
+
+/** Enters/leaves the fullscreen board — see `useFullscreenBoard`. */
+export function FullscreenToggle({
+  full,
+  onToggleFull,
+  fullscreenLabel,
+  compact,
+}: FullscreenToggleProps) {
+  const { box, icon } = buttonClasses(!!compact)
+  return (
+    <button
+      type="button"
+      onClick={onToggleFull}
+      aria-label={fullscreenLabel}
+      aria-pressed={full}
+      className={box}
+    >
+      {full ? <Minimize2 className={icon} /> : <Maximize2 className={icon} />}
+    </button>
+  )
+}
+
+export interface TrainerTogglesProps
+  extends PauseToggleProps, BackButtonProps, ResetButtonProps, FullscreenToggleProps {}
+
+/** The reader's whole command bar, on its own: reveal/pause, undo, reset and fullscreen. The
+ *  status bar draws them beside the clock; the fullscreen board draws the same set in its
+ *  chrome, so a hand can be paused, undone or abandoned without leaving the table to do it. */
+export function TrainerToggles(props: TrainerTogglesProps) {
   return (
     <>
-      {showToggle && (
-        <button type="button" onClick={onToggle} aria-label={toggleLabel} className={box}>
-          {paused ? (
-            <Play className={`${icon} fill-current`} />
-          ) : (
-            <Pause className={`${icon} fill-current`} />
-          )}
-        </button>
-      )}
-      <button type="button" onClick={onReset} aria-label={resetLabel} className={box}>
-        <RotateCcw className={icon} />
-      </button>
+      <PauseToggle {...props} />
+      <BackButton {...props} />
+      <ResetButton {...props} />
+      <FullscreenToggle {...props} />
     </>
   )
 }

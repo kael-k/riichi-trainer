@@ -3,12 +3,14 @@ import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
+import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { splitDrawn } from '../../core/table'
 import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
@@ -168,15 +170,24 @@ export function EfficiencyPage() {
     </>
   )
 
-  // the same start/pause and reset the status bar draws, so the fullscreen board can draw them
-  // too rather than sending you back out to the page for them
+  const { full, toggle: toggleFull } = useFullscreenBoard()
+  const { canBack, back } = useLogBack()
+
+  // the same command bar the status bar draws, so the fullscreen board can draw them too rather
+  // than sending you back out to the page for them
   const toggles = {
     showToggle: settings.timerEnabled,
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
+    canBack,
+    onBack: back,
+    backLabel: t('common.undoAction'),
     onReset: restart,
     resetLabel: t('common.resetHand'),
+    full,
+    onToggleFull: toggleFull,
+    fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
   return (
@@ -213,6 +224,7 @@ export function EfficiencyPage() {
         <BoardStage
           title={t('trainer.efficiency.title')}
           intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
+          full={full}
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
           chrome={
             <>
@@ -220,9 +232,8 @@ export function EfficiencyPage() {
               <TrainerToggles {...toggles} compact />
             </>
           }
-          board={(controls) => (
+          board={
             <Table
-              controls={controls}
               seatInfo={(seat) =>
                 seatsEnabled && (
                   <SeatStrip
@@ -246,7 +257,7 @@ export function EfficiencyPage() {
               doraIndicators={round.doraIndicators}
               wallCount={round.liveWall.length}
             />
-          )}
+          }
           // one graded choice per notice: `cumulativeTotal` counts exactly those, so a re-render
           // never brings a faded one back and a kita/kan still gets its own
           noticeKey={round.lastResult ? round.cumulativeTotal : undefined}

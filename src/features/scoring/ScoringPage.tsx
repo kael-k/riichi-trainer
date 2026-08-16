@@ -2,6 +2,7 @@ import { CheckCircle2, XCircle } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BoardStage } from '../../components/tiles/BoardStage'
+import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
@@ -13,6 +14,7 @@ import { HONOR, serializeTenhou } from '../../core/tiles'
 import { INITIAL_HAND_SIZE } from '../../core/wall'
 import { WINDS } from '../situation/urlCodec'
 import { formatElapsedMs } from '../../lib/formatElapsed'
+import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { useTermName } from '../i18n/useTermName'
 import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
@@ -124,6 +126,9 @@ export function ScoringPage() {
   )
 
   const round = useScoringRound(urlData, options)
+  // hooks, so called unconditionally ahead of the loading early return below
+  const { full, toggle: toggleFull } = useFullscreenBoard()
+  const { canBack, back } = useLogBack()
 
   if (round.loading || !round.situation || !round.actual) {
     return (
@@ -253,15 +258,21 @@ export function ScoringPage() {
     </>
   )
 
-  // the same start/pause and reset the status bar draws, so the fullscreen board can draw them
-  // too rather than sending you back out to the page for them
+  // the same command bar the status bar draws, so the fullscreen board can draw them too rather
+  // than sending you back out to the page for them
   const toggles = {
     showToggle: settings.timerEnabled,
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
+    canBack,
+    onBack: back,
+    backLabel: t('common.undoAction'),
     onReset: round.next,
     resetLabel: t('common.resetHand'),
+    full,
+    onToggleFull: toggleFull,
+    fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
   return (
@@ -296,6 +307,7 @@ export function ScoringPage() {
         <BoardStage
           title={t('trainer.scoring.title')}
           intro={{ text: t('trainer.scoring.intro'), wikiUrl: TRAINER_WIKI.scoring }}
+          full={full}
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
           chrome={
             <>
@@ -304,36 +316,33 @@ export function ScoringPage() {
             </>
           }
           // the table itself is opt-in (`settings.table`) — off, this is the boardless shape
-          // shanten/solo use: no `board` prop, the fullscreen toggle gets its own row, and the
-          // round/seat/dora readout that would otherwise live on the felt moves into `hand`
-          // instead so it survives into fullscreen, where it is what the question is asking about
+          // shanten/solo use: no `board` prop, and the round/seat/dora readout that would
+          // otherwise live on the felt moves into `hand` instead so it survives into fullscreen,
+          // where it is what the question is asking about
           board={
-            settings.table
-              ? (controls) => (
-                  <Table
-                    controls={controls}
-                    seats={seats}
-                    seatIndex={tableSeatIndex}
-                    round={WINDS[ctx.round - HONOR]}
-                    doraIndicators={round.situation!.doraIndicators.map((id) => ({
-                      id,
-                      red: false,
-                    }))}
-                    uraIndicators={round.situation!.uraIndicators.map((id) => ({
-                      id,
-                      red: false,
-                    }))}
-                    wallCount={round.match?.liveWall.length}
-                    honba={round.situation!.honba}
-                  >
-                    {tableFlagBadges.length > 0 && (
-                      <span className="flex flex-wrap items-center justify-center gap-[1cqw]">
-                        {tableFlagBadges}
-                      </span>
-                    )}
-                  </Table>
-                )
-              : undefined
+            settings.table ? (
+              <Table
+                seats={seats}
+                seatIndex={tableSeatIndex}
+                round={WINDS[ctx.round - HONOR]}
+                doraIndicators={round.situation!.doraIndicators.map((id) => ({
+                  id,
+                  red: false,
+                }))}
+                uraIndicators={round.situation!.uraIndicators.map((id) => ({
+                  id,
+                  red: false,
+                }))}
+                wallCount={round.match?.liveWall.length}
+                honba={round.situation!.honba}
+              >
+                {tableFlagBadges.length > 0 && (
+                  <span className="flex flex-wrap items-center justify-center gap-[1cqw]">
+                    {tableFlagBadges}
+                  </span>
+                )}
+              </Table>
+            ) : undefined
           }
           hand={
             <div className="flex flex-col gap-4">

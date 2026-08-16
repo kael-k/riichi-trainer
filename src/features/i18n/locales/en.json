@@ -22,6 +22,7 @@
     "aboutTrainerTitle": "About: {{title}}",
     "learnMoreWiki": "Learn more on riichi.wiki",
     "rewind": "Rewind to before this action",
+    "undoAction": "Undo last action",
     "iosInstallHint": "Add this to your Home Screen to get rid of Safari's bars — tap Share, then \"Add to Home Screen\"."
   },
   "settings": {
@@ -488,6 +489,7 @@
   },
   "log": {
     "rewound": "Rewound to entry {{number}}",
+    "wentBack": "Went back one step",
     "replay": "Replayed discard {{tile}}",
     "lab": {
       "discard": "Turn {{turn}}: discarded {{tile}}"
