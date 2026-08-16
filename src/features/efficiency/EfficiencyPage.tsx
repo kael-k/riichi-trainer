@@ -123,6 +123,7 @@ export function EfficiencyPage() {
             : round.melds[seat],
         nuki: round.nuki[seat],
         riichi: round.riichi[seat],
+        points: round.match.points[seat],
       }
     }
     return {
@@ -132,6 +133,7 @@ export function EfficiencyPage() {
       riichi: round.riichi[seat],
       hand: round.hands[seat],
       concealed: !mine && !showOpponentHands,
+      points: round.match.points[seat],
     }
   })
 
@@ -261,8 +263,10 @@ export function EfficiencyPage() {
               seats={seats}
               seatIndex={perspective}
               round={situation.round}
+              roundNumber={round.match.round}
               doraIndicators={round.doraIndicators}
               wallCount={round.liveWall.length}
+              honba={round.match.honba}
             />
           }
           // one graded choice per notice: `cumulativeTotal` counts exactly those, so a re-render

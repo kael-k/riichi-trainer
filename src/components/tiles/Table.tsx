@@ -27,6 +27,10 @@ export interface SeatView {
   /** Draw `hand` as face-down backs — the tile count and melds still read, faces don't. This is
    *  the default opponent view; pass `false` (real faces) only when `showOpponentHands` is on. */
   concealed?: boolean
+  /** This seat's current point total (`MatchState.points`) — shown on its own plate, board truth
+   *  like `riichi`/`melds` rather than routed through the caller's `seatInfo` render prop, which
+   *  is the settings/algorithm/waits surface, not board state. */
+  points?: number
 }
 
 interface TableProps {
@@ -35,6 +39,9 @@ interface TableProps {
   /** Your seat — always drawn at the bottom, with the others placed around it. */
   seatIndex: number
   round: Wind
+  /** Which round within the prevalent wind — East 1 is `1` (`MatchState.round`). Shown beside the
+   *  wind tile in the centre panel; omitted (no number drawn) when not given. */
+  roundNumber?: number
   doraIndicators?: ParsedTile[]
   /** Ura indicators; pass only once they should be visible. */
   uraIndicators?: ParsedTile[]
@@ -170,6 +177,7 @@ export function Table({
   seats,
   seatIndex,
   round,
+  roundNumber,
   doraIndicators = [],
   uraIndicators = [],
   wallCount,
@@ -301,7 +309,7 @@ export function Table({
                     </div>
                   </div>
                 )}
-                {(called || seatInfoNodes?.[index]) && (
+                {(called || seatInfoNodes?.[index] || seat.points !== undefined) && (
                   /* the seat's own corner: melds stacked from the edge nearest the centre, the
                      info strip pinned (`mt-auto`) to the far one — the plate at the seat's corner,
                      where a Mahjong Soul table puts it. The cell fills its whole 4x4 tile-width
@@ -323,6 +331,14 @@ export function Table({
                     }
                     className={`flex h-full w-full flex-col items-end justify-start gap-[0.5cqw] ${slot.melds} ${slot.spin}`}
                   >
+                    {seat.points !== undefined && (
+                      <span
+                        aria-label={t('table.points', { count: seat.points })}
+                        className="whitespace-nowrap text-[2.4cqw] font-medium text-neutral-600 dark:text-neutral-300"
+                      >
+                        {seat.points.toLocaleString()}
+                      </span>
+                    )}
                     {seat.melds?.map((meld, i) => (
                       <MeldDisplay key={i} meld={meld} />
                     ))}
@@ -371,6 +387,7 @@ export function Table({
             <span className="flex items-center gap-[0.8cqw] [--tile-w:calc(100cqw/24)]">
               <span className="text-neutral-500 dark:text-neutral-400">{t('table.round')}</span>
               <Tile id={HONOR + WINDS.indexOf(round)} />
+              {roundNumber !== undefined && <span>{roundNumber}</span>}
             </span>
             {/* tenhou's centre readout: tiles left, riichi bets on the table, honba counters —
                 marked by their own object rather than a word, which is what makes the row read

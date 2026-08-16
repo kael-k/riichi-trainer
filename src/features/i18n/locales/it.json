@@ -97,6 +97,7 @@
     "riichiStick": "Bastoncino riichi (1000 punti)",
     "riichiSticks": "Bastoncini riichi sul tavolo",
     "honbaSticks": "Contatori honba",
+    "points": "{{count}} punti",
     "fullscreen": "Tavolo a schermo intero",
     "exitFullscreen": "Esci da schermo intero",
     "logDrawer": "Mostra il registro"

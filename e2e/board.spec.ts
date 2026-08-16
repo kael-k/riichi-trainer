@@ -176,7 +176,10 @@ test('four kans: the corner holds them all and every indicator flips', async ({ 
   const corner = page.locator(`[data-testid=corner][data-seat="${KAN_SEAT}"]`)
   const plate = corner.getByTestId('seat-strip')
   await expect(plate).toBeVisible()
-  expect(await corner.evaluate((el) => el.children.length), 'four melds and the plate').toBe(5)
+  // points line, four melds, the plate
+  expect(await corner.evaluate((el) => el.children.length), 'points, four melds and the plate').toBe(
+    6,
+  )
 
   // the winning tile, on the plate beside the melds: tanki on 5m, and three copies are still out
   // there — the hand holds the fourth

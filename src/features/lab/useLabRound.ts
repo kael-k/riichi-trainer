@@ -142,6 +142,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     deadWallSnapshot: snapshot?.deadWallSnapshot ?? [],
     dealtTiles: snapshot?.dealtTiles ?? [],
     replacements: snapshot?.replacements ?? 0,
+    match: snapshot?.match ?? createMatch(options.sanma),
     wall: snapshot?.wall ?? [],
     ended: snapshot?.ended,
     win: snapshot?.win,

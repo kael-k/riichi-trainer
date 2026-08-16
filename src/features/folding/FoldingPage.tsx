@@ -247,7 +247,13 @@ export function FoldingPage() {
     // tiles, reading as "your hand, concealed from you". The graded seat, once it is elsewhere,
     // is an ordinary seat on the felt — and a seat you play, so `boardHands` gives it real faces
     if (seat === perspective) {
-      return { river, melds: round.melds[seat], nuki: round.nuki[seat], riichi: round.riichi[seat] }
+      return {
+        river,
+        melds: round.melds[seat],
+        nuki: round.nuki[seat],
+        riichi: round.riichi[seat],
+        points: round.match.points[seat],
+      }
     }
     return {
       river,
@@ -260,6 +266,7 @@ export function FoldingPage() {
       // real throughout, same as an ordinary opponent's elsewhere
       hand: round.boardHands[seat],
       concealed: !mine && !showOpponentHands,
+      points: round.match.points[seat],
     }
   })
   // everything that would tell you how the fold is going so far, held back mid-hand when asked
@@ -346,8 +353,10 @@ export function FoldingPage() {
               seats={seats}
               seatIndex={perspective}
               round={WINDS[round.round - HONOR]}
+              roundNumber={round.match.round}
               doraIndicators={round.doraIndicators}
               wallCount={round.liveWall.length}
+              honba={round.match.honba}
             />
           }
           hand={

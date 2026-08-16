@@ -97,6 +97,7 @@
     "riichiStick": "1000-point riichi stick",
     "riichiSticks": "Riichi bets on the table",
     "honbaSticks": "Honba counters",
+    "points": "{{count}} points",
     "fullscreen": "Full screen table",
     "exitFullscreen": "Leave full screen",
     "logDrawer": "Show log"

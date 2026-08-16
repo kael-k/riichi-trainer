@@ -275,6 +275,7 @@ export function useEfficiencyRound(
     deadWallSnapshot: snapshot?.deadWallSnapshot ?? [],
     dealtTiles: snapshot?.dealtTiles ?? [],
     replacements: snapshot?.replacements ?? 0,
+    match: snapshot?.match ?? createMatch(options.sanma),
     finished,
     tenpai,
     lastResult,

@@ -249,6 +249,7 @@ export function LabPage() {
     // read that setting at all, so toggling it did nothing. A manual seat is the reader's own
     // hand and never concealed from them, wherever it sits
     concealed: !(round.finished || showOpponentHands || round.manualSeats.includes(seat)),
+    points: round.match.points[seat],
   }))
 
   // the bottom hand follows perspective, not the drill's own graded seat: rotating to watch
@@ -386,8 +387,10 @@ export function LabPage() {
                   seats={seats}
                   seatIndex={perspective}
                   round={situation.round}
+                  roundNumber={round.match.round}
                   doraIndicators={round.doraIndicators}
                   wallCount={round.liveWall.length}
+                  honba={round.match.honba}
                 />
               }
               hand={

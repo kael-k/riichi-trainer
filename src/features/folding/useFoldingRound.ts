@@ -702,6 +702,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     acting,
     drawnSeat: snapshot?.drawn?.seat,
     round: round?.options.match.prevalentWind ?? HONOR,
+    match: snapshot?.match ?? round?.options.match ?? createMatch(options.sanma),
     /** Seats currently threatening — everyone in riichi. Grows if someone else declares. */
     threatSeats: match ? riichiSeats(match) : [],
     lastResult,
