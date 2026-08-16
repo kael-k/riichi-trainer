@@ -4,12 +4,12 @@ import { HONOR, parseTenhou, SOU } from '../../core/tiles'
 import { completeWall, INITIAL_HAND_SIZE, wallWithHand } from '../../core/wall'
 import { useLog } from '../../store/log'
 import { decodeSituation, emptySituation, type Situation } from '../situation/urlCodec'
-import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
+import { NORTH, useEfficiencyRound, type EfficiencyOptions } from './useEfficiencyRound'
 
 /** Bare-table options: no dead wall, no aka, no sanma — real opponents are always dealt in and
  *  always play now (calls/riichi are hardcoded in the hook), so there is no off switch left to
  *  test here. */
-const BARE: RoundOptions = {
+const BARE: EfficiencyOptions = {
   deadWall: false,
   aka: false,
   sanma: false,
@@ -38,7 +38,7 @@ describe('useEfficiencyRound', () => {
     expect(result.current.turn).toBe(2)
   })
 
-  // the old codec's "pin all 14, skip the draw" shape has no wall-based equivalent: `createMatch`
+  // the old codec's "pin all 14, skip the draw" shape has no wall-based equivalent: `createRound`
   // always deals exactly 13 to a seat and always draws its 14th — a wall names the deal, never
   // the post-deal state, so the closest a link gets to pinning a 14th tile is naming exactly what
   // gets drawn (the tile right after the deal, `wall[players * 13]`)
@@ -123,7 +123,7 @@ describe('useEfficiencyRound', () => {
     expect(result.current.drawn?.red).toBe(false)
   })
 
-  // the red-five count is asserted over a whole table in core/match.test.ts — from here the
+  // the red-five count is asserted over a whole table in core/round.test.ts — from here the
   // opponents' hands are hidden, so only "none at all when aka is off" is checkable
   it('seeds no red fives at all when aka is disabled', () => {
     const situation = emptySituation()
@@ -220,7 +220,7 @@ describe('useEfficiencyRound', () => {
 
   it('situationQuery round-trips the exact round state', () => {
     const situation = emptySituation()
-    const opts: RoundOptions = {
+    const opts: EfficiencyOptions = {
       deadWall: true,
       aka: true,
       sanma: false,

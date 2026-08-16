@@ -30,7 +30,7 @@ import {
   foldingVerdictSeverity,
   splitConcealedDrawn,
   useFoldingRound,
-  type RoundOptions,
+  type FoldingOptions,
   type ThreatReveal,
 } from './useFoldingRound'
 
@@ -101,7 +101,7 @@ export function FoldingPage() {
   // preference, so it stays in settings.
   const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
 
-  const options = useMemo<RoundOptions>(() => {
+  const options = useMemo<FoldingOptions>(() => {
     const isSanma = urlData.sanma ?? sanma
     return {
       ...settings,

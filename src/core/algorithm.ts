@@ -8,17 +8,17 @@ import { HONOR, type ParsedTile, type RiverTile, type TileId } from './tiles'
 
 /** AI-decided algorithms — every `SeatAlgorithm` except `'manual'`, which is not a style at all
  *  but the absence of one: the engine asks instead of deciding for it, so it is never a key here
- *  (`match.ts` short-circuits on `isManual` before ever reaching `ALGORITHMS`). */
+ *  (`round.ts` short-circuits on `isManual` before ever reaching `ALGORITHMS`). */
 export type AIAlgorithm = Exclude<SeatAlgorithm, 'manual'>
 
-/** North — mirrors `match.ts`'s own `NORTH` constant. Duplicated rather than imported: `match.ts`
+/** North — mirrors `round.ts`'s own `NORTH` constant. Duplicated rather than imported: `round.ts`
  *  imports `ALGORITHMS` from this module, so an import the other way would be a cycle — the same
- *  reasoning `core/table.ts` already gives for why it may not import back into `match.ts`. */
+ *  reasoning `core/table.ts` already gives for why it may not import back into `round.ts`. */
 const NORTH: TileId = HONOR + 3
 
 /**
  * What an algorithm is allowed to know when deciding: public information (every seat's river,
- * melds, riichi and nuki count) plus its own hand and the board — never `MatchState` itself, which
+ * melds, riichi and nuki count) plus its own hand and the board — never `RoundState` itself, which
  * would let an algorithm read concealed hands. `seen`/`threats`/`furiten` are lazy getters (the
  * same trick `core/table.ts`'s `TableAnalysis` uses): the call gate builds one of these for every
  * seat on every discard, and all three cost real work (`seenBy`, `threatViews`, and `furiten`'s own
@@ -61,7 +61,7 @@ export interface SeatView {
 }
 
 /** A win offered to `win()`: the tile, the discarder on a ron (absent on a tsumo), and how much
- *  it scores. `tryWin` (`match.ts`) has already computed all three by the time it asks — an
+ *  it scores. `tryWin` (`round.ts`) has already computed all three by the time it asks — an
  *  algorithm that can't see what it declines can't price it (ADR-0009). */
 export interface WinCandidate {
   tile: ParsedTile
@@ -71,14 +71,14 @@ export interface WinCandidate {
 }
 
 /**
- * How a simulated player decides, one method per decision point in `match.ts`. Pure and total,
+ * How a simulated player decides, one method per decision point in `round.ts`. Pure and total,
  * same discipline as the `policy.ts` functions these are written in terms of: the same `SeatView`
  * must always produce the same choice, and every ranking is a total order — explicit tie-breaks,
  * never sort stability — which is what lets a whole match be reproduced from its seed.
  */
 export interface Algorithm {
   /** 14-tile hand: which tile goes, and whether the algorithm sees no difference between that
-   *  kind and the one just drawn (`fromDrawn`) — advisory, not authoritative: `match.ts`'s own
+   *  kind and the one just drawn (`fromDrawn`) — advisory, not authoritative: `round.ts`'s own
    *  `finishTurn` re-derives the river's actual tsumogiri flag from the tile it really discards,
    *  since resolving *which* physical copy of a kind leaves (redness included) is `pickTile`'s
    *  job, not the algorithm's — an algorithm decides at the kind level and never sees redness. */
@@ -96,7 +96,7 @@ export interface Algorithm {
 const efficiency: Algorithm = {
   // `fromDrawn` here is advisory only (see the `Algorithm.discard` doc comment) — this algorithm
   // has no preference between two identical tiles, so reporting "the kind I picked is the kind I
-  // drew" is honest, even though `match.ts` still re-derives the river flag from the tile it
+  // drew" is honest, even though `round.ts` still re-derives the river flag from the tile it
   // actually resolves through `pickTile`
   discard: (view) => {
     const { discard: tile } = chooseDiscard(view.hand, view.seen, view.sanma)
@@ -156,5 +156,5 @@ const tsumogiri: Algorithm = {
 }
 
 /** One object per AI algorithm. Adding a new one is this object plus its own `AIAlgorithm` member
- *  — nothing in `match.ts` changes. */
+ *  — nothing in `round.ts` changes. */
 export const ALGORITHMS: Record<AIAlgorithm, Algorithm> = { efficiency, defense, tsumogiri }

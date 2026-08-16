@@ -8,24 +8,24 @@ import {
   callKita,
   canDeclareRiichi,
   claimOptions,
-  createMatch,
-  findMatch,
+  createRound,
+  findRound,
   finishTurn,
   NORTH,
-  playMatch,
-  stepMatch,
+  playRound,
+  stepRound,
   threatViews,
   wallDrawnCount,
-  type MatchEvent,
-  type MatchOptions,
-  type MatchState,
-} from './match'
+  type RoundEvent,
+  type RoundOptions,
+  type RoundState,
+} from './round'
 import type { SeatAlgorithm } from './policy'
 import { scoreHand } from './score'
 import { HONOR, inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
 import { INITIAL_HAND_SIZE, TILES_PER_KIND, wallWithHand } from './wall'
 
-/** `MatchOptions.algorithms` naming just the manual seats — every other seat defaults to
+/** `RoundOptions.algorithms` naming just the manual seats — every other seat defaults to
  *  `'efficiency'`, same as an absent entry does. */
 function manual(...seats: number[]): SeatAlgorithm[] {
   const algorithms: SeatAlgorithm[] = Array(Math.max(...seats) + 1).fill('efficiency')
@@ -33,21 +33,21 @@ function manual(...seats: number[]): SeatAlgorithm[] {
   return algorithms
 }
 
-const YONMA: MatchOptions = {
+const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  round: HONOR,
+  prevalentWind: HONOR,
   deadWall: true,
   calls: true,
   riichi: true,
   wins: true,
 }
 
-const SANMA: MatchOptions = { ...YONMA, sanma: true }
+const SANMA: RoundOptions = { ...YONMA, sanma: true }
 
 /** Every copy of every kind has to be somewhere, exactly once — the invariant that catches
  *  almost any bookkeeping slip in the simulator. */
-function census(state: MatchState): Uint8Array {
+function census(state: RoundState): Uint8Array {
   const counts = new Uint8Array(NUM_TILE_TYPES)
   for (const player of state.players) {
     for (let id = 0; id < NUM_TILE_TYPES; id++) counts[id] += player.hand.counts[id]
@@ -67,19 +67,19 @@ function census(state: MatchState): Uint8Array {
   return counts
 }
 
-function summarize(events: MatchEvent[]): string {
+function summarize(events: RoundEvent[]): string {
   return events
     .map((e) => (e.kind === 'win' ? `win:${e.win.seat}` : `${e.kind}:${'seat' in e ? e.seat : ''}`))
     .join('|')
 }
 
-// The stepper every other driver is built on. `playMatch`'s own golden hashes
-// (`match.golden.test.ts`) already prove it reproduces the whole event stream bit for bit; these
+// The stepper every other driver is built on. `playRound`'s own golden hashes
+// (`round.golden.test.ts`) already prove it reproduces the whole event stream bit for bit; these
 // cover the two things only a generator can do.
-describe('stepMatch', () => {
+describe('stepRound', () => {
   it('suspends between the draw and the discard when the caller stops asking', () => {
-    const state = createMatch([], 4, YONMA, 'step-lazy')
-    for (const event of stepMatch(state, YONMA)) {
+    const state = createRound([], 4, YONMA, 'step-lazy')
+    for (const event of stepRound(state, YONMA)) {
       if (event.kind === 'draw') break
     }
     // the turn is genuinely half-done: drawn but not discarded. The old eager `[...beginTurn(),
@@ -90,40 +90,40 @@ describe('stepMatch', () => {
   })
 
   it('canAct refuses a turn before anything is drawn', () => {
-    const state = createMatch([], 4, YONMA, 'step-canact')
+    const state = createRound([], 4, YONMA, 'step-canact')
     const wall = state.liveWall.length
-    expect([...stepMatch(state, YONMA, () => false)]).toEqual([])
+    expect([...stepRound(state, YONMA, () => false)]).toEqual([])
     expect(state.liveWall).toHaveLength(wall)
     expect(state.players[state.seat].hand.drawn).toBeUndefined()
     expect(state.players.every((p) => p.river.length === 0)).toBe(true)
   })
 
-  it('plays a manual seat rather than stopping at it, as playMatch has always relied on', () => {
-    const state = createMatch([], 4, { ...YONMA, algorithms: manual(0) }, 'step-manual')
-    for (const event of stepMatch(state, { ...YONMA, algorithms: manual(0) })) {
+  it('plays a manual seat rather than stopping at it, as playRound has always relied on', () => {
+    const state = createRound([], 4, { ...YONMA, algorithms: manual(0) }, 'step-manual')
+    for (const event of stepRound(state, { ...YONMA, algorithms: manual(0) })) {
       if (event.kind === 'discard') break
     }
     expect(state.players[0].hand.drawn).toBeUndefined()
   })
 })
 
-describe('playMatch', () => {
+describe('playRound', () => {
   it('replays a seed identically', () => {
-    const a = playMatch('match-seed', 4, YONMA)
-    const b = playMatch('match-seed', 4, YONMA)
+    const a = playRound('match-seed', 4, YONMA)
+    const b = playRound('match-seed', 4, YONMA)
     expect(summarize(a.events)).toBe(summarize(b.events))
     expect(census(a.state)).toEqual(census(b.state))
   })
 
   it('diverges on a different seed', () => {
-    const a = playMatch('match-seed-a', 4, YONMA)
-    const b = playMatch('match-seed-b', 4, YONMA)
+    const a = playRound('match-seed-a', 4, YONMA)
+    const b = playRound('match-seed-b', 4, YONMA)
     expect(summarize(a.events)).not.toBe(summarize(b.events))
   })
 
   it('never loses or duplicates a tile', () => {
     for (let i = 0; i < 40; i++) {
-      const { state } = playMatch(`census-${i}`, 4, YONMA)
+      const { state } = playRound(`census-${i}`, 4, YONMA)
       const counts = census(state)
       for (let id = 0; id < NUM_TILE_TYPES; id++) {
         expect(counts[id], `tile ${id} in seed census-${i}`).toBe(TILES_PER_KIND)
@@ -133,7 +133,7 @@ describe('playMatch', () => {
 
   it('keeps sanma to three seats and the reduced tile set', () => {
     for (let i = 0; i < 15; i++) {
-      const { state } = playMatch(`sanma-${i}`, 3, SANMA)
+      const { state } = playRound(`sanma-${i}`, 3, SANMA)
       expect(state.players).toHaveLength(3)
       const counts = census(state)
       for (let id = 0; id < NUM_TILE_TYPES; id++) {
@@ -144,7 +144,7 @@ describe('playMatch', () => {
 
   it('leaves every hand at a legal size', () => {
     for (let i = 0; i < 20; i++) {
-      const { state } = playMatch(`sizes-${i}`, 4, YONMA)
+      const { state } = playRound(`sizes-${i}`, 4, YONMA)
       for (const player of state.players) {
         expect(tileCount(player.hand)).toBeGreaterThanOrEqual(13)
         expect(tileCount(player.hand)).toBeLessThanOrEqual(14)
@@ -155,7 +155,7 @@ describe('playMatch', () => {
   it('scores every win it declares', () => {
     let wins = 0
     for (let i = 0; i < 40; i++) {
-      const { state } = playMatch(`wins-${i}`, 4, YONMA)
+      const { state } = playRound(`wins-${i}`, 4, YONMA)
       if (!state.win) continue
       wins++
       const { ctx, concealed, melds, doraIndicators, uraIndicators, kita } = state.win
@@ -177,7 +177,7 @@ describe('playMatch', () => {
 
   it('never declares a win with wins turned off', () => {
     for (let i = 0; i < 25; i++) {
-      const { events, state } = playMatch(`nowin-${i}`, 4, { ...YONMA, wins: false })
+      const { events, state } = playRound(`nowin-${i}`, 4, { ...YONMA, wins: false })
       expect(events.some((e) => e.kind === 'win')).toBe(false)
       expect(state.ended).toBe('exhaustive')
     }
@@ -189,12 +189,12 @@ describe('playMatch', () => {
     const wall = wallWithHand(0, parseTenhou('12345678m1122p3s'), false, false, 'dup-kind-1')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('3s')[0]
 
-    const tedashi = createMatch(wall, 4, YONMA)
+    const tedashi = createRound(wall, 4, YONMA)
     beginTurn(tedashi, YONMA)
     finishTurn(tedashi, YONMA, { tile: { id: SOU + 2, red: false }, fromDrawn: false })
     expect(tedashi.players[0].river[0]?.tsumogiri).toBeUndefined()
 
-    const tsumogiri = createMatch(wall, 4, YONMA)
+    const tsumogiri = createRound(wall, 4, YONMA)
     beginTurn(tsumogiri, YONMA)
     finishTurn(tsumogiri, YONMA, { tile: { id: SOU + 2, red: false }, fromDrawn: true })
     expect(tsumogiri.players[0].river[0]?.tsumogiri).toBe(true)
@@ -209,10 +209,10 @@ describe('playMatch', () => {
     // riichi off: `isMenzen` reads the actual `melds` array, which this test never populates
     // (only `hand.melds`, chooseDiscard's own input) — an unrelated auto-riichi would otherwise
     // ride along on the same discard and clutter the assertion below
-    const options: MatchOptions = { ...YONMA, riichi: false }
+    const options: RoundOptions = { ...YONMA, riichi: false }
     const wall = wallWithHand(0, parseTenhou('123456789m555s9z'), false, true, 'aka-quad-1')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('0s')[0] // seat 0's draw: the red 5s
-    const state = createMatch(wall, 4, options)
+    const state = createRound(wall, 4, options)
     const player = state.players[0]
     // stand in for three called melds without actually calling them — chooseDiscard only reads
     // `hand.melds`/`hand.counts`, so stripping the filler tiles and bumping `melds` is equivalent
@@ -228,7 +228,7 @@ describe('playMatch', () => {
 
   it('forces tsumogiri after a riichi declaration', () => {
     for (let i = 0; i < 30; i++) {
-      const { state } = playMatch(`riichi-${i}`, 4, YONMA)
+      const { state } = playRound(`riichi-${i}`, 4, YONMA)
       for (const player of state.players) {
         if (player.riichiAt === undefined) continue
         for (const tile of player.river.slice(player.riichiAt + 1)) {
@@ -240,7 +240,7 @@ describe('playMatch', () => {
 
   it('marks exactly one river tile per riichi, and none without one', () => {
     for (let i = 0; i < 30; i++) {
-      const { state } = playMatch(`riichi-mark-${i}`, 4, YONMA)
+      const { state } = playRound(`riichi-mark-${i}`, 4, YONMA)
       for (const player of state.players) {
         const marked = player.river.filter((t) => t.riichi).length
         // a claimed declaration tile leaves the river with the meld, so the marker can be gone
@@ -251,7 +251,7 @@ describe('playMatch', () => {
 
   it('only ever declares riichi on a closed hand', () => {
     for (let i = 0; i < 30; i++) {
-      const { state } = playMatch(`closed-${i}`, 4, YONMA)
+      const { state } = playRound(`closed-${i}`, 4, YONMA)
       for (const player of state.players) {
         if (player.riichiAt === undefined) continue
         expect(player.melds.every((m) => m.kind === 'ankan')).toBe(true)
@@ -260,18 +260,18 @@ describe('playMatch', () => {
   })
 
   it('stops early when asked', () => {
-    const { events, ended } = playMatch('stop-me', 4, YONMA, (e) => e.kind === 'discard')
+    const { events, ended } = playRound('stop-me', 4, YONMA, (e) => e.kind === 'discard')
     expect(ended).toBe('stopped')
     expect(events.at(-1)?.kind).toBe('discard')
   })
 })
 
-describe('createMatch', () => {
+describe('createRound', () => {
   it('seeds exactly one red five per suit when aka is on, and none when it is off', () => {
     // a red copy is either still in a pile, or held — `reds` names the kinds a player holds one
     // of, and there is at most one red per kind, so the two counts add up exactly
-    const reds = (options: MatchOptions, players: number) => {
-      const state = createMatch([], players, options, 'aka-seed')
+    const reds = (options: RoundOptions, players: number) => {
+      const state = createRound([], players, options, 'aka-seed')
       const inPiles = [state.liveWall, state.deadWall, state.doraStack, state.uraStack]
         .flat()
         .filter((t) => t.red).length
@@ -286,7 +286,7 @@ describe('createMatch', () => {
 
   it('honours a wall pinning one seat, filling the rest of the wall itself', () => {
     const wall = wallWithHand(1, parseTenhou('12m'), false, true, 'pinned')
-    const state = createMatch(wall, 4, YONMA)
+    const state = createRound(wall, 4, YONMA)
     expect(state.players[1].hand.counts[0]).toBeGreaterThan(0)
     expect(state.players[1].hand.counts[1]).toBeGreaterThan(0)
     const counts = census(state)
@@ -294,7 +294,7 @@ describe('createMatch', () => {
   })
 
   it('honours a short wall prefix as seat 0’s exact starting hand', () => {
-    const state = createMatch(parseTenhou('1112345678999m'), 4, YONMA)
+    const state = createRound(parseTenhou('1112345678999m'), 4, YONMA)
     expect(state.players[0].hand.counts).toEqual(handFromTenhou('1112345678999m').counts)
     const counts = census(state)
     for (let id = 0; id < NUM_TILE_TYPES; id++) expect(counts[id]).toBe(TILES_PER_KIND)
@@ -303,7 +303,7 @@ describe('createMatch', () => {
   it('lets liveWallSnapshot plus wallDrawnCount reconstruct what is left', () => {
     // played out (not just dealt), so some seeds exercise kan replacement draws too
     for (let i = 0; i < 20; i++) {
-      const { state } = playMatch(`wall-snapshot-${i}`, 4, YONMA)
+      const { state } = playRound(`wall-snapshot-${i}`, 4, YONMA)
       const drawn = wallDrawnCount(state)
       const reconstructed = state.liveWallSnapshot.slice(drawn, drawn + state.liveWall.length)
       expect(reconstructed).toEqual(state.liveWall)
@@ -311,33 +311,33 @@ describe('createMatch', () => {
   })
 })
 
-describe('findMatch', () => {
-  const acceptWin = (outcome: ReturnType<typeof playMatch>) => outcome.state.win ?? null
+describe('findRound', () => {
+  const acceptWin = (outcome: ReturnType<typeof playRound>) => outcome.state.win ?? null
 
   it('finds a scoreable win and reports the seed that produced it', () => {
-    const found = findMatch('search', 4, YONMA, acceptWin)
+    const found = findRound('search', 4, YONMA, acceptWin)
     expect(found).not.toBeNull()
     expect(found!.result.score.han).toBeGreaterThan(0)
     // the reported seed is what reproduces it
-    expect(playMatch(found!.seed, 4, YONMA).state.win?.seat).toBe(found!.result.seat)
+    expect(playRound(found!.seed, 4, YONMA).state.win?.seat).toBe(found!.result.seat)
   })
 
   it('is reproducible', () => {
-    const a = findMatch('search-again', 4, YONMA, acceptWin)
-    const b = findMatch('search-again', 4, YONMA, acceptWin)
+    const a = findRound('search-again', 4, YONMA, acceptWin)
+    const b = findRound('search-again', 4, YONMA, acceptWin)
     expect(a!.seed).toBe(b!.seed)
     expect(a!.result.ctx).toEqual(b!.result.ctx)
   })
 
   it('finds a win for many different seeds', () => {
     for (let i = 0; i < 10; i++) {
-      expect(findMatch(`find-${i}`, 4, YONMA, acceptWin), `seed find-${i}`).not.toBeNull()
+      expect(findRound(`find-${i}`, 4, YONMA, acceptWin), `seed find-${i}`).not.toBeNull()
     }
   })
 })
 
 /** Visibility the way `finishTurn` sees it: every face-up tile plus this seat's own hand. */
-function seenBy(state: MatchState, seat: number): Uint8Array {
+function seenBy(state: RoundState, seat: number): Uint8Array {
   const seen = new Uint8Array(NUM_TILE_TYPES)
   for (let i = 0; i < NUM_TILE_TYPES; i++) {
     seen[i] = Math.min(TILES_PER_KIND, state.visible[i] + state.players[seat].hand.counts[i])
@@ -349,7 +349,7 @@ function seenBy(state: MatchState, seat: number): Uint8Array {
  *  same handoff the folding trainer performs — then plays the rest of the hand out, checking every
  *  folding seat's discard against what `assessDiscards` would itself pick. */
 function playWithDefense(seed: string) {
-  const state = createMatch([], 4, YONMA, seed)
+  const state = createRound([], 4, YONMA, seed)
   let declarer = -1
   let switched = false
   let sawCall = false
@@ -455,12 +455,12 @@ describe('defensive policy', () => {
     const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'tryWin-defense')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
 
-    const pushing = createMatch(wall, 4, YONMA)
+    const pushing = createRound(wall, 4, YONMA)
     beginTurn(pushing, YONMA)
     expect(pushing.ended).toBe('win')
     expect(pushing.win?.seat).toBe(0)
 
-    const folding = createMatch(wall, 4, YONMA)
+    const folding = createRound(wall, 4, YONMA)
     folding.players[0].algorithm = 'defense'
     beginTurn(folding, YONMA)
     expect(folding.ended).toBeUndefined()
@@ -476,11 +476,11 @@ describe('defensive policy', () => {
     const wall = wallWithHand(0, hand, true, false, 'kita-t3-seed')
     wall[3 * INITIAL_HAND_SIZE] = parseTenhou('4z')[0] // seat 0's draw: North
 
-    const pulling = createMatch(wall, 3, SANMA)
+    const pulling = createRound(wall, 3, SANMA)
     beginTurn(pulling, SANMA)
     expect(pulling.players[0].nuki).toEqual([{ id: NORTH, red: false }])
 
-    const folding = createMatch(wall, 3, SANMA)
+    const folding = createRound(wall, 3, SANMA)
     folding.players[0].algorithm = 'defense'
     beginTurn(folding, SANMA)
     expect(folding.players[0].nuki).toHaveLength(0)
@@ -496,7 +496,7 @@ describe('manual claims', () => {
     // this is every existing trainer's setup (nobody passes `claims: true` today) — if turning a
     // seat manual alone started suspending turns, every one of them would silently break
     let sawClaim = false
-    playMatch('claims-off', 4, { ...YONMA, algorithms: manual(0) }, (_event, state) => {
+    playRound('claims-off', 4, { ...YONMA, algorithms: manual(0) }, (_event, state) => {
       sawClaim ||= state.claim !== undefined
       return false
     })
@@ -504,11 +504,11 @@ describe('manual claims', () => {
   })
 
   it('offers a manual seat holding a pair a pon on the matching discard', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
     // seat 0's hand only needs a spare 9s to discard; seat 1's is scattered everywhere else so it
     // is nowhere near tenpai and the only thing on offer is the pon
     const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
-    const state = createMatch(wall, 4, options, 'claim-pon-offer')
+    const state = createRound(wall, 4, options, 'claim-pon-offer')
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
 
@@ -519,7 +519,7 @@ describe('manual claims', () => {
   })
 
   it('passing clears the claim, hands the turn on as usual, and leaves the declined win furiten', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
+    const options: RoundOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
     // seat 1 is tanki tenpai on 2s (all simples, so tanyao carries the yaku on a ron); seats 2
     // and 3 hold no sou at all, so they cannot react to a sou discard and cannot steal the win
     // out from under the seed's randomness
@@ -529,7 +529,7 @@ describe('manual claims', () => {
       ...parseTenhou('111222333m111p7z'),
       ...parseTenhou('444555666m222p7z'),
     ]
-    const state = createMatch(wall, 4, options, 'claim-pass')
+    const state = createRound(wall, 4, options, 'claim-pass')
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
 
@@ -544,10 +544,10 @@ describe('manual claims', () => {
     expect(state.players[1].missedWin).toBe(true) // declined a win that was really there
   })
 
-  // Req 2.3's second half — furiten already cannot ron (`tryWin`, match.ts:404); these are
+  // Req 2.3's second half — furiten already cannot ron (`tryWin`, round.ts:404); these are
   // regression tests, not code changes.
   it("never offers a ron on a tile sitting in the seat's own river (permanent furiten)", () => {
-    const options: MatchOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
+    const options: RoundOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
     // same tanki-2s tenpai as the pass test above, but seat 1 has already discarded a 2s itself
     const wall = [
       ...parseTenhou('189m189p2s123456z'),
@@ -555,7 +555,7 @@ describe('manual claims', () => {
       ...parseTenhou('111222333m111p7z'),
       ...parseTenhou('444555666m222p7z'),
     ]
-    const state = createMatch(wall, 4, options, 'furiten-own-river')
+    const state = createRound(wall, 4, options, 'furiten-own-river')
     beginTurn(state, options)
     state.players[1].river.push({ id: SOU + 1, red: false })
 
@@ -570,14 +570,14 @@ describe('manual claims', () => {
   })
 
   it('never offers a ron once the seat has missed a win on this tenpai (temporary furiten)', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
+    const options: RoundOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
     const wall = [
       ...parseTenhou('189m189p2s123456z'),
       ...parseTenhou('234567m234567p2s'),
       ...parseTenhou('111222333m111p7z'),
       ...parseTenhou('444555666m222p7z'),
     ]
-    const state = createMatch(wall, 4, options, 'claim-pass')
+    const state = createRound(wall, 4, options, 'claim-pass')
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
     answerClaim(state, options, { kind: 'pass' })
@@ -589,9 +589,9 @@ describe('manual claims', () => {
   })
 
   it('answering pon opens the meld and moves the tile from the river into it, keeping the log', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
     const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
-    const state = createMatch(wall, 4, options, 'claim-pon-answer')
+    const state = createRound(wall, 4, options, 'claim-pon-answer')
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
     const pon = state.claim?.options.find((o) => o.kind === 'pon')
@@ -613,7 +613,7 @@ describe('manual claims', () => {
   })
 
   it('lets a ron outrank a pon even when the ponning seat is asked and answers first', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1, 2) }
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1, 2) }
     // seat order puts seat 1 (pon-eligible) first and seat 2 (ron-eligible, chiitoi tenpai so the
     // terminal wait still carries a yaku) second; seat 3 holds no sou and cannot react at all
     const wall = [
@@ -622,7 +622,7 @@ describe('manual claims', () => {
       ...parseTenhou('11335577m1133p9s'),
       ...parseTenhou('224466m2244p667z'),
     ]
-    const state = createMatch(wall, 4, options, 'claim-priority')
+    const state = createRound(wall, 4, options, 'claim-priority')
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
 
@@ -640,9 +640,9 @@ describe('manual claims', () => {
   })
 
   it('is a no-op for beginTurn and finishTurn while a claim is pending', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
     const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
-    const state = createMatch(wall, 4, options, 'claim-noop')
+    const state = createRound(wall, 4, options, 'claim-noop')
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
     expect(state.claim).toBeDefined()
@@ -669,8 +669,8 @@ describe('manual claims', () => {
   })
 
   it('is a no-op when nothing is pending, so double-tapping an answer cannot skip a seat', () => {
-    const options: MatchOptions = { ...YONMA, algorithms: manual(0), claims: true }
-    const state = createMatch([], 4, options, 'claim-noop-answer')
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0), claims: true }
+    const state = createRound([], 4, options, 'claim-noop-answer')
     expect(state.claim).toBeUndefined()
     const before = { seat: state.seat, turn: state.turn, discardsLength: state.discards.length }
 
@@ -685,14 +685,14 @@ describe('manual claims', () => {
 
 describe('algorithms option', () => {
   it('seeds each seat’s starting algorithm from options.algorithms, defaulting the rest to efficiency', () => {
-    const state = createMatch([], 4, { ...YONMA, algorithms: ['defense'] }, 'algorithm-seed')
+    const state = createRound([], 4, { ...YONMA, algorithms: ['defense'] }, 'algorithm-seed')
     expect(state.players[0].algorithm).toBe('defense')
     expect(state.players.slice(1).every((p) => p.algorithm === 'efficiency')).toBe(true)
   })
 
   it('a seat seeded on defense from turn one never declares riichi and never calls', () => {
     for (let i = 0; i < 15; i++) {
-      const { state } = playMatch(`algorithm-defense-${i}`, 4, {
+      const { state } = playRound(`algorithm-defense-${i}`, 4, {
         ...YONMA,
         algorithms: ['defense'],
       })
@@ -703,7 +703,7 @@ describe('algorithms option', () => {
 
   it('a seat seeded on tsumogiri never declares riichi, never calls, and discards straight off every draw', () => {
     for (let i = 0; i < 15; i++) {
-      const { state } = playMatch(`algorithm-tsumogiri-${i}`, 4, {
+      const { state } = playRound(`algorithm-tsumogiri-${i}`, 4, {
         ...YONMA,
         algorithms: ['tsumogiri'],
       })
@@ -723,15 +723,15 @@ describe('manual riichi declaration', () => {
   function tenpaiManualState(seed: string) {
     const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, seed)
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('9s')[0]
-    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
-    const state = createMatch(wall, 4, options)
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
+    const state = createRound(wall, 4, options)
     beginTurn(state, options)
     return { state, options }
   }
 
   it('never auto-declares riichi for a manual seat, even reaching tenpai, unless the caller says so', () => {
     const { state, options } = tenpaiManualState('manual-riichi-1')
-    // declareRiichi omitted — this is the same call playMatch makes every turn
+    // declareRiichi omitted — this is the same call playRound makes every turn
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: true })
     expect(state.players[0].riichiAt).toBeUndefined()
   })
@@ -751,8 +751,8 @@ describe('beginTurn declineTsumo', () => {
   it('a manual seat auto-accepts a legal tsumo by default, unchanged from before this option existed', () => {
     const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'decline-default')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
-    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
-    const state = createMatch(wall, 4, options)
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
+    const state = createRound(wall, 4, options)
 
     beginTurn(state, options)
 
@@ -763,8 +763,8 @@ describe('beginTurn declineTsumo', () => {
   it('declineTsumo: true keeps the same legal tsumo from ending the hand, and the turn continues', () => {
     const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'decline-true')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
-    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
-    const state = createMatch(wall, 4, options)
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
+    const state = createRound(wall, 4, options)
 
     beginTurn(state, options, true)
 
@@ -775,10 +775,10 @@ describe('beginTurn declineTsumo', () => {
   })
 })
 
-describe('MatchState.log', () => {
+describe('RoundState.log', () => {
   it('records one entry per discard/call/win, matching the returned event stream in order', () => {
     for (let i = 0; i < 10; i++) {
-      const { state, events } = playMatch(`log-${i}`, 4, YONMA)
+      const { state, events } = playRound(`log-${i}`, 4, YONMA)
       const expected = events.filter(
         (e) => e.kind === 'discard' || e.kind === 'call' || e.kind === 'win',
       )
@@ -793,11 +793,11 @@ describe('MatchState.log', () => {
     }
   })
 
-  it("logs an AI seat's sanma kita pull without adding a distinct MatchEvent (T0 hazard)", () => {
+  it("logs an AI seat's sanma kita pull without adding a distinct RoundEvent (T0 hazard)", () => {
     // beginTurn's own kita loop must keep returning `draw` events only — state.log is a second,
     // additive output, never something the golden-hash test's `serialize` can see move
     for (let i = 0; i < 40; i++) {
-      const { state, events } = playMatch(`log-sanma-${i}`, 3, SANMA)
+      const { state, events } = playRound(`log-sanma-${i}`, 3, SANMA)
       if (state.log.some((e) => e.kind === 'kita')) {
         expect(events.some((e) => e.kind === 'kita')).toBe(false)
         return
@@ -807,9 +807,9 @@ describe('MatchState.log', () => {
   })
 
   it('callKita logs the pull and draws a replacement for a manual seat', () => {
-    const options: MatchOptions = { ...SANMA, algorithms: manual(0) }
+    const options: RoundOptions = { ...SANMA, algorithms: manual(0) }
     const wall = wallWithHand(0, parseTenhou('123456789m112p4z'), true, false, 'kita-manual')
-    const state = createMatch(wall, 3, options)
+    const state = createRound(wall, 3, options)
     beginTurn(state, options)
     const before = state.log.length
 
@@ -822,10 +822,10 @@ describe('MatchState.log', () => {
   })
 
   it('callAnkan logs the kan, flips a kan-dora, and draws a replacement', () => {
-    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
     const wall = wallWithHand(0, parseTenhou('111456789m1122p'), false, false, 'ankan-manual')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1m')[0] // the fourth 1m, drawn next as seat 0's turn
-    const state = createMatch(wall, 4, options)
+    const state = createRound(wall, 4, options)
     const indicatorsBefore = state.doraIndicators.length
     beginTurn(state, options)
     const before = state.log.length
@@ -842,9 +842,9 @@ describe('MatchState.log', () => {
   })
 
   it('is a no-op off-turn or once the hand has ended', () => {
-    const options: MatchOptions = { ...SANMA, algorithms: manual(0) }
+    const options: RoundOptions = { ...SANMA, algorithms: manual(0) }
     const wall = wallWithHand(0, parseTenhou('123456789m112p4z'), true, false, 'kita-off-turn')
-    const state = createMatch(wall, 3, options)
+    const state = createRound(wall, 3, options)
     beginTurn(state, options)
 
     expect(callKita(state, options, 1)).toEqual([]) // seat 1 is not the acting seat

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { handFromTenhou } from '../../core/hand'
-import { createMatch, type LogEntry, type MatchOptions } from '../../core/match'
+import { createRound, type LogEntry, type RoundOptions } from '../../core/round'
 import { HONOR, PIN, parseTenhou, serializeTenhouOrdered } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
 import {
@@ -11,10 +11,10 @@ import {
   resolveSanma,
 } from './urlCodec'
 
-const YONMA: MatchOptions = {
+const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  round: HONOR,
+  prevalentWind: HONOR,
   deadWall: true,
   calls: true,
   riichi: true,
@@ -98,12 +98,12 @@ describe('urlCodec', () => {
     s.wall = wall
 
     const decoded = decodeSituation(new URLSearchParams(encodeSituation(s)))
-    const state = createMatch(decoded.wall, 4, YONMA)
+    const state = createRound(decoded.wall, 4, YONMA)
 
     expect(state.players[0].hand.counts).toEqual(handFromTenhou('1112345678999m').counts)
   })
 
-  it('rejects an invalid wall by name: the wall is emptied and never reaches createMatch', () => {
+  it('rejects an invalid wall by name: the wall is emptied and never reaches createRound', () => {
     const decoded = decodeSituation(new URLSearchParams('wall=11111m'))
     expect(decoded.wall).toHaveLength(0)
     expect(decoded.wallError).toEqual({ zone: 'hand', seat: 0, tile: 0, reason: 'copies' })

@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { evaluateDiscards } from '../../core/efficiency'
 import { shanten } from '../../core/shanten'
-import { type LogEntry, type MatchEvent, type MatchOptions } from '../../core/match'
+import { type LogEntry, type RoundEvent, type RoundOptions } from '../../core/round'
 import { splitDrawn } from '../../core/table'
 import { HONOR, parseTenhou, SOU, type ParsedTile } from '../../core/tiles'
 import { completeWall, wallWithHand } from '../../core/wall'
-import { useMatch, type MatchCommand, type MatchEventContext } from './useMatch'
+import { useRound, type RoundCommand, type RoundEventContext } from './useRound'
 
 // wraps the real implementations in vi.fn so laziness (ADR-0012) can be proved by call count, not
 // inspection — every other test in this file still gets the real analysis, since these pass through
@@ -23,10 +23,10 @@ vi.mock('../../core/danger', async (importOriginal) => {
 
 /** Bare yonma options: no opponents/riichi/calls/dead wall, wins off — fully deterministic given a
  *  seeded wall. */
-const BARE: MatchOptions = {
+const BARE: RoundOptions = {
   sanma: false,
   aka: false,
-  round: HONOR,
+  prevalentWind: HONOR,
   deadWall: false,
   calls: false,
   riichi: false,
@@ -42,7 +42,7 @@ function tenpaiWall(seed: string) {
 }
 
 /** The acting seat's hand as a page would draw it: every tile, with the 14th split out. */
-function shown(result: { current: ReturnType<typeof useMatch> }) {
+function shown(result: { current: ReturnType<typeof useRound> }) {
   const snap = result.current.snapshot!
   return splitDrawn(
     snap.hands[snap.seat],
@@ -51,17 +51,17 @@ function shown(result: { current: ReturnType<typeof useMatch> }) {
 }
 
 /** Discards the acting seat's drawn tile — the tsumogiri every test below plays. */
-function tsumogiri(result: { current: ReturnType<typeof useMatch> }) {
+function tsumogiri(result: { current: ReturnType<typeof useRound> }) {
   const { drawn } = shown(result)
   act(() => result.current.discard(drawn!, true))
 }
 
-describe('useMatch', () => {
+describe('useRound', () => {
   it('reports the deal as engine events, with a draw for the acting seat', () => {
     const wall = tenpaiWall('match-initial-seed')
-    const events: MatchEvent[] = []
+    const events: RoundEvent[] = []
     const { result } = renderHook(() =>
-      useMatch({
+      useRound({
         wall,
         players: 4,
         options: BARE,
@@ -78,14 +78,14 @@ describe('useMatch', () => {
     let seenCount: number | undefined
     let rankedFor: number | undefined
     const { result } = renderHook(() =>
-      useMatch({
+      useRound({
         wall,
         players: 4,
         options: BARE,
         onEvent: ({ event, analysis, core }) => {
           if (event.kind !== 'discard') return
           // the live hand is already 13 tiles here — the analysis must not be
-          expect(shanten(core.match.players[0].hand)).toBeDefined()
+          expect(shanten(core.round.players[0].hand)).toBeDefined()
           seenCount = analysis!.hand.counts.reduce((a, b) => a + b, 0)
           rankedFor = analysis!.ranked.length
         },
@@ -101,7 +101,7 @@ describe('useMatch', () => {
     vi.mocked(evaluateDiscards).mockClear()
     vi.mocked(assessDiscards).mockClear()
     const wall = tenpaiWall('match-lazy-seed')
-    renderHook(() => useMatch({ wall, players: 4, options: BARE, onEvent: () => undefined }))
+    renderHook(() => useRound({ wall, players: 4, options: BARE, onEvent: () => undefined }))
     expect(evaluateDiscards).not.toHaveBeenCalled()
     expect(assessDiscards).not.toHaveBeenCalled()
   })
@@ -109,13 +109,13 @@ describe('useMatch', () => {
   it('halts on a stop command, leaving the hand at 13 tiles so it reads as finished', () => {
     const wall = tenpaiWall('match-stop-seed')
     const { result } = renderHook(() =>
-      useMatch({
+      useRound({
         wall,
         players: 4,
         options: BARE,
-        onEvent: ({ event, core }): MatchCommand => {
+        onEvent: ({ event, core }): RoundCommand => {
           if (event.kind !== 'discard' || event.seat !== 0) return
-          if (shanten(core.match.players[0].hand) <= 0) return { stop: true }
+          if (shanten(core.round.players[0].hand) <= 0) return { stop: true }
         },
       }),
     )
@@ -129,12 +129,12 @@ describe('useMatch', () => {
     // reject the first two deals outright, keep the third: the driver must rebuild each time
     let rejections = 0
     const wall = completeWall([], false, false, 'match-restart-seed')
-    const onEvent = ({ event }: MatchEventContext): MatchCommand => {
+    const onEvent = ({ event }: RoundEventContext): RoundCommand => {
       if (event.kind !== 'draw' || rejections >= 2) return
       rejections++
       return { restart: [] }
     }
-    const { result } = renderHook(() => useMatch({ wall, players: 4, options: BARE, onEvent }))
+    const { result } = renderHook(() => useRound({ wall, players: 4, options: BARE, onEvent }))
     await waitFor(() => expect(rejections).toBe(2))
     await waitFor(() => expect(result.current.snapshot).toBeDefined())
     expect(result.current.snapshot!.hands[0].length).toBeGreaterThan(0)
@@ -142,15 +142,15 @@ describe('useMatch', () => {
 
   it('marks replayed events so a consumer can rebuild state without grading them', () => {
     const wall = tenpaiWall('match-replay-seed')
-    const first = renderHook(() => useMatch({ wall, players: 4, options: BARE }))
+    const first = renderHook(() => useRound({ wall, players: 4, options: BARE }))
     tsumogiri(first.result)
-    const log: LogEntry[] = [...first.result.current.core!.match.log]
+    const log: LogEntry[] = [...first.result.current.core!.round.log]
     expect(log.length).toBeGreaterThan(0)
 
-    const live: MatchEvent[] = []
-    const replayed: MatchEvent[] = []
+    const live: RoundEvent[] = []
+    const replayed: RoundEvent[] = []
     renderHook(() =>
-      useMatch({
+      useRound({
         wall,
         players: 4,
         options: BARE,
@@ -165,14 +165,14 @@ describe('useMatch', () => {
 
   it('does not double-report a replayed log under StrictMode', () => {
     const wall = tenpaiWall('match-strict-seed')
-    const first = renderHook(() => useMatch({ wall, players: 4, options: BARE }))
+    const first = renderHook(() => useRound({ wall, players: 4, options: BARE }))
     tsumogiri(first.result)
-    const log: LogEntry[] = [...first.result.current.core!.match.log]
+    const log: LogEntry[] = [...first.result.current.core!.round.log]
 
     let discards = 0
     renderHook(
       () =>
-        useMatch({
+        useRound({
           wall,
           players: 4,
           options: BARE,
@@ -187,14 +187,14 @@ describe('useMatch', () => {
   })
 
   it('reports every manual seat, leaving the trainer to decide which one it grades', () => {
-    const options: MatchOptions = {
+    const options: RoundOptions = {
       ...BARE,
       algorithms: ['manual', 'manual', 'efficiency', 'efficiency'],
     }
     const wall = tenpaiWall('match-multi-seed')
     const seats: number[] = []
     const { result } = renderHook(() =>
-      useMatch({
+      useRound({
         wall,
         players: 4,
         options,
@@ -217,12 +217,12 @@ describe('useMatch', () => {
 describe('live option changes (ADR-0008)', () => {
   it('flipping an opponent between two AI algorithms never touches the running match', () => {
     const wall = tenpaiWall('match-live-general')
-    const options: MatchOptions = {
+    const options: RoundOptions = {
       ...BARE,
       algorithms: ['manual', 'efficiency', 'efficiency', 'efficiency'],
     }
     const { result, rerender } = renderHook(
-      (props: { options: MatchOptions }) => useMatch({ wall, players: 4, options: props.options }),
+      (props: { options: RoundOptions }) => useRound({ wall, players: 4, options: props.options }),
       { initialProps: { options } },
     )
     tsumogiri(result)
@@ -243,14 +243,14 @@ describe('live option changes (ADR-0008)', () => {
     const seat0Hand = parseTenhou('2468m2468p9s2345z')
     const seat1Hand = parseTenhou('1133557799m11p9s')
     const wall = completeWall([...seat0Hand, ...seat1Hand], false, false, 'match-claims-seed')
-    const options: MatchOptions = {
+    const options: RoundOptions = {
       ...BARE,
       wins: true,
       claims: true,
       algorithms: ['manual', 'manual', 'efficiency', 'efficiency'],
     }
     const { result, rerender } = renderHook(
-      (props: { options: MatchOptions }) => useMatch({ wall, players: 4, options: props.options }),
+      (props: { options: RoundOptions }) => useRound({ wall, players: 4, options: props.options }),
       { initialProps: { options } },
     )
 

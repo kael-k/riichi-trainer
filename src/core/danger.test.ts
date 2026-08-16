@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { assessDiscards, type SafetyTier, type ThreatView, type TileDanger } from './danger'
 import { handFromTenhou } from './hand'
-import { beginTurn, createMatch, finishTurn, type MatchOptions, type MatchState } from './match'
+import { beginTurn, createRound, finishTurn, type RoundOptions, type RoundState } from './round'
 import { isFuriten, waits } from './policy'
 import { HONOR, MAN, NUM_TILE_TYPES, parseTenhou, PIN, SOU, type TileId } from './tiles'
 import { TILES_PER_KIND } from './wall'
@@ -268,10 +268,10 @@ describe('the ranking itself', () => {
   })
 })
 
-const YONMA: MatchOptions = {
+const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  round: HONOR,
+  prevalentWind: HONOR,
   deadWall: true,
   calls: true,
   riichi: true,
@@ -281,7 +281,7 @@ const YONMA: MatchOptions = {
 /** Plays a seed until someone declares riichi, then `extraTurns` further turns so tiles have been
  *  passed on since. Discards come off the event log in play order, the way the trainer reads them. */
 function playPastRiichi(seed: string, extraTurns: number) {
-  const state = createMatch([], 4, YONMA, seed)
+  const state = createRound([], 4, YONMA, seed)
   const thrown: { seat: number; tile: TileId }[] = []
   let declaredAt = -1
   let declaredAfter = 0
@@ -339,7 +339,7 @@ describe('genbutsu never lies (property, over generated matches)', () => {
   }, 15000)
 })
 
-function seenBy(state: MatchState, seat: number): Uint8Array {
+function seenBy(state: RoundState, seat: number): Uint8Array {
   const seen = new Uint8Array(NUM_TILE_TYPES)
   for (let i = 0; i < NUM_TILE_TYPES; i++) {
     seen[i] = Math.min(TILES_PER_KIND, state.visible[i] + state.players[seat].hand.counts[i])

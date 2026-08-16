@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { playMatch, type MatchEvent, type MatchOptions } from './match'
+import { playRound, type RoundEvent, type RoundOptions } from './round'
 import { HONOR } from './tiles'
 
 /**
@@ -9,19 +9,19 @@ import { HONOR } from './tiles'
  * actually decide, and regenerates the table below in the same commit.
  */
 
-const YONMA: MatchOptions = {
+const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  round: HONOR,
+  prevalentWind: HONOR,
   deadWall: true,
   calls: true,
   riichi: true,
   wins: true,
 }
 
-const SANMA: MatchOptions = { ...YONMA, sanma: true }
+const SANMA: RoundOptions = { ...YONMA, sanma: true }
 
-function serialize(events: MatchEvent[]): string {
+function serialize(events: RoundEvent[]): string {
   return events
     .map((e) => {
       switch (e.kind) {
@@ -63,7 +63,7 @@ const SEEDS = Array.from({ length: 20 }, (_, i) => `golden-${i}`)
 declare const process: { env: Record<string, string | undefined> }
 
 /** Frozen against `main` as it stood before the seat-algorithm refactor. Regenerate with
- *  `GENERATE_GOLDEN=1 npx vitest run src/core/match.golden.test.ts` and paste the printed table
+ *  `GENERATE_GOLDEN=1 npx vitest run src/core/round.golden.test.ts` and paste the printed table
  *  back in here — only T3 is allowed to do that. */
 const GOLDEN: Record<string, [yonma: string, sanma: string]> = {
   'golden-0': ['408c20fb1ad2a8bc', '74e9e3a6e8c51dc4'],
@@ -92,8 +92,8 @@ describe('match golden determinism', () => {
   if (process.env.GENERATE_GOLDEN) {
     it('prints the golden table', () => {
       const lines = SEEDS.map((seed) => {
-        const yonma = hash(serialize(playMatch(seed, 4, YONMA).events))
-        const sanma = hash(serialize(playMatch(seed, 3, SANMA).events))
+        const yonma = hash(serialize(playRound(seed, 4, YONMA).events))
+        const sanma = hash(serialize(playRound(seed, 3, SANMA).events))
         return `  '${seed}': ['${yonma}', '${sanma}'],`
       })
       console.log(lines.join('\n'))
@@ -104,7 +104,7 @@ describe('match golden determinism', () => {
 
   it.each(SEEDS)('%s reproduces its frozen event-stream hash', (seed) => {
     const [wantYonma, wantSanma] = GOLDEN[seed]
-    expect(hash(serialize(playMatch(seed, 4, YONMA).events))).toBe(wantYonma)
-    expect(hash(serialize(playMatch(seed, 3, SANMA).events))).toBe(wantSanma)
+    expect(hash(serialize(playRound(seed, 4, YONMA).events))).toBe(wantYonma)
+    expect(hash(serialize(playRound(seed, 3, SANMA).events))).toBe(wantSanma)
   })
 })

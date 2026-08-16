@@ -49,7 +49,7 @@ export function fullWallSize(sanma: boolean): number {
 
 /** Completes a wall `prefix` to `fullWallSize(sanma)` tiles: `prefix` verbatim, then a remainder
  *  drawn from a random (or `seed`-built, for reproducible tests/random-fallback generation) wall
- *  with `prefix`'s own copies already filtered out — the "used" idiom `createMatch` used to apply
+ *  with `prefix`'s own copies already filtered out — the "used" idiom `createRound` used to apply
  *  to its pinned prefix, generalized to the whole wall. When `aka` is on, one red copy per suit not
  *  already named red by `prefix` is marked into the remainder; when it's off the remainder carries
  *  no red of its own (a red already inside `prefix` is left exactly as given — the link said so). */

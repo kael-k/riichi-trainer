@@ -42,7 +42,7 @@ function parseWind(v: string | null): Wind {
 
 export interface ScoringUrl {
   /** Explicit wall in draw order, exactly `urlCodec.ts`'s `Situation.wall` (ADR-0005): a full
-   *  wall, or a short prefix `createMatch` pads at random. Empty means "generate a fresh hand". */
+   *  wall, or a short prefix `createRound` pads at random. Empty means "generate a fresh hand". */
   wall: ParsedTile[]
   /** Set when `wall` failed `validateWall` (ADR-0005) — `wall` is then empty and a generated hand
    *  takes over, same as an empty link, rather than dealing an impossible board. */

@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { decodeLog, encodeLog } from './actionLog'
-import { playMatch, type LogEntry, type MatchOptions } from './match'
+import { playRound, type LogEntry, type RoundOptions } from './round'
 import { HONOR, MAN, PIN, SOU } from './tiles'
 
-const YONMA: MatchOptions = {
+const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  round: HONOR,
+  prevalentWind: HONOR,
   deadWall: true,
   calls: true,
   riichi: true,
   wins: true,
 }
 
-const SANMA: MatchOptions = { ...YONMA, sanma: true }
+const SANMA: RoundOptions = { ...YONMA, sanma: true }
 
 describe('encodeLog / decodeLog', () => {
   it('round-trips an empty log', () => {
@@ -64,11 +64,11 @@ describe('encodeLog / decodeLog', () => {
 
   it('round-trips a real match log end to end, yonma and sanma', () => {
     for (let i = 0; i < 15; i++) {
-      const { state } = playMatch(`actionlog-${i}`, 4, YONMA)
+      const { state } = playRound(`actionlog-${i}`, 4, YONMA)
       expect(decodeLog(encodeLog(state.log)), `seed actionlog-${i}`).toEqual(state.log)
     }
     for (let i = 0; i < 15; i++) {
-      const { state } = playMatch(`actionlog-sanma-${i}`, 3, SANMA)
+      const { state } = playRound(`actionlog-sanma-${i}`, 3, SANMA)
       expect(decodeLog(encodeLog(state.log)), `seed actionlog-sanma-${i}`).toEqual(state.log)
     }
   })

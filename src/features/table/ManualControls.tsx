@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Tile } from '../../components/tiles/Tile'
-import type { ClaimAnswer, PendingClaim } from '../../core/match'
+import type { ClaimAnswer, PendingClaim } from '../../core/round'
 import type { TileId } from '../../core/tiles'
 import { WINDS } from '../situation/urlCodec'
 

@@ -5,19 +5,19 @@ import {
   callAnkan,
   callKita,
   canDeclareRiichi,
-  createMatch,
+  createRound,
   finishTurn,
   isManual,
   NORTH,
   reconsiderClaim,
   replayLog,
-  stepMatch,
+  stepRound,
   type ClaimAnswer,
   type LogEntry,
-  type MatchEvent,
-  type MatchOptions,
-  type MatchState,
-} from '../../core/match'
+  type RoundEvent,
+  type RoundOptions,
+  type RoundState,
+} from '../../core/round'
 import { addTile, removeTile, tileCount } from '../../core/hand'
 import {
   actingSeat,
@@ -42,7 +42,7 @@ import { WINDS, type Situation } from '../situation/urlCodec'
  * know — a hook that filtered events down to one designated seat is what made folding unable to
  * use it, since folding grades a seat the panel can move and searches for boards by playing them.
  *
- * A handler steers the round by what it returns (`MatchCommand`): nothing to carry on, `{ stop }`
+ * A handler steers the round by what it returns (`RoundCommand`): nothing to carry on, `{ stop }`
  * to halt where the board stands, `{ restart }` to throw this deal away and take a new wall. The
  * driver is async and yields to the browser between restarts, so a rejection-sampling search
  * (folding's "find me a hand worth drilling") runs through this hook without freezing the page.
@@ -54,7 +54,7 @@ import { WINDS, type Situation } from '../situation/urlCodec'
  *  declining to continue, since the turn's own draw has to be cleared for the hand to read as
  *  finished. `restart` abandons this deal and builds a fresh one from `wall` (empty means "deal me
  *  a random one"), which is how a search rejects a board it does not want. */
-export type MatchCommand = void | { stop: true } | { restart: ParsedTile[] }
+export type RoundCommand = void | { stop: true } | { restart: ParsedTile[] }
 
 /** An engine event plus the context a handler needs to judge it.
  *
@@ -70,25 +70,25 @@ export type MatchCommand = void | { stop: true } | { restart: ParsedTile[] }
  *  cannot rebuild for itself: by the time a discard is reported the tile has left the hand, so
  *  ranking it again would score 13 tiles. It is captured before `finishTurn` runs and is lazy —
  *  a handler that ignores it pays nothing. */
-export interface MatchEventContext {
-  event: MatchEvent
+export interface RoundEventContext {
+  event: RoundEvent
   core: TableCore
   replaying: boolean
   analysis: TableAnalysis | undefined
-  /** How long `core.match.log` was when the acting seat's current turn began — the cut a rewind
+  /** How long `core.round.log` was when the acting seat's current turn began — the cut a rewind
    *  link needs. By the time any event is reported the whole turn has been applied, reactions
-   *  included (`finishTurn` resolves them before returning), so `match.log` already holds this
+   *  included (`finishTurn` resolves them before returning), so `round.log` already holds this
    *  turn's own discard and anything it triggered; slicing here is what reproduces the board as it
    *  stood *before* the decision being reported. */
   logLength: number
 }
 
-export type MatchEventHandler = (ctx: MatchEventContext) => MatchCommand
+export type RoundEventHandler = (ctx: RoundEventContext) => RoundCommand
 
-export interface UseMatchInput {
+export interface UseRoundInput {
   wall: ParsedTile[]
   players: number
-  options: MatchOptions
+  options: RoundOptions
   /** Every seat's decisions so far, replayed via `replayLog` to fast-forward to a mid-round
    *  decision point — a shared link or a log rewind. Consults no algorithm at all, which is what
    *  makes it immune to a later algorithm change (ADR-0021), and adds no tiles: everything named
@@ -96,15 +96,15 @@ export interface UseMatchInput {
   replay?: readonly LogEntry[]
   /** Threaded straight to `snapshotTable`, which is where the per-seat `waits` cost is paid. */
   showSeatWaits?: boolean
-  onEvent?: MatchEventHandler
+  onEvent?: RoundEventHandler
 }
 
 /** Whether `state` is mid-turn for a seat nobody will decide for automatically. */
-function awaitingManual(state: MatchState): boolean {
+function awaitingManual(state: RoundState): boolean {
   return isManual(state, state.seat)
 }
 
-export function useMatch(input: UseMatchInput) {
+export function useRound(input: UseRoundInput) {
   const core = useRef<TableCore | undefined>(undefined)
   const [restartCount, setRestartCount] = useState(0)
   // "the next discard declares riichi", armed from the UI's riichi button — the declaration rides
@@ -112,7 +112,7 @@ export function useMatch(input: UseMatchInput) {
   const [riichiArmed, setRiichiArmed] = useState(false)
   // log entries actually replayed on the last build (may fall short of `input.replay` when the
   // recording no longer matches the hand), so a consumer can put one row per replayed decision on
-  // its own log without reaching back into `core/match.ts`
+  // its own log without reaching back into `core/round.ts`
   const replayed = useRef<readonly LogEntry[]>([])
   // the analysis captured at the top of the current turn, handed to that turn's discard event so
   // grading measures the pre-throw hand. Keyed by seat: several seats can be manual at once
@@ -122,7 +122,7 @@ export function useMatch(input: UseMatchInput) {
   // guards the mount effect against StrictMode's double invoke for one and the same build
   const builtFor = useRef<{ wall: ParsedTile[]; count: number } | undefined>(undefined)
   // replayed events waiting to be handed to the handler from the mount effect; see `build`
-  const queued = useRef<MatchEvent[]>([])
+  const queued = useRef<RoundEvent[]>([])
   // a restart mid-drive must abandon the drive it came from
   const generation = useRef(0)
 
@@ -136,7 +136,7 @@ export function useMatch(input: UseMatchInput) {
     setRestartCount(0)
   }
 
-  const handler = useRef<MatchEventHandler | undefined>(input.onEvent)
+  const handler = useRef<RoundEventHandler | undefined>(input.onEvent)
   handler.current = input.onEvent
 
   /** Reports one event and returns whatever the handler wants done about it.
@@ -145,12 +145,12 @@ export function useMatch(input: UseMatchInput) {
    *  — before the handler sees the draw, and once for every seat rather than only the ones a
    *  person plays. Pinning it any later would rank the hand a discard has already left; pinning it
    *  only for manual seats would leave an AI seat's discard reported with a stale one. */
-  function report(c: TableCore, event: MatchEvent, replaying: boolean): MatchCommand {
+  function report(c: TableCore, event: RoundEvent, replaying: boolean): RoundCommand {
     if (event.kind === 'draw') {
       pending.current = {
         seat: event.seat,
         analysis: analysisOf(c, event.seat),
-        logLength: c.match.log.length,
+        logLength: c.round.log.length,
       }
     }
     return handler.current?.({
@@ -158,7 +158,7 @@ export function useMatch(input: UseMatchInput) {
       core: c,
       replaying,
       analysis: analysisFor(c, event),
-      logLength: pending.current?.logLength ?? c.match.log.length,
+      logLength: pending.current?.logLength ?? c.round.log.length,
     })
   }
 
@@ -166,7 +166,7 @@ export function useMatch(input: UseMatchInput) {
    *  events that spend it — a discard, a kita pull, a closed kan. `undefined` for every other
    *  kind. Read off the capture taken at the draw, so it describes the hand that made the decision
    *  rather than what is left after it. */
-  function analysisFor(c: TableCore, event: MatchEvent): TableAnalysis | undefined {
+  function analysisFor(c: TableCore, event: RoundEvent): TableAnalysis | undefined {
     if (
       event.kind !== 'draw' &&
       event.kind !== 'discard' &&
@@ -183,10 +183,10 @@ export function useMatch(input: UseMatchInput) {
    *  follows is graded against the hand that made it. */
   function capture(c: TableCore): void {
     const seat = actingSeat(c)
-    const player = c.match.players[seat]
+    const player = c.round.players[seat]
     pending.current =
       tileCount(player.hand) === 14
-        ? { seat, analysis: analysisOf(c, seat), logLength: c.match.log.length }
+        ? { seat, analysis: analysisOf(c, seat), logLength: c.round.log.length }
         : undefined
   }
 
@@ -204,12 +204,12 @@ export function useMatch(input: UseMatchInput) {
       let halted = false
 
       /** Feeds one step's events to the handler; false means the drive is over. */
-      const pump = (events: MatchEvent[]): boolean => {
+      const pump = (events: RoundEvent[]): boolean => {
         for (const event of events) {
           const command = report(current, event, replaying)
           if (generation.current !== mine) return false
           if (command && 'stop' in command) {
-            current.match.players[current.match.seat].hand.drawn = undefined
+            current.round.players[current.round.seat].hand.drawn = undefined
             halted = true
             return false
           }
@@ -222,25 +222,25 @@ export function useMatch(input: UseMatchInput) {
       }
 
       let running = true
-      for (const event of stepMatch(current.match, current.options, (s) => !awaitingManual(s))) {
+      for (const event of stepRound(current.round, current.options, (s) => !awaitingManual(s))) {
         if (!pump([event])) {
           running = false
           break
         }
       }
 
-      // `stepMatch` stops *before* a manual seat acts, and a manual seat is one the engine draws
+      // `stepRound` stops *before* a manual seat acts, and a manual seat is one the engine draws
       // for but never decides for — so the draw itself still has to happen, or the reader is asked
       // to discard from thirteen tiles. Guarded on `hand.drawn` because a replayed log can leave
       // any seat already holding its 14th.
       if (
         running &&
-        !current.match.ended &&
-        !current.match.claim &&
-        awaitingManual(current.match) &&
-        current.match.players[current.match.seat].hand.drawn === undefined
+        !current.round.ended &&
+        !current.round.claim &&
+        awaitingManual(current.round) &&
+        current.round.players[current.round.seat].hand.drawn === undefined
       ) {
-        pump(beginTurn(current.match, current.options))
+        pump(beginTurn(current.round, current.options))
       }
       if (generation.current !== mine) return
       if (halted) {
@@ -251,7 +251,7 @@ export function useMatch(input: UseMatchInput) {
       await new Promise((resolve) => setTimeout(resolve, 0))
       if (generation.current !== mine) return
       current = {
-        match: createMatch(restart, input.players, input.options),
+        round: createRound(restart, input.players, input.options),
         options: input.options,
       }
       core.current = current
@@ -275,7 +275,7 @@ export function useMatch(input: UseMatchInput) {
   function build(): TableCore {
     const wall = restartCount === 0 ? input.wall : []
     const c: TableCore = {
-      match: createMatch(wall, input.players, input.options),
+      round: createRound(wall, input.players, input.options),
       options: input.options,
     }
     core.current = c
@@ -287,7 +287,7 @@ export function useMatch(input: UseMatchInput) {
     // is not honoured mid-replay: the recording says what happened, and a handler cannot stop or
     // redeal a board that already played out this way.
     const log = input.replay ?? []
-    const consumed = replayLog(c.match, c.options, log, (event) => queued.current.push(event))
+    const consumed = replayLog(c.round, c.options, log, (event) => queued.current.push(event))
     replayed.current = log.slice(0, consumed)
     capture(c)
     return c
@@ -321,7 +321,7 @@ export function useMatch(input: UseMatchInput) {
     input.players,
     input.options.sanma,
     input.options.aka,
-    input.options.round,
+    input.options.prevalentWind,
     input.options.deadWall,
     input.options.calls,
     input.options.riichi,
@@ -331,26 +331,26 @@ export function useMatch(input: UseMatchInput) {
 
   // algorithm and claims changes are live (ADR-0008, ADR-0015): neither may redeal, so both are
   // written straight onto the running match. Two cases can't wait for the board to advance on its
-  // own: a seat that stopped being manual with its draw already sitting there (`stepMatch`'s own
+  // own: a seat that stopped being manual with its draw already sitting there (`stepRound`'s own
   // `hand.drawn` guard stops it re-drawing), and a claim pending on a seat that stopped being
   // manual — nobody will call `answerClaim` for it now, so it is re-resolved through the same
   // restartable path (`reconsiderClaim`). Never auto-passed: a pass sets `missedWin`, so a
   // dropdown must not poison the hand with furiten over a decision nobody made.
   useEffect(() => {
     const c = core.current
-    if (!c || c.match.ended) return
+    if (!c || c.round.ended) return
     let changed = c.options.claims !== input.options.claims
     c.options.claims = input.options.claims
     input.options.algorithms?.forEach((algorithm, seat) => {
-      const player = c.match.players[seat]
+      const player = c.round.players[seat]
       if (player && player.algorithm !== algorithm) {
         player.algorithm = algorithm
         changed = true
       }
     })
     if (!changed) return
-    if (c.match.claim && !isManual(c.match, c.match.claim.seat)) {
-      reconsiderClaim(c.match, c.options)
+    if (c.round.claim && !isManual(c.round, c.round.claim.seat)) {
+      reconsiderClaim(c.round, c.options)
     }
     void drive(c)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -367,14 +367,14 @@ export function useMatch(input: UseMatchInput) {
   /** Discards `tile` for the seat currently acting, declaring riichi with it when asked. */
   function discard(tile: ParsedTile, fromDrawn: boolean, declareRiichi = riichiArmed): void {
     const c = core.current
-    if (!c || c.match.ended || c.match.claim) return
+    if (!c || c.round.ended || c.round.claim) return
     const seat = actingSeat(c)
-    if (!isManual(c.match, seat) || tileCount(c.match.players[seat].hand) !== 14) return
+    if (!isManual(c.round, seat) || tileCount(c.round.players[seat].hand) !== 14) return
     setRiichiArmed(false)
-    for (const event of finishTurn(c.match, c.options, { tile, fromDrawn }, declareRiichi)) {
+    for (const event of finishTurn(c.round, c.options, { tile, fromDrawn }, declareRiichi)) {
       const command = report(c, event, false)
       if (command && 'stop' in command) {
-        c.match.players[c.match.seat].hand.drawn = undefined
+        c.round.players[c.round.seat].hand.drawn = undefined
         setSnapshot(snapshotTable(c, input.showSeatWaits))
         return
       }
@@ -385,8 +385,8 @@ export function useMatch(input: UseMatchInput) {
   /** Answers the claim the board is waiting on — ron, pon, chi or pass — and plays on. */
   function answer(claimAnswer: ClaimAnswer): void {
     const c = core.current
-    if (!c || !c.match.claim) return
-    for (const event of answerClaim(c.match, c.options, claimAnswer)) {
+    if (!c || !c.round.claim) return
+    for (const event of answerClaim(c.round, c.options, claimAnswer)) {
       report(c, event, false)
     }
     void drive(c)
@@ -395,11 +395,11 @@ export function useMatch(input: UseMatchInput) {
   /** Pulls a held north (sanma only). */
   function kita(): void {
     const c = core.current
-    if (!c || !c.options.sanma || c.match.ended || c.match.claim) return
+    if (!c || !c.options.sanma || c.round.ended || c.round.claim) return
     const seat = actingSeat(c)
-    if (!isManual(c.match, seat) || tileCount(c.match.players[seat].hand) !== 14) return
-    if (c.match.players[seat].hand.counts[NORTH] === 0) return
-    for (const event of callKita(c.match, c.options, seat)) report(c, event, false)
+    if (!isManual(c.round, seat) || tileCount(c.round.players[seat].hand) !== 14) return
+    if (c.round.players[seat].hand.counts[NORTH] === 0) return
+    for (const event of callKita(c.round, c.options, seat)) report(c, event, false)
     capture(c)
     setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
@@ -407,11 +407,11 @@ export function useMatch(input: UseMatchInput) {
   /** Calls a closed kan on a held quad. */
   function kan(id: TileId): void {
     const c = core.current
-    if (!c || c.match.ended || c.match.claim) return
+    if (!c || c.round.ended || c.round.claim) return
     const seat = actingSeat(c)
-    if (!isManual(c.match, seat) || tileCount(c.match.players[seat].hand) !== 14) return
-    if (c.match.players[seat].hand.counts[id] !== 4) return
-    for (const event of callAnkan(c.match, seat, id)) report(c, event, false)
+    if (!isManual(c.round, seat) || tileCount(c.round.players[seat].hand) !== 14) return
+    if (c.round.players[seat].hand.counts[id] !== 4) return
+    for (const event of callAnkan(c.round, seat, id)) report(c, event, false)
     capture(c)
     setSnapshot(snapshotTable(c, input.showSeatWaits))
   }
@@ -422,15 +422,15 @@ export function useMatch(input: UseMatchInput) {
   function riichiTiles(): TileId[] {
     const c = core.current
     const held = pending.current
-    if (!c || !held || c.match.ended || c.match.claim) return []
+    if (!c || !held || c.round.ended || c.round.claim) return []
     const seat = held.seat
-    const player = c.match.players[seat]
+    const player = c.round.players[seat]
     if (tileCount(player.hand) !== 14) return []
     return held.analysis.ranked
       .filter((option) => {
         if (option.shanten !== 0) return false
         removeTile(player.hand, option.discard)
-        const legal = canDeclareRiichi(c.match, c.options, seat)
+        const legal = canDeclareRiichi(c.round, c.options, seat)
         addTile(player.hand, option.discard)
         return legal
       })
@@ -442,9 +442,9 @@ export function useMatch(input: UseMatchInput) {
   function situation(seatIndex: number, log?: readonly LogEntry[]): Situation {
     const c = core.current
     return {
-      wall: c ? [...c.match.wall] : [...input.wall],
-      log: [...(log ?? c?.match.log ?? [])],
-      round: WINDS[input.options.round - HONOR] ?? 'E',
+      wall: c ? [...c.round.wall] : [...input.wall],
+      log: [...(log ?? c?.round.log ?? [])],
+      round: WINDS[input.options.prevalentWind - HONOR] ?? 'E',
       seat: WINDS[seatIndex] ?? 'E',
       deadWall: input.options.deadWall,
       aka: input.options.aka,

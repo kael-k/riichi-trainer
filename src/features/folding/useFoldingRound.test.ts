@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { handFromTenhou } from '../../core/hand'
-import type { LogEntry } from '../../core/match'
+import type { LogEntry } from '../../core/round'
 import type { SeatAlgorithm } from '../../core/policy'
 import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
@@ -14,10 +14,10 @@ import {
   splitConcealedDrawn,
   useFoldingRound,
   type FoldingUrl,
-  type RoundOptions,
+  type FoldingOptions,
 } from './useFoldingRound'
 
-const OPTIONS: RoundOptions = {
+const OPTIONS: FoldingOptions = {
   sanma: false,
   timerEnabled: true,
   threats: 1,
@@ -38,7 +38,7 @@ function wall(seed: string, sanma = false): ParsedTile[] {
 }
 
 /** Generation is a wall search, so hands arrive a tick (or several) later. */
-async function deal(urlData: FoldingUrl, options: RoundOptions = OPTIONS) {
+async function deal(urlData: FoldingUrl, options: FoldingOptions = OPTIONS) {
   const { result } = renderHook(() => useFoldingRound(urlData, options))
   await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 })
   return result
@@ -322,7 +322,7 @@ describe('per-seat manual configuration', () => {
     // a rebuild on every rerender — the exact thing this test is checking does *not* happen
     const urlData: FoldingUrl = { wall: wall('orientation-seed') }
     const { result, rerender } = renderHook(
-      ({ options }: { options: RoundOptions }) => useFoldingRound(urlData, options),
+      ({ options }: { options: FoldingOptions }) => useFoldingRound(urlData, options),
       {
         initialProps: {
           options: { ...OPTIONS, seats: { modes: [] } },
@@ -347,7 +347,7 @@ describe('per-seat manual configuration', () => {
   it('flipping a seat’s mode mid-hand patches the live match instead of rebuilding it (ADR-0008, ADR-0015)', async () => {
     const urlData: FoldingUrl = { wall: wall('live-flip-seed') }
     const { result, rerender } = renderHook(
-      ({ options }: { options: RoundOptions }) => useFoldingRound(urlData, options),
+      ({ options }: { options: FoldingOptions }) => useFoldingRound(urlData, options),
       { initialProps: { options: OPTIONS } },
     )
     await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 })

@@ -1,14 +1,14 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { playWall } from '../../core/match'
+import { playWall } from '../../core/round'
 import { mulberry32 } from '../../core/rng'
 import { HONOR, parseTenhou, PIN, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
 import { useLog } from '../../store/log'
 import { decodeScoringUrl, type ScoringUrl } from './scoringUrl'
-import { useScoringRound, type RoundOptions } from './useScoringRound'
+import { useScoringRound, type ScoringOptions } from './useScoringRound'
 
-const FULL: RoundOptions = {
+const FULL: ScoringOptions = {
   sanma: false,
   timerEnabled: true,
   table: true,
@@ -40,7 +40,7 @@ function fixtureWall(seed: string, sanma = false, aka = true): ScoringUrl {
 }
 
 /** Hands come from a simulated match now, so they arrive a tick later than they used to. */
-async function deal(urlData: ScoringUrl, options: RoundOptions = FULL) {
+async function deal(urlData: ScoringUrl, options: ScoringOptions = FULL) {
   const { result } = renderHook(() => useScoringRound(urlData, options))
   await waitFor(() => expect(result.current.loading).toBe(false))
   return result
@@ -56,10 +56,10 @@ describe('useScoringRound', () => {
 
   it('deals it from a real match, with rivers behind it', async () => {
     const result = await deal(fixtureWall('match-seed'))
-    expect(result.current.match).not.toBeNull()
+    expect(result.current.round).not.toBeNull()
     // the winner is a seat at that table, and somebody has discarded by the time a hand is won
-    expect(result.current.match!.players.length).toBe(4)
-    expect(result.current.match!.players.some((p) => p.river.length > 0)).toBe(true)
+    expect(result.current.round!.players.length).toBe(4)
+    expect(result.current.round!.players.some((p) => p.river.length > 0)).toBe(true)
     expect(result.current.seat).toBeGreaterThanOrEqual(0)
     expect(result.current.seat).toBeLessThan(4)
   })
@@ -168,7 +168,7 @@ describe('useScoringRound', () => {
   it('deals sanma hands without 2m-8m', async () => {
     const result = await deal(fixtureWall('sanma-seed', true), { ...FULL, sanma: true })
     expect(result.current.situation!.concealed.some((t) => t.id >= 1 && t.id <= 7)).toBe(false)
-    expect(result.current.match?.players.length).toBe(3)
+    expect(result.current.round?.players.length).toBe(3)
   })
 
   it('reuses a pinned URL situation instead of generating one', async () => {
@@ -201,7 +201,7 @@ describe('useScoringRound', () => {
     expect(result.current.actual!.payments.total).toBe(5800) // dealer riichi-pinfu-tanyao ron
     expect(result.current.invalidLink).toBe(false)
     // a pinned hand has no match behind it, so the board falls back to winds and melds only
-    expect(result.current.match).toBeNull()
+    expect(result.current.round).toBeNull()
   })
 
   it('falls back to a generated hand when the pinned situation has no legal win', async () => {
@@ -245,7 +245,7 @@ describe('useScoringRound', () => {
   })
 })
 
-// searches wall-fill seed suffixes (mirroring `core/match.test.ts`'s `findMatch` pattern) for one
+// searches wall-fill seed suffixes (mirroring `core/round.test.ts`'s `findRound` pattern) for one
 // whose *own* deal ends in a win, so "reproducible from the same wall" doesn't depend on the
 // non-deterministic random-search fallback landing on the same result twice
 function winningWall(seed: string): ParsedTile[] {
@@ -269,15 +269,15 @@ function nonWinningWall(seed: string): ParsedTile[] {
   throw new Error(`no non-winning wall found for seed ${seed}`)
 }
 
-// re-derives the same round `useScoringRound`'s own `matchOptions` would, so this check tells the
+// re-derives the same round `useScoringRound`'s own `roundOptions` would, so this check tells the
 // truth about what the hook itself will see when handed the wall
 function hasWin(wall: ParsedTile[]): boolean {
   const rng = mulberry32(`${serializeTenhouOrdered(wall)}:round`)
-  const round = HONOR + Math.floor(rng() * 4)
+  const prevalentWind = HONOR + Math.floor(rng() * 4)
   const outcome = playWall(wall, 4, {
     sanma: FULL.sanma,
     aka: FULL.aka,
-    round,
+    prevalentWind,
     deadWall: true,
     calls: FULL.openHands,
     riichi: true,

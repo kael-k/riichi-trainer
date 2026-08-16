@@ -4,9 +4,9 @@ import { createHand, handFromTenhou } from './hand'
 import { HONOR, NUM_TILE_TYPES, parseTenhou } from './tiles'
 
 // `defense` declining a legal win is already covered end-to-end by
-// match.test.ts's "never tsumos for a defense-algorithm seat" — this file covers what has no
+// round.test.ts's "never tsumos for a defense-algorithm seat" — this file covers what has no
 // coverage yet: `kita` now differs per algorithm (T3), and a third algorithm needs nothing from
-// `match.ts` to plug in.
+// `round.ts` to plug in.
 
 function baseView(overrides: Partial<SeatView> = {}): SeatView {
   return {
@@ -75,7 +75,7 @@ describe('ALGORITHMS.tsumogiri', () => {
   })
 })
 
-describe('a new algorithm needs nothing from match.ts', () => {
+describe('a new algorithm needs nothing from round.ts', () => {
   it('compiles and decides against the same SeatView/Algorithm contract the real two use', () => {
     // deliberately trivial — the point is only that authoring this needed nothing beyond what
     // `core/algorithm.ts` itself exports (T3's whole reason to exist)

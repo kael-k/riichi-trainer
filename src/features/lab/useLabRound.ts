@@ -1,24 +1,24 @@
 import { useState } from 'react'
 import type { TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
-import type { MatchOptions } from '../../core/match'
+import type { RoundOptions } from '../../core/round'
 import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { BACK_TILE } from '../folding/useFoldingRound'
 import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
 import { splitDrawn } from '../../core/table'
-import { useMatch, type MatchEventContext } from '../table/useMatch'
+import { useRound, type RoundEventContext } from '../table/useRound'
 
 /**
- * The statistical lab's own round hook: full analysis, zero grading. Built on `useMatch` exactly
+ * The statistical lab's own round hook: full analysis, zero grading. Built on `useRound` exactly
  * like `useEfficiencyRound`, minus every bit of grading that hook layers on top — no score, no
  * correct/incorrect flag, no session counters, and no `useSessionStats` (ADR-0004). It never
  * returns a stop command, so the hand plays out to its natural end rather than stopping at a
  * drill's decision point — there is no drill here to end early.
  */
 
-export interface RoundOptions {
+export interface LabOptions {
   deadWall: boolean
   aka: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
@@ -35,7 +35,7 @@ export interface RoundOptions {
   /** Ask manual seats about other seats' discards (`TableSettings.claims`) — board-wide and
    *  persisted, unlike `seats` itself (ADR-0015). */
   claims: boolean
-  /** The seat panel's "show tenpai/waits" setting — threaded to `useMatch`, which is where the
+  /** The seat panel's "show tenpai/waits" setting — threaded to `useRound`, which is where the
    *  per-seat cost of computing it is actually paid. */
   showSeatWaits: boolean
 }
@@ -48,10 +48,10 @@ export interface LabAnalysis {
   danger: TileDanger[]
 }
 
-/** Drives one lab round on top of `useMatch`: dealing, replay, opponents and the go-round loop
+/** Drives one lab round on top of `useRound`: dealing, replay, opponents and the go-round loop
  *  all live there — this hook only stashes the per-turn analysis and the reveal gate, neither of
  *  which the match layer has an opinion about. */
-export function useLabRound(situation: Situation, options: RoundOptions) {
+export function useLabRound(situation: Situation, options: LabOptions) {
   const players = options.sanma ? 3 : 4
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
@@ -61,11 +61,11 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
   const seatIndex = linkSeat
   const algorithms = resolveSeatConfig(options.seats, players, seatIndex).modes
   const manualSeats = algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
-  const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
-  const matchOptions: MatchOptions = {
+  const prevalentWind = HONOR + Math.max(0, WINDS.indexOf(situation.round))
+  const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    round,
+    prevalentWind,
     deadWall: options.deadWall,
     calls: true,
     riichi: true,
@@ -79,16 +79,16 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
 
   /** No grading at all — the lab logs the reader's own discards plainly and reads the analysis
    *  for whichever seat is about to act. It never returns a command: the hand plays out. */
-  function onEvent({ event, core, replaying, analysis: turn, logLength }: MatchEventContext) {
+  function onEvent({ event, core, replaying, analysis: turn, logLength }: RoundEventContext) {
     if (replaying) return
     if (event.kind === 'discard' && manualSeats.includes(event.seat)) {
       // one plain log row naming the tile and the turn — no grade, no partial credit
       log(
         'log.lab.discard',
-        { turn: core.match.turn, tile: tileCode(event.tile.id, event.tile.red) },
+        { turn: core.round.turn, tile: tileCode(event.tile.id, event.tile.red) },
         [event.tile],
         undefined,
-        encodeSituation(table.situation(seatIndex, core.match.log.slice(0, logLength))),
+        encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength))),
       )
     }
     // read both once per turn, not from render — evaluateDiscards/assessDiscards are real work
@@ -97,10 +97,10 @@ export function useLabRound(situation: Situation, options: RoundOptions) {
     }
   }
 
-  const table = useMatch({
+  const table = useRound({
     wall: situation.wall,
     players,
-    options: matchOptions,
+    options: roundOptions,
     replay: situation.log,
     showSeatWaits: options.showSeatWaits,
     onEvent,

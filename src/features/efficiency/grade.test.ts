@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateDiscards, type DiscardOption } from '../../core/efficiency'
 import { addTile, createHand, type Hand } from '../../core/hand'
-import { NORTH } from '../../core/match'
+import { NORTH } from '../../core/round'
 import { HONOR, parseTenhou } from '../../core/tiles'
 import {
   actionStats,

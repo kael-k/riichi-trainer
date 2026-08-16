@@ -1,5 +1,5 @@
 import { decodeLog, encodeLog } from '../../core/actionLog'
-import type { LogEntry } from '../../core/match'
+import type { LogEntry } from '../../core/round'
 import { parseTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
 import { validateWall, type WallError } from '../../core/wall'
 
@@ -21,12 +21,12 @@ export interface Situation {
    *  to mean before this phase (ADR-0005). */
   wall: ParsedTile[]
   /** Set when `wall` failed `validateWall` (ADR-0005) — `wall` is then empty and must never reach
-   *  `createMatch`. This is the one codec in the repo that rejects rather than silently drops
+   *  `createRound`. This is the one codec in the repo that rejects rather than silently drops
    *  (contrast `parseTenhou`, which drops a malformed digit): a wall is positionally meaningful,
    *  so repairing it would hand back a different board than the link claimed to share. */
   wallError?: WallError
   /** Every seat's decision from the deal to the situation's decision point — replayed by
-   *  `replayLog` (`core/match.ts`), which consults no algorithm at all, so a shared link
+   *  `replayLog` (`core/round.ts`), which consults no algorithm at all, so a shared link
    *  reproduces the exact hand that was played regardless of what any seat's algorithm is set to
    *  today. Not extra tiles: everything named here is already accounted for by `wall`. */
   log: LogEntry[]
@@ -69,7 +69,7 @@ export function decodeSituation(params: URLSearchParams): Situation {
   }
 
   // untrusted input: reject a malformed/over-counted wall by name rather than let it reach
-  // createMatch. No global setting is available at this pure-codec boundary, so a partial wall
+  // createRound. No global setting is available at this pure-codec boundary, so a partial wall
   // with no explicit sanma flag validates against yonma — the reader's own trainer resolves the
   // real ruleset (and, for a full wall, length alone already settles it either way)
   const sanma = resolveSanma(s.wall, s.sanma, false)

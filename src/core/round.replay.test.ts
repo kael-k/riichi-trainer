@@ -5,23 +5,23 @@ import {
   beginTurn,
   callAnkan,
   callKita,
-  createMatch,
+  createRound,
   finishTurn,
-  playMatch,
+  playRound,
   replayLog,
   type LogEntry,
-  type MatchOptions,
-  type MatchState,
-} from './match'
+  type RoundOptions,
+  type RoundState,
+} from './round'
 import type { SeatAlgorithm } from './policy'
 import { HONOR, MAN, parseTenhou, SOU } from './tiles'
 import { INITIAL_HAND_SIZE, wallWithHand } from './wall'
 
 /**
- * `replayLog`'s regression net (PLAN-action-log.md T2). Not a hash like `match.golden.test.ts` —
+ * `replayLog`'s regression net (PLAN-action-log.md T2). Not a hash like `round.golden.test.ts` —
  * a structural comparison between a live-played match's final state and the state a *fresh* match
  * reaches by replaying that live match's own `log` from the same wall. `log` itself is excluded
- * from the projection (that's `match.test.ts`'s job); this proves replay reproduces the *board*.
+ * from the projection (that's `round.test.ts`'s job); this proves replay reproduces the *board*.
  */
 
 function manual(...seats: number[]): SeatAlgorithm[] {
@@ -30,23 +30,23 @@ function manual(...seats: number[]): SeatAlgorithm[] {
   return algorithms
 }
 
-const YONMA: MatchOptions = {
+const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  round: HONOR,
+  prevalentWind: HONOR,
   deadWall: true,
   calls: true,
   riichi: true,
   wins: true,
 }
 
-const SANMA: MatchOptions = { ...YONMA, sanma: true }
+const SANMA: RoundOptions = { ...YONMA, sanma: true }
 
 /** Everything about a match that matters for "is this the same board" — hands, melds, rivers,
  *  riichi/furiten state, dora, whose turn it is, whether it ended and how. Deliberately excludes
- *  `log` (a separate concern, covered in `match.test.ts`) and `wall`/`liveWallSnapshot`/
+ *  `log` (a separate concern, covered in `round.test.ts`) and `wall`/`liveWallSnapshot`/
  *  `deadWallSnapshot` (identical by construction — both states are built from the same wall array). */
-function project(state: MatchState) {
+function project(state: RoundState) {
   return {
     ended: state.ended,
     win: state.win,
@@ -77,8 +77,8 @@ function project(state: MatchState) {
  *  seeded algorithms `original` was built with (irrelevant to what gets replayed — `replayLog`
  *  forces every seat manual regardless — but matching them is what makes the *restored* algorithm
  *  after replay meaningful to assert on). */
-function replayed(original: MatchState, options: MatchOptions): MatchState {
-  const fresh = createMatch(original.wall, original.players.length, options)
+function replayed(original: RoundState, options: RoundOptions): RoundState {
+  const fresh = createRound(original.wall, original.players.length, options)
   replayLog(fresh, options, original.log)
   return fresh
 }
@@ -86,7 +86,7 @@ function replayed(original: MatchState, options: MatchOptions): MatchState {
 describe('replayLog', () => {
   it('reproduces a live AI match exactly, from its own log', () => {
     for (let i = 0; i < 20; i++) {
-      const { state } = playMatch(`replay-${i}`, 4, YONMA)
+      const { state } = playRound(`replay-${i}`, 4, YONMA)
       const fresh = replayed(state, YONMA)
       expect(project(fresh), `seed replay-${i}`).toEqual(project(state))
     }
@@ -94,16 +94,16 @@ describe('replayLog', () => {
 
   it('reproduces a live sanma match exactly, including any AI kita pulls', () => {
     for (let i = 0; i < 20; i++) {
-      const { state } = playMatch(`replay-sanma-${i}`, 3, SANMA)
+      const { state } = playRound(`replay-sanma-${i}`, 3, SANMA)
       const fresh = replayed(state, SANMA)
       expect(project(fresh), `seed replay-sanma-${i}`).toEqual(project(state))
     }
   })
 
   it('restores every seat to its pre-replay algorithm, win or no win', () => {
-    const options: MatchOptions = { ...YONMA, algorithms: ['efficiency', 'defense', 'tsumogiri'] }
-    const { state } = playMatch('replay-restore', 4, options)
-    const fresh = createMatch(state.wall, 4, options)
+    const options: RoundOptions = { ...YONMA, algorithms: ['efficiency', 'defense', 'tsumogiri'] }
+    const { state } = playRound('replay-restore', 4, options)
+    const fresh = createRound(state.wall, 4, options)
     replayLog(fresh, options, state.log)
     expect(fresh.players.map((p) => p.algorithm)).toEqual([
       'efficiency',
@@ -118,8 +118,8 @@ describe('replayLog', () => {
     // never takes a win it draws into (ADR-0021's whole reason for existing)
     const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'replay-decline')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
-    const options: MatchOptions = { ...YONMA, algorithms: ['defense'] }
-    const state = createMatch(wall, 4, options)
+    const options: RoundOptions = { ...YONMA, algorithms: ['defense'] }
+    const state = createRound(wall, 4, options)
 
     beginTurn(state, options)
     expect(state.ended).toBeUndefined() // declined, as chosen
@@ -141,8 +141,8 @@ describe('replayLog', () => {
 
   it('replays a manual seat pulling kita then discarding', () => {
     const wall = wallWithHand(0, parseTenhou('123456789m112p4z'), true, false, 'replay-kita')
-    const options: MatchOptions = { ...SANMA, algorithms: manual(0) }
-    const state = createMatch(wall, 3, options)
+    const options: RoundOptions = { ...SANMA, algorithms: manual(0) }
+    const state = createRound(wall, 3, options)
 
     beginTurn(state, options)
     callKita(state, options, 0)
@@ -160,8 +160,8 @@ describe('replayLog', () => {
   it('replays a manual seat closed-kanning then discarding, kan-dora included', () => {
     const wall = wallWithHand(0, parseTenhou('111456789m1122p'), false, false, 'replay-ankan')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1m')[0]
-    const options: MatchOptions = { ...YONMA, algorithms: manual(0) }
-    const state = createMatch(wall, 4, options)
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
+    const state = createRound(wall, 4, options)
 
     beginTurn(state, options)
     callAnkan(state, 0, MAN)
@@ -184,10 +184,10 @@ describe('replayLog', () => {
     // live tile after replaying a link built under `claims: false` (the efficiency trainer's
     // default) — this is the exact scenario that motivated the `options.claims` check.
     for (let i = 0; i < 15; i++) {
-      const { state } = playMatch(`no-claims-${i}`, 4, YONMA)
+      const { state } = playRound(`no-claims-${i}`, 4, YONMA)
       for (let cut = 1; cut < state.log.length; cut += 3) {
         const prefix = state.log.slice(0, cut)
-        const fresh = createMatch(state.wall, 4, YONMA)
+        const fresh = createRound(state.wall, 4, YONMA)
         const consumed = replayLog(fresh, YONMA, prefix)
         expect(fresh.claim, `seed no-claims-${i} cut ${cut}`).toBeUndefined()
         expect(consumed, `seed no-claims-${i} cut ${cut}`).toBeGreaterThanOrEqual(cut)
@@ -196,7 +196,7 @@ describe('replayLog', () => {
   })
 
   it('replays two claims answered in sequence on the same discard', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1, 2) }
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1, 2) }
     // seat 0 discards 9s; seat 1 (kamicha) can chi it with 7s8s, seat 2 can pon it with 99s —
     // seat order asks 1 before 2, and only seat1's chi needs no extra copies of 9s itself, which
     // is what keeps this within the 4-copy census (seat0's 1 + seat2's 2 = 3, one spare)
@@ -206,7 +206,7 @@ describe('replayLog', () => {
       ...parseTenhou('12345m123456p99s'),
       ...parseTenhou('123456m123456p7z'),
     ]
-    const state = createMatch(wall, 4, options, 'replay-two-claims')
+    const state = createRound(wall, 4, options, 'replay-two-claims')
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
     expect(state.claim?.seat).toBe(1)
@@ -223,14 +223,14 @@ describe('replayLog', () => {
   })
 
   it('stops with the claim still pending when the log ends exactly there, and never invents a pass', () => {
-    const options: MatchOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
     const wall = [
       ...parseTenhou('2468m2468p9s2345z'),
       ...parseTenhou('13579m13579p99s1z'),
       ...parseTenhou('123456m123456p7s'),
       ...parseTenhou('123456m123456p7z'),
     ]
-    const original = createMatch(wall, 4, options, 'replay-mid-claim')
+    const original = createRound(wall, 4, options, 'replay-mid-claim')
     beginTurn(original, options)
     finishTurn(original, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
     expect(original.claim?.seat).toBe(1)
@@ -238,7 +238,7 @@ describe('replayLog', () => {
     // a link generated at exactly this moment: the discard is logged, nothing answers it yet
     const truncatedLog: LogEntry[] = [...original.log]
 
-    const fresh = createMatch(wall, 4, options, 'replay-mid-claim')
+    const fresh = createRound(wall, 4, options, 'replay-mid-claim')
     const consumed = replayLog(fresh, options, truncatedLog)
 
     expect(fresh.claim?.seat).toBe(1)

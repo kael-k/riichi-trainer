@@ -6,14 +6,14 @@ import {
   concealedTiles,
   isManual,
   seenBy as seenByMatch,
-  stepMatch,
+  stepRound,
   threatViews,
   wallDrawnCount,
-  type MatchOptions,
-  type MatchState,
+  type RoundOptions,
+  type RoundState,
   type PendingClaim,
   type WinRecord,
-} from './match'
+} from './round'
 import { isFuriten, waits, type SeatAlgorithm } from './policy'
 import type { ParsedTile, RiverTile, TileId } from './tiles'
 import { INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
@@ -33,23 +33,23 @@ import { INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
  *  function that had an opinion about it is what made grading and perspective the same field for
  *  as long as they were. */
 export interface TableCore {
-  match: MatchState
-  options: MatchOptions
+  round: RoundState
+  options: RoundOptions
 }
 
-/** Whose turn it is right now: `match.seat`, except that a pending claim outranks the turn order
+/** Whose turn it is right now: `round.seat`, except that a pending claim outranks the turn order
  *  — the seat being asked is the one holding the decision, and nothing draws or discards until it
  *  answers. One expression, but the override is easy to re-derive wrongly, and every reader of
  *  "the current seat" has to agree about it. */
 export function actingSeat(core: TableCore): number {
-  return core.match.claim?.seat ?? core.match.seat
+  return core.round.claim?.seat ?? core.round.seat
 }
 
-/** What `seat` can see: every face-up tile plus its own hand. Thin wrapper over `match.ts`'s
+/** What `seat` can see: every face-up tile plus its own hand. Thin wrapper over `round.ts`'s
  *  exported `seenBy` — the canonical computation lives there (not here) because this module
- *  imports the stepper from `match.ts`, and `match.ts` must not import back. */
+ *  imports the stepper from `round.ts`, and `round.ts` must not import back. */
 export function seenBy(core: TableCore, seat: number): Uint8Array {
-  return seenByMatch(core.match, core.match.players[seat])
+  return seenByMatch(core.round, core.round.players[seat])
 }
 
 /** Plays every seat the engine decides for, stopping at the next manual seat — or when the hand
@@ -64,16 +64,16 @@ export function seenBy(core: TableCore, seat: number): Uint8Array {
  *
  *  With no manual seat at all this now plays the hand out rather than stopping after one circuit.
  *  That is the point rather than an oversight — it is what lets a reader put every seat on an
- *  algorithm and watch a hand play itself (ADR-0011) — and `stepMatch`'s own 400-turn backstop is
+ *  algorithm and watch a hand play itself (ADR-0011) — and `stepRound`'s own 400-turn backstop is
  *  what catches a rule bug that would otherwise spin forever. Events are dropped here because a
- *  caller that wants them consumes `stepMatch` directly. */
+ *  caller that wants them consumes `stepRound` directly. */
 export function goRound(core: TableCore): void {
-  for (const _event of stepMatch(core.match, core.options, (s) => !isManual(s, s.seat)));
+  for (const _event of stepRound(core.round, core.options, (s) => !isManual(s, s.seat)));
 }
 
 /** A render-ready mirror of the match. Every array is a fresh copy — mutating the match after a
  *  snapshot was taken never mutates that snapshot — except `liveWallSnapshot`/`deadWallSnapshot`/
- *  `wall`, passed through by reference since `createMatch` never mutates them once the deal is
+ *  `wall`, passed through by reference since `createRound` never mutates them once the deal is
  *  done. Carries no trainer-specific field — no score, no clock, no grading result and no
  *  `finished` flag: each consumer derives its own end condition (efficiency: hand below 14 tiles;
  *  folding: `match.ended`/wall-out).
@@ -98,7 +98,7 @@ export interface TableSnapshot {
   liveWallDrawn: number
   deadWallSnapshot: ParsedTile[]
   replacements: number
-  ended: MatchState['ended']
+  ended: RoundState['ended']
   win: WinRecord | undefined
   wall: ParsedTile[]
   /** Every seat's starting 13 tiles, in dealing order — the front slice of `wall` the wall-reveal
@@ -141,32 +141,32 @@ export function splitDrawn(
 
 /** Builds a `TableSnapshot` for `core` as the match stands right now. */
 export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnapshot {
-  const { match, options } = core
-  const drawnTile = match.players[match.seat].hand.drawn
+  const { round, options } = core
+  const drawnTile = round.players[round.seat].hand.drawn
   return {
-    turn: match.turn,
-    doraIndicators: [...match.doraIndicators],
-    rivers: match.players.map((p) => [...p.river]),
-    hands: match.players.map((p) => concealedTiles(p)),
-    melds: match.players.map((p) => [...p.melds]),
-    nuki: match.players.map((p) => [...p.nuki]),
-    riichi: match.players.map((p) => p.riichiAt !== undefined),
-    algorithms: match.players.map((p) => p.algorithm),
-    liveWall: [...match.liveWall],
-    deadWall: [...match.deadWall],
-    liveWallSnapshot: match.liveWallSnapshot,
-    liveWallDrawn: wallDrawnCount(match),
-    deadWallSnapshot: match.deadWallSnapshot,
-    replacements: match.replacements,
-    ended: match.ended,
-    win: match.win,
-    wall: match.wall,
-    dealtTiles: match.wall.slice(0, match.players.length * INITIAL_HAND_SIZE),
+    turn: round.turn,
+    doraIndicators: [...round.doraIndicators],
+    rivers: round.players.map((p) => [...p.river]),
+    hands: round.players.map((p) => concealedTiles(p)),
+    melds: round.players.map((p) => [...p.melds]),
+    nuki: round.players.map((p) => [...p.nuki]),
+    riichi: round.players.map((p) => p.riichiAt !== undefined),
+    algorithms: round.players.map((p) => p.algorithm),
+    liveWall: [...round.liveWall],
+    deadWall: [...round.deadWall],
+    liveWallSnapshot: round.liveWallSnapshot,
+    liveWallDrawn: wallDrawnCount(round),
+    deadWallSnapshot: round.deadWallSnapshot,
+    replacements: round.replacements,
+    ended: round.ended,
+    win: round.win,
+    wall: round.wall,
+    dealtTiles: round.wall.slice(0, round.players.length * INITIAL_HAND_SIZE),
     seat: actingSeat(core),
-    claim: match.claim,
-    drawn: drawnTile ? { seat: match.seat, tile: drawnTile } : undefined,
-    seatReads: match.players.map((_, seat) =>
-      showSeatWaits || isManual(match, seat) ? seatRead(match, seat, options.sanma) : undefined,
+    claim: round.claim,
+    drawn: drawnTile ? { seat: round.seat, tile: drawnTile } : undefined,
+    seatReads: round.players.map((_, seat) =>
+      showSeatWaits || isManual(round, seat) ? seatRead(round, seat, options.sanma) : undefined,
     ),
   }
 }
@@ -197,12 +197,12 @@ export interface SeatRead {
   /** Wait tiles with copies still unseen from *this* seat's own point of view. */
   waits: { tile: TileId; remaining: number }[]
   /** Permanent (a wait sitting in the seat's own river) or temporary (`missedWin`) — either way,
-   *  a furiten seat cannot ron (`tryWin`, guarded by a regression test in `match.test.ts`). */
+   *  a furiten seat cannot ron (`tryWin`, guarded by a regression test in `round.test.ts`). */
   furiten: boolean
 }
 
 /** Builds `seat`'s own `SeatRead` from `state` as it stands right now. */
-export function seatRead(state: MatchState, seat: number, sanma: boolean): SeatRead {
+export function seatRead(state: RoundState, seat: number, sanma: boolean): SeatRead {
   const player = state.players[seat]
   const waitTiles = waits(player.hand, sanma)
   const seen = seenByMatch(state, player)
@@ -224,13 +224,13 @@ export function seatRead(state: MatchState, seat: number, sanma: boolean): SeatR
  *
  *  Still per-moment: build a new one after the board moves rather than reusing an old one. */
 export function analysisOf(core: TableCore, seat: number): TableAnalysis {
-  const player = core.match.players[seat]
+  const player = core.round.players[seat]
   const hand: Hand = {
     counts: new Uint8Array(player.hand.counts),
     melds: player.hand.melds,
     drawn: player.hand.drawn,
   }
-  const threats = threatViews(core.match)
+  const threats = threatViews(core.round)
   const seen = seenBy(core, seat)
   let rankedCache: DiscardOption[] | undefined
   let dangerCache: TileDanger[] | undefined

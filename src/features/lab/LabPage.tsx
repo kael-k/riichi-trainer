@@ -10,7 +10,7 @@ import { BackButton, FullscreenToggle } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import type { SafetyTier, TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
-import type { LogEntry } from '../../core/match'
+import type { LogEntry } from '../../core/round'
 import { parseTenhou, serializeTenhouOrdered, tileCode, type ParsedTile } from '../../core/tiles'
 import { validateWall, wallWithHand, type WallError } from '../../core/wall'
 import { splitConcealedDrawn } from '../folding/useFoldingRound'
@@ -25,7 +25,7 @@ import { useTableSettings, type SeatConfig, type TableSettings } from '../settin
 import { decodeSituation, resolveSanma, WINDS, type Situation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { useLogBack } from '../../lib/useLogBack'
-import { useLabRound, type RoundOptions } from './useLabRound'
+import { useLabRound, type LabOptions } from './useLabRound'
 
 /** Only the tiers with a glossary entry get the popover — same subset `FoldFeedback` uses, since
  *  the rest (honour, non-suji, walled) aren't jargon that needs unpacking beyond the reason line. */
@@ -196,7 +196,7 @@ export function LabPage() {
     [urlSituation, manual],
   )
 
-  const options = useMemo<RoundOptions>(
+  const options = useMemo<LabOptions>(
     () => ({
       deadWall: situation.deadWall ?? deadWall,
       aka: situation.aka ?? aka,

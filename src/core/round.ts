@@ -23,7 +23,7 @@ import { isMenzen, type WinContext } from './yaku'
  *
  * The turn is split into `beginTurn` (draw) and `finishTurn` (discard, then everyone else's
  * reactions) so an interactive trainer can stop between the two and let a manual seat pick the
- * discard, while `playMatch` just runs both in a loop.
+ * discard, while `playRound` just runs both in a loop.
  */
 
 /** Kan-dora indicators a real dead wall holds, each sitting on top of its ura counterpart. */
@@ -32,11 +32,11 @@ const MAX_DORA_INDICATORS = 5
 /** North — the nukidora (kita) tile in sanma. */
 export const NORTH: TileId = HONOR + 3
 
-export interface MatchOptions {
+export interface RoundOptions {
   sanma: boolean
   aka: boolean
-  /** Round wind as an honour tile id (`HONOR` = East). */
-  round: TileId
+  /** Prevalent (round) wind as an honour tile id (`HONOR` = East). */
+  prevalentWind: TileId
   /** Reserve a dead wall and flip a dora indicator. */
   deadWall: boolean
   /** Let the AI call pon/chi. */
@@ -61,7 +61,7 @@ export interface MatchOptions {
 }
 
 /** Whether the engine must stop and ask instead of deciding for `seat`. */
-export function isManual(state: MatchState, seat: number): boolean {
+export function isManual(state: RoundState, seat: number): boolean {
   return state.players[seat].algorithm === 'manual'
 }
 
@@ -115,7 +115,7 @@ export interface ClaimOption {
 export type ClaimAnswer =
   { kind: 'pass' } | { kind: 'ron' } | { kind: 'pon' | 'chi'; from: TileId[] }
 
-/** The decision the board is waiting on. While `MatchState.claim` is set the turn is suspended
+/** The decision the board is waiting on. While `RoundState.claim` is set the turn is suspended
  *  mid-discard: nobody draws, nobody discards, and `answerClaim` is the only way forward. */
 export interface PendingClaim {
   /** Seat being asked right now. */
@@ -130,7 +130,7 @@ export interface PendingClaim {
   answers: Record<number, ClaimAnswer>
 }
 
-export type MatchEvent =
+export type RoundEvent =
   | { kind: 'draw'; seat: number; tile: ParsedTile }
   | { kind: 'discard'; seat: number; tile: RiverTile }
   | { kind: 'riichi'; seat: number }
@@ -155,15 +155,15 @@ export type LogEntry =
   | { kind: 'ankan'; seat: number; tile: TileId }
   | { kind: 'win'; seat: number; from?: number }
 
-export interface MatchState {
+export interface RoundState {
   players: PlayerState[]
   /** The complete wall this match dealt from, in draw order: each seat's 13 starting tiles, then
    *  the live draws, then the trailing 14 tiles the dead wall is cut from (dora indicator first).
-   *  Captured once in `createMatch` and never touched again — unlike `liveWall`, which shrinks as
+   *  Captured once in `createRound` and never touched again — unlike `liveWall`, which shrinks as
    *  the hand is played. */
   wall: ParsedTile[]
   liveWall: ParsedTile[]
-  /** The live wall exactly as dealt — snapshotted once at the end of the deal, in `createMatch`,
+  /** The live wall exactly as dealt — snapshotted once at the end of the deal, in `createRound`,
    *  and never touched again. `liveWall` above only holds what's left (`take()` shifts off its
    *  front, `drawReplacement()` pops its tail); the wall-reveal display walks this instead so it
    *  can show the whole wall, greying what's gone. See `wallDrawnCount`. */
@@ -221,12 +221,12 @@ function createPlayer(algorithm: SeatAlgorithm = 'efficiency'): PlayerState {
  * between is the live draw pool. A short `wall` is a prefix — `completeWall` fills the remainder
  * at random (or from `fillSeed`, for reproducible tests/generation) from the copies it leaves.
  */
-export function createMatch(
+export function createRound(
   wall: ParsedTile[],
   players: number,
-  options: MatchOptions,
+  options: RoundOptions,
   fillSeed?: string,
-): MatchState {
+): RoundState {
   const full =
     wall.length >= fullWallSize(options.sanma)
       ? wall
@@ -259,7 +259,7 @@ export function createMatch(
   const visible = new Uint8Array(NUM_TILE_TYPES)
   for (const indicator of doraIndicators) visible[indicator.id]++
 
-  const state: MatchState = {
+  const state: RoundState = {
     players: Array.from({ length: players }, (_, seat) => createPlayer(options.algorithms?.[seat])),
     wall: full,
     liveWall: dealable,
@@ -290,7 +290,7 @@ export function createMatch(
   return state
 }
 
-function take(state: MatchState, player: PlayerState): ParsedTile | undefined {
+function take(state: RoundState, player: PlayerState): ParsedTile | undefined {
   const tile = state.liveWall.shift()
   if (!tile) return undefined
   addTile(player.hand, tile.id)
@@ -316,7 +316,7 @@ export function concealedTiles(player: PlayerState): ParsedTile[] {
  *  bookkeeping slip degrades an ukeire count instead of proposing a fifth copy. Exported (rather
  *  than wrapped only in `table.ts`) because `table.ts` imports this stepper, so this module must
  *  not import back from `table.ts` — the canonical computation has to live here. */
-export function seenBy(state: MatchState, player: PlayerState): Uint8Array {
+export function seenBy(state: RoundState, player: PlayerState): Uint8Array {
   const seen = new Uint8Array(NUM_TILE_TYPES)
   for (let i = 0; i < NUM_TILE_TYPES; i++) {
     seen[i] = Math.min(TILES_PER_KIND, state.visible[i] + player.hand.counts[i])
@@ -329,7 +329,7 @@ export function seenBy(state: MatchState, player: PlayerState): Uint8Array {
  *  `PlayerState.river`: a threat's own discards (furiten on all of them) and every tile anyone
  *  threw after they declared without being ronned (passed, so they may not ron it now either) —
  *  and a called discard is popped out of `river` while it stays in the log. */
-export function threatViews(state: MatchState): ThreatView[] {
+export function threatViews(state: RoundState): ThreatView[] {
   return state.players.flatMap((declarer, seat) => {
     if (declarer.riichiAt === undefined) return []
     const declaredAt = state.discards.findIndex((d) => d.seat === seat && d.tile.riichi)
@@ -346,10 +346,10 @@ export function threatViews(state: MatchState): ThreatView[] {
 /** Builds `seat`'s `SeatView` (`core/algorithm.ts`) as `state` stands right now — call it again
  *  after the board moves on rather than reusing an old one, since `seen`/`threats`/`furiten` cache
  *  only their own first read (same discipline as `core/table.ts#analysisOf`'s `TableAnalysis`).
- *  Lives here rather than in `algorithm.ts` itself so that module never has to import `MatchState`
- *  back from this one — `algorithm.ts` imports nothing from `match.ts`, `match.ts` imports
+ *  Lives here rather than in `algorithm.ts` itself so that module never has to import `RoundState`
+ *  back from this one — `algorithm.ts` imports nothing from `round.ts`, `round.ts` imports
  *  `ALGORITHMS` from `algorithm.ts`, and importing back would be a cycle. */
-function seatView(state: MatchState, options: MatchOptions, seat: number): SeatView {
+function seatView(state: RoundState, options: RoundOptions, seat: number): SeatView {
   const player = state.players[seat]
   let seenCache: Uint8Array | undefined
   let threatsCache: ThreatView[] | undefined
@@ -368,7 +368,7 @@ function seatView(state: MatchState, options: MatchOptions, seat: number): SeatV
       riichi: p.riichiAt !== undefined,
       nuki: p.nuki.length,
     })),
-    round: options.round,
+    round: options.prevalentWind,
     seatWind: HONOR + seat,
     dealer: seat === 0,
     turn: state.turn,
@@ -389,9 +389,9 @@ function seatView(state: MatchState, options: MatchOptions, seat: number): SeatV
 }
 
 function buildContext(
-  state: MatchState,
+  state: RoundState,
   seat: number,
-  options: MatchOptions,
+  options: RoundOptions,
   winTile: TileId,
   tsumo: boolean,
 ): WinContext {
@@ -399,7 +399,7 @@ function buildContext(
   const riichi = player.riichiAt !== undefined
   const double = riichi && player.riichiTurn === 1
   return {
-    round: options.round,
+    round: options.prevalentWind,
     seat: HONOR + seat,
     tsumo,
     riichi: riichi && !double,
@@ -419,9 +419,9 @@ function buildContext(
  * (`scoreHand` returns null without one) and, on a ron, no furiten.
  */
 function tryWin(
-  state: MatchState,
+  state: RoundState,
   seat: number,
-  options: MatchOptions,
+  options: RoundOptions,
   tile: ParsedTile,
   tsumo: boolean,
   from?: number,
@@ -491,7 +491,7 @@ function tryWin(
   }
 }
 
-function endWith(state: MatchState, win: WinRecord): MatchEvent[] {
+function endWith(state: RoundState, win: WinRecord): RoundEvent[] {
   state.ended = 'win'
   state.win = win
   state.log.push({ kind: 'win', seat: win.seat, from: win.from })
@@ -507,10 +507,10 @@ function endWith(state: MatchState, win: WinRecord): MatchEvent[] {
  *  hand — an outcome only representable by asking `beginTurn` not to take it. Every other caller
  *  omits the argument and gets exactly today's behaviour. */
 export function beginTurn(
-  state: MatchState,
-  options: MatchOptions,
+  state: RoundState,
+  options: RoundOptions,
   declineTsumo = false,
-): MatchEvent[] {
+): RoundEvent[] {
   // a pending claim suspends the whole turn: the discard it hangs on may still be ronned or
   // called, which decides whose turn comes next. One guard here (and in `finishTurn`) rather
   // than one in each of the four callers that step a match
@@ -528,7 +528,7 @@ export function beginTurn(
     return [{ kind: 'exhaustive' }]
   }
 
-  const events: MatchEvent[] = []
+  const events: RoundEvent[] = []
   let tile = take(state, player)!
   events.push({ kind: 'draw', seat: state.seat, tile })
 
@@ -560,7 +560,7 @@ export function beginTurn(
 
 /** Replacement draw off the dead wall's far end, backfilled from the live wall tail so the dead
  *  wall keeps its size; straight off the live wall when there is no dead wall. */
-export function drawReplacement(state: MatchState, player: PlayerState): ParsedTile | undefined {
+export function drawReplacement(state: RoundState, player: PlayerState): ParsedTile | undefined {
   let tile = state.deadWall.pop()
   if (tile) {
     // counted only on this branch: it names tiles that left the live wall's *tail* as backfill.
@@ -583,7 +583,7 @@ export function drawReplacement(state: MatchState, player: PlayerState): ParsedT
  *  the entry point for everyone else, formerly hand-mutated by `useTableRound.ts#kita`. A no-op
  *  (`[]`) on an illegal call — wrong turn, hand already ended, a claim pending, no north held —
  *  same "untrusted caller" posture as `finishTurn`/`answerClaim`, rather than throwing. */
-export function callKita(state: MatchState, options: MatchOptions, seat: number): MatchEvent[] {
+export function callKita(state: RoundState, options: RoundOptions, seat: number): RoundEvent[] {
   if (state.ended || state.claim || seat !== state.seat || !options.sanma) return []
   const player = state.players[seat]
   if (player.hand.counts[NORTH] === 0) return []
@@ -598,9 +598,9 @@ export function callKita(state: MatchState, options: MatchOptions, seat: number)
 /** A manual (or replayed) seat calling a closed kan on a held quad — same reasoning as `callKita`:
  *  mutation and log entry together, formerly hand-mutated by `useTableRound.ts#kan`. No `options`
  *  parameter — unlike every other decision point here, nothing about ankan's legality or effect
- *  depends on any `MatchOptions` field (no wait-preserving-kan rule is modelled, same as kakan
+ *  depends on any `RoundOptions` field (no wait-preserving-kan rule is modelled, same as kakan
  *  simply not existing) — so it is deliberately absent rather than threaded in unused. */
-export function callAnkan(state: MatchState, seat: number, id: TileId): MatchEvent[] {
+export function callAnkan(state: RoundState, seat: number, id: TileId): RoundEvent[] {
   if (state.ended || state.claim || seat !== state.seat) return []
   const player = state.players[seat]
   if (player.hand.counts[id] !== 4) return []
@@ -637,7 +637,7 @@ export function callAnkan(state: MatchState, seat: number, id: TileId): MatchEve
  *  `replacements` more that left off the tail to backfill the dead wall after a kan. Derived
  *  rather than stored: `liveWall.length` already nets both out, so front-only is what's left
  *  once `replacements` is subtracted back out. What the wall-reveal display greys. */
-export function wallDrawnCount(state: MatchState): number {
+export function wallDrawnCount(state: RoundState): number {
   return state.liveWallSnapshot.length - state.liveWall.length - state.replacements
 }
 
@@ -653,15 +653,15 @@ export function wallDrawnCount(state: MatchState): number {
  * the discard. The turn is then unfinished until `answerClaim` resolves it.
  */
 export function finishTurn(
-  state: MatchState,
-  options: MatchOptions,
+  state: RoundState,
+  options: RoundOptions,
   discard?: { tile: ParsedTile; fromDrawn: boolean },
   declareRiichi = false,
-): MatchEvent[] {
+): RoundEvent[] {
   if (state.ended || state.claim) return []
   const seat = state.seat
   const player = state.players[seat]
-  const events: MatchEvent[] = []
+  const events: RoundEvent[] = []
 
   const forcedTsumogiri = player.riichiAt !== undefined && player.hand.drawn !== undefined
   let tile: ParsedTile | undefined
@@ -674,7 +674,7 @@ export function finishTurn(
     fromDrawn = true
   } else {
     // no explicit discard and not forced tsumogiri: `finishTurn` is being driven mechanically
-    // (a test, `playMatch`'s bare loop, `useFoldingRound.ts`'s own generation) rather than
+    // (a test, `playRound`'s bare loop, `useFoldingRound.ts`'s own generation) rather than
     // through the interactive `discard()` path, which always supplies a tile for a real manual
     // seat's own turn — `goRound` never reaches this function for a manual seat either (it stops
     // at the top of its loop instead). A 'manual' seat caught here anyway still needs *some*
@@ -737,7 +737,7 @@ export function finishTurn(
  *  legality half only, shared by the engine's own declaration and by the UI's riichi button, so
  *  the button can never offer a declaration `finishTurn` would then refuse. Read *after* the
  *  tile has left the hand, since riichi is declared with the discard that reaches tenpai. */
-export function canDeclareRiichi(state: MatchState, options: MatchOptions, seat: number): boolean {
+export function canDeclareRiichi(state: RoundState, options: RoundOptions, seat: number): boolean {
   const player = state.players[seat]
   return (
     options.riichi &&
@@ -762,12 +762,12 @@ export function canDeclareRiichi(state: MatchState, options: MatchOptions, seat:
  * is awarded, so a pon answered early can never outrank a ron the seat order says comes first.
  */
 function resolveReactions(
-  state: MatchState,
-  options: MatchOptions,
+  state: RoundState,
+  options: RoundOptions,
   discarder: number,
   entry: RiverTile,
   answers: Record<number, ClaimAnswer>,
-): MatchEvent[] {
+): RoundEvent[] {
   const tile: ParsedTile = { id: entry.id, red: entry.red }
   const order = seatsFrom(state, discarder)
 
@@ -784,7 +784,7 @@ function resolveReactions(
   }
   state.claim = undefined
 
-  const events: MatchEvent[] = []
+  const events: RoundEvent[] = []
   for (const other of order) {
     const answer = answers[other]
     const wants = isManual(state, other) ? answer?.kind === 'ron' : true
@@ -852,8 +852,8 @@ function resolveReactions(
  *  UI never shows a button that turns out not to be a win. A seat in riichi is offered its ron
  *  and nothing else: it cannot open its hand. */
 export function claimOptions(
-  state: MatchState,
-  options: MatchOptions,
+  state: RoundState,
+  options: RoundOptions,
   seat: number,
   tile: ParsedTile,
   from: number,
@@ -877,10 +877,10 @@ export function claimOptions(
  * pending, so a double-tap on the pass button cannot skip the next seat's question.
  */
 export function answerClaim(
-  state: MatchState,
-  options: MatchOptions,
+  state: RoundState,
+  options: RoundOptions,
   answer: ClaimAnswer,
-): MatchEvent[] {
+): RoundEvent[] {
   const claim = state.claim
   if (!claim) return []
   claim.answers[claim.seat] = answer
@@ -895,7 +895,7 @@ export function answerClaim(
  *  restartable path `answerClaim` itself uses. Never invents a pass — that would set `missedWin`,
  *  poisoning the hand with furiten over a decision the reader never made. A no-op when nothing is
  *  pending. */
-export function reconsiderClaim(state: MatchState, options: MatchOptions): MatchEvent[] {
+export function reconsiderClaim(state: RoundState, options: RoundOptions): RoundEvent[] {
   const claim = state.claim
   if (!claim) return []
   delete claim.answers[claim.seat]
@@ -944,23 +944,23 @@ export function reconsiderClaim(state: MatchState, options: MatchOptions): Match
  * fell short of what it asked for.
  */
 export function replayLog(
-  state: MatchState,
-  options: MatchOptions,
+  state: RoundState,
+  options: RoundOptions,
   log: readonly LogEntry[],
-  onEvent?: (event: MatchEvent) => void,
+  onEvent?: (event: RoundEvent) => void,
 ): number {
   /** Forwards whatever a replayed step really emitted. Restored turns produce the *same* events a
    *  live turn does — that is the point of replaying through the engine rather than patching state
    *  — so a consumer can rebuild from one event stream instead of needing a second path for links
    *  (ADR-0012). Synthesizing these from `LogEntry` was impossible anyway: a logged call carries a
    *  `Call`, not the `Meld` it becomes, and a logged win carries no `WinRecord` at all. */
-  const emit = (events: MatchEvent[]): MatchEvent[] => {
+  const emit = (events: RoundEvent[]): RoundEvent[] => {
     if (onEvent) for (const event of events) onEvent(event)
     return events
   }
   const originalAlgorithms = state.players.map((p) => p.algorithm)
   for (const player of state.players) player.algorithm = 'manual'
-  const replayOptions: MatchOptions = { ...options, claims: true }
+  const replayOptions: RoundOptions = { ...options, claims: true }
   let i = state.log.length
 
   // drains every claim `state` is currently suspended on, feeding each seat's answer from the log
@@ -1092,14 +1092,14 @@ export function replayLog(
 }
 
 /** Seats in claim order starting after `seat` — the order ron and calls are resolved in. */
-function seatsFrom(state: MatchState, seat: number): number[] {
+function seatsFrom(state: RoundState, seat: number): number[] {
   const order: number[] = []
   for (let k = 1; k < state.players.length; k++) order.push((seat + k) % state.players.length)
   return order
 }
 
 /** A win this seat passed up, ignoring furiten — the test for *entering* temporary furiten. */
-function couldHaveWon(state: MatchState, seat: number, tile: TileId): boolean {
+function couldHaveWon(state: RoundState, seat: number, tile: TileId): boolean {
   const player = state.players[seat]
   // same tenpai gate as tryWin, for the same reason
   if (shanten(player.hand) !== 0) return false
@@ -1115,9 +1115,9 @@ function pickTile(player: PlayerState, id: TileId): ParsedTile {
   return { id, red: player.reds.has(id) && player.hand.counts[id] === 1 }
 }
 
-export interface MatchOutcome {
-  state: MatchState
-  events: MatchEvent[]
+export interface RoundOutcome {
+  state: RoundState
+  events: RoundEvent[]
   ended: 'win' | 'exhaustive' | 'stopped'
 }
 
@@ -1132,7 +1132,7 @@ export interface MatchOutcome {
  * has already run, so a caller that wants to refuse a turn has to say so before it starts.
  * `goRound` (`core/table.ts`) passes the manual-seat check through it. Omitted, every seat is
  * played — including a `'manual'` one, which `finishTurn` covers by borrowing `'efficiency'`'s
- * discard; `playMatch` has always relied on that and a baked-in manual check would break it.
+ * discard; `playRound` has always relied on that and a baked-in manual check would break it.
  *
  * The bound is a backstop against a rule bug spinning forever — a hand is ~18 turns. `ended` and
  * `claim` are re-checked each turn rather than trusted from the last one: `beginTurn` can end the
@@ -1144,11 +1144,11 @@ export interface MatchOutcome {
  * (`pendingDraw` only comes back down after the next `finishTurn`). One guard here rather than a
  * copy in each driver that can land mid-turn.
  */
-export function* stepMatch(
-  state: MatchState,
-  options: MatchOptions,
-  canAct?: (state: MatchState) => boolean,
-): Generator<MatchEvent> {
+export function* stepRound(
+  state: RoundState,
+  options: RoundOptions,
+  canAct?: (state: RoundState) => boolean,
+): Generator<RoundEvent> {
   for (let guard = 0; guard < 400; guard++) {
     if (state.ended || state.claim) return
     if (canAct && !canAct(state)) return
@@ -1159,18 +1159,18 @@ export function* stepMatch(
 
 /** Plays `state` out from wherever it stands, accumulating every event. `stop` ends it early —
  *  that is how a generator asks for "the first match that reaches X" without knowing anything
- *  about how a hand is played. Shared by `playMatch` (seeded, dealt fresh) and `playWall` (an
+ *  about how a hand is played. Shared by `playRound` (seeded, dealt fresh) and `playWall` (an
  *  explicit wall, already dealt). Note what `stop` sees: `beginTurn`/`finishTurn` each build their
- *  whole event array before `stepMatch` yields any of it, so by the time a predicate fires on the
+ *  whole event array before `stepRound` yields any of it, so by the time a predicate fires on the
  *  riichi event that turn's discard and reactions have already been applied to `state` — stopping
  *  here never leaves a half-stepped turn behind. */
 function playFrom(
-  state: MatchState,
-  options: MatchOptions,
-  stop?: (event: MatchEvent, state: MatchState) => boolean,
-): MatchOutcome {
-  const events: MatchEvent[] = []
-  for (const event of stepMatch(state, options)) {
+  state: RoundState,
+  options: RoundOptions,
+  stop?: (event: RoundEvent, state: RoundState) => boolean,
+): RoundOutcome {
+  const events: RoundEvent[] = []
+  for (const event of stepRound(state, options)) {
     events.push(event)
     if (stop?.(event, state)) return { state, events, ended: 'stopped' }
   }
@@ -1178,58 +1178,58 @@ function playFrom(
 }
 
 /** Plays a whole hand out from a seeded deal. */
-export function playMatch(
+export function playRound(
   seed: string,
   players: number,
-  options: MatchOptions,
-  stop?: (event: MatchEvent, state: MatchState) => boolean,
-): MatchOutcome {
-  return playFrom(createMatch([], players, options, seed), options, stop)
+  options: RoundOptions,
+  stop?: (event: RoundEvent, state: RoundState) => boolean,
+): RoundOutcome {
+  return playFrom(createRound([], players, options, seed), options, stop)
 }
 
 /** Plays a whole hand out from an explicit wall — the scoring trainer's random-wall search
- *  (ADR-0005): unlike `playMatch`'s seed suffixing, a fresh wall is dealt per attempt by handing in a
+ *  (ADR-0005): unlike `playRound`'s seed suffixing, a fresh wall is dealt per attempt by handing in a
  *  short/empty wall each time, and the wall actually dealt (`outcome.state.wall`) is what gets
  *  shared, not a seed. */
 export function playWall(
   wall: ParsedTile[],
   players: number,
-  options: MatchOptions,
-  stop?: (event: MatchEvent, state: MatchState) => boolean,
-): MatchOutcome {
-  return playFrom(createMatch(wall, players, options), options, stop)
+  options: RoundOptions,
+  stop?: (event: RoundEvent, state: RoundState) => boolean,
+): RoundOutcome {
+  return playFrom(createRound(wall, players, options), options, stop)
 }
 
 /**
  * Replays a seed, then `seed#1`, `seed#2`… until `accept` takes one. Same suffixing the trainers
  * use for restarts, so the accepted attempt's seed alone reproduces the whole match from a URL.
  */
-export function findMatch<T>(
+export function findRound<T>(
   seed: string,
   players: number,
-  options: MatchOptions,
-  accept: (outcome: MatchOutcome) => T | null,
+  options: RoundOptions,
+  accept: (outcome: RoundOutcome) => T | null,
   maxAttempts = 40,
 ): { result: T; seed: string } | null {
   for (let i = 0; i < maxAttempts; i++) {
     const attemptSeed = i === 0 ? seed : `${seed}#${i}`
-    const result = accept(playMatch(attemptSeed, players, options))
+    const result = accept(playRound(attemptSeed, players, options))
     if (result !== null) return { result, seed: attemptSeed }
   }
   return null
 }
 
-/** `findMatch`, yielding between attempts so a trainer can paint a "dealing" state. */
-export async function findMatchAsync<T>(
+/** `findRound`, yielding between attempts so a trainer can paint a "dealing" state. */
+export async function findRoundAsync<T>(
   seed: string,
   players: number,
-  options: MatchOptions,
-  accept: (outcome: MatchOutcome) => T | null,
+  options: RoundOptions,
+  accept: (outcome: RoundOutcome) => T | null,
   maxAttempts = 40,
 ): Promise<{ result: T; seed: string } | null> {
   for (let i = 0; i < maxAttempts; i++) {
     const attemptSeed = i === 0 ? seed : `${seed}#${i}`
-    const result = accept(playMatch(attemptSeed, players, options))
+    const result = accept(playRound(attemptSeed, players, options))
     if (result !== null) return { result, seed: attemptSeed }
     await new Promise((resolve) => setTimeout(resolve, 0))
   }

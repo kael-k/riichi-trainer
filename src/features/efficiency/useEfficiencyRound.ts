@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { NORTH, type MatchOptions } from '../../core/match'
+import { NORTH, type RoundOptions } from '../../core/round'
 import { shanten } from '../../core/shanten'
 import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { splitDrawn } from '../../core/table'
-import { useMatch, type MatchCommand, type MatchEventContext } from '../table/useMatch'
+import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
 import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
 import {
   actionStats,
@@ -22,7 +22,7 @@ export type { TurnResult } from './grade'
 
 /** Options that change how a round plays out; resolved from settings with per-situation
  *  overrides so shared links reproduce exactly. */
-export interface RoundOptions {
+export interface EfficiencyOptions {
   deadWall: boolean
   aka: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
@@ -34,20 +34,20 @@ export interface RoundOptions {
   /** Ask manual seats about other seats' discards (`TableSettings.claims`) — board-wide and
    *  persisted, unlike `seats` itself (ADR-0015). */
   claims: boolean
-  /** The seat panel's "show tenpai/waits" setting — threaded to `useMatch`, which is where the
+  /** The seat panel's "show tenpai/waits" setting — threaded to `useRound`, which is where the
    *  per-seat cost of computing it is actually paid. */
   showSeatWaits: boolean
 }
 
-/** Drives one efficiency round on top of `useMatch`: dealing, replay, opponents and the go-round
+/** Drives one efficiency round on top of `useRound`: dealing, replay, opponents and the go-round
  *  loop all live there — this hook only grades, logs and carries session state
  *  (`cumulativeLost`/`cumulativeTotal`/`lastResult`/the clock) the match layer has no opinion
- *  about. Which seat is graded is decided here and nowhere else: `useMatch` reports every seat's
+ *  about. Which seat is graded is decided here and nowhere else: `useRound` reports every seat's
  *  events and this handler ignores the ones that are not `seatIndex`'s, which is what lets a second
  *  manual seat be *played* without being *scored*. */
 export function useEfficiencyRound(
   situation: Situation,
-  options: RoundOptions,
+  options: EfficiencyOptions,
   timerEnabled: boolean,
 ) {
   const players = options.sanma ? 3 : 4
@@ -59,11 +59,11 @@ export function useEfficiencyRound(
   const seatIndex = linkSeat
   const algorithms = resolveSeatConfig(options.seats, players, seatIndex).modes
   const manualSeats = algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
-  const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
-  const matchOptions: MatchOptions = {
+  const prevalentWind = HONOR + Math.max(0, WINDS.indexOf(situation.round))
+  const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    round,
+    prevalentWind,
     deadWall: options.deadWall,
     // opponents may open their hands and call, but nobody wins: a hand that ended on someone
     // else's tsumo would cut this per-turn drill short on a result the player did not cause
@@ -138,7 +138,7 @@ export function useEfficiencyRound(
     replaying,
     analysis,
     logLength,
-  }: MatchEventContext): MatchCommand {
+  }: RoundEventContext): RoundCommand {
     // a kita/kan is graded when it happens but logged only once its replacement draw is known
     if (event.kind === 'draw') {
       if (replaying || event.seat !== seatIndex || !pending.current) return
@@ -161,11 +161,11 @@ export function useEfficiencyRound(
     // the log as it stood before this decision, so the row's rewind link reproduces the turn
     // rather than the board that already followed it
     const situationBefore = encodeSituation(
-      table.situation(seatIndex, core.match.log.slice(0, logLength)),
+      table.situation(seatIndex, core.round.log.slice(0, logLength)),
     )
     const result = gradeAction(
       actionStats(analysis, kind, tile.id, options.sanma),
-      core.match.turn,
+      core.round.turn,
       options.sanma,
     )
 
@@ -177,13 +177,13 @@ export function useEfficiencyRound(
 
     // a per-turn drill ends at the discard that reaches tenpai, leaving 13 tiles so it reads as
     // finished. Only this seat's own tenpai: an AI seat reaching tenpai plays on
-    if (shanten(core.match.players[seatIndex].hand) <= 0) return { stop: true }
+    if (shanten(core.round.players[seatIndex].hand) <= 0) return { stop: true }
   }
 
-  const table = useMatch({
+  const table = useRound({
     wall: situation.wall,
     players,
-    options: matchOptions,
+    options: roundOptions,
     replay: situation.log,
     showSeatWaits: options.showSeatWaits,
     onEvent,

@@ -1,6 +1,6 @@
 import { evaluateKan, isBestDiscard, type DiscardOption } from '../../core/efficiency'
 import { addTile, createHand, type Hand } from '../../core/hand'
-import { NORTH } from '../../core/match'
+import { NORTH } from '../../core/round'
 import type { TableAnalysis } from '../../core/table'
 import { tileCode, type ParsedTile, type TileId } from '../../core/tiles'
 import type { VerdictSeverity } from '../table/Verdict'
@@ -66,7 +66,7 @@ export function handFromSnapshot(
 
 /** What an efficiency drill needs to know about one action to grade it: the ranking as it stood
  *  before the tile left the hand, plus that action's own entry in it and the best available. Both
- *  efficiency routes build this from a `discard`/`kita`/`ankan` event's `analysis` (`useMatch`) —
+ *  efficiency routes build this from a `discard`/`kita`/`ankan` event's `analysis` (`useRound`) —
  *  it is this trainer's grading vocabulary, not something the match layer knows about. */
 export interface ActionStats {
   kind: TurnResult['kind']

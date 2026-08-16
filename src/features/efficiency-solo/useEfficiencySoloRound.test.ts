@@ -4,12 +4,12 @@ import { parseTenhou } from '../../core/tiles'
 import { INITIAL_HAND_SIZE, wallWithHand } from '../../core/wall'
 import {
   useEfficiencyRound,
-  type RoundOptions as TableRoundOptions,
+  type EfficiencyOptions as TableRoundOptions,
 } from '../efficiency/useEfficiencyRound'
 import { emptySituation } from '../situation/urlCodec'
-import { useEfficiencySoloRound, type RoundOptions } from './useEfficiencySoloRound'
+import { useEfficiencySoloRound, type SoloOptions } from './useEfficiencySoloRound'
 
-const BARE: RoundOptions = { deadWall: false, aka: false, sanma: false }
+const BARE: SoloOptions = { deadWall: false, aka: false, sanma: false }
 const TABLE_BARE: TableRoundOptions = {
   deadWall: false,
   aka: false,

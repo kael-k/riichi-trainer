@@ -13,7 +13,7 @@ import {
 } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
-import { concealedTiles, wallDrawnCount } from '../../core/match'
+import { concealedTiles, wallDrawnCount } from '../../core/round'
 import { HONOR, serializeTenhou } from '../../core/tiles'
 import { INITIAL_HAND_SIZE } from '../../core/wall'
 import { WINDS } from '../situation/urlCodec'
@@ -28,7 +28,7 @@ import { useTableSettings } from '../settings/tableSettings'
 import { ScoreBreakdown } from './ScoreBreakdown'
 import { decodeScoringUrl } from './scoringUrl'
 import { useUrlData } from '../situation/useUrlData'
-import { useScoringRound, type Answer, type RoundOptions } from './useScoringRound'
+import { useScoringRound, type Answer, type ScoringOptions } from './useScoringRound'
 
 const FLAG_KEYS = [
   'riichi',
@@ -113,11 +113,11 @@ export function ScoringPage() {
   const { aka, exactFu } = useAdvancedSettings()
   const { showWall, showOpponentHands } = useTableSettings('scoring')
 
-  // the scoring section supplies the round's options, but a link can pin the rules the match was
+  // the scoring section supplies the round's options, but a link can pin the rules the round was
   // simulated under — without them the same seed would replay into a different hand. exactFu is
   // the advanced-resolved value, not settings.exactFu straight — grading must fall back the same
   // way the display does when Advanced is off
-  const options = useMemo<RoundOptions>(
+  const options = useMemo<ScoringOptions>(
     () => ({
       ...settings,
       exactFu,
@@ -179,7 +179,7 @@ export function ScoringPage() {
   // a ron tile belongs to the discarder's river, where the board rings it; only a tsumo is
   // genuinely a tile you drew. Without the board there is no river to read it from, so it has
   // to sit beside the hand regardless.
-  const showWinTileInHand = ctx.tsumo || !settings.table || !round.match
+  const showWinTileInHand = ctx.tsumo || !settings.table || !round.round
 
   const badge = (text: string) => (
     <span className="rounded bg-neutral-100 px-2 py-0.5 font-medium dark:bg-neutral-800">
@@ -198,7 +198,7 @@ export function ScoringPage() {
   // haitei/houtei is the wall count at zero, ippatsu is the win landing before the declarer's own
   // next discard. A link-pinned or generated hand has no rivers and no wall behind it, so there
   // the badges are the only place those conditions exist and they stay.
-  const tableFlagBadges = round.match
+  const tableFlagBadges = round.round
     ? []
     : FLAG_KEYS.filter((key) => key !== 'riichi' && ctx[key]).map((key) => (
         <span key={key}>{badge(termName('flags', key))}</span>
@@ -207,11 +207,11 @@ export function ScoringPage() {
 
   // the hand was actually played, so the board shows the real thing: every seat's real river,
   // the ronned tile ringed where it truly was discarded, real melds. A link-pinned or fallback
-  // hand has no match behind it and still shows only the winds and the winner's melds.
+  // hand has no round behind it and still shows only the winds and the winner's melds.
   const players = options.sanma ? 3 : 4
   const tableSeatIndex = Math.min(round.seat, players - 1)
-  const seats: SeatView[] = round.match
-    ? round.match.players.map((player, seat) => ({
+  const seats: SeatView[] = round.round
+    ? round.round.players.map((player, seat) => ({
         river: player.river,
         melds: player.melds,
         nuki: player.nuki,
@@ -338,7 +338,7 @@ export function ScoringPage() {
                   id,
                   red: false,
                 }))}
-                wallCount={round.match?.liveWall.length}
+                wallCount={round.round?.liveWall.length}
                 honba={round.situation!.honba}
               >
                 {tableFlagBadges.length > 0 && (
@@ -512,13 +512,13 @@ export function ScoringPage() {
             )
           }
         >
-          {showWall && round.match && (
+          {showWall && round.round && (
             <WallDetails
-              dealt={round.match.wall.slice(0, round.match.players.length * INITIAL_HAND_SIZE)}
-              liveWall={round.match.liveWallSnapshot}
-              liveWallDrawn={wallDrawnCount(round.match)}
-              deadWall={round.match.deadWallSnapshot}
-              replacements={round.match.replacements}
+              dealt={round.round.wall.slice(0, round.round.players.length * INITIAL_HAND_SIZE)}
+              liveWall={round.round.liveWallSnapshot}
+              liveWallDrawn={wallDrawnCount(round.round)}
+              deadWall={round.round.deadWallSnapshot}
+              replacements={round.round.replacements}
             />
           )}
 

@@ -27,7 +27,7 @@ import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { DiscardFeedback } from './DiscardFeedback'
 import { EFFICIENCY_VERDICT_TEXT_KEY, efficiencyVerdictSeverity } from './grade'
-import { NORTH, useEfficiencyRound, type RoundOptions } from './useEfficiencyRound'
+import { NORTH, useEfficiencyRound, type EfficiencyOptions } from './useEfficiencyRound'
 
 /** 1 lost out of 100 available reads as 99% accuracy; no graded choices yet reads as 100%. */
 function accuracy(lost: number, total: number): number {
@@ -59,7 +59,7 @@ export function EfficiencyPage() {
   const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
 
   // situation overrides pin round behavior so shared links reproduce exactly
-  const options = useMemo<RoundOptions>(
+  const options = useMemo<EfficiencyOptions>(
     () => ({
       deadWall: situation.deadWall ?? deadWall,
       aka: situation.aka ?? aka,

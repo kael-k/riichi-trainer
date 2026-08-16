@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { NORTH, type MatchOptions } from '../../core/match'
+import { NORTH, type RoundOptions } from '../../core/round'
 import { shanten } from '../../core/shanten'
 import { splitDrawn } from '../../core/table'
 import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
-import { useMatch, type MatchCommand, type MatchEventContext } from '../table/useMatch'
+import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
 import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
 import {
   actionStats,
@@ -21,29 +21,29 @@ export type { TurnResult } from '../efficiency/grade'
 
 /** Options that change how a round plays out; resolved from settings with per-situation
  *  overrides so shared links reproduce exactly. */
-export interface RoundOptions {
+export interface SoloOptions {
   deadWall: boolean
   aka: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), nukidora. Solo is always one seat regardless. */
   sanma: boolean
 }
 
-/** Drives one solitaire efficiency round on `useMatch` — the table app's own thin hook
+/** Drives one solitaire efficiency round on `useRound` — the table app's own thin hook
  *  (`useEfficiencyRound`) mirrored with exactly three differences: one seat, no calls, no riichi.
  *  Grading and log-row shaping are imported from `features/efficiency/grade`, never re-implemented
  *  here, so a solitaire mistake and a table mistake score identically. */
 export function useEfficiencySoloRound(
   situation: Situation,
-  options: RoundOptions,
+  options: SoloOptions,
   timerEnabled: boolean,
 ) {
   const players = 1
   const seatIndex = 0
-  const round = HONOR + Math.max(0, WINDS.indexOf(situation.round))
-  const matchOptions: MatchOptions = {
+  const prevalentWind = HONOR + Math.max(0, WINDS.indexOf(situation.round))
+  const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    round,
+    prevalentWind,
     deadWall: options.deadWall,
     // nobody else is dealt in, so there is nobody to call or declare from
     calls: false,
@@ -99,7 +99,7 @@ export function useEfficiencySoloRound(
     replaying,
     analysis,
     logLength,
-  }: MatchEventContext): MatchCommand {
+  }: RoundEventContext): RoundCommand {
     // a kita/kan is graded when it happens but logged only once its replacement draw is known
     if (event.kind === 'draw') {
       if (replaying || !pending.current) return
@@ -121,11 +121,11 @@ export function useEfficiencySoloRound(
     // the log as it stood before this decision, so the row's rewind link reproduces the turn
     // rather than the board that already followed it
     const situationBefore = encodeSituation(
-      table.situation(seatIndex, core.match.log.slice(0, logLength)),
+      table.situation(seatIndex, core.round.log.slice(0, logLength)),
     )
     const result = gradeAction(
       actionStats(analysis, kind, tile.id, options.sanma),
-      core.match.turn,
+      core.round.turn,
       options.sanma,
     )
 
@@ -137,15 +137,15 @@ export function useEfficiencySoloRound(
     settle(result, analysis.hand.drawn, tile, situationBefore)
 
     // the drill is one turn at a time: reaching tenpai ends it, leaving 13 tiles so it reads as
-    // finished. Derived here rather than flagged into `useMatch` — where a round stops is this
+    // finished. Derived here rather than flagged into `useRound` — where a round stops is this
     // trainer's business, not the match layer's
-    if (shanten(core.match.players[seatIndex].hand) <= 0) return { stop: true }
+    if (shanten(core.round.players[seatIndex].hand) <= 0) return { stop: true }
   }
 
-  const table = useMatch({
+  const table = useRound({
     wall: situation.wall,
     players,
-    options: matchOptions,
+    options: roundOptions,
     replay: situation.log,
     onEvent,
   })
@@ -223,7 +223,7 @@ export function useEfficiencySoloRound(
     roundAverageTime:
       roundActionCount.current > 0 ? lastChoiceElapsed.current / roundActionCount.current : 0,
     /** Discards by index into `hand`, or `hand.length` for the drawn tile — the page's own
-     *  click target, translated here rather than in `useMatch`, which knows no privileged seat. */
+     *  click target, translated here rather than in `useRound`, which knows no privileged seat. */
     discard: (index: number) => {
       const fromDrawn = index === hand.length
       const tile = fromDrawn ? drawn : hand[index]

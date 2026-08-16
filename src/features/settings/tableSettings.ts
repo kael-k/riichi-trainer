@@ -83,7 +83,7 @@ export interface TableSettings {
   showSeatWaits: boolean
   /** Reveal the live (and, where applicable, dead) wall in draw order. */
   showWall: boolean
-  /** Ask manual seats about pon/chi/ron on other seats' discards (`MatchOptions.claims`). Stays
+  /** Ask manual seats about pon/chi/ron on other seats' discards (`RoundOptions.claims`). Stays
    *  match-wide and persisted (ADR-0015, unlike the per-seat algorithms themselves — see `SeatConfig`)
    *  since it answers a question about the reader, not about the board. Off in the graded drills,
    *  which ask one question per turn; on in the free-play lab. */
@@ -96,7 +96,7 @@ export interface TableSettings {
 export type TableApp = 'efficiency' | 'efficiencySolo' | 'folding' | 'scoring' | 'lab'
 
 /** Shipped defaults per app. `opponentWins` is unread by the efficiency apps — those hardcode
- *  `wins: false` in their `MatchOptions` because ending the hand on someone else's tsumo would
+ *  `wins: false` in their `RoundOptions` because ending the hand on someone else's tsumo would
  *  cut a per-turn drill short — so its default there is documentation, not behaviour. */
 export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
   efficiency: {

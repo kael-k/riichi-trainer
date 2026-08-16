@@ -1,8 +1,8 @@
-import type { LogEntry } from './match'
+import type { LogEntry } from './round'
 import { parseTenhou, tileCode, type TileId } from './tiles'
 
 /**
- * String codec for `MatchState.log` — the format a shared link carries (`log=` param,
+ * String codec for `RoundState.log` — the format a shared link carries (`log=` param,
  * `urlCodec.ts`/`useFoldingRound.ts`). One short, self-delimiting token per entry, concatenated
  * with no separator: an uppercase kind letter that never appears anywhere else in the alphabet
  * this format uses (tile codes are a digit plus a lowercase suit letter, `tileCode`/`parseTenhou`
@@ -63,7 +63,7 @@ function tileAt(s: string, i: number): TileId | undefined {
 /**
  * Decodes `encodeLog`'s output. Untrusted input (a hand-edited or truncated URL): degrades the way
  * `parseTenhou` already does for a bad tile digit — stops at the first token it can't fully read,
- * returning everything decoded so far, rather than throwing. `replayLog` (`match.ts`) is what
+ * returning everything decoded so far, rather than throwing. `replayLog` (`round.ts`) is what
  * actually enforces legality against a live hand; this layer only has to agree on *shape*.
  */
 export function decodeLog(s: string): LogEntry[] {

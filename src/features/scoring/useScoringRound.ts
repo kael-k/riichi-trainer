@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { generateHand, type ScoringSituation } from '../../core/generateHand'
 import {
   playWall,
-  type MatchOptions,
-  type MatchOutcome,
-  type MatchState,
+  type RoundOptions,
+  type RoundOutcome,
+  type RoundState,
   type WinRecord,
-} from '../../core/match'
+} from '../../core/round'
 import { mulberry32 } from '../../core/rng'
 import { scoreHand, type ScoreResult } from '../../core/score'
 import { HONOR, serializeTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
@@ -18,7 +18,7 @@ import { encodeScoringUrl, encodeScoringWallUrl, type ScoringUrl } from './scori
 
 /** The whole scoring settings section, plus the ruleset the round runs under (which a shared
  *  link can pin, so it isn't a plain setting) and the global red-fives toggle. */
-export type RoundOptions = Settings['scoring'] & { sanma: boolean; aka: boolean }
+export type ScoringOptions = Settings['scoring'] & { sanma: boolean; aka: boolean }
 
 export interface Answer {
   han?: number
@@ -43,17 +43,17 @@ export interface RoundResult {
 interface State {
   situation: ScoringSituation
   /** The hand that was actually played out, for the table. Null for a link-pinned hand and for
-   *  the constructive fallback — neither has a match behind it. */
-  match: MatchState | null
+   *  the constructive fallback — neither has a round behind it. */
+  round: RoundState | null
   /** Seat that won; the table seats the player there. */
   seat: number
-  /** Wall that reproduces this exact match, for the share link (ADR-0005) — replaces the old
+  /** Wall that reproduces this exact round, for the share link (ADR-0005) — replaces the old
    *  seed-based record, which searched seed suffixes rather than random walls. */
-  matchWall: ParsedTile[] | null
+  roundWall: ParsedTile[] | null
   actual: ScoreResult
   checked: boolean
   lastResult: RoundResult | null
-  /** Searching for a match. The board is not up yet, and the clock has not started. */
+  /** Searching for a round. The board is not up yet, and the clock has not started. */
   loading: boolean
   /** The URL pinned a hand (or wall) with no legal win — a generated hand is shown instead, and
    *  the page says so rather than silently swapping it. */
@@ -62,28 +62,28 @@ interface State {
 
 const MAX_ATTEMPTS = 40
 
-function scoreSituation(situation: ScoringSituation, options: RoundOptions): ScoreResult | null {
+function scoreSituation(situation: ScoringSituation, options: ScoringOptions): ScoreResult | null {
   return scoreHand({
     ...situation,
     rules: { kiriageMangan: options.kiriageMangan, honba: situation.honba, sanma: options.sanma },
   })
 }
 
-/** The board's own draw-order content, standing in for the seed a wall-based match no longer
- *  carries (ADR-0005) — the same wall always hashes to the same key, which is what lets `matchOptions`
+/** The board's own draw-order content, standing in for the seed a wall-based round no longer
+ *  carries (ADR-0005) — the same wall always hashes to the same key, which is what lets `roundOptions`
  *  and `situationFromWin` reproduce the same round wind and honba roll from the wall alone. */
 function wallKey(wall: ParsedTile[]): string {
   return serializeTenhouOrdered(wall)
 }
 
-function matchOptions(wall: ParsedTile[], options: RoundOptions): MatchOptions {
+function roundOptions(wall: ParsedTile[], options: ScoringOptions): RoundOptions {
   const rng = mulberry32(`${wallKey(wall)}:round`)
   return {
     sanma: options.sanma,
     aka: options.aka,
     // the round wind is part of the drill (it decides which wind pairs are yakuhai), so it
     // varies per hand — derived from the wall itself, like everything else about the round
-    round: HONOR + Math.floor(rng() * 4),
+    prevalentWind: HONOR + Math.floor(rng() * 4),
     deadWall: true,
     calls: options.openHands,
     riichi: true,
@@ -94,7 +94,7 @@ function matchOptions(wall: ParsedTile[], options: RoundOptions): MatchOptions {
 function situationFromWin(
   win: WinRecord,
   wall: ParsedTile[],
-  options: RoundOptions,
+  options: ScoringOptions,
 ): ScoringSituation {
   // matches play a single hand, so there is no honba to inherit — it stays a wall-seeded extra
   // the setting adds on top, exactly as the constructive generator did
@@ -112,29 +112,29 @@ function situationFromWin(
 }
 
 /** Deals a fresh random wall (ADR-0005: generation via random walls, not seed suffixes) and plays it
- *  out, until `accept` takes one — `findMatchAsync`'s shape (capped attempts, yielding between
+ *  out, until `accept` takes one — `findRoundAsync`'s shape (capped attempts, yielding between
  *  them), but each attempt is an independently random wall rather than a seed suffix, since walls
  *  are no longer named by a seed. */
 async function findWall(
   players: number,
-  options: RoundOptions,
-  accept: (outcome: MatchOutcome) => WinRecord | null,
+  options: ScoringOptions,
+  accept: (outcome: RoundOutcome) => WinRecord | null,
   maxAttempts = MAX_ATTEMPTS,
-): Promise<{ win: WinRecord; wall: ParsedTile[]; match: MatchState } | null> {
+): Promise<{ win: WinRecord; wall: ParsedTile[]; round: RoundState } | null> {
   for (let i = 0; i < maxAttempts; i++) {
     const wall = completeWall([], options.sanma, options.aka)
-    const outcome = playWall(wall, players, matchOptions(wall, options))
+    const outcome = playWall(wall, players, roundOptions(wall, options))
     const win = accept(outcome)
-    if (win) return { win, wall, match: outcome.state }
+    if (win) return { win, wall, round: outcome.state }
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
   return null
 }
 
-/** Drives one hand of the scoring trainer: deal a match, answer, check, repeat. Unlike the
+/** Drives one hand of the scoring trainer: deal a round, answer, check, repeat. Unlike the
  *  shanten trainer's auto-advancing stream, `check` deliberately stops and waits for `next` —
  *  the feedback here (yaku list, fu breakdown) needs to be read, not just glanced at. */
-export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
+export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
   const [handIndex, setHandIndex] = useState(0)
   // handIndex is per-mount state that counts "next hand" presses, but a link (or a rewind out of
   // the log) already names one exact hand — carrying a stale index into it would deal a different
@@ -150,11 +150,11 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
   const log = useLog((s) => s.log)
   // a resolution that arrives after the seed moved on belongs to a hand nobody is looking at
   const request = useRef(0)
-  // the wall/match/invalidLink a pending win came from — stashed immediately before invoking
+  // the wall/round/invalidLink a pending win came from — stashed immediately before invoking
   // `onAgariCall` below, whose signature carries only the WinRecord itself
-  const pending = useRef<{ wall: ParsedTile[]; match: MatchState | null; invalidLink: boolean }>({
+  const pending = useRef<{ wall: ParsedTile[]; round: RoundState | null; invalidLink: boolean }>({
     wall: [],
-    match: null,
+    round: null,
     invalidLink: false,
   })
 
@@ -162,9 +162,9 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     const situation = generateHand(seed, options)
     return {
       situation,
-      match: null,
+      round: null,
       seat: situation.ctx.seat - HONOR,
-      matchWall: null,
+      roundWall: null,
       // generateHand only ever returns a scoreable situation, so this is non-null
       actual: scoreSituation(situation, options)!,
       checked: false,
@@ -174,18 +174,18 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     }
   }
 
-  // scoring never re-touches its match after generation (ADR-0012): it plays a wall out with
-  // `playWall`, keeps the win, and never steps that match again — so it is the one board-rendering
-  // trainer that does not drive `useMatch` at all, and `<Table>` here is purely presentational.
+  // scoring never re-touches its round after generation (ADR-0012): it plays a wall out with
+  // `playWall`, keeps the win, and never steps that round again — so it is the one board-rendering
+  // trainer that does not drive `useRound` at all, and `<Table>` here is purely presentational.
   // This is its single entry point; nothing else in this hook reads `outcome.state.win` directly.
   const onAgariCall = (win: WinRecord) => {
-    const { wall, match, invalidLink } = pending.current
+    const { wall, round, invalidLink } = pending.current
     const situation = situationFromWin(win, wall, options)
     setState((prev) => ({
       situation,
-      match,
+      round,
       seat: win.seat,
-      matchWall: wall,
+      roundWall: wall,
       actual: scoreSituation(situation, options)!,
       checked: false,
       lastResult: prev?.lastResult ?? null,
@@ -202,9 +202,9 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
       stats.startClock()
       setState((prev) => ({
         situation: pinned,
-        match: null,
+        round: null,
         seat: pinned.ctx.seat - HONOR,
-        matchWall: null,
+        roundWall: null,
         actual: pinnedScore,
         checked: false,
         lastResult: prev?.lastResult ?? null,
@@ -218,10 +218,10 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     const fallbackSeed = `${stats.randomSeed}:${handIndex}`
 
     if (urlData.wall.length > 0) {
-      const outcome = playWall(urlData.wall, players, matchOptions(urlData.wall, options))
+      const outcome = playWall(urlData.wall, players, roundOptions(urlData.wall, options))
       if (outcome.state.win) {
         stats.startClock()
-        pending.current = { wall: urlData.wall, match: outcome.state, invalidLink: pinned !== null }
+        pending.current = { wall: urlData.wall, round: outcome.state, invalidLink: pinned !== null }
         onAgariCall(outcome.state.win)
         return
       }
@@ -244,7 +244,7 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
       }
       pending.current = {
         wall: found.wall,
-        match: found.match,
+        round: found.round,
         invalidLink: urlData.wall.length > 0 || pinned !== null,
       }
       onAgariCall(found.win)
@@ -260,12 +260,12 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     options.kiriageMangan,
   ])
 
-  /** Current hand as a shareable query string. A match reproduces from its wall, rivers and all,
-   *  so that is the better link; a pinned or constructed hand has no match behind it and ships
+  /** Current hand as a shareable query string. A round reproduces from its wall, rivers and all,
+   *  so that is the better link; a pinned or constructed hand has no round behind it and ships
    *  its tiles instead. */
   function situationQuery(): string {
-    return state?.matchWall
-      ? encodeScoringWallUrl(state.matchWall, options)
+    return state?.roundWall
+      ? encodeScoringWallUrl(state.roundWall, options)
       : state
         ? encodeScoringUrl(state.situation, options.sanma)
         : ''
@@ -326,7 +326,7 @@ export function useScoringRound(urlData: ScoringUrl, options: RoundOptions) {
     // undefined only while the search is running; the page shows a dealing state instead
     situation: state?.situation,
     actual: state?.actual,
-    match: state?.match ?? null,
+    round: state?.round ?? null,
     seat: state?.seat ?? 0,
     elapsedNow: stats.elapsedNow,
     /** Whether the clock is ticking: a board is up, unanswered and unpaused. */
