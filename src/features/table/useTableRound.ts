@@ -332,7 +332,6 @@ export function useTableRound(input: TableRoundInput) {
     input.options.calls,
     input.options.riichi,
     input.options.wins,
-    input.options.claims,
     restartCount,
   ])
 
@@ -347,12 +346,21 @@ export function useTableRound(input: TableRoundInput) {
   // through the restartable path `answerClaim` itself uses (`reconsiderClaim`). Never
   // auto-passed: a pass sets `missedWin`, so a dropdown must never poison the hand with furiten by
   // declining a ron on the reader's behalf.
+  //
+  // `claims` rides along here rather than in the rebuild effect's deps for the same reason
+  // (ADR-0008, ADR-0015): it answers a question about the reader ("do I want to be offered
+  // pon/chi/ron"), not about the board, so toggling it must leave the hand and the wall exactly
+  // as they stand — it used to redeal. `c.options` is the object `createMatch` was handed, while
+  // `input.options` is rebuilt from settings on every render, so the flag is copied across rather
+  // than read through. A claim already on screen is deliberately left answerable: re-resolving it
+  // under `claims: false` would drop its ron entry (`claimOptions` returns `[]`) and quietly cost
+  // the reader a win they were mid-way through taking.
   useEffect(() => {
     const c = core.current
-    const algorithms = input.options.algorithms
-    if (!c || !algorithms || c.match.ended) return
-    let changed = false
-    algorithms.forEach((algorithm, seat) => {
+    if (!c || c.match.ended) return
+    let changed = c.options.claims !== input.options.claims
+    c.options.claims = input.options.claims
+    input.options.algorithms?.forEach((algorithm, seat) => {
       const player = c.match.players[seat]
       if (player && player.algorithm !== algorithm) {
         player.algorithm = algorithm
@@ -378,7 +386,7 @@ export function useTableRound(input: TableRoundInput) {
     fireDraw(c)
     setSnapshot(snapshotTable(c, input.showSeatWaits))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [algorithmsKey])
+  }, [algorithmsKey, input.options.claims])
 
   // `showSeatWaits` alone must not run the rebuild effect above (that would redeal the match) —
   // this re-snapshots the board exactly as it stands instead, which is what makes toggling the

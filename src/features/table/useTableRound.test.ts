@@ -391,4 +391,44 @@ describe('live algorithm changes (ADR-0008)', () => {
     expect(result.current.win?.seat).toBe(1)
     expect(result.current.ended).toBe('win')
   })
+
+  // `claims` is a reader preference (ADR-0015), so ADR-0008 binds it too: it used to sit in the
+  // rebuild effect's deps, where toggling the seat panel's checkbox redealt the board out from
+  // under the hand in progress.
+  it('toggling claims mid-hand leaves the hand exactly as it stands', () => {
+    const seat0Hand = parseTenhou('2468m2468p9s2345z')
+    const seat1Hand = parseTenhou('1133557799m11p9s')
+    const wall = completeWall([...seat0Hand, ...seat1Hand], false, false, 'live-claims-seed')
+    const options: MatchOptions = {
+      sanma: false,
+      aka: false,
+      round: HONOR,
+      deadWall: false,
+      calls: false,
+      riichi: false,
+      wins: true,
+      claims: true,
+      algorithms: ['manual', 'manual', 'efficiency', 'efficiency'],
+    }
+    const { result, rerender } = renderHook(
+      (props: { options: MatchOptions }) =>
+        useTableRound({ wall, players: 4, seatIndex: 0, options: props.options }),
+      { initialProps: { options } },
+    )
+
+    const nineSou = result.current.hand.findIndex((t) => t.id === SOU + 8)
+    act(() => result.current.discard(nineSou))
+    const { turn, rivers, liveWall } = result.current
+    expect(result.current.claim?.seat).toBe(1)
+
+    rerender({ options: { ...options, claims: false } })
+
+    // the board is untouched: before the fix this rebuilt the match and the river emptied
+    expect(result.current.turn).toBe(turn)
+    expect(result.current.rivers).toEqual(rivers)
+    expect(result.current.liveWall).toEqual(liveWall)
+    // and a prompt already on screen stays answerable — re-resolving it under `claims: false`
+    // would drop its ron entry (`claimOptions` returns `[]`) and cost seat 1 a win mid-decision
+    expect(result.current.claim?.seat).toBe(1)
+  })
 })
