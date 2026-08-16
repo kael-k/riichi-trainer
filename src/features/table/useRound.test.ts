@@ -3,10 +3,11 @@ import { createElement, StrictMode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { evaluateDiscards } from '../../core/efficiency'
+import { createMatch } from '../../core/match'
 import { shanten } from '../../core/shanten'
 import { type LogEntry, type RoundEvent, type RoundOptions } from '../../core/round'
 import { splitDrawn } from '../../core/table'
-import { HONOR, parseTenhou, SOU, type ParsedTile } from '../../core/tiles'
+import { parseTenhou, SOU, type ParsedTile } from '../../core/tiles'
 import { completeWall, wallWithHand } from '../../core/wall'
 import { useRound, type RoundCommand, type RoundEventContext } from './useRound'
 
@@ -26,7 +27,7 @@ vi.mock('../../core/danger', async (importOriginal) => {
 const BARE: RoundOptions = {
   sanma: false,
   aka: false,
-  prevalentWind: HONOR,
+  match: createMatch(false),
   deadWall: false,
   calls: false,
   riichi: false,

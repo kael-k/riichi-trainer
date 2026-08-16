@@ -1,19 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { decodeLog, encodeLog } from './actionLog'
+import { createMatch } from './match'
 import { playRound, type LogEntry, type RoundOptions } from './round'
-import { HONOR, MAN, PIN, SOU } from './tiles'
+import { MAN, PIN, SOU } from './tiles'
 
 const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  prevalentWind: HONOR,
+  match: createMatch(false),
   deadWall: true,
   calls: true,
   riichi: true,
   wins: true,
 }
 
-const SANMA: RoundOptions = { ...YONMA, sanma: true }
+const SANMA: RoundOptions = { ...YONMA, sanma: true, match: createMatch(true) }
 
 describe('encodeLog / decodeLog', () => {
   it('round-trips an empty log', () => {

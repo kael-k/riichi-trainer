@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ALGORITHMS, type Algorithm, type SeatView } from './algorithm'
 import { createHand, handFromTenhou } from './hand'
+import { createMatch } from './match'
 import { HONOR, NUM_TILE_TYPES, parseTenhou } from './tiles'
 
 // `defense` declining a legal win is already covered end-to-end by
@@ -18,13 +19,14 @@ function baseView(overrides: Partial<SeatView> = {}): SeatView {
     riichi: false,
     nuki: 0,
     players: [],
-    round: HONOR,
+    prevalentWind: HONOR,
     seatWind: HONOR,
     dealer: true,
     turn: 1,
     wallLeft: 70,
     doraIndicators: [],
     sanma: true,
+    match: createMatch(true),
     seen: new Uint8Array(NUM_TILE_TYPES),
     threats: [],
     furiten: false,

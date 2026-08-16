@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { assessDiscards, type SafetyTier, type ThreatView, type TileDanger } from './danger'
 import { handFromTenhou } from './hand'
+import { createMatch } from './match'
 import { beginTurn, createRound, finishTurn, type RoundOptions, type RoundState } from './round'
 import { isFuriten, waits } from './policy'
 import { HONOR, MAN, NUM_TILE_TYPES, parseTenhou, PIN, SOU, type TileId } from './tiles'
@@ -271,7 +272,7 @@ describe('the ranking itself', () => {
 const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  prevalentWind: HONOR,
+  match: createMatch(false),
   deadWall: true,
   calls: true,
   riichi: true,

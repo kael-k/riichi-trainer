@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { assessDiscards } from './danger'
 import { evaluateDiscards } from './efficiency'
+import { createMatch } from './match'
 import { beginTurn, createRound, finishTurn, type RoundOptions } from './round'
 import type { SeatAlgorithm } from './policy'
-import { HONOR, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
+import { NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
 import {
   actingSeat,
   analysisOf,
@@ -29,7 +30,7 @@ vi.mock('./danger', async (importOriginal) => {
 const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  prevalentWind: HONOR,
+  match: createMatch(false),
   deadWall: true,
   calls: true,
   riichi: true,

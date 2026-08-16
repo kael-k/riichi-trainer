@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { generateHand, type ScoringSituation } from '../../core/generateHand'
+import { createMatch } from '../../core/match'
 import {
   playWall,
   type RoundOptions,
@@ -83,7 +84,7 @@ function roundOptions(wall: ParsedTile[], options: ScoringOptions): RoundOptions
     aka: options.aka,
     // the round wind is part of the drill (it decides which wind pairs are yakuhai), so it
     // varies per hand — derived from the wall itself, like everything else about the round
-    prevalentWind: HONOR + Math.floor(rng() * 4),
+    match: createMatch(options.sanma, { prevalentWind: HONOR + Math.floor(rng() * 4) }),
     deadWall: true,
     calls: options.openHands,
     riichi: true,

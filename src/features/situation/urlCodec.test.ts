@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { handFromTenhou } from '../../core/hand'
+import { createMatch } from '../../core/match'
 import { createRound, type LogEntry, type RoundOptions } from '../../core/round'
 import { HONOR, PIN, parseTenhou, serializeTenhouOrdered } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
@@ -14,7 +15,7 @@ import {
 const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  prevalentWind: HONOR,
+  match: createMatch(false),
   deadWall: true,
   calls: true,
   riichi: true,

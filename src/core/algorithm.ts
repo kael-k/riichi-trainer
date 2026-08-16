@@ -2,6 +2,7 @@ import type { Meld } from './agari'
 import type { ThreatView } from './danger'
 import { evaluateDiscards, isBestDiscard } from './efficiency'
 import type { Hand } from './hand'
+import type { MatchState } from './match'
 import { chooseCall, chooseDiscard, chooseFold, type Call, type SeatAlgorithm } from './policy'
 import type { ScoreResult } from './score'
 import { HONOR, type ParsedTile, type RiverTile, type TileId } from './tiles'
@@ -48,7 +49,7 @@ export interface SeatView {
   }[]
 
   /** Board. */
-  readonly round: TileId
+  readonly prevalentWind: TileId
   readonly seatWind: TileId
   /** Whether this seat is the dealer this hand — `seatWind === HONOR`, free off `seatWind`
    *  itself, added so no algorithm has to re-derive it. */
@@ -57,6 +58,11 @@ export interface SeatView {
   readonly wallLeft: number
   readonly doraIndicators: readonly ParsedTile[]
   readonly sanma: boolean
+  /** Points, honba, riichi sticks, dealer seat, which round — the match this round sits inside.
+   *  Live, not carry-in: a riichi declaration mid-round mutates `points`/`riichiSticks`, and this
+   *  is the same object `RoundState.match` holds, not a snapshot taken at deal time. Nothing in
+   *  this wave reads it — it exists so a future algorithm (EV) has somewhere real to. */
+  readonly match: MatchState
 
   readonly seen: Uint8Array
   readonly threats: readonly ThreatView[]
@@ -107,7 +113,7 @@ const efficiency: Algorithm = {
     return { tile, fromDrawn: tile === view.drawn?.id }
   },
   call: (view, tile, fromKamicha) =>
-    chooseCall(view.hand, view.melds, tile, fromKamicha, view.round, view.seatWind),
+    chooseCall(view.hand, view.melds, tile, fromKamicha, view.prevalentWind, view.seatWind),
   riichi: () => true,
   win: () => true,
   // pulls whenever north's own `evaluateDiscards` entry ties the best discard on offer — the same

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { createMatch } from './match'
 import { playRound, type RoundEvent, type RoundOptions } from './round'
-import { HONOR } from './tiles'
 
 /**
  * Regression net for the seat-algorithm refactor (PLAN-seat-algorithms.md). Every seeded match's
@@ -12,14 +12,14 @@ import { HONOR } from './tiles'
 const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  prevalentWind: HONOR,
+  match: createMatch(false),
   deadWall: true,
   calls: true,
   riichi: true,
   wins: true,
 }
 
-const SANMA: RoundOptions = { ...YONMA, sanma: true }
+const SANMA: RoundOptions = { ...YONMA, sanma: true, match: createMatch(true) }
 
 function serialize(events: RoundEvent[]): string {
   return events

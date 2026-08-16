@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { createMatch } from '../../core/match'
 import { playWall } from '../../core/round'
 import { mulberry32 } from '../../core/rng'
 import { HONOR, parseTenhou, PIN, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
@@ -277,7 +278,7 @@ function hasWin(wall: ParsedTile[]): boolean {
   const outcome = playWall(wall, 4, {
     sanma: FULL.sanma,
     aka: FULL.aka,
-    prevalentWind,
+    match: createMatch(FULL.sanma, { prevalentWind }),
     deadWall: true,
     calls: FULL.openHands,
     riichi: true,

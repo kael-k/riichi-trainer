@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createMatch } from '../../core/match'
 import { NORTH, type RoundOptions } from '../../core/round'
 import { shanten } from '../../core/shanten'
 import { splitDrawn } from '../../core/table'
@@ -43,7 +44,7 @@ export function useEfficiencySoloRound(
   const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    prevalentWind,
+    match: createMatch(options.sanma, { prevalentWind }),
     deadWall: options.deadWall,
     // nobody else is dealt in, so there is nobody to call or declare from
     calls: false,

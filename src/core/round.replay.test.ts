@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { tileCount } from './hand'
+import { createMatch } from './match'
 import {
   answerClaim,
   beginTurn,
@@ -14,7 +15,7 @@ import {
   type RoundState,
 } from './round'
 import type { SeatAlgorithm } from './policy'
-import { HONOR, MAN, parseTenhou, SOU } from './tiles'
+import { MAN, parseTenhou, SOU } from './tiles'
 import { INITIAL_HAND_SIZE, wallWithHand } from './wall'
 
 /**
@@ -33,14 +34,14 @@ function manual(...seats: number[]): SeatAlgorithm[] {
 const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  prevalentWind: HONOR,
+  match: createMatch(false),
   deadWall: true,
   calls: true,
   riichi: true,
   wins: true,
 }
 
-const SANMA: RoundOptions = { ...YONMA, sanma: true }
+const SANMA: RoundOptions = { ...YONMA, sanma: true, match: createMatch(true) }
 
 /** Everything about a match that matters for "is this the same board" — hands, melds, rivers,
  *  riichi/furiten state, dora, whose turn it is, whether it ended and how. Deliberately excludes

@@ -321,7 +321,7 @@ export function useRound(input: UseRoundInput) {
     input.players,
     input.options.sanma,
     input.options.aka,
-    input.options.prevalentWind,
+    input.options.match.prevalentWind,
     input.options.deadWall,
     input.options.calls,
     input.options.riichi,
@@ -444,7 +444,7 @@ export function useRound(input: UseRoundInput) {
     return {
       wall: c ? [...c.round.wall] : [...input.wall],
       log: [...(log ?? c?.round.log ?? [])],
-      round: WINDS[input.options.prevalentWind - HONOR] ?? 'E',
+      round: WINDS[input.options.match.prevalentWind - HONOR] ?? 'E',
       seat: WINDS[seatIndex] ?? 'E',
       deadWall: input.options.deadWall,
       aka: input.options.aka,

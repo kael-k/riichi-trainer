@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from './danger'
 import { handFromTenhou, removeTile, tileCount } from './hand'
+import { createMatch } from './match'
 import {
   answerClaim,
   beginTurn,
@@ -22,7 +23,7 @@ import {
 } from './round'
 import type { SeatAlgorithm } from './policy'
 import { scoreHand } from './score'
-import { HONOR, inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
+import { inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
 import { INITIAL_HAND_SIZE, TILES_PER_KIND, wallWithHand } from './wall'
 
 /** `RoundOptions.algorithms` naming just the manual seats — every other seat defaults to
@@ -36,14 +37,14 @@ function manual(...seats: number[]): SeatAlgorithm[] {
 const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
-  prevalentWind: HONOR,
+  match: createMatch(false),
   deadWall: true,
   calls: true,
   riichi: true,
   wins: true,
 }
 
-const SANMA: RoundOptions = { ...YONMA, sanma: true }
+const SANMA: RoundOptions = { ...YONMA, sanma: true, match: createMatch(true) }
 
 /** Every copy of every kind has to be somewhere, exactly once — the invariant that catches
  *  almost any bookkeeping slip in the simulator. */

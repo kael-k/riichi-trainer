@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
+import { createMatch } from '../../core/match'
 import type { RoundOptions } from '../../core/round'
 import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
@@ -65,7 +66,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
   const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    prevalentWind,
+    match: createMatch(options.sanma, { prevalentWind }),
     deadWall: options.deadWall,
     calls: true,
     riichi: true,

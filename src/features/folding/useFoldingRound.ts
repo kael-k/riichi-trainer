@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { decodeLog, encodeLog } from '../../core/actionLog'
 import { dangerScore, type TileDanger } from '../../core/danger'
+import { createMatch } from '../../core/match'
 import {
   beginTurn,
   concealedTiles,
@@ -212,7 +213,7 @@ function roundOptions(wall: ParsedTile[], options: BoardOptions): RoundOptions {
     ...RULES,
     sanma: options.sanma,
     wins: options.wins,
-    prevalentWind: HONOR + Math.floor(rng() * 4),
+    match: createMatch(options.sanma, { prevalentWind: HONOR + Math.floor(rng() * 4) }),
   }
 }
 
@@ -434,7 +435,7 @@ const IDLE: RoundOptions = {
   ...RULES,
   sanma: false,
   wins: false,
-  prevalentWind: HONOR,
+  match: createMatch(false),
   algorithms: ['manual'],
 }
 const NO_WALL: ParsedTile[] = []
@@ -700,7 +701,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     seatIndex,
     acting,
     drawnSeat: snapshot?.drawn?.seat,
-    round: round?.options.prevalentWind ?? HONOR,
+    round: round?.options.match.prevalentWind ?? HONOR,
     /** Seats currently threatening — everyone in riichi. Grows if someone else declares. */
     threatSeats: match ? riichiSeats(match) : [],
     lastResult,

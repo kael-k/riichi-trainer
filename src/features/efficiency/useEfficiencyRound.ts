@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createMatch } from '../../core/match'
 import { NORTH, type RoundOptions } from '../../core/round'
 import { shanten } from '../../core/shanten'
 import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
@@ -63,7 +64,7 @@ export function useEfficiencyRound(
   const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    prevalentWind,
+    match: createMatch(options.sanma, { prevalentWind }),
     deadWall: options.deadWall,
     // opponents may open their hands and call, but nobody wins: a hand that ended on someone
     // else's tsumo would cut this per-turn drill short on a result the player did not cause

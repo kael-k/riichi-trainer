@@ -2,6 +2,7 @@ import { decompose, type Meld } from './agari'
 import { ALGORITHMS, type SeatView, type WinCandidate } from './algorithm'
 import type { ThreatView } from './danger'
 import { addTile, createHand, removeTile, type Hand } from './hand'
+import type { MatchState } from './match'
 import { availableCalls, isFuriten, waits, type Call, type SeatAlgorithm } from './policy'
 import { scoreHand, type ScoreResult } from './score'
 import { shanten } from './shanten'
@@ -35,8 +36,12 @@ export const NORTH: TileId = HONOR + 3
 export interface RoundOptions {
   sanma: boolean
   aka: boolean
-  /** Prevalent (round) wind as an honour tile id (`HONOR` = East). */
-  prevalentWind: TileId
+  /** The match this round sits inside — prevalent wind, dealer seat, points, honba, riichi
+   *  sticks, which round it is. Carry-in only: nothing here steps between rounds, no dealer
+   *  rotation, no honba increment, no settlement. A round's own riichi declarations do mutate
+   *  `points`/`riichiSticks` on the copy `createRound` takes (T4) — the caller's own object is
+   *  never written back to. */
+  match: MatchState
   /** Reserve a dead wall and flip a dora indicator. */
   deadWall: boolean
   /** Let the AI call pon/chi. */
@@ -165,6 +170,10 @@ export type LogEntry =
   | { kind: 'win'; seat: number; from?: number }
 
 export interface RoundState {
+  /** A copy of `RoundOptions.match`, taken once by `createRound` — the caller's own object is
+   *  never written back to. Mutated within the round by a riichi declaration (T4); nothing here
+   *  sequences to a next round. */
+  match: MatchState
   players: PlayerState[]
   /** The complete wall this match dealt from, in draw order: each seat's 13 starting tiles, then
    *  the live draws, then the trailing 14 tiles the dead wall is cut from (dora indicator first).
@@ -269,6 +278,7 @@ export function createRound(
   for (const indicator of doraIndicators) visible[indicator.id]++
 
   const state: RoundState = {
+    match: { ...options.match, points: [...options.match.points] },
     players: Array.from({ length: players }, (_, seat) => createPlayer(options.algorithms?.[seat])),
     wall: full,
     liveWall: dealable,
@@ -404,13 +414,14 @@ function seatView(state: RoundState, options: RoundOptions, seat: number): SeatV
       riichi: p.riichiAt !== undefined,
       nuki: p.nuki.length,
     })),
-    round: options.prevalentWind,
-    seatWind: HONOR + seat,
-    dealer: seat === 0,
+    prevalentWind: state.match.prevalentWind,
+    seatWind: HONOR + ((seat - state.match.dealer + state.players.length) % state.players.length),
+    dealer: seat === state.match.dealer,
     turn: state.turn,
     wallLeft: state.liveWall.length,
     doraIndicators: state.doraIndicators,
     sanma: options.sanma,
+    match: state.match,
     get seen() {
       return (seenCache ??= seenBy(state, player))
     },
@@ -424,19 +435,13 @@ function seatView(state: RoundState, options: RoundOptions, seat: number): SeatV
   }
 }
 
-function buildContext(
-  state: RoundState,
-  seat: number,
-  options: RoundOptions,
-  winTile: TileId,
-  tsumo: boolean,
-): WinContext {
+function buildContext(state: RoundState, seat: number, winTile: TileId, tsumo: boolean): WinContext {
   const player = state.players[seat]
   const riichi = player.riichiAt !== undefined
   const double = riichi && player.riichiTurn === 1
   return {
-    round: options.prevalentWind,
-    seat: HONOR + seat,
+    round: state.match.prevalentWind,
+    seat: HONOR + ((seat - state.match.dealer + state.players.length) % state.players.length),
     tsumo,
     riichi: riichi && !double,
     doubleRiichi: double,
@@ -487,7 +492,7 @@ function tryWin(
     return null
   }
 
-  const ctx = buildContext(state, seat, options, tile.id, tsumo)
+  const ctx = buildContext(state, seat, tile.id, tsumo)
   const uraIndicators =
     ctx.riichi || ctx.doubleRiichi
       ? state.uraStack.slice(0, state.doraIndicators.length).map((t) => t.id)
@@ -499,7 +504,7 @@ function tryWin(
     doraIndicators: state.doraIndicators.map((t) => t.id),
     uraIndicators,
     kita: player.nuki.length,
-    rules: { kiriageMangan: false, honba: 0, sanma: options.sanma },
+    rules: { kiriageMangan: false, honba: state.match.honba, sanma: options.sanma },
   })
   if (!score) return null
 
@@ -882,7 +887,7 @@ function resolveReactions(
   }
 
   state.seat = (discarder + 1) % state.players.length
-  if (state.seat === 0) state.turn++
+  if (state.seat === state.match.dealer) state.turn++
   return events
 }
 
