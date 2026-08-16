@@ -96,6 +96,13 @@ Both re-verified present in the current tree:
 
 ### Maintenance notes
 
+- **`useFoldingRound.test.ts`'s "next() deals a different hand" is flaky** — seen failing roughly
+  once in six full runs, green on ~10 consecutive runs of the file alone. `loading` is
+  `!failed && (searching || …)`, so a generation that exhausts its attempt budget clears `loading`
+  while leaving the *previous* round in state; the test's `waitFor(loading === false)` then
+  compares an unchanged hand against itself. The product path is fine — `FoldingPage` renders
+  `folding.noHand` on `failed` — so this is a test that reads one signal for two states, not a bug
+  in the trainer. Fix by asserting on `failed` as well, if it becomes annoying.
 - **`useEfficiencyRound.ts` and `useEfficiencySoloRound.ts` are ~150 near-verbatim duplicate
   lines** (`recordChoice`, `writeRows`, `logReplay`, both effects, the `finished`/`tenpai`
   derivation, the return object) differing only in `players`/`calls`/`riichi`. Deliberate for now
