@@ -105,17 +105,15 @@ describe('goRound', () => {
     expect(match.turn).toBe(before)
   })
 
-  it('makes at most one full circuit even on a table that never returns the turn', () => {
-    // a rule bug that never hands the turn back would spin without the guard; simulate it by
-    // leaving every seat on an algorithm (no seat manual at all), so the loop condition never
-    // trips false on its own and only the guard stops it
+  it('plays the hand out when no seat is manual, and still terminates', () => {
+    // nothing here can stop the loop by being manual, so this is both the autoplay case
+    // (ADR-0011: every seat on an algorithm, watch it play) and the check that `stepMatch`'s own
+    // 400-turn backstop catches a rule bug that never hands the turn back
     const options: MatchOptions = { ...YONMA }
     const match = createMatch([], 4, options, 'table-goround-guard')
     const core: TableCore = { match, options, seatIndex: 99 }
-    const before = match.discards.length
     goRound(core)
-    // 8 begin/finish pairs is the bound (4 seats x 2) — at most 8 more discards can land
-    expect(match.discards.length - before).toBeLessThanOrEqual(8)
+    expect(match.ended).toBeDefined()
   })
 })
 

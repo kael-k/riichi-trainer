@@ -1113,6 +1113,12 @@ export interface MatchOutcome {
  * The bound is a backstop against a rule bug spinning forever — a hand is ~18 turns. `ended` and
  * `claim` are re-checked each turn rather than trusted from the last one: `beginTurn` can end the
  * hand on a tsumo, and a claim suspends everything until `answerClaim` resolves it.
+ *
+ * The `hand.drawn` check is what makes the generator safe to *resume* into a turn somebody else
+ * started: a seat that stopped being manual mid-turn, or one `replayLog` left holding its 14th
+ * tile, already has its draw sitting there, and `beginTurn` would happily take a second one on top
+ * (`pendingDraw` only comes back down after the next `finishTurn`). One guard here rather than a
+ * copy in each driver that can land mid-turn.
  */
 export function* stepMatch(
   state: MatchState,
@@ -1122,7 +1128,7 @@ export function* stepMatch(
   for (let guard = 0; guard < 400; guard++) {
     if (state.ended || state.claim) return
     if (canAct && !canAct(state)) return
-    yield* beginTurn(state, options)
+    if (state.players[state.seat].hand.drawn === undefined) yield* beginTurn(state, options)
     yield* finishTurn(state, options)
   }
 }

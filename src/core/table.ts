@@ -2,11 +2,10 @@ import type { Meld } from './agari'
 import { assessDiscards, type TileDanger } from './danger'
 import { evaluateDiscards, type DiscardOption } from './efficiency'
 import {
-  beginTurn,
   concealedTiles,
-  finishTurn,
   isManual,
   seenBy as seenByMatch,
+  stepMatch,
   threatViews,
   wallDrawnCount,
   type MatchOptions,
@@ -54,30 +53,22 @@ export function seenBy(core: TableCore): Uint8Array {
 }
 
 /** Plays every seat the engine decides for, stopping at the next manual seat — or when the hand
- *  ends, or when a discard leaves a manual seat a claim to answer. One full go-round is the bound
- *  — a call hands the turn sideways but never backwards, so eight begin/finish pairs (two per
- *  seat on a four-seat table) is enough, and it also backstops a rule bug that would otherwise
- *  spin forever. A no-op when it is already a manual seat's turn, e.g. a one-seat solo match. It
- *  carries no opponents-on/off branch and no next-draw of its own: each consumer layers its own
- *  stop condition and its own `beginTurn` on top (efficiency stops at tenpai, folding stops when
- *  the hand ends).
+ *  ends, or when a discard leaves a manual seat a claim to answer. A no-op when it is already a
+ *  manual seat's turn, e.g. a one-seat solo match. It carries no opponents-on/off branch and no
+ *  next-draw of its own: each consumer layers its own stop condition and its own `beginTurn` on
+ *  top (efficiency stops at tenpai, folding stops when the hand ends).
  *
- *  "The seat that stops it" is each player's own `algorithm`, not `core.seatIndex`: with several
- *  manual seats every one of them has to get its turn, and `seatIndex` is only where the board is
- *  drawn from. Callers keep at least one manual seat, or this simply plays its eight pairs and
- *  returns. */
+ *  "The seat that stops it" is each player's own `algorithm`, never a designated seat: with
+ *  several manual seats every one of them has to get its turn, and which seat a board is *drawn*
+ *  from is a page's own business the engine never sees.
+ *
+ *  With no manual seat at all this now plays the hand out rather than stopping after one circuit.
+ *  That is the point rather than an oversight — it is what lets a reader put every seat on an
+ *  algorithm and watch a hand play itself (ADR-0011) — and `stepMatch`'s own 400-turn backstop is
+ *  what catches a rule bug that would otherwise spin forever. Events are dropped here because a
+ *  caller that wants them consumes `stepMatch` directly. */
 export function goRound(core: TableCore): void {
-  for (let guard = 0; guard < 8; guard++) {
-    const { match, options } = core
-    if (match.ended || match.claim || isManual(match, match.seat)) return
-    // a seat that just stopped being manual mid-turn already has its draw sitting in `drawn` —
-    // calling `beginTurn` again would draw a second tile on top of it, since `pendingDraw` only
-    // ever comes back down after the *next* `finishTurn` moves the turn on. Skipping straight to
-    // `finishTurn` is what lets a live algorithm flip (`useTableRound.ts`) carry an already-drawn
-    // seat forward through this same loop rather than needing its own copy of it.
-    if (match.players[match.seat].hand.drawn === undefined) beginTurn(match, options)
-    finishTurn(match, options)
-  }
+  for (const _event of stepMatch(core.match, core.options, (s) => !isManual(s, s.seat)));
 }
 
 /** A render-ready mirror of the match, seat-index-first, with `core`'s own seat's drawn tile
