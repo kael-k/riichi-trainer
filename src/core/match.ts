@@ -1097,21 +1097,52 @@ export interface MatchOutcome {
   ended: 'win' | 'exhaustive' | 'stopped'
 }
 
-/** Plays `state` out from wherever it stands. `stop` ends it early — that is how a generator asks
- *  for "the first match that reaches X" without knowing anything about how a hand is played.
- *  Shared by `playMatch` (seeded, dealt fresh) and `playWall` (an explicit wall, already dealt). */
+/**
+ * The one stepper: turn after turn, yielding every event as it happens. Being a generator is the
+ * whole point — the caller decides when to stop simply by not asking for the next event, and
+ * nothing further runs, so "play a whole hand", "play until someone declares riichi" and "play up
+ * to the next seat a person has to decide for" stop being three loops and become three callers.
+ *
+ * `canAct` is asked once per turn, *before* anything is drawn, and is the only stop condition that
+ * cannot be expressed by the caller walking away: by the time an event has been yielded its turn
+ * has already run, so a caller that wants to refuse a turn has to say so before it starts.
+ * `goRound` (`core/table.ts`) passes the manual-seat check through it. Omitted, every seat is
+ * played — including a `'manual'` one, which `finishTurn` covers by borrowing `'efficiency'`'s
+ * discard; `playMatch` has always relied on that and a baked-in manual check would break it.
+ *
+ * The bound is a backstop against a rule bug spinning forever — a hand is ~18 turns. `ended` and
+ * `claim` are re-checked each turn rather than trusted from the last one: `beginTurn` can end the
+ * hand on a tsumo, and a claim suspends everything until `answerClaim` resolves it.
+ */
+export function* stepMatch(
+  state: MatchState,
+  options: MatchOptions,
+  canAct?: (state: MatchState) => boolean,
+): Generator<MatchEvent> {
+  for (let guard = 0; guard < 400; guard++) {
+    if (state.ended || state.claim) return
+    if (canAct && !canAct(state)) return
+    yield* beginTurn(state, options)
+    yield* finishTurn(state, options)
+  }
+}
+
+/** Plays `state` out from wherever it stands, accumulating every event. `stop` ends it early —
+ *  that is how a generator asks for "the first match that reaches X" without knowing anything
+ *  about how a hand is played. Shared by `playMatch` (seeded, dealt fresh) and `playWall` (an
+ *  explicit wall, already dealt). Note what `stop` sees: `beginTurn`/`finishTurn` each build their
+ *  whole event array before `stepMatch` yields any of it, so by the time a predicate fires on the
+ *  riichi event that turn's discard and reactions have already been applied to `state` — stopping
+ *  here never leaves a half-stepped turn behind. */
 function playFrom(
   state: MatchState,
   options: MatchOptions,
   stop?: (event: MatchEvent, state: MatchState) => boolean,
 ): MatchOutcome {
   const events: MatchEvent[] = []
-  // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
-  for (let guard = 0; guard < 400 && !state.ended; guard++) {
-    for (const event of [...beginTurn(state, options), ...finishTurn(state, options)]) {
-      events.push(event)
-      if (stop?.(event, state)) return { state, events, ended: 'stopped' }
-    }
+  for (const event of stepMatch(state, options)) {
+    events.push(event)
+    if (stop?.(event, state)) return { state, events, ended: 'stopped' }
   }
   return { state, events, ended: state.ended ?? 'exhaustive' }
 }

@@ -13,6 +13,7 @@ import {
   finishTurn,
   NORTH,
   playMatch,
+  stepMatch,
   threatViews,
   wallDrawnCount,
   type MatchEvent,
@@ -71,6 +72,40 @@ function summarize(events: MatchEvent[]): string {
     .map((e) => (e.kind === 'win' ? `win:${e.win.seat}` : `${e.kind}:${'seat' in e ? e.seat : ''}`))
     .join('|')
 }
+
+// The stepper every other driver is built on. `playMatch`'s own golden hashes
+// (`match.golden.test.ts`) already prove it reproduces the whole event stream bit for bit; these
+// cover the two things only a generator can do.
+describe('stepMatch', () => {
+  it('suspends between the draw and the discard when the caller stops asking', () => {
+    const state = createMatch([], 4, YONMA, 'step-lazy')
+    for (const event of stepMatch(state, YONMA)) {
+      if (event.kind === 'draw') break
+    }
+    // the turn is genuinely half-done: drawn but not discarded. The old eager `[...beginTurn(),
+    // ...finishTurn()]` could not express this, which is why stopping at a manual seat needed a
+    // second loop of its own
+    expect(state.players[state.seat].hand.drawn).toBeDefined()
+    expect(state.players[state.seat].river).toHaveLength(0)
+  })
+
+  it('canAct refuses a turn before anything is drawn', () => {
+    const state = createMatch([], 4, YONMA, 'step-canact')
+    const wall = state.liveWall.length
+    expect([...stepMatch(state, YONMA, () => false)]).toEqual([])
+    expect(state.liveWall).toHaveLength(wall)
+    expect(state.players[state.seat].hand.drawn).toBeUndefined()
+    expect(state.players.every((p) => p.river.length === 0)).toBe(true)
+  })
+
+  it('plays a manual seat rather than stopping at it, as playMatch has always relied on', () => {
+    const state = createMatch([], 4, { ...YONMA, algorithms: manual(0) }, 'step-manual')
+    for (const event of stepMatch(state, { ...YONMA, algorithms: manual(0) })) {
+      if (event.kind === 'discard') break
+    }
+    expect(state.players[0].hand.drawn).toBeUndefined()
+  })
+})
 
 describe('playMatch', () => {
   it('replays a seed identically', () => {
