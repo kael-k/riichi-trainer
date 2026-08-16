@@ -1,4 +1,9 @@
 import { decodeLog, encodeLog } from '../../core/actionLog'
+import {
+  STARTING_POINTS_SANMA,
+  STARTING_POINTS_YONMA,
+  type MatchState,
+} from '../../core/match'
 import type { LogEntry } from '../../core/round'
 import { parseTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
 import { validateWall, type WallError } from '../../core/wall'
@@ -38,6 +43,17 @@ export interface Situation {
   aka?: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma?: boolean
+  /** The match context a round starts from (`core/match.ts`) — carry-in only, nothing here steps
+   *  it. Named apart from `round`/`seat` (the Wind letters above) since `MatchState.round` is a
+   *  different thing (which kyoku within the prevalent wind), not a rename of either. Each is
+   *  omitted from the query string at its `createMatch` default, same as `round`/`seat` are at
+   *  `'E'`, so an unmodified link stays exactly as short as before this field existed. */
+  kyoku?: number
+  honba?: number
+  dealerRepeat?: number
+  dealer?: number
+  riichiSticks?: number
+  points?: number[]
 }
 
 const FLAGS = ['deadWall', 'aka', 'sanma'] as const
@@ -67,6 +83,17 @@ export function decodeSituation(params: URLSearchParams): Situation {
     const v = params.get(flag.toLowerCase())
     if (v !== null) s[flag] = v !== '0'
   }
+  for (const key of ['kyoku', 'honba', 'dealerRepeat', 'dealer', 'riichiSticks'] as const) {
+    const v = params.get(key.toLowerCase())
+    if (v === null) continue
+    const n = Number(v)
+    if (Number.isFinite(n)) s[key] = n
+  }
+  const points = params.get('points')
+  if (points !== null) {
+    const parsed = points.split(',').map(Number)
+    if (parsed.every(Number.isFinite)) s.points = parsed
+  }
 
   // untrusted input: reject a malformed/over-counted wall by name rather than let it reach
   // createRound. No global setting is available at this pure-codec boundary, so a partial wall
@@ -93,7 +120,41 @@ export function encodeSituation(s: Situation): string {
   for (const flag of FLAGS) {
     if (s[flag] !== undefined) params.set(flag.toLowerCase(), s[flag] ? '1' : '0')
   }
+  if (s.kyoku !== undefined && s.kyoku !== 1) params.set('kyoku', String(s.kyoku))
+  if (s.honba) params.set('honba', String(s.honba))
+  if (s.dealerRepeat) params.set('dealerrepeat', String(s.dealerRepeat))
+  if (s.dealer) params.set('dealer', String(s.dealer))
+  if (s.riichiSticks) params.set('riichisticks', String(s.riichiSticks))
+  if (s.points && !pointsAtDefault(s.points, resolveSanma(s.wall, s.sanma, false))) {
+    params.set('points', s.points.join(','))
+  }
   return params.toString()
+}
+
+/** Whether `points` is exactly `createMatch`'s starting array for `sanma` — the comparison
+ *  `encodeSituation` uses to omit an unmodified match context, same as `round`/`seat` stay out of
+ *  the query string at `'E'`. */
+function pointsAtDefault(points: number[], sanma: boolean): boolean {
+  const start = sanma ? STARTING_POINTS_SANMA : STARTING_POINTS_YONMA
+  return points.every((p) => p === start)
+}
+
+/** The `MatchState` overrides a decoded `Situation` carries, for a caller building
+ *  `createMatch(sanma, { prevalentWind, ...matchOverrides(situation) })`. Only the fields the
+ *  situation actually named — `createMatch`'s own defaults fill the rest, so a key present here
+ *  with value `undefined` would wrongly overwrite one of those (`{ ...overrides }` is a shallow
+ *  merge), which is why this builds the object key-by-key instead of a blanket spread. */
+export function matchOverrides(
+  s: Situation,
+): Partial<Pick<MatchState, 'round' | 'honba' | 'dealerRepeat' | 'dealer' | 'riichiSticks' | 'points'>> {
+  const out: ReturnType<typeof matchOverrides> = {}
+  if (s.kyoku !== undefined) out.round = s.kyoku
+  if (s.honba !== undefined) out.honba = s.honba
+  if (s.dealerRepeat !== undefined) out.dealerRepeat = s.dealerRepeat
+  if (s.dealer !== undefined) out.dealer = s.dealer
+  if (s.riichiSticks !== undefined) out.riichiSticks = s.riichiSticks
+  if (s.points !== undefined) out.points = s.points
+  return out
 }
 
 /** All tiles the situation pins down for a wall-based trainer. */

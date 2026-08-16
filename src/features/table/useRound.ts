@@ -449,6 +449,12 @@ export function useRound(input: UseRoundInput) {
       deadWall: input.options.deadWall,
       aka: input.options.aka,
       sanma: input.options.sanma,
+      kyoku: input.options.match.round,
+      honba: input.options.match.honba,
+      dealerRepeat: input.options.match.dealerRepeat,
+      dealer: input.options.match.dealer,
+      riichiSticks: input.options.match.riichiSticks,
+      points: input.options.match.points,
     }
   }
 

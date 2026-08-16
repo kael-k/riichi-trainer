@@ -9,6 +9,7 @@ import {
   decodeSituation,
   emptySituation,
   encodeSituation,
+  matchOverrides,
   resolveSanma,
 } from './urlCodec'
 
@@ -59,7 +60,39 @@ describe('urlCodec', () => {
     s.deadWall = false
     s.aka = true
     s.sanma = true
+    s.kyoku = 3
+    s.honba = 2
+    s.dealerRepeat = 1
+    s.dealer = 2
+    s.riichiSticks = 1
+    s.points = [24000, 26000, 25000]
     expect(decodeSituation(new URLSearchParams(encodeSituation(s)))).toEqual(s)
+  })
+
+  it('omits match-context fields at their createMatch default', () => {
+    const s = emptySituation()
+    s.kyoku = 1
+    s.honba = 0
+    s.dealerRepeat = 0
+    s.dealer = 0
+    s.riichiSticks = 0
+    s.points = [25000, 25000, 25000, 25000]
+    expect(encodeSituation(s)).toBe('')
+
+    const decoded = decodeSituation(new URLSearchParams(''))
+    expect(matchOverrides(decoded)).toEqual({})
+    expect(createMatch(false, matchOverrides(decoded))).toEqual(createMatch(false))
+  })
+
+  it('round-trips a non-default match context through matchOverrides into createMatch', () => {
+    const s = emptySituation()
+    s.kyoku = 2
+    s.honba = 1
+    s.dealer = 1
+    const decoded = decodeSituation(new URLSearchParams(encodeSituation(s)))
+    expect(createMatch(false, matchOverrides(decoded))).toEqual(
+      createMatch(false, { round: 2, honba: 1, dealer: 1 }),
+    )
   })
 
   it('decodes empty params to the empty situation', () => {

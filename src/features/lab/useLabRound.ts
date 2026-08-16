@@ -7,7 +7,7 @@ import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { BACK_TILE } from '../folding/useFoldingRound'
-import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
+import { encodeSituation, matchOverrides, WINDS, type Situation } from '../situation/urlCodec'
 import { splitDrawn } from '../../core/table'
 import { useRound, type RoundEventContext } from '../table/useRound'
 
@@ -66,7 +66,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
   const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    match: createMatch(options.sanma, { prevalentWind }),
+    match: createMatch(options.sanma, { prevalentWind, ...matchOverrides(situation) }),
     deadWall: options.deadWall,
     calls: true,
     riichi: true,

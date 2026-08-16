@@ -8,7 +8,7 @@ import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { splitDrawn } from '../../core/table'
 import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
-import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
+import { encodeSituation, matchOverrides, WINDS, type Situation } from '../situation/urlCodec'
 import {
   actionStats,
   efficiencyLogRows,
@@ -64,7 +64,7 @@ export function useEfficiencyRound(
   const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    match: createMatch(options.sanma, { prevalentWind }),
+    match: createMatch(options.sanma, { prevalentWind, ...matchOverrides(situation) }),
     deadWall: options.deadWall,
     // opponents may open their hands and call, but nobody wins: a hand that ended on someone
     // else's tsumo would cut this per-turn drill short on a result the player did not cause

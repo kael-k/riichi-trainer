@@ -7,7 +7,7 @@ import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
 import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
-import { encodeSituation, WINDS, type Situation } from '../situation/urlCodec'
+import { encodeSituation, matchOverrides, WINDS, type Situation } from '../situation/urlCodec'
 import {
   actionStats,
   efficiencyLogRows,
@@ -44,7 +44,7 @@ export function useEfficiencySoloRound(
   const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    match: createMatch(options.sanma, { prevalentWind }),
+    match: createMatch(options.sanma, { prevalentWind, ...matchOverrides(situation) }),
     deadWall: options.deadWall,
     // nobody else is dealt in, so there is nobody to call or declare from
     calls: false,

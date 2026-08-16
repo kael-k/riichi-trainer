@@ -14,6 +14,7 @@ import {
   type PendingClaim,
   type WinRecord,
 } from './round'
+import type { MatchState } from './match'
 import { isFuriten, waits, type SeatAlgorithm } from './policy'
 import type { ParsedTile, RiverTile, TileId } from './tiles'
 import { INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
@@ -123,6 +124,9 @@ export interface TableSnapshot {
    *  — `undefined` for every other seat unless `showSeatWaits` is on, since `waits` runs
    *  `improvingTiles` (~34 shanten probes) per seat and nobody asked to pay that for opponents. */
   seatReads: (SeatRead | undefined)[]
+  /** The match this round sits inside — points, honba, dealer, riichi sticks, which round.
+   *  One field, not flattened, since it is one thing a table reads together (`core/match.ts`). */
+  match: MatchState
 }
 
 /** Separates a drawn tile out of a hand for display — the 14th tile shown apart from the rest,
@@ -168,6 +172,9 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
     seatReads: round.players.map((_, seat) =>
       showSeatWaits || isManual(round, seat) ? seatRead(round, seat, options.sanma) : undefined,
     ),
+    // a fresh copy, not a reference: `points` mutates in place on a riichi declaration
+    // (`round.ts`), and a snapshot must not move under whoever holds it
+    match: { ...round.match, points: [...round.match.points] },
   }
 }
 
