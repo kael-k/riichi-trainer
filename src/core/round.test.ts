@@ -749,6 +749,15 @@ describe('manual riichi declaration', () => {
     // makes the UI's riichi button trustworthy: it never offers a declaration finishTurn refuses
     expect(canDeclareRiichi(state, options, 0)).toBe(false) // riichiAt is now set, so it's done
   })
+
+  it('deducts 1000 points and adds a riichi stick on declaration (T4)', () => {
+    const { state, options } = tenpaiManualState('manual-riichi-3')
+    const before = state.match.points[0]
+    const sticksBefore = state.match.riichiSticks
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: true }, true)
+    expect(state.match.points[0]).toBe(before - 1000)
+    expect(state.match.riichiSticks).toBe(sticksBefore + 1)
+  })
 })
 
 describe('beginTurn declineTsumo', () => {

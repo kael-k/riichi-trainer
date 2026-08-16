@@ -752,6 +752,8 @@ export function finishTurn(
     player.riichiAt = player.river.length
     player.riichiTurn = state.turn
     player.ippatsu = true
+    state.match.points[seat] -= 1000
+    state.match.riichiSticks += 1
   } else if (player.riichiAt !== undefined) {
     // ippatsu survives only until this player's own next discard
     player.ippatsu = false

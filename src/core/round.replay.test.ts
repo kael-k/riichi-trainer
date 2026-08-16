@@ -53,6 +53,7 @@ function project(state: RoundState) {
     win: state.win,
     seat: state.seat,
     turn: state.turn,
+    match: state.match,
     pendingDraw: state.pendingDraw,
     claim: state.claim && {
       seat: state.claim.seat,
