@@ -23,7 +23,7 @@ dark mode, PWA + GitHub Pages deploy, sanma throughout, per-seat algorithms with
 seam, mobile fullscreen on every trainer.
 
 The **table-architecture centralization** work is complete: explicit walls, `core/table.ts`,
-`useTableRound`, folding's own hook, the efficiency split, the table-settings schema, the lab.
+`useMatch`, the efficiency split, the table-settings schema, the lab.
 
 **Three waves landed after it:**
 
@@ -66,18 +66,18 @@ From `UX-TESTS-BUG.md`, none fixed. This is the area the project cares most abou
 - **Efficiency solo, fullscreen:** your own river is not visible.
 - **Efficiency solo, fullscreen:** the log drawer renders under the hand; it should be over it.
 
+  (Both now have passing e2e coverage in `e2e/board.spec.ts`; re-check whether they are still
+  reproducible by hand before treating them as open.)
+
 ### Engine and hooks
 
 Both re-verified present in the current tree:
 
-- **`useTableRound` deals the round twice on every mount** (`useTableRound.ts:278` lazy
-  `useState(() => buildRound())` and the mount effect at `:281`). With an empty wall — every
-  "fresh round, no shared link" mount of efficiency, efficiency-solo and the lab — `completeWall`
-  runs twice with two independently random fills; the first deal is rendered, then thrown away.
-  Wasted work on the app's hottest entry point, and the hand can visibly change under the player
-  on load. No test catches it: every test asserts on state after the effect has settled.
-  _Fix:_ make the initializer cheap and let the effect be the sole builder, or thread a stable
-  per-mount `fillSeed` (the pattern `useShantenRound` already uses) so both calls agree.
+- ~~**`useTableRound` deals the round twice on every mount**~~ — fixed by
+  [ADR-0012](adr/0012-shared-table-layer.md)'s rewrite. `useMatch` builds once, during the render
+  that first needs a board, and the mount effect reuses it (`ensureBuilt`, keyed on wall identity
+  and restart count). Replayed events are queued by the build and drained by the effect, so
+  nothing grades or logs mid-render.
 - **`wallWithHand` silently eats the promised red five** (`core/wall.ts:154-170`). It filters
   padding by id only, and since `completeWall` marks the *first* occurrence of each red-eligible
   kind red, a plain 5m/5p/5s in `hand` strips the padding's red copy. `aka: true` with a hand

@@ -48,7 +48,7 @@ Three layers: pure engine (`src/core/`), URL situation codec (`src/features/situ
 
 One deterministic hand of mahjong drives every trainer. `createMatch(wall, players, options, fillSeed?)` deals straight off an **explicit wall in draw order** — seat 0's 13 tiles, seat 1's 13, …, then the live draws, then the trailing 14 the dead wall is cut from (dora indicator first). A short wall is a _prefix_: the tiles given are used in order and the remainder is completed at random from the copies they leave (`completeWall`, `wall.ts`), which is what makes partial hand-authoring in the lab usable. Then `beginTurn` (draw) and `finishTurn` (discard, then everyone else's ron and calls) step it; `playMatch` loops both, and a `stop` predicate ends it early. That predicate is the only thing trainers differ by.
 
-A trainer that needs a *particular kind* of hand searches for one by rejection sampling: deal a fresh random wall, play it out, keep it if an `accept` callback takes it, else try again — capped attempts, yielding between them. Scoring's `findWall` ("first win by any seat") and folding's `findRound` ("a hand worth drilling") are each their own copy of that shape, because each accepts on something different. `findMatch`/`findMatchAsync` in `match.ts` are the seed-suffix ancestors of both and are now **used only by tests** — no production caller remains since walls stopped being named by a seed (ADR-0005). (Folding also needs a turn-boundary stop rather than an event one, and drives `beginTurn`/`finishTurn` itself — see its section.)
+A trainer that needs a *particular kind* of hand searches for one by rejection sampling: deal a fresh random wall, play it out, keep it if an `accept` callback takes it, else try again — capped attempts, yielding between them. Scoring's `findWall` ("first win by any seat") and folding's `findRound` ("a hand worth drilling") are each their own copy of that shape, because each accepts on something different. `findMatch`/`findMatchAsync` in `match.ts` are the seed-suffix ancestors of both and are now **used only by tests** — no production caller remains since walls stopped being named by a seed (ADR-0005). Both are plain loops rather than being driven through React, because rejection is judged at the handover point and running a hundred simulations through state would cost a render apiece (ADR-0012).
 
 Every seat is a **player**, and a player has an **algorithm**: `PlayerState.algorithm: SeatAlgorithm` (`'efficiency' | 'defense' | 'tsumogiri' | 'manual'`, `core/policy.ts`). `'manual'` is not "a human" — it is the algorithm "ask, don't decide". It is **live**: flip it mid-hand and the next turn obeys, no redeal, no new match, no re-search — changing a player's algorithm must never change the hand. `isManual(state, seat)` is the one predicate that reads it; the word "human" has left the codebase. `MatchOptions.algorithms?: readonly SeatAlgorithm[]` only *seeds* each player at `createMatch` — a seat with no entry starts on `'efficiency'` — the live value afterward lives on `PlayerState`, not on `MatchOptions`, and moves without touching options. A manual seat is one the engine draws for but never decides for: no auto-kita, no auto-riichi (riichi locks every later discard to tsumogiri, so it must stay the player's own choice), no auto-pon/chi (a call opens a hand its player never chose to open). More than one seat can be manual at once — board state each page owns (`SeatConfig`, `features/settings/tableSettings.ts`), never a persisted setting and not a per-trainer concept; four manual seats is one person playing the whole table. `wins: false` lets opponents play without ending the drill.
 
@@ -74,7 +74,9 @@ never offered to anyone (§ above); a manual seat's own tsumo is never an explic
 `beginTurn` wins the instant the draw completes the hand. Whether these four need finer, per-algorithm
 split control (a call permissions review, not a `Table` prop) is open and tracked outside this file.
 
-`core/table.ts#actingSeat(core)` is "whose turn is this, right now": `core.seatIndex` in the ordinary single-manual-seat setup, some other manual seat once several are manual, and `claim.seat` while a claim is suspended — every shared primitive (`seenBy`, `analysisOf`, `snapshotTable`) reads through it rather than `core.seatIndex` directly. `goRound(core)` plays every AI-decided seat and stops at the next manual turn, a pending claim, or the hand's end; it is a no-op when it's already a manual seat's turn. `core.seatIndex` is the seat the engine grades — decided at generation time and never moved by a later algorithm flip (flipping your own graded seat to an algorithm simply freezes grading where it stood, since only a manual seat's turn ever reaches the interactive `discard()` path) — and it is not the same thing as which seat `Table` draws at the bottom, a page-local viewing perspective the engine never sees at all (see the `SeatConfig` note in the trainer-pattern section).
+`core/table.ts#actingSeat(core)` is "whose turn is this, right now": `match.seat`, except that a pending claim outranks the turn order (`claim.seat`). `TableCore` is `{ match, options }` and carries **no seat at all** — which seat a trainer grades and which seat a page draws at the bottom are both that consumer's business, and keeping them in one field is what made grading and perspective the same idea for as long as they were (ADR-0012). `seenBy(core, seat)` and `analysisOf(core, seat)` take the seat explicitly; `snapshotTable` is uniformly per-seat, exposing `seat` (whose turn) and `drawn: { seat, tile }` rather than one privileged `hand`/`drawn` pair. `goRound(core)` plays every AI-decided seat and stops at the next manual turn, a pending claim, or the hand's end — one line over `stepMatch` with the manual check passed as `canAct`. With no manual seat at all it plays the hand out, which is the autoplay ADR-0011 had deferred.
+
+`stepMatch(state, options, canAct?)` (`match.ts`) is the one stepper: a generator yielding every `MatchEvent` as it happens, which a caller stops by not asking for the next one. `playFrom`/`playMatch`/`playWall`/`goRound` all sit on it. It deliberately does **not** stop at a manual seat — `finishTurn` covers one by borrowing `'efficiency'`'s discard and `playMatch` relies on that — so "stop where a person must decide" rides in through `canAct`, asked once per turn before anything is drawn. Its `hand.drawn` guard is what makes it safe to resume into a turn someone else started (a live algorithm flip, a replayed log): `beginTurn` would otherwise draw a second tile on top.
 
 `policy.ts` holds the pure, deterministic maths the AI algorithms are written in terms of — `chooseDiscard`, `chooseFold`, `chooseCall`, `hasYakuRoute`, `waits`, `isFuriten` — every ranking with an explicit tie-break, never sort stability. Calls happen only when they lower shanten **and** `hasYakuRoute` still holds; without that guard a shanten-chaser opens itself into hands that cannot legally win. Furiten is `waits()` (which is `improvingTiles` at tenpai) checked against your own river. `core/algorithm.ts` is where those functions become decisions — see the decision-seam paragraph below.
 
@@ -94,7 +96,7 @@ What an algorithm is allowed to know is a curated `SeatView` (`core/algorithm.ts
 
 Two behaviour changes rode in with the seam, not before: `defense.kita` is `false` (a folding player is leaving the hand, not chasing dora — every AI seat used to pull regardless), and declining a win is now expressible per algorithm (`win` receives the priced candidate) rather than a single hardcoded "defense never wins" in `tryWin`.
 
-### The table layer (`core/table.ts` + `features/table/useTableRound.ts`)
+### The table layer (`core/table.ts` + `features/table/useMatch.ts`)
 
 Everything a board-rendering trainer needs from a running match, in one pure module and one React
 owner (ADR-0012). Before it existed the efficiency and folding hooks had ten distinct duplications
@@ -107,29 +109,39 @@ the hand's end), one canonical `seenBy`, `snapshotTable` (the render-ready `Tabl
 `seatRead` per seat folded in), `splitDrawn`, and `analysisOf` returning a `TableAnalysis`. That analysis is **lazy getters, not eager fields** — solo never reads
 danger, folding never reads ukeire, and `evaluateDiscards` costs ~476 shanten probes per turn.
 
-**`useTableRound(input)`** owns the round state for efficiency (both routes), scoring and the lab,
-and reports through exactly three callbacks — the contract does not grow a fourth for one consumer:
+**`useMatch(input)`** is the React owner for every trainer built on a real match — efficiency (both
+routes), folding and the lab. It **drives a match and reports what the engine did**; it has no
+opinion about what any of it means (ADR-0012). One callback:
 
-- `onUserDraw(ctx)` — once the graded seat holds 14 tiles, _before_ the discard decision. `ctx`
-  carries `turn`, `drawn`, and the `TableAnalysis`.
-- `onUserDiscard(tile, stats)` — after the throw, with `DiscardStats` built from **the same
-  analysis object `onUserDraw` handed over**, so grading is measured against the pre-throw hand
-  rather than recomputed after it. Read those getters synchronously inside the callback.
-- `onAgariCall(win)` — the instant `match.win` appears; scoring's only entry point.
+- `onEvent({ event, core, replaying, analysis, logLength })` — every `MatchEvent` the engine emits,
+  in order, for every seat. The consumer decides which seat it grades, when the round is over, and
+  whether the board is worth keeping.
 
-All three are **suppressed while replaying** (a shared link's log, or a log-row rewind) via the
-hook's `replaying` ref: restored turns must not grade or log as if they were live. `stopAtTenpai`
-ends a per-turn drill at the discard that reaches tenpai, and it only ever tests `seatIndex`, so an
-AI seat reaching tenpai plays on. A sync effect writes seat algorithms straight onto the running
-`PlayerState.algorithm`, then advances and re-snapshots — never redeals (ADR-0008).
+A handler steers by what it **returns**: nothing to carry on, `{ stop: true }` to halt where the
+board stands (a real action — the turn's draw is cleared so the hand reads as finished),
+`{ restart: wall }` to abandon the deal for a fresh one. There is no `stopAtTenpai` flag and no
+"your seat": efficiency derives tenpai with its own `shanten()` call and filters on
+`event.seat === seatIndex`, which is what lets a second manual seat be *played* without being
+*scored*.
 
-**Folding deliberately does not use this hook** — it drives `beginTurn`/`finishTurn` and the pure
-primitives itself, because its mid-hand algorithm flip needs turn granularity the callback contract
-does not offer. See its section below.
+Two things stay with this layer because only it can know them. `analysis` (on the draw that
+completes a hand and the discard/kita/ankan that spend it) is captured at the draw and **copies the
+hand**, so grading measures the pre-throw hand even though a discard is reported once the tile has
+already gone — `analysisOf` copying is what turned "read these getters synchronously or else" into a
+rule that cannot be broken. `logLength` is how long `match.log` was when the turn began: by report
+time the whole turn including reactions is applied, so a rewind link has to slice back to it.
 
-> Known defect: `useTableRound` builds the round twice on mount (the lazy `useState` initializer and
-> the mount effect), and with an unpinned wall those are two independently random fills. See
-> `docs/STATUS.md`.
+Replayed events are **reported, tagged `replaying: true`**, not suppressed — the board really did
+reach that state, so a consumer rebuilding state treats them normally while grading and logging skip
+them (ADR-0021). The round is built **once**, during the render that first needs a board, with the
+mount effect reusing it (`ensureBuilt`); replayed events are queued by the build and drained by the
+effect so nothing grades or logs mid-render.
+
+**Folding uses this hook like everyone else.** Its generation stays a pure search; what that search
+produces is a wall, the algorithms each seat ended on, the graded seat and generation's own log,
+and `replayLog` rebuilds the handed-over board from exactly that. The mid-hand algorithm flip never
+needs replaying, because replay puts every seat on manual and only the *starting* algorithms of live
+play matter.
 
 ### The danger model (`core/danger.ts`) + the folding trainer
 
@@ -164,10 +176,7 @@ never popped. `threatViews(state)` builds the `ThreatView[]` from it and is expo
 `match.ts` itself, since `chooseFold` (the AI's own defensive discard, `policy.ts`) needs the exact
 same view the folding trainer grades against.
 
-`useFoldingRound.ts` drives `beginTurn`/`finishTurn` directly rather than going through
-`findMatch`: `playMatch`'s `stop` fires per event _after_ the whole turn has run, so stopping on the
-riichi event would leave `match.discards` missing that turn's own discard and call while the rest of
-the state already reflects them. The moment its riichi target is reached, every seat that has not
+`playToRiichi` steps `beginTurn`/`finishTurn` itself during generation. The moment its riichi target is reached, every seat that has not
 itself declared and is not itself manual has its `algorithm` switched to `'defense'` — otherwise
 the opponents keep pushing for the rest of the hand, declaring further riichi and flooding the table
 with genbutsu the drill never earned. Generation (`findRound`) searches **fresh random walls** for a
@@ -192,13 +201,12 @@ Any seat can be manual, same as efficiency/lab — not only the drill's own gene
 panel's raw config (`SeatConfig.modes`, never the resolved one) seeds `MatchOptions.algorithms` at
 generation time in `playToRiichi`: every seat marked `'manual'` joins `seatIndex` as manual, and an
 explicit per-seat choice there outranks the drill's own blanket "everyone who missed the riichi
-target folds" flip. Past generation, a live algorithm flip (`useTableRound.ts`'s sync effect,
-mirrored in `useFoldingRound.ts`) writes straight onto the running `PlayerState.algorithm` and, if a
-claim was pending on the seat that just stopped being manual, re-resolves it through
-`reconsiderClaim` — no redeal, no re-search (ADR-0008). `advanceAfterDiscard`'s tail (`settleAfterClaim`, shared with `answer`) must not
-`beginTurn` into a turn `match.claim` has suspended — folding drives `beginTurn`/`finishTurn`
-directly rather than through `useTableRound`, so it re-derives that one guard rather than getting it
-for free. Perspective (which seat `Table` draws at the bottom) never reaches this hook at all — it
+target folds" flip. Past generation, a live algorithm flip goes through `useMatch`'s own sync effect —
+folding lays the seat panel's choices over the algorithms generation settled on and hands the result
+in as `MatchOptions.algorithms`, so the hook writes them straight onto the running
+`PlayerState.algorithm` and re-resolves a claim pending on a seat that just stopped being manual
+(`reconsiderClaim`) — no redeal, no re-search (ADR-0008). The claim-suspension guard is
+`useMatch`'s now rather than something folding re-derives. Perspective (which seat `Table` draws at the bottom) never reaches this hook at all — it
 is `FoldingPage`'s own `useState`, reset to `round.seatIndex` on every new hand and never persisted,
 so rotating it cannot re-search for a new hand or pin itself onto the next one the way a stored
 `orientation` field once did. Because it can move, the felt hand `FoldingPage` omits is the one
@@ -259,7 +267,7 @@ Each trainer is a page component plus a `use*Round` hook — `useShantenRound`, 
 
 The shanten trainer is a continuous stream, not one graded hand at a time: `submit()` grades, then bumps `handIndex` while carrying `running` forward, so the next hand is dealt already revealed with the previous hand's feedback kept in `lastResult` (which holds its own tiles, since the on-screen hand has moved on). The stream starts revealed and on the clock (every other trainer puts a board up on load, so a first hand hidden behind a button reads as "not loaded yet" rather than as a gate). There is no next-hand button; the reveal/stop control is the only gate, and stop abandons the hand (fresh deal, timer back to zero) rather than pausing — a peeked hand can't be timed again. A link's pinned `hand` is honoured only at `handIndex === 0`, so a shared hand (or a rewind out of the log, which resets the index) is posed once and the stream carries on instead of serving it forever. Clearing the log clears the session it recorded: score and average reset with it.
 
-The two efficiency trainers are **two routes, not a checkbox** (ADR-0013): `/efficiency-solo` is genuinely one seat (`createMatch(wall, 1, …)`, dead wall and dora kept, no `<Table>`), `/efficiency` is a full table. Both grade inside `useTableRound`'s `onUserDiscard` and run `wins: false` (a hand ending on someone else's tsumo would cut a per-turn drill short on a result the player did not cause), `riichi: false` (efficiency reads no danger, so an opponent's riichi there was decoration, not signal) and `calls: true`. They pass `stopAtTenpai: true`, which stops the round right after the discard that reaches tenpai, leaving 13 tiles so it reads as finished. The graded `seatIndex` comes from the link alone, never from the seat panel. `match.visible` accumulates every face-up tile and feeds ukeire remaining counts. Player count is derived per round (`options.sanma ? 3 : 4`) — never hardcode 4/3. "finished" is derived (hand below 14 tiles), not stored. The two hooks are mirrored rather than shared, differing only in `players`/`calls`/`riichi`; nothing asserts they stay in lockstep, so a change to one wants checking against the other.
+The two efficiency trainers are **two routes, not a checkbox** (ADR-0013): `/efficiency-solo` is genuinely one seat (`createMatch(wall, 1, …)`, dead wall and dora kept, no `<Table>`), `/efficiency` is a full table. Both grade inside their own `onEvent` on `kind === 'discard'` and run `wins: false` (a hand ending on someone else's tsumo would cut a per-turn drill short on a result the player did not cause), `riichi: false` (efficiency reads no danger, so an opponent's riichi there was decoration, not signal) and `calls: true`. Both return `{ stop: true }` from their handler when their own seat's discard reaches tenpai, leaving 13 tiles so it reads as finished — a trainer's stop condition, not a flag the match layer carries. The graded `seatIndex` comes from the link alone, never from the seat panel. `match.visible` accumulates every face-up tile and feeds ukeire remaining counts. Player count is derived per round (`options.sanma ? 3 : 4`) — never hardcode 4/3. "finished" is derived (hand below 14 tiles), not stored. The two hooks are mirrored rather than shared, differing only in `players`/`calls`/`riichi`; nothing asserts they stay in lockstep, so a change to one wants checking against the other.
 
 Sanma (`options.sanma`, mirrored by the global `sanma` setting and the `sanma` situation flag) drops 2m-8m from the tile set everywhere it's produced — `buildWall`/`deal` (`core/wall.ts`) skip those ids via `inTileSet` (`core/tiles.ts`), and `improvingTiles`/`ukeire`/`evaluateDiscards` (`core/ukeire.ts`, `core/efficiency.ts`) take a `sanma` flag so they never propose drawing a tile that isn't in the wall. `NUM_TILE_TYPES` stays 34 and the id layout is untouched — sanma is expressed purely as "these ids have zero copies," not a smaller id space. Kita (nukidora, `useEfficiencyRound.ts#kita`) is graded, not free: it reuses north's own `evaluateDiscards` entry (id `NORTH` = `HONOR + 3`) as "what pulling it costs," compared against the same round's `ranked[0]` with `isBestDiscard` — the exact function `discard()` uses. No special tie-break is needed: `ranked[0]` is already the global optimum, so north's entry only ties it when pulling really is as good as the best discard, and a north held as a pair's head shows up as worse shanten/ukeire in that same entry, correctly discouraging the pull. `TurnResult.kind` (`'discard' | 'kita'`) exists only so `DiscardFeedback` can label the row "Kita" instead of "Your discard"/"Best discard" — it carries no grading logic of its own.
 
@@ -272,11 +280,10 @@ the one a trainer generated for the reader, is just a seat with an algorithm, an
 that makes a seat the one you play is `'manual'`. "Your seat" is a trainer-level idea (the
 generated seat `resolveSeatConfig` anchors its manual-seat guarantee to), not something `Table` or
 its `SeatView` reads or needs to know. The one standing restriction on that uniformity is the
-guarantee itself: at least one seat must stay manual, because with none nothing would stop
-`goRound` — so an advanced reader cannot yet put every seat, including their own, on an algorithm
-and simply watch a hand play itself out. Lifting that is real work (an autoplay or step-by-step
-path through every round hook), not a seat-panel tweak, and belongs with the call-permissions
-review above rather than being done piecemeal here (ADR-0011).
+default it keeps: `resolveSeatConfig` still anchors one manual seat, but as a sensible default
+rather than a load-bearing rule — `goRound` with none now plays the hand out, which is the autoplay
+ADR-0011 deferred and ADR-0012 delivered for free. A step/pause surface on top of it is still
+unbuilt.
 
 **Seat algorithms are board state, not a preference, and are deliberately not persisted** (ADR-0015): a
 board opened three days later coming up with opponents nobody remembers choosing is the same bug as
@@ -305,7 +312,7 @@ is nothing left for that dialog to offer about perspective once you're already t
 
 `resolveSeatConfig(config, players, defaultSeat, fallbackModes?)` fills every seat and guarantees at least one manual seat, anchored on `defaultSeat`
 (a link's `?seat=`, or the seat the trainer generated) rather than on perspective — with none,
-nothing would ever stop `goRound`; `fallbackModes` overrides the generic `'efficiency'` default for
+nothing would hand the reader a turn; `fallbackModes` overrides the generic `'efficiency'` default for
 an unconfigured seat with what the board is _actually_ doing right now (folding's own live
 `algorithms`, read straight off `PlayerState.algorithm` for every seat, since it flips non-declarers
 to `'defense'` at handover and the panel must not show an algorithm the board isn't really running).

@@ -15,7 +15,10 @@ to propose the opposite next month. Do not write one for what the code plainly s
 - **Deferred** — deliberately not done; recorded so it stops being re-proposed.
 - **TO REVIEW** — in force, but flagged: the decision has not been read back and agreed by the
   project owner, or the reasoning is suspected of having drifted. Carries no less weight in the
-  code than Accepted; it is a reading queue, not a warning label.
+  code than Accepted; it is a reading queue, not a warning label. While an ADR carries this flag
+  its text may still be **corrected in place** — a claim about the code that turns out to be false
+  is a description bug, not a decision that moved, and spending an ADR number on it buys nothing.
+  Once it flips to Accepted the text freezes and the usual supersession rule applies.
 
 ## Index
 
@@ -39,13 +42,13 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0008](0008-algorithms-are-live.md)                         | Algorithm changes are live and never change the hand         | Accepted  |
 | [0009](0009-decision-seam.md)                               | The decision seam: `ALGORITHMS` over a curated `SeatView`    | Accepted  |
 | [0010](0010-match-wide-permissions.md)                      | Permissions are match-wide flags on `MatchOptions`           | Accepted  |
-| [0011](0011-at-least-one-manual-seat.md)                    | At least one seat stays manual                               | Accepted  |
+| [0011](0011-at-least-one-manual-seat.md)                    | At least one seat stays manual                               | Superseded by [0012](0012-shared-table-layer.md) |
 
 ### App layer
 
 | ADR                                                         | Title                                                        | Status     |
 | ----------------------------------------------------------- | ------------------------------------------------------------ | ---------- |
-| [0012](0012-shared-table-layer.md)                          | Shared `core/table.ts` + `useTableRound`; folding keeps its own hook | **TO REVIEW** |
+| [0012](0012-shared-table-layer.md)                          | The React match layer reports engine events; policy lives in trainers | Accepted  |
 | [0013](0013-efficiency-split.md)                            | Efficiency splits into two routes; solo is one seat, no board | **TO REVIEW** |
 | [0014](0014-table-is-a-pure-view.md)                        | `<Table>` is a pure view with no player concept              | Accepted   |
 | [0015](0015-what-persists.md)                               | Reader preferences persist; board state does not             | Accepted   |

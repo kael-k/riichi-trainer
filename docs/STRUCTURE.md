@@ -25,7 +25,7 @@ Pure TypeScript. Zero dependencies, no React, no imports from `features/` or `co
 | `policy.ts`     | The pure maths algorithms are written in: `chooseDiscard`, `chooseFold`, `chooseCall`, `waits`, …     |
 | `algorithm.ts`  | The decision seam: `SeatView`, `Algorithm`, `ALGORITHMS` ([ADR-0009](adr/0009-decision-seam.md))       |
 | `match.ts`      | The match engine: `createMatch`/`beginTurn`/`finishTurn`/`playMatch`/`findMatch`, claims, `isManual`  |
-| `table.ts`      | Pure table layer: `actingSeat`, `goRound`, `seenBy`, `snapshotTable`, `seatRead`, per-turn analysis   |
+| `table.ts`      | Pure table layer: `actingSeat`, `goRound`, `seenBy`, `snapshotTable`, `seatRead`, per-seat analysis   |
 | `generateHand.ts` | Winning-hand generation for the scoring trainer                                                     |
 
 `match.golden.test.ts` freezes an event-stream hash per seed — the regression net for any change
@@ -41,7 +41,7 @@ setting ([ADR-0013](adr/0013-efficiency-split.md)).
 | `shanten/`         | `/shanten`         | `useShantenRound`           | Boardless, continuous hand stream               |
 | `efficiency-solo/` | `/efficiency-solo` | `useEfficiencySoloRound`    | Boardless, one seat                            |
 | `efficiency/`      | `/efficiency`      | `useEfficiencyRound`        | Board, opponents, graded per discard           |
-| `folding/`         | `/folding`         | `useFoldingRound`           | Own thin hook on `core/table.ts`; see ADR-0012 |
+| `folding/`         | `/folding`         | `useFoldingRound`           | Grading + a pure board search on `useMatch`; see ADR-0012 |
 | `scoring/`         | `/scoring`         | `useScoringRound`           | Generates a finished hand, never steps it      |
 | `lab/`             | `/lab`             | `useLabRound`               | Free play, no grading                          |
 
@@ -49,7 +49,7 @@ Shared:
 
 | Path                            | Role                                                                            |
 | ------------------------------- | --------------------------------------------------------------------------------- |
-| `table/useTableRound.ts`        | React owner of a stepped round; `onUserDraw`/`onUserDiscard`/`onAgariCall`       |
+| `table/useMatch.ts`             | React owner of a stepped round; reports engine events through one `onEvent`      |
 | `table/ManualControls.tsx`      | Riichi arm, claim prompt, playing/watching lines                                 |
 | `table/SeatStrip.tsx`           | The per-seat strip on the felt (algorithm badge, waits, furiten)                 |
 | `table/Verdict.tsx`             | One-line compact feedback for fullscreen                                          |

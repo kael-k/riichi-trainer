@@ -1,53 +1,110 @@
-# ADR-0012 — Shared `core/table.ts` and `useTableRound`; folding keeps its own thin hook
+# ADR-0012 — The React match layer reports engine events; policy lives in trainers
 
-**Status:** Accepted · **TO REVIEW** · **Date:** 2026-08-12
-**Source:** `core/table.ts`, `features/table/useTableRound.ts`, `features/folding/useFoldingRound.ts`
+**Status:** Accepted · **Date:** 2026-08-16
+**Source:** `core/table.ts`, `core/match.ts#stepMatch`, `features/table/useMatch.ts`
+
+> Replaces the original ADR-0012 ("Shared `core/table.ts` and `useTableRound`; folding keeps its
+> own thin hook"), which was never accepted — it carried a **TO REVIEW** flag, and reading it back
+> against the code found all three of its load-bearing claims false. Rewritten in place rather than
+> superseded, since there was no accepted decision to preserve a trail for.
 
 ## Context
 
-An audit found **ten distinct duplications** between `useEfficiencyRound.ts` and
-`useFoldingRound.ts`: identical drawn-tile extraction, snapshot bodies, three separate `seenBy`
-implementations, opponent go-round loops, replay fast-forward, `logReplay`, render-time reset
-blocks. The obvious fix — one React hook for both — runs into the reason folding was written
-separately in the first place.
+An audit found ten duplications between the efficiency and folding round hooks, `seenBy` alone in
+three implementations. The first attempt split the shared mass into a pure `core/table.ts` plus a
+React `useTableRound`, and exempted folding on the grounds that its mid-hand algorithm flip needed
+turn granularity the hook's three-callback contract could not offer.
+
+That justification did not survive being checked:
+
+1. **The flip is not mid-hand.** It lives in `playToRiichi`, a module-level pure function running at
+   *generation* time, and it sits at a turn boundary — not "between `beginTurn` and `finishTurn`".
+2. **`playMatch`'s `stop` never saw a half-stepped turn.** `playFrom` built
+   `[...beginTurn(...), ...finishTurn(...)]` eagerly and only then iterated, so by the time a
+   predicate fired on the riichi event that turn's discard and reactions were already applied.
+3. **`core/table.ts` held no replay fast-forward.** That is `replayLog` in `match.ts`
+   ([ADR-0021](0021-action-log-replay.md)).
+
+Underneath all three sat the actual problem. The engine has always emitted a seat-tagged
+`MatchEvent` union — draw, discard, riichi, call, win, exhaustive, kita, ankan — from `beginTurn`,
+`finishTurn`, `answerClaim`, `callKita`, `callAnkan` and `reconsiderClaim`. **Every call site in
+both hooks discarded the return value**, and so did `goRound`. Having thrown the events away, the
+React layer had to reconstruct a narrower story from state: three callbacks about one designated
+seat. Folding could not be told in that story, so it was exempted — and then re-derived the go-round
+loop, the claim-suspension guard, the live algorithm sync and the pre-throw analysis capture for
+itself.
 
 ## Decision
 
-**Pure `core/table.ts`** holds the shared mass: `actingSeat`, `goRound`, one canonical `seenBy`,
-`snapshotTable`, `seatRead`, replay fast-forward, and per-turn analysis exposed as **memoized
-getters** rather than eagerly computed — solo never reads danger, folding never reads ukeire, and
-`evaluateDiscards` costs ~476 shanten probes per turn. Nobody pays for what they do not read.
+**The React layer drives a match and reports what the engine did. It has no opinion about what any
+of it means.** Every trainer built on a real match uses it, folding included.
 
-**`useTableRound`** is the React owner for efficiency (both routes), scoring and the lab. Its
-callback contract is exactly three, and stays exactly three:
+**One stepper.** `stepMatch(state, options, canAct?)` (`core/match.ts`) is a generator: turn after
+turn, yielding each event. A caller stops by not asking for the next one, so "play a whole hand",
+"play until someone declares riichi" and "play up to the next seat a person decides for" are three
+callers rather than three loops. `playFrom`, `playMatch`, `playWall` and `goRound` all collapse onto
+it. `canAct` is asked once per turn *before* anything is drawn — the one stop condition a caller
+cannot express by walking away, since by the time an event is yielded its turn has already run.
 
-- `onUserDraw(ctx)` — fires once you hold 14 tiles, **before** the discard decision
-- `onUserDiscard(tile, stats)` — fires after the throw, carrying stats computed from the ranking
-  captured at draw time, not recomputed post-throw
-- `onAgariCall(win)` — fires when any seat wins; scoring's entry point
+**One callback.** `useMatch`'s consumers subscribe to `onEvent(ctx)` and decide for themselves which
+seat they grade, when a round is over, and whether a board is worth keeping. A handler steers by
+what it returns: `{ stop }` halts where the board stands, `{ restart }` abandons the deal for a
+fresh wall. `stop` is a real action rather than the caller merely declining to continue — the turn's
+draw has to be cleared for a hand to read as finished.
 
-**Callbacks are suppressed during replay fast-forward** (a shared link, a log-row rewind) —
-restored turns must not grade or log as if they were live.
+**Layer 1 has no privileged seat.** `TableCore` is `{ match, options }`; `seenBy` and `analysisOf`
+take an explicit seat; `snapshotTable` is uniformly per-seat, with no `hand`/`drawn` pair naming
+one. Which seat a trainer grades and which seat a page draws at the bottom are both that consumer's
+business, and keeping them in the same field is what made grading and perspective the same idea for
+as long as they were.
 
-**Folding gets its own thin hook on the same pure stepper**, not `useTableRound`. Its mid-hand
-algorithm flip runs at *turn* granularity between `beginTurn` and `finishTurn`, which is exactly
-why it never used `playMatch`: `playMatch`'s `stop` fires per event only *after* a whole turn has
-run, too late for the flip — stopping on the riichi event would leave `match.discards` missing
-that turn's own discard while the rest of the state already reflected it.
+**Two things stay with the layer, because only it can know them.** `TableAnalysis` copies the hand
+it describes: a discard is reported once the tile has already left, so ranking the live hand would
+score thirteen tiles. And `MatchEventContext.logLength` records how long the log was when the turn
+began, which is the cut a rewind link needs. Both are temporal facts about when an event fired, not
+policy.
 
-**Scoring is not restructured.** It generates a result, never re-touches the match, and keeps
-rendering `<Table>` presentationally; it simply subscribes to `onAgariCall`.
+**Replayed events are reported, tagged `replaying: true`, not suppressed.** The board really did
+reach that state, so a consumer rebuilding *state* treats them like any event while one that grades
+or logs skips them. Blanket suppression was the layer deciding a grading policy on the consumer's
+behalf.
+
+**Folding uses all of it.** Its generation stays a pure rejection-sampling search — the reject
+condition is `worthwhile` failing at the handover point, and running up to 120 full simulations
+through React would cost a render apiece. What that search produces is a wall, the algorithms each
+seat ended on, the graded seat and generation's own log; `replayLog` rebuilds the handed-over board
+from exactly that. The flip never needs replaying, because replay puts every seat on manual and only
+the *starting* algorithms of live play matter.
 
 ## Consequences
 
-- The duplication is gone without forcing folding's genuinely different control flow through a
-  contract built for someone else.
-- The cost: folding re-derives a small number of guards it would otherwise get free — notably that
-  `advanceAfterDiscard`'s tail must not `beginTurn` into a turn a pending claim has suspended.
-- Grading gets pre-throw state by construction, rather than by every trainer remembering to
-  snapshot first — which was exactly the bug class being removed.
+- Six invariants maintained in two places become one each: the claim-suspension guard, the live
+  algorithm sync, the drawn-tile re-draw guard, the StrictMode build dance, the pre-throw analysis
+  capture, and the replay stop condition.
+- `buildRound`'s `stoppedAtTenpai` special case is gone. The live path and the replay path stop by
+  the identical mechanism instead of the replay path re-implementing the live one.
+- The double-build defect is fixed. The round is built once, during the render that first needs a
+  board, and the mount effect reuses it; replayed events are queued by the build and drained by the
+  effect, so nothing grades or logs mid-render.
+- [ADR-0011](0011-at-least-one-manual-seat.md) is superseded: a driver that runs with no manual seat
+  is the autoplay it deferred.
+- `stepMatch` deliberately does **not** stop at a manual seat — `finishTurn` covers one by borrowing
+  `efficiency`'s discard, and `playMatch` has always relied on that. Stopping at a seat the engine
+  cannot decide for is `goRound`'s condition, passed in through `canAct`.
+- A manual seat is one the engine *draws for* and never *decides for*, so a driver that stops at one
+  must still take its draw. Missing this asked the reader to discard from thirteen tiles, and only
+  the e2e suite caught it.
 
 ## Rejected
 
-Growing `useTableRound`'s contract with a generic event escape hatch for folding. One consumer
-shaping a shared contract is how the contract stops meaning anything.
+**Named callbacks per event kind** (`onRiichi`, `onWin`, …). The union is already exhaustive and is
+the engine's own vocabulary; a prop per event is how a contract grows one consumer at a time, which
+is the failure the original ADR was reaching for and misnaming.
+
+**A `tenpai` event in the engine.** Tenpai is a derived property of a hand, not something that
+happens in the rules the way a riichi declaration does. It is one `shanten()` call in the one
+trainer that stops on it.
+
+**Driving folding's search through `{ restart }`.** Kept as the contract for a consumer that plays
+boards to judge them, but folding's own search is pure and stays that way — see above. `{ restart }`
+therefore has no production consumer today.

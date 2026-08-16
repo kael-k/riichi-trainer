@@ -74,6 +74,16 @@ shipped and been exercised.
   would have stopped a live round, or its own tail would silently keep playing a round a real
   session never reached.
 
+## Amended by ADR-0012
+
+`replayLog` takes an optional event sink and reports what each restored turn really emitted —
+the same `MatchEvent` shapes a live turn produces, since it drives `beginTurn`/`finishTurn`/
+`answerClaim` to do the replaying. Synthesizing those from `LogEntry` was never possible anyway: a
+logged call carries a `Call`, not the `Meld` it becomes, and a logged win carries no `WinRecord` at
+all. `useMatch` passes them to its consumers tagged `replaying: true` rather than suppressing them,
+so a trainer rebuilds state from one event stream and only grading and logging skip them
+([ADR-0012](0012-shared-table-layer.md)).
+
 ## Rejected
 
 - Collapsing `MatchState.discards` into `MatchState.log` — real simplification, real risk (touches

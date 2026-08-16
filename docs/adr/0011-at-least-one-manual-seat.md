@@ -1,6 +1,6 @@
 # ADR-0011 — At least one seat stays manual
 
-**Status:** Accepted · **Date:** 2026-08-15
+**Status:** Superseded by [ADR-0012](0012-shared-table-layer.md) · **Date:** 2026-08-15
 **Source:** `resolveSeatConfig` in `features/settings/tableSettings.ts`; `goRound` in `core/table.ts`
 
 ## Context
@@ -31,3 +31,12 @@ every round hook — not a seat-panel tweak.
 
 Letting `goRound` run to the hand's end when no seat is manual. It would be an autoplay
 implementation hidden inside a loop guard, with no way to step, pause or watch it.
+
+## Superseded
+
+[ADR-0012](0012-shared-table-layer.md) rebuilt `goRound` on `stepMatch`, a generator a caller
+drives and stops by not asking for the next event. The autoplay path this ADR called real work is
+what that generator *is*, so the restriction it defends no longer buys anything: `goRound` with no
+manual seat now plays the hand out, and `stepMatch`'s own 400-turn backstop catches the runaway
+loop the guarantee was standing in for. `resolveSeatConfig` still anchors a manual seat by default,
+but as a sensible default rather than a load-bearing rule.
