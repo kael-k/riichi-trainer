@@ -18,8 +18,10 @@ interface BoardStageProps {
    *  this component's own subtree (the trainer header, and `chrome`'s own exit button). */
   full: boolean
   /** Your hand and the controls that belong to it (kita/kan, riichi, the claim prompt) — the
-   *  only part of the column that follows the board into fullscreen. */
-  hand: ReactNode
+   *  only part of the column that follows the board into fullscreen. Omitted by shanten: it has
+   *  no felt, and puts its puzzle (tiles plus the guess controls) through `board` instead so
+   *  fullscreen centres it rather than pinning it to the hand strip. */
+  hand?: ReactNode
   /** Per-action feedback. Inline it sits in the column as it always has, full detail (tile lists,
    *  ukeire counts) included — there is space for it there, and it is what Req 1.3 calls "check
    *  the log if you want full feedback". */

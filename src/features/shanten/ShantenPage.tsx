@@ -18,13 +18,25 @@ import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
-import { useShantenRound, type ShantenBreakdown } from './useShantenRound'
+import { Verdict } from '../table/Verdict'
+import { useShantenRound, type RoundResult, type ShantenBreakdown } from './useShantenRound'
 
 const QUICK_GUESSES = [0, 1, 2, 3, 4, 5, 6]
 
 function pathsLabel(breakdown: ShantenBreakdown, t: TFunction): string | null {
   if (breakdown.paths.length === 1 && breakdown.paths[0] === 'standard') return null
   return t('shanten.via', { paths: breakdown.paths.map((p) => t(`shanten.path.${p}`)).join(' / ') })
+}
+
+/** The fullscreen overlay's one-line verdict — same shape as every other trainer's
+ *  `noticeCompact` (`Verdict`): a label plus the actual shanten and, when it's not the plain
+ *  standard decomposition, which path it came from. No guess/tile breakdown — that stays in the
+ *  full `notice` the inline layout keeps and the log always has. */
+function verdictText(result: RoundResult, t: TFunction): string {
+  const label = t(result.correct ? 'shanten.correctLabel' : 'shanten.wrongLabel')
+  const actual = t('shanten.actualShanten', { value: result.actual.value })
+  const via = pathsLabel(result.actual, t)
+  return via ? `${label} — ${actual} ${via}` : `${label} — ${actual}`
 }
 
 export function ShantenPage() {
@@ -125,10 +137,16 @@ export function ShantenPage() {
               <FullscreenToggle {...toggles} compact />
             </>
           }
-          hand={
+          board={
             // named for the UI suite: the feedback notice draws a `HandDisplay` of its own (the
-            // hand just answered), so "the tiles on screen" needs to say which
-            <div data-testid="shanten-hand" className="flex flex-col gap-4">
+            // hand just answered), so "the tiles on screen" needs to say which. Passed as `board`
+            // rather than `hand`: shanten has no felt, and this is what fullscreen centres in the
+            // viewport instead of pinning it to the hand strip at the bottom — `full` only widens
+            // the gap below the tiles here, since that's the one shape this page actually changes.
+            <div
+              data-testid="shanten-hand"
+              className={`flex flex-col ${full ? 'gap-8' : 'gap-4'}`}
+            >
               <HandDisplay tiles={round.hand} concealed={round.concealed} />
 
               {!round.concealed && (
@@ -151,7 +169,7 @@ export function ShantenPage() {
                       value={guessInput}
                       onChange={(e) => setGuessInput(e.target.value)}
                       placeholder={t('shanten.placeholder')}
-                      className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+                      className="min-h-11 w-24 rounded border border-neutral-300 px-2 [appearance:textfield] dark:border-neutral-700 dark:bg-neutral-900 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <button
                       type="submit"
@@ -160,17 +178,21 @@ export function ShantenPage() {
                       {t('common.submit')}
                     </button>
                   </div>
-                  {/* seven answers, so a phone gets four columns and one empty cell rather than
-                      six columns and a missing answer — 0 through 6 are all reachable (chiitoitsu
-                      caps shanten at 6). Held sideways they go on one row: height is the only
-                      axis short of room there, and a second row would come out of the board's */}
-                  <div className="flex flex-wrap gap-2 max-sm:grid max-sm:grid-cols-4 short:grid short:grid-cols-7">
+                  {/* seven answers, so a phone gets four per row with the last three (4-6)
+                      centred under them rather than stuck to the left of an empty fourth cell —
+                      flex-wrap centres an incomplete line the way grid's fixed tracks can't, and
+                      a fixed square `basis` (not `w-full` against a grid track) is what keeps
+                      every button, full row or not, the same size. 0 through 6 are all reachable
+                      (chiitoitsu caps shanten at 6). Held sideways they go on one row: height is
+                      the only axis short of room there, and a second row would come out of the
+                      board's */}
+                  <div className="flex flex-wrap gap-2 max-sm:justify-center short:grid short:grid-cols-7">
                     {QUICK_GUESSES.map((n) => (
                       <button
                         key={n}
                         type="button"
                         onClick={() => submitGuess(n)}
-                        className="min-h-11 min-w-11 rounded-lg border border-neutral-300 text-lg font-medium max-sm:h-14 max-sm:w-full short:h-12 short:w-full dark:border-neutral-700"
+                        className="min-h-11 min-w-11 shrink-0 rounded-lg border border-neutral-300 text-lg font-medium max-sm:aspect-square max-sm:w-[calc(25%-0.375rem)] short:h-12 short:w-full dark:border-neutral-700"
                       >
                         {n}
                       </button>
@@ -181,6 +203,14 @@ export function ShantenPage() {
             </div>
           }
           noticeKey={round.lastResult ? round.totalCount : undefined}
+          noticeCompact={
+            round.lastResult && (
+              <Verdict
+                severity={round.lastResult.correct ? 'ok' : 'error'}
+                text={verdictText(round.lastResult, t)}
+              />
+            )
+          }
           notice={
             round.lastResult && (
               <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
