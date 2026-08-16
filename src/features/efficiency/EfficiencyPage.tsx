@@ -6,7 +6,11 @@ import { BoardStage } from '../../components/tiles/BoardStage'
 import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { splitDrawn } from '../../core/table'
-import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
+import {
+  FullscreenToggle,
+  TrainerStatusBar,
+  TrainerToggles,
+} from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -230,6 +234,9 @@ export function EfficiencyPage() {
             <>
               <SettingsButton title={t('trainer.efficiency.title')}>{settingsRows}</SettingsButton>
               <TrainerToggles {...toggles} compact />
+              {/* the trainer header's own fullscreen button is hidden behind this overlay, so
+                  the exit control has to be drawn again here */}
+              <FullscreenToggle {...toggles} compact />
             </>
           }
           board={

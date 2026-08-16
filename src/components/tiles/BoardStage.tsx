@@ -7,14 +7,15 @@ import { InfoButton, LogList, type TrainerIntro } from '../TrainerLayout'
 interface BoardStageProps {
   /** The `Table` itself, built by the page. Omitted by the boardless trainers (shanten, solo):
    *  their content goes through the ordinary slots below instead. Each seat's own info strip
-   *  lives on the felt itself (`Table`'s `seatInfo`), not here; the fullscreen toggle lives in
-   *  the trainer's own command bar (`TrainerToggles`) rather than on the board at all now — see
-   *  `useFullscreenBoard`. */
+   *  lives on the felt itself (`Table`'s `seatInfo`), not here; the fullscreen toggle is a single
+   *  global button in `TrainerLayout`'s header, not part of the board at all — see
+   *  `useFullscreenBoard`. The `chrome` row below draws its own copy since this overlay hides
+   *  that header. */
   board?: ReactNode
-  /** Whether the board is currently filling the viewport — owned by the page via
-   *  `useFullscreenBoard()` and threaded through here (and into its own command bar) rather than
-   *  this component owning the toggle itself, since the button that flips it now lives outside
-   *  this component's own subtree. */
+  /** Whether the board is currently filling the viewport — a global session flag
+   *  (`useFullscreenBoard()`), threaded through here (and into the page's own `chrome`) rather
+   *  than this component reading the hook itself, since the button that flips it lives outside
+   *  this component's own subtree (the trainer header, and `chrome`'s own exit button). */
   full: boolean
   /** Your hand and the controls that belong to it (kita/kan, riichi, the claim prompt) — the
    *  only part of the column that follows the board into fullscreen. */

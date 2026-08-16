@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { IOSInstallHint } from '../components/IOSInstallHint'
+import { FullscreenToggle } from '../components/TrainerControls'
 import { InfoButton } from '../components/TrainerLayout'
 import { Tile } from '../components/tiles/Tile'
+import { useFullscreenBoard } from '../components/tiles/useFullscreenBoard'
 import { parseTenhou } from '../core/tiles'
 import { TRAINER_WIKI } from '../features/i18n/trainerLinks'
 import { SettingsButton } from '../features/settings/SettingsDialog'
@@ -86,10 +88,16 @@ function ModeCard({ mode }: { mode: Mode }) {
 
 export function HomePage() {
   const { t } = useTranslation()
+  const { full, toggle: toggleFull } = useFullscreenBoard()
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-4">
       <IOSInstallHint />
       <div className="flex justify-end">
+        <FullscreenToggle
+          full={full}
+          onToggleFull={toggleFull}
+          fullscreenLabel={t(full ? 'table.exitFullscreen' : 'table.fullscreen')}
+        />
         <SettingsButton />
       </div>
       <header className="flex flex-col items-center gap-3">

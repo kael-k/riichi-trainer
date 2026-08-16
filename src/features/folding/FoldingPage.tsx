@@ -5,7 +5,11 @@ import { BoardStage } from '../../components/tiles/BoardStage'
 import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
-import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
+import {
+  FullscreenToggle,
+  TrainerStatusBar,
+  TrainerToggles,
+} from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -316,6 +320,7 @@ export function FoldingPage() {
             <>
               <SettingsButton title={t('trainer.folding.title')}>{settingsRows}</SettingsButton>
               <TrainerToggles {...toggles} compact />
+              <FullscreenToggle {...toggles} compact />
             </>
           }
           board={

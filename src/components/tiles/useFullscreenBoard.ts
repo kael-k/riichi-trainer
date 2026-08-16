@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { create } from 'zustand'
 import { useSettings } from '../../features/settings/settingsStore'
 
 /** A phone-sized viewport — the breakpoint `mobileFullscreen` auto-enters at. The height half is
@@ -8,33 +9,48 @@ import { useSettings } from '../../features/settings/settingsStore'
  *  leaving a 214px board on a 750x342 screen. */
 export const MOBILE_QUERY = '(max-width: 640px), (max-height: 520px)'
 
-/** The fullscreen toggle's state and side effects, called once per page — the button itself lives
- *  in the trainer's own command bar (`TrainerToggles`) rather than in `BoardStage`, so both the
- *  status bar and `BoardStage` (which only needs to know whether it's `full`) thread this same
- *  state through rather than `BoardStage` owning a button no sibling component could reach.
+/** Whether fullscreen is on — a single flag for the whole app, not per page. Session-only (no
+ *  `persist`, unlike `mobileFullscreen`): it lives for as long as the tab does, the same way the
+ *  browser's own `document.fullscreenElement` does, so navigating between trainers — or back to
+ *  the home page — doesn't drop out of it. The initial value is computed once, at module load
+ *  (module-level `create`, not inside the hook), which is what makes the phone auto-entry a
+ *  once-per-session thing rather than re-firing every time a page mounts the hook. */
+const useFullscreenStore = create<{
+  full: boolean
+  setFull: (full: boolean | ((full: boolean) => boolean)) => void
+}>((set) => ({
+  full:
+    typeof document !== 'undefined' &&
+    useSettings.getState().mobileFullscreen &&
+    matchMedia(MOBILE_QUERY).matches,
+  setFull: (full) => set((s) => ({ full: typeof full === 'function' ? full(s.full) : full })),
+}))
+
+/** The fullscreen toggle's state and side effects, called from every page that draws a
+ *  `FullscreenToggle` (the trainer header, `BoardStage`'s own chrome, the home page) — all of
+ *  them share the one flag above, so only whichever page is currently mounted drives the real
+ *  browser side effects at any moment.
  *
  * Requests fullscreen on `document.documentElement` rather than a ref to `BoardStage`'s own
  * overlay: the overlay is already `fixed inset-0` (full viewport) regardless, so which element
  * is nominally "the fullscreen element" makes no visual difference, and targeting the document
- * root means no DOM ref has to travel from this hook (called at the page) down into `BoardStage`.
+ * root means no DOM ref has to travel from this hook down into `BoardStage`.
  *
  * Auto-entered on phone-sized viewports behind `mobileFullscreen`, a persisted setting that
  * defaults on. It is a real `requestFullscreen` where the browser has one, attempted only
  * inside a real user gesture (a load-time call is rejected outright) — an auto-entered stage
  * waits for the reader's first tap before attempting it, rather than trying at mount. */
 export function useFullscreenBoard() {
-  const mobileFullscreen = useSettings((s) => s.mobileFullscreen)
   const setMobileFullscreen = useSettings((s) => s.setMobileFullscreen)
-  const [full, setFull] = useState(() => mobileFullscreen && matchMedia(MOBILE_QUERY).matches)
-  // whether *this* entry into fullscreen happened with no gesture behind it yet (true only for
-  // an auto-entered stage, and only until the first tap resolves it) — captured once per entry,
-  // not just at mount, so leaving and manually re-entering later still requests real fullscreen
-  // immediately like any other button press
-  const enteredWithoutGesture = useRef(full)
+  const full = useFullscreenStore((s) => s.full)
+  const setFull = useFullscreenStore((s) => s.setFull)
+  // whether *this* mount still owes the browser a real `requestFullscreen` call with no gesture
+  // behind it yet — true only when the flag came in already set (auto-entered, or carried over
+  // from a page navigation that itself isn't a gesture the Fullscreen API accepts) and the real
+  // API hasn't caught up yet; false (a no-op wait) once `document.fullscreenElement` is already
+  // set, since a route change within an already-fullscreen tab needs no new request at all
+  const enteredWithoutGesture = useRef(full && typeof document !== 'undefined' && !document.fullscreenElement)
 
-  // the browser's own fullscreen, where it exists. Failures are ignored on purpose: iOS Safari
-  // has no element fullscreen at all, and the fixed overlay `BoardStage` draws is the part that
-  // matters
   useEffect(() => {
     if (!full) {
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
@@ -68,7 +84,7 @@ export function useFullscreenBoard() {
       if (onFirstPointerDown) document.removeEventListener('pointerdown', onFirstPointerDown)
       document.removeEventListener('fullscreenchange', onChange)
     }
-  }, [full])
+  }, [full, setFull])
 
   return {
     full,

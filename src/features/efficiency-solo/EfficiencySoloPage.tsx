@@ -4,7 +4,11 @@ import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
-import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
+import {
+  FullscreenToggle,
+  TrainerStatusBar,
+  TrainerToggles,
+} from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
@@ -172,6 +176,7 @@ export function EfficiencySoloPage() {
                 {settingsRows}
               </SettingsButton>
               <TrainerToggles {...toggles} compact />
+              <FullscreenToggle {...toggles} compact />
             </>
           }
           hand={

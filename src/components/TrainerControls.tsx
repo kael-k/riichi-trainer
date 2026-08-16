@@ -142,19 +142,20 @@ export function FullscreenToggle({
   )
 }
 
-export interface TrainerTogglesProps
-  extends PauseToggleProps, BackButtonProps, ResetButtonProps, FullscreenToggleProps {}
+export interface TrainerTogglesProps extends PauseToggleProps, BackButtonProps, ResetButtonProps {}
 
-/** The reader's whole command bar, on its own: reveal/pause, undo, reset and fullscreen. The
- *  status bar draws them beside the clock; the fullscreen board draws the same set in its
- *  chrome, so a hand can be paused, undone or abandoned without leaving the table to do it. */
+/** The reader's whole command bar, on its own: reveal/pause, undo and reset. The status bar draws
+ *  them beside the clock; the fullscreen board's chrome draws the same set (plus its own explicit
+ *  `FullscreenToggle`, needed there to exit — the trainer header's copy is hidden behind the
+ *  overlay), so a hand can be paused, undone or abandoned without leaving the table to do it.
+ *  Fullscreen itself is no longer one of these: it is a single global toggle that lives in the
+ *  trainer header (`TrainerLayout`) between the info and settings buttons, not a per-hand action. */
 export function TrainerToggles(props: TrainerTogglesProps) {
   return (
     <>
       <PauseToggle {...props} />
       <BackButton {...props} />
       <ResetButton {...props} />
-      <FullscreenToggle {...props} />
     </>
   )
 }

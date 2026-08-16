@@ -7,8 +7,10 @@ import { copyText } from '../lib/clipboard'
 import { DEFAULT_TILE_SCALE, useSettings } from '../features/settings/settingsStore'
 import { SettingsButton } from '../features/settings/SettingsDialog'
 import { useLog, type LogEntry } from '../store/log'
+import { FullscreenToggle } from './TrainerControls'
 import { IOSInstallHint } from './IOSInstallHint'
 import { InfoPopover } from './InfoPopover'
+import { useFullscreenBoard } from './tiles/useFullscreenBoard'
 import { Tile } from './tiles/Tile'
 
 export interface TrainerIntro {
@@ -32,6 +34,7 @@ export function TrainerLayout({ title, settings, intro, children }: TrainerLayou
   const { t } = useTranslation()
   const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
   const clearLog = useLog((s) => s.clear)
+  const { full, toggle: toggleFull } = useFullscreenBoard()
   // The log store is a single global instance; each trainer page starts its own log. Cleared on
   // this layout's first render rather than from a mount effect: effects run children-first, so a
   // page whose round writes rows as it mounts (efficiency logs the discards a shared link replays)
@@ -53,6 +56,11 @@ export function TrainerLayout({ title, settings, intro, children }: TrainerLayou
         </Link>
         <h1 className="flex-1 font-semibold">{title}</h1>
         {intro && <InfoButton title={title} intro={intro} />}
+        <FullscreenToggle
+          full={full}
+          onToggleFull={toggleFull}
+          fullscreenLabel={t(full ? 'table.exitFullscreen' : 'table.fullscreen')}
+        />
         <SettingsButton title={title}>{settings}</SettingsButton>
       </header>
       <IOSInstallHint />

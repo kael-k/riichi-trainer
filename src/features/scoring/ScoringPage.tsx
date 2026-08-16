@@ -6,7 +6,11 @@ import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
-import { TrainerStatusBar, TrainerToggles } from '../../components/TrainerControls'
+import {
+  FullscreenToggle,
+  TrainerStatusBar,
+  TrainerToggles,
+} from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
 import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { concealedTiles, wallDrawnCount } from '../../core/match'
@@ -313,6 +317,7 @@ export function ScoringPage() {
             <>
               <SettingsButton title={t('trainer.scoring.title')}>{settingsRows}</SettingsButton>
               <TrainerToggles {...toggles} compact />
+              <FullscreenToggle {...toggles} compact />
             </>
           }
           // the table itself is opt-in (`settings.table`) — off, this is the boardless shape

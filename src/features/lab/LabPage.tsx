@@ -338,15 +338,10 @@ export function LabPage() {
 
         {loaded && (
           <>
-            {/* lab has no session clock to pause/reset — just undo and fullscreen, the same
-                buttons every other trainer's command bar draws */}
+            {/* lab has no session clock to pause/reset — just undo; fullscreen itself is the
+                header's own global toggle now, not a per-page button */}
             <div className="flex items-center gap-1">
               <BackButton canBack={canBack} onBack={back} backLabel={t('common.undoAction')} />
-              <FullscreenToggle
-                full={full}
-                onToggleFull={toggleFull}
-                fullscreenLabel={t(full ? 'table.exitFullscreen' : 'table.fullscreen')}
-              />
             </div>
             <BoardStage
               title={t('trainer.lab.title')}
