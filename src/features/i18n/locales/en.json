@@ -17,6 +17,7 @@
     "wallDetails_one": "Wall ({{count}} tile left)",
     "wallDetails_other": "Wall ({{count}} tiles left)",
     "dealtMarker": "Dealt hands",
+    "liveWallMarker": "Live wall",
     "deadWallMarker": "Dead wall",
     "aboutTrainer": "About",
     "aboutTrainerTitle": "About: {{title}}",
@@ -58,6 +59,12 @@
     "W": "W",
     "N": "N"
   },
+  "windFull": {
+    "E": "East",
+    "S": "South",
+    "W": "West",
+    "N": "North"
+  },
   "seats": {
     "button": "{{wind}} seat",
     "title": "{{wind}} seat",
@@ -90,7 +97,6 @@
     "riichiHint": "Now discard one of:"
   },
   "table": {
-    "round": "Round",
     "wall": "Wall {{count}}",
     "dora": "Dora",
     "ura": "Ura",
@@ -100,7 +106,9 @@
     "points": "{{count}} points",
     "fullscreen": "Full screen table",
     "exitFullscreen": "Leave full screen",
-    "logDrawer": "Show log"
+    "logDrawer": "Show log",
+    "roundLine": "{{wind}} {{number}}",
+    "roundLineRepeat": "{{wind}} {{number}} · {{repeat}}"
   },
   "glossary": {
     "ariaLabel": "Explain: {{term}}",

@@ -238,11 +238,12 @@ export function LabPage() {
 
   const seats: SeatView[] = round.rivers.map((river, seat) => ({
     river,
-    melds: round.melds[seat],
-    nuki: round.nuki[seat],
-    riichi: round.riichi[seat],
     // the felt omits a hand row for whichever seat sits at the bottom of the board — that is
-    // where HandDisplay, in the page's own `hand` slot, already sits
+    // where HandDisplay, in the page's own `hand` slot, already sits, and that seat's calls go
+    // beside it there rather than on the felt's edge, where nothing sizes them against its hand
+    melds: seat !== perspective ? round.melds[seat] : undefined,
+    nuki: seat !== perspective ? round.nuki[seat] : undefined,
+    riichi: round.riichi[seat],
     hand: seat !== perspective ? round.boardHands[seat] : undefined,
     // finished alone has always revealed here (a post-game reveal, same as reading a real score
     // sheet); showOpponentHands now does the same live, mid-hand — previously this page never
@@ -367,7 +368,7 @@ export function LabPage() {
               }
               board={
                 <Table
-                  seatInfo={(seat) =>
+                  seatInfo={(seat, wind) =>
                     seatsEnabled && (
                       <SeatStrip
                         seat={seat}
@@ -381,6 +382,7 @@ export function LabPage() {
                         onWatch={setViewSeat}
                         read={round.seatReads[seat]}
                         showWaits={showSeatWaits}
+                        wind={wind}
                       />
                     )
                   }
@@ -388,6 +390,7 @@ export function LabPage() {
                   seatIndex={perspective}
                   round={situation.round}
                   roundNumber={round.match.round}
+                  dealerRepeat={round.match.dealerRepeat}
                   doraIndicators={round.doraIndicators}
                   wallCount={round.liveWall.length}
                   honba={round.match.honba}
@@ -406,12 +409,19 @@ export function LabPage() {
                     viewSeat={perspective}
                     onReturn={() => setViewSeat(null)}
                   />
-                  <HandDisplay
-                    tiles={bottomHand}
-                    drawn={bottomDrawn}
-                    concealed={bottomConcealed}
-                    onTileClick={canAct ? (i) => round.discard(i) : undefined}
-                  />
+                  {/* centred on the board above it, not left-aligned in the page: the calls hang off
+                      the right of the hand, so a called hand would otherwise sit visibly off-centre
+                      from the felt its own seat is drawn on */}
+                  <div className="flex justify-center">
+                    <HandDisplay
+                      tiles={bottomHand}
+                      drawn={bottomDrawn}
+                      concealed={bottomConcealed}
+                      melds={round.melds[perspective]}
+                      nuki={round.nuki[perspective]}
+                      onTileClick={canAct ? (i) => round.discard(i) : undefined}
+                    />
+                  </div>
                 </div>
               }
             >
@@ -440,6 +450,8 @@ export function LabPage() {
                   liveWallDrawn={round.liveWallDrawn}
                   deadWall={round.deadWallSnapshot}
                   replacements={round.replacements}
+                  players={round.rivers.length}
+                  seat={perspective}
                 />
               )}
 

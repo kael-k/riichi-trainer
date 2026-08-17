@@ -16,6 +16,7 @@
     "submit": "提交",
     "wallDetails_other": "牌山(剩余{{count}}张)",
     "dealtMarker": "配牌",
+    "liveWallMarker": "牌山",
     "deadWallMarker": "死墙",
     "rewind": "撤回到此操作之前",
     "undoAction": "撤销上一步操作",
@@ -54,6 +55,12 @@
     "W": "西",
     "N": "北"
   },
+  "windFull": {
+    "E": "东",
+    "S": "南",
+    "W": "西",
+    "N": "北"
+  },
   "seats": {
     "button": "{{wind}}家",
     "title": "{{wind}}家",
@@ -86,7 +93,6 @@
     "riichiHint": "请打出以下任意一张:"
   },
   "table": {
-    "round": "场",
     "wall": "剩余{{count}}",
     "dora": "宝牌",
     "ura": "里宝",
@@ -96,7 +102,9 @@
     "points": "{{count}}点",
     "fullscreen": "全屏牌桌",
     "exitFullscreen": "退出全屏",
-    "logDrawer": "显示记录"
+    "logDrawer": "显示记录",
+    "roundLine": "{{wind}}{{number}}局",
+    "roundLineRepeat": "{{wind}}{{number}}局・{{repeat}}本场"
   },
   "home": {
     "title": "立直训练器",

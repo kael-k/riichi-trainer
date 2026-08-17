@@ -246,11 +246,11 @@ export function FoldingPage() {
     // watching from another side used to leave a face-down row stacked over your own face-up
     // tiles, reading as "your hand, concealed from you". The graded seat, once it is elsewhere,
     // is an ordinary seat on the felt — and a seat you play, so `boardHands` gives it real faces
+    // its calls go with them (`HandDisplay`'s own `melds` below), not on the felt: they belong
+    // beside the hand they were called into, at a size that reads against it
     if (seat === perspective) {
       return {
         river,
-        melds: round.melds[seat],
-        nuki: round.nuki[seat],
         riichi: round.riichi[seat],
         points: round.match.points[seat],
       }
@@ -332,7 +332,7 @@ export function FoldingPage() {
           }
           board={
             <Table
-              seatInfo={(seat) =>
+              seatInfo={(seat, wind) =>
                 seatsEnabled && (
                   <SeatStrip
                     seat={seat}
@@ -347,6 +347,7 @@ export function FoldingPage() {
                     onWatch={setViewSeat}
                     read={round.seatReads[seat]}
                     showWaits={showSeatWaits}
+                    wind={wind}
                   />
                 )
               }
@@ -354,6 +355,7 @@ export function FoldingPage() {
               seatIndex={perspective}
               round={WINDS[round.round - HONOR]}
               roundNumber={round.match.round}
+              dealerRepeat={round.match.dealerRepeat}
               doraIndicators={round.doraIndicators}
               wallCount={round.liveWall.length}
               honba={round.match.honba}
@@ -372,12 +374,19 @@ export function FoldingPage() {
                 viewSeat={perspective}
                 onReturn={() => setViewSeat(null)}
               />
-              <HandDisplay
-                tiles={bottomHand}
-                drawn={bottomDrawn}
-                concealed={bottomConcealed}
-                onTileClick={canAct ? (i) => round.discard(i) : undefined}
-              />
+              {/* centred on the board above it, not left-aligned in the page: the calls hang off
+                  the right of the hand, so a called hand would otherwise sit visibly off-centre
+                  from the felt its own seat is drawn on */}
+              <div className="flex justify-center">
+                <HandDisplay
+                  tiles={bottomHand}
+                  drawn={bottomDrawn}
+                  concealed={bottomConcealed}
+                  melds={round.melds[perspective]}
+                  nuki={round.nuki[perspective]}
+                  onTileClick={canAct ? (i) => round.discard(i) : undefined}
+                />
+              </div>
             </div>
           }
           // one notice per graded throw. Under `feedbackAtEnd` there is nothing to key off until
@@ -449,6 +458,8 @@ export function FoldingPage() {
               liveWallDrawn={round.liveWallDrawn}
               deadWall={round.deadWallSnapshot}
               replacements={round.replacements}
+              players={players}
+              seat={perspective}
             />
           )}
 

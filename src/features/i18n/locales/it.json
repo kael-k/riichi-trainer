@@ -17,6 +17,7 @@
     "wallDetails_one": "Muro ({{count}} tessera rimasta)",
     "wallDetails_other": "Muro ({{count}} tessere rimaste)",
     "dealtMarker": "Mani distribuite",
+    "liveWallMarker": "Muro vivo",
     "deadWallMarker": "Muro morto",
     "aboutTrainer": "Informazioni",
     "aboutTrainerTitle": "Informazioni: {{title}}",
@@ -58,6 +59,12 @@
     "W": "O",
     "N": "N"
   },
+  "windFull": {
+    "E": "Est",
+    "S": "Sud",
+    "W": "Ovest",
+    "N": "Nord"
+  },
   "seats": {
     "button": "Posto {{wind}}",
     "title": "Posto {{wind}}",
@@ -90,7 +97,6 @@
     "riichiHint": "Ora scarta una di queste:"
   },
   "table": {
-    "round": "Mano",
     "wall": "Muro {{count}}",
     "dora": "Dora",
     "ura": "Ura",
@@ -100,7 +106,9 @@
     "points": "{{count}} punti",
     "fullscreen": "Tavolo a schermo intero",
     "exitFullscreen": "Esci da schermo intero",
-    "logDrawer": "Mostra il registro"
+    "logDrawer": "Mostra il registro",
+    "roundLine": "{{wind}} {{number}}",
+    "roundLineRepeat": "{{wind}} {{number}} · {{repeat}}"
   },
   "glossary": {
     "ariaLabel": "Spiega: {{term}}",

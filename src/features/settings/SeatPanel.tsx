@@ -84,10 +84,10 @@ export function SeatButton({
 
   return (
     <>
-      {/* the wind rides along with the icon: the button sits in the control row above the board
-          now, not on the seat's own mark, so nothing else says which seat it opens. The seat the
-          board is drawn from is marked in full strength, the rest are muted — the same weight the
-          wind marks on the felt use for the same distinction */}
+      {/* icon alone: the trigger sits in the seat's own plate now, directly above the wind the
+          board draws there, so repeating the letter here read as a stutter. The seat the board is
+          drawn from is marked in full strength, the rest are muted — the same weight the plate's
+          own wind uses for the same distinction. `aria-label` still names the seat */}
       {/* sized in container-query units, not the 44px it used to be: this trigger lives in a seat's
           corner cell on the felt, a track that scales with the board, and a fixed 44px inside it
           runs a phone-sized board's plate straight off the felt. The ≥44px touch target is kept by
@@ -98,12 +98,15 @@ export function SeatButton({
         aria-label={t('seats.button', { wind })}
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className={`relative flex h-[8cqw] min-w-[8cqw] items-center justify-center gap-[0.4cqw] text-[3cqw] font-semibold after:absolute after:top-1/2 after:left-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 ${
+        // the box hugs the icon (`h-[8cqw]` is the line height the wind beside it aligns to, not a
+        // square): with a `min-w-[8cqw]` it carried 2cqw of empty box on each side, which read as
+        // gap and put the algorithm badge visibly further from the button than the wind is. The
+        // spacing is the plate's and the strip's own `gap` now, where it can be tuned
+        className={`relative flex h-[8cqw] items-center justify-center gap-[0.4cqw] text-[3cqw] font-semibold after:absolute after:top-1/2 after:left-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 ${
           yours ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
         }`}
       >
         <Settings2 className="size-[4cqw]" />
-        {wind}
       </button>
       {open &&
         createPortal(

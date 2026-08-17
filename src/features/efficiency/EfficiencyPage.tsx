@@ -107,21 +107,22 @@ export function EfficiencyPage() {
   )
   const bottomConcealed = !viewingManual && !showOpponentHands
   const canAct = perspective === round.acting && !round.finished
+  const bottomMelds =
+    perspective === round.acting
+      ? round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles }))
+      : round.melds[perspective]
 
   // a manual seat is the reader's own hand wherever it sits, so it is face-up like your own —
   // the reveal setting only ever governed the seats somebody else is playing
   const seats: SeatView[] = round.rivers.map((river, seat) => {
     const mine = round.manualSeats.includes(seat)
     // the felt omits a hand row for whichever seat sits at the bottom of the board — that is
-    // where HandDisplay, in the page's own `hand` slot, already sits
+    // where HandDisplay, in the page's own `hand` slot, already sits, and that seat's calls go
+    // with it (`bottomMelds` above) rather than on the felt: they belong beside the hand they
+    // were called into, at a size that reads against it
     if (seat === perspective) {
       return {
         river,
-        melds:
-          seat === round.acting
-            ? round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles }))
-            : round.melds[seat],
-        nuki: round.nuki[seat],
         riichi: round.riichi[seat],
         points: round.match.points[seat],
       }
@@ -243,7 +244,7 @@ export function EfficiencyPage() {
           }
           board={
             <Table
-              seatInfo={(seat) =>
+              seatInfo={(seat, wind) =>
                 seatsEnabled && (
                   <SeatStrip
                     seat={seat}
@@ -257,6 +258,7 @@ export function EfficiencyPage() {
                     onWatch={setViewSeat}
                     read={round.seatReads[seat]}
                     showWaits={showSeatWaits}
+                    wind={wind}
                   />
                 )
               }
@@ -264,6 +266,7 @@ export function EfficiencyPage() {
               seatIndex={perspective}
               round={situation.round}
               roundNumber={round.match.round}
+              dealerRepeat={round.match.dealerRepeat}
               doraIndicators={round.doraIndicators}
               wallCount={round.liveWall.length}
               honba={round.match.honba}
@@ -333,12 +336,19 @@ export function EfficiencyPage() {
                 viewSeat={perspective}
                 onReturn={() => setViewSeat(null)}
               />
-              <HandDisplay
-                tiles={bottomHand}
-                drawn={bottomDrawn}
-                concealed={bottomConcealed}
-                onTileClick={canAct ? (i) => round.discard(i) : undefined}
-              />
+              {/* centred on the board above it, not left-aligned in the page: the calls hang off
+                  the right of the hand, so a called hand would otherwise sit visibly off-centre
+                  from the felt its own seat is drawn on */}
+              <div className="flex justify-center">
+                <HandDisplay
+                  tiles={bottomHand}
+                  drawn={bottomDrawn}
+                  concealed={bottomConcealed}
+                  melds={bottomMelds}
+                  nuki={round.nuki[perspective]}
+                  onTileClick={canAct ? (i) => round.discard(i) : undefined}
+                />
+              </div>
 
               {(options.sanma || kanEligible.length > 0) && canAct && (
                 <div className="flex flex-wrap gap-2">
@@ -376,6 +386,8 @@ export function EfficiencyPage() {
               liveWallDrawn={round.liveWallDrawn}
               deadWall={round.deadWallSnapshot}
               replacements={round.replacements}
+              players={round.rivers.length}
+              seat={perspective}
             />
           )}
 

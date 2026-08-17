@@ -9,6 +9,7 @@ import {
   type RiverTile,
   type TileId,
 } from '../../core/tiles'
+import { dealtSeat } from '../../core/wall'
 import { useAdvancedSettings } from '../../features/settings/useAdvancedSettings'
 import { useShowTileNumbers } from '../../features/settings/useShowTileNumbers'
 
@@ -122,6 +123,13 @@ interface HandDisplayProps {
   drawnClassName?: string
   onTileClick?: (index: number) => void
   concealed?: boolean
+  /** This hand's called sets and nuki, drawn to its right at three-quarter size — the same place
+   *  and the same proportion the felt gives every other seat (`Table`'s own ring, which draws its
+   *  hands at `100cqw/16` and its calls at `100cqw/22`). The seat the board is drawn from has no
+   *  hand on the felt at all: its tiles are here, so its calls belong here beside them rather than
+   *  stranded on the board's edge at a size its own hand never matches. */
+  melds?: Meld[]
+  nuki?: ParsedTile[]
 }
 
 export function HandDisplay({
@@ -130,6 +138,8 @@ export function HandDisplay({
   drawnClassName = '',
   onTileClick,
   concealed,
+  melds,
+  nuki,
 }: HandDisplayProps) {
   const render = (tile: ParsedTile, i: number) =>
     onTileClick ? (
@@ -143,9 +153,28 @@ export function HandDisplay({
       <Tile key={i} id={concealed ? undefined : tile.id} red={tile.red} />
     )
   return (
-    <div className="flex flex-wrap items-start">
+    // `items-end`: the calls are drawn smaller than the hand, and they sit on the same line the
+    // tiles do rather than hanging from its top edge
+    <div className="flex flex-wrap items-end">
       {tiles.map(render)}
       {drawn && <div className={`ml-2 ${drawnClassName}`}>{render(drawn, tiles.length)}</div>}
+      {((melds?.length ?? 0) > 0 || (nuki?.length ?? 0) > 0) && (
+        <div
+          data-testid="hand-calls"
+          className="ml-[calc(var(--tile-w-base)*0.8)] flex items-end gap-1 [--tile-w:calc(var(--tile-w-base)*0.75)]"
+        >
+          {melds?.map((meld, i) => (
+            <MeldDisplay key={i} meld={meld} />
+          ))}
+          {nuki && nuki.length > 0 && (
+            <div className="flex">
+              {nuki.map((tile, i) => (
+                <Tile key={i} id={tile.id} red={tile.red} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -191,15 +220,58 @@ export function River({ tiles }: { tiles: RiverTile[] }) {
 
 /** One wall tile, greyed exactly like a tsumogiri discard (`Discard` above) once it has left the
  *  wall. Unconditional — not gated on `showTsumogiri`, which is about reading opponents' rivers,
- *  not about showing the wall honestly. */
-function WallTile({ tile, drawn }: { tile: ParsedTile; drawn: boolean }) {
+ *  not about showing the wall honestly. `mine` is the exception: a tile dealt to the seat the
+ *  board is being watched from keeps its colour and takes a ring, so the reader can pick their own
+ *  thirteen out of a deal that hands four tiles to each seat in turn. */
+function WallTile({ tile, drawn, mine }: { tile: ParsedTile; drawn: boolean; mine?: boolean }) {
   return (
     <span className="relative flex">
       <Tile id={tile.id} red={tile.red} />
-      {drawn && (
+      {drawn && !mine && (
         <span className="pointer-events-none absolute inset-0 rounded-[10%] bg-neutral-500/50" />
       )}
+      {mine && (
+        <span className="pointer-events-none absolute inset-0 rounded-[10%] outline-2 outline-amber-500" />
+      )}
     </span>
+  )
+}
+
+/** One block of the wall, chunked into groups of four that never break across a line — the way the
+ *  wall stands in stacks and the way a deal comes off it (`DEAL_CHUNKS`, `core/wall.ts`), so the
+ *  rhythm of the row says which four went together. */
+function WallRow({
+  tiles,
+  drawn,
+  mine,
+}: {
+  tiles: ParsedTile[]
+  drawn: (index: number) => boolean
+  mine?: (index: number) => boolean
+}) {
+  const groups: ParsedTile[][] = []
+  for (let i = 0; i < tiles.length; i += 4) groups.push(tiles.slice(i, i + 4))
+  return (
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      {groups.map((group, g) => (
+        <span key={g} className="flex shrink-0">
+          {group.map((tile, i) => (
+            <WallTile key={i} tile={tile} drawn={drawn(g * 4 + i)} mine={mine?.(g * 4 + i)} />
+          ))}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** One labelled block of the reveal — dealt hands, live wall, dead wall — each on its own line
+ *  rather than run together behind inline markers. */
+function WallSection({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs text-neutral-400 dark:text-neutral-500">{label}</span>
+      {children}
+    </div>
   )
 }
 
@@ -215,6 +287,8 @@ export function WallDetails({
   liveWallDrawn,
   deadWall,
   replacements,
+  seat,
+  players,
 }: {
   /** Every seat's starting hand, in dealing order — always face-down/greyed, since it was drawn
    *  before this display's "already drawn" concept even applies. */
@@ -231,36 +305,38 @@ export function WallDetails({
    *  (taken as kan draws) and, in tandem, the last `replacements` tiles of `liveWall` (pulled in
    *  to backfill them). */
   replacements: number
+  /** The seat the board is being watched from — its own dealt tiles are ringed and left in colour.
+   *  Perspective, not "your seat": rotating the board moves which thirteen are marked. Pass
+   *  `players` alongside it, since where a seat's tiles fall depends on how many were dealt to. */
+  seat?: number
+  players?: number
 }) {
   const { t } = useTranslation()
   const remaining = liveWall.length - liveWallDrawn - replacements
+  const mine =
+    seat !== undefined && players !== undefined
+      ? (index: number) => dealtSeat(index, players) === seat
+      : undefined
   return (
     <details className="text-sm text-neutral-500">
       <summary className="cursor-pointer">{t('common.wallDetails', { count: remaining })}</summary>
-      <div className="mt-2 flex flex-wrap items-center [--tile-w:calc(var(--tile-w-base)*0.55)]">
-        {dealt.map((tile, i) => (
-          <WallTile key={`dealt-${i}`} tile={tile} drawn />
-        ))}
+      <div className="mt-2 flex flex-col gap-2 [--tile-w:calc(var(--tile-w-base)*0.55)]">
         {dealt.length > 0 && (
-          <span className="mx-1 self-stretch border-l border-dashed border-neutral-400 pl-1 text-xs whitespace-nowrap text-neutral-400 dark:border-neutral-600">
-            {t('common.dealtMarker')}
-          </span>
+          <WallSection label={t('common.dealtMarker')}>
+            <WallRow tiles={dealt} drawn={() => true} mine={mine} />
+          </WallSection>
         )}
-        {liveWall.map((tile, i) => (
-          <WallTile
-            key={`live-${i}`}
-            tile={tile}
-            drawn={i < liveWallDrawn || i >= liveWall.length - replacements}
+        <WallSection label={t('common.liveWallMarker')}>
+          <WallRow
+            tiles={liveWall}
+            drawn={(i) => i < liveWallDrawn || i >= liveWall.length - replacements}
           />
-        ))}
+        </WallSection>
         {deadWall.length > 0 && (
-          <span className="mx-1 self-stretch border-l border-dashed border-neutral-400 pl-1 text-xs whitespace-nowrap text-neutral-400 dark:border-neutral-600">
-            {t('common.deadWallMarker')}
-          </span>
+          <WallSection label={t('common.deadWallMarker')}>
+            <WallRow tiles={deadWall} drawn={(i) => i >= deadWall.length - replacements} />
+          </WallSection>
         )}
-        {deadWall.map((tile, i) => (
-          <WallTile key={`dead-${i}`} tile={tile} drawn={i >= deadWall.length - replacements} />
-        ))}
       </div>
     </details>
   )

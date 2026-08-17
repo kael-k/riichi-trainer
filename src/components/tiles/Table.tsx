@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Meld } from '../../core/agari'
-import { HONOR, type ParsedTile, type RiverTile } from '../../core/tiles'
+import type { ParsedTile, RiverTile } from '../../core/tiles'
 import { DEFAULT_TILE_SCALE, useSettings } from '../../features/settings/settingsStore'
 import { WINDS, type Wind } from '../../features/situation/urlCodec'
 import { MeldDisplay, River, Tile } from './Tile'
@@ -27,9 +27,10 @@ export interface SeatView {
   /** Draw `hand` as face-down backs — the tile count and melds still read, faces don't. This is
    *  the default opponent view; pass `false` (real faces) only when `showOpponentHands` is on. */
   concealed?: boolean
-  /** This seat's current point total (`MatchState.points`) — shown on its own plate, board truth
-   *  like `riichi`/`melds` rather than routed through the caller's `seatInfo` render prop, which
-   *  is the settings/algorithm/waits surface, not board state. */
+  /** This seat's current point total (`MatchState.points`) — drawn on the centre panel's edge
+   *  facing this seat and turned to face it, where a real table keeps the scores. Board truth like
+   *  `riichi`/`melds` rather than something routed through the caller's `seatInfo` render prop,
+   *  which is the settings/algorithm/waits surface. */
   points?: number
 }
 
@@ -39,9 +40,14 @@ interface TableProps {
   /** Your seat — always drawn at the bottom, with the others placed around it. */
   seatIndex: number
   round: Wind
-  /** Which round within the prevalent wind — East 1 is `1` (`MatchState.round`). Shown beside the
-   *  wind tile in the centre panel; omitted (no number drawn) when not given. */
+  /** Which round within the prevalent wind — East 1 is `1` (`MatchState.round`). Printed after the
+   *  wind's name in the centre panel ("East 1"). */
   roundNumber?: number
+  /** How many times this dealer has repeated (`MatchState.dealerRepeat`) — printed after the round
+   *  ("East 1 · 0"). Omitted entirely when not given, which is what a frozen result with no
+   *  running match passes. Not `honba`: the two diverge by ruleset, and the honba counter has its
+   *  own stick mark in the row below. */
+  dealerRepeat?: number
   doraIndicators?: ParsedTile[]
   /** Ura indicators; pass only once they should be visible. */
   uraIndicators?: ParsedTile[]
@@ -49,41 +55,49 @@ interface TableProps {
   honba?: number
   /** Extra centre content — the scoring trainer's win-condition badges. */
   children?: ReactNode
-  /** One seat's own info strip — the settings button plus its furiten/algorithm/wait reads —
-   *  drawn in that seat's own corner cell, above its melds, like the player plate on a Mahjong
-   *  Soul table. It sat one ring *outboard* of the seat's hand before, which cost the board a 16%
-   *  margin on every side purely to host a 44px button: on a phone that band came out ~50px, so
-   *  the strip and the hand row together overflowed it and landed on top of the seat's third
-   *  river row. The corner cell is 4 tile widths square and empty until a seat calls, so the
-   *  strip costs the felt nothing there. (Earlier homes, both rejected: the centre panel — four
-   *  44px targets buried the round wind, the wall count and the dora row — and the control row
-   *  above the board, which is nowhere near the seat it configures.) */
-  seatInfo?: (seat: number) => ReactNode
+  /** One seat's own info strip — the settings button plus its furiten/algorithm/wait reads — given
+   *  the whole corner cell on that seat's *left*, so a thirteen-sided wait has a 4x4 tile-width
+   *  track to wrap into. The seat's wind comes back the other way, as the second argument: an
+   *  already-styled node the strip puts on its own bottom line, which is what lets the wait tiles
+   *  above start at the wind's left edge rather than indented past it. A caller that returns
+   *  nothing for a seat gets the bare wind drawn there instead. (Earlier homes, all rejected: one
+   *  ring *outboard* of the seat's hand, which cost the board a 16% margin on every side purely to
+   *  host a 44px button — on a phone that band came out ~50px and the strip landed on the seat's
+   *  third river row; the centre panel, where four 44px targets buried the round, the wall count
+   *  and the dora row; and the control row above the board, nowhere near the seat it configures.) */
+  seatInfo?: (seat: number, wind: ReactNode) => ReactNode
 }
 
 /** Where each seat lands, by its distance around the table from you. Slot 0 is the bottom
  *  (you), then clockwise. The rotation puts every seat's first river row nearest the centre
- *  with rows growing outward, and it carries the melds' corner along with it. */
+ *  with rows growing outward, and it carries the seat's `info` corner (its wind, its algorithm,
+ *  its waits) along with it. The calls are not a corner cell at all any more — they lie beside
+ *  the seat's own hand, off the felt, in the ring below. */
 const SLOTS = [
-  { river: 'col-start-2 row-start-3', melds: 'col-start-3 row-start-3', spin: 'rotate-0' },
-  { river: 'col-start-3 row-start-2', melds: 'col-start-3 row-start-1', spin: '-rotate-90' },
-  { river: 'col-start-2 row-start-1', melds: 'col-start-1 row-start-1', spin: 'rotate-180' },
-  { river: 'col-start-1 row-start-2', melds: 'col-start-1 row-start-3', spin: 'rotate-90' },
+  {
+    river: 'col-start-2 row-start-3',
+    info: 'col-start-1 row-start-3',
+    spin: 'rotate-0',
+  },
+  {
+    river: 'col-start-3 row-start-2',
+    info: 'col-start-3 row-start-3',
+    spin: '-rotate-90',
+  },
+  {
+    river: 'col-start-2 row-start-1',
+    info: 'col-start-3 row-start-1',
+    spin: 'rotate-180',
+  },
+  {
+    river: 'col-start-1 row-start-2',
+    info: 'col-start-1 row-start-1',
+    spin: 'rotate-90',
+  },
 ]
 
 /** Sanma seats the third player on your left, not opposite: there is no toimen. */
 const SEAT_SLOTS: Record<number, number[]> = { 3: [0, 1, 3], 4: [0, 1, 2, 3] }
-
-/** Where each seat's wind mark sits on the centre box — near the edge facing that seat, but
- *  pulled in a little rather than flush against it: a declaring seat's riichi stick sits just
- *  outside that same edge (nearest the centre, by design), and flush-against-the-edge collided
- *  with it. */
-const WIND_MARKS = [
-  'bottom-[6%] left-1/2 -translate-x-1/2',
-  'right-[6%] top-1/2 -translate-y-1/2',
-  'top-[6%] left-1/2 -translate-x-1/2',
-  'left-[6%] top-1/2 -translate-y-1/2',
-]
 
 /** A real dead wall always shows five indicator slots; a kan flips the next one. The unflipped
  *  ones are drawn face-down rather than left out, so the row says how many are still to come
@@ -97,12 +111,6 @@ const INDICATOR_SLOTS = 5
  *  so ~8.3cqw tall — 10% of the square clears it. It was 16% while the seat strip lived out here
  *  too; the strip has moved to the corner cells, and the board keeps the difference. */
 const SEAT_RING_FRACTION = 0.1
-
-/** How much of a seat's corner cell the meld stack may take, in felt widths (`cqw`). The cell is
- *  4 board tiles deep — `4 * (100 - 2) / 14.6` ≈ 26.8cqw — and the seat's plate is pinned to the
- *  far end of that same column, so the calls get the rest. Four calls is the case this exists for:
- *  at the plain `100cqw/18` tile they need ~31cqw and land on the seat's own river instead. */
-const MELD_BAND = 17
 
 /** A betting stick, sized off the board's tile width like everything else here: 1000 points
  *  (one red dot) for a riichi bet, 100 points (plain) for an honba counter. It reads as a
@@ -178,6 +186,7 @@ export function Table({
   seatIndex,
   round,
   roundNumber,
+  dealerRepeat,
   doraIndicators = [],
   uraIndicators = [],
   wallCount,
@@ -192,11 +201,34 @@ export function Table({
   // reach them through the board's cap — 25.6rem is the old fixed 32rem read back out at the
   // default scale, so an untouched setting leaves the board exactly where it was
   const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
-  const showsHands = seats.some((seat) => seat.hand && seat.hand.length > 0)
+  // the ring outside the felt holds hands *and* calls, so a board where nobody's hand is drawn
+  // but somebody has called still has to pay for the band — otherwise those calls would be drawn
+  // over the felt's own edge and across a river
+  const showsHands = seats.some(
+    (seat) => seat.hand?.length || seat.melds?.length || seat.nuki?.length,
+  )
+  // the seat's own wind, styled by the board and handed *to* the strip rather than drawn beside
+  // it: the strip puts it on its bottom line with the settings button, which is what lets the
+  // wait tiles above start at the wind's own left edge and take the whole cell's width. A caller
+  // that renders no strip gets nothing to place it in, so the board draws it itself below
+  const windNode = (index: number) => (
+    <span
+      className={`mr-[2cqw] flex h-[8cqw] shrink-0 items-center text-[3cqw] leading-none font-semibold ${
+        // the settings trigger beside it is `8cqw` tall (`SeatPanel`), several times the letter's
+        // own box — bottom-aligning the two would leave the wind sitting visibly below it, so it
+        // takes that line's height and centres itself in it. The plate's own `pl` makes up the
+        // same `(8cqw - 3cqw) / 2` on the left, so the letter sits the same distance from both
+        // felt edges
+        index === seatIndex ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
+      }`}
+    >
+      {t(`wind.${WINDS[index]}`)}
+    </span>
+  )
   // evaluated once per seat rather than once per render pass through the loop below — a caller
   // may pass `seatInfo` unconditionally and return nothing per seat (e.g. while `seatsEnabled`
   // is false), and each seat's corner cell has to know which it got
-  const seatInfoNodes = seatInfo ? seats.map((_, i) => seatInfo(i)) : undefined
+  const seatInfoNodes = seatInfo ? seats.map((_, i) => seatInfo(i, windNode(i))) : undefined
 
   return (
     // square, so its size is one number: the narrower of the column it sits in and the height
@@ -252,8 +284,6 @@ export function Table({
             const slot = SLOTS[slotOf[(index - seatIndex + players) % players]]
             const wind = t(`wind.${WINDS[index]}`)
             const called = (seat.melds?.length ?? 0) + (seat.nuki?.length ?? 0) > 0
-            // every row the corner cell has to stack: one per meld, one for the nuki pile
-            const rows = (seat.melds?.length ?? 0) + (seat.nuki?.length ? 1 : 0) || 1
             return (
               <div key={index} className="contents">
                 {/* fixed at a full river's footprint (6 wide, 3 rows deep) rather than sized to
@@ -280,7 +310,7 @@ export function Table({
                   )}
                   <River tiles={seat.river ?? []} />
                 </div>
-                {((seat.hand && seat.hand.length > 0) || seat.drawn) && (
+                {((seat.hand && seat.hand.length > 0) || seat.drawn || called) && (
                   /* anchored to the *outer* square (the `relative` box two levels up), not to the
                      felt this `contents` group sits in — `display: contents` doesn't generate a
                      box, so an absolutely positioned child here still resolves against that outer
@@ -290,11 +320,22 @@ export function Table({
                      padding band it was given, never past it. Nothing about the river moves: the
                      hand is beside the table, which is where a revealed hand belongs. The seat's
                      info strip is no longer stacked out here with it — that lives in the corner
-                     cell below now, so this ring is never deeper than one row of tiles */
+                     cell below now, so this ring is never deeper than one row of tiles.
+                     The calls ride along at the right-hand end of that same row, off the felt,
+                     where a Mahjong Soul table draws them — not in a corner cell, where they used
+                     to pile up as if the board were a real table seen from above */
                   <div
-                    className={`pointer-events-none absolute inset-0 flex items-end justify-center ${slot.spin}`}
+                    data-testid="seat-ring"
+                    data-seat={index}
+                    className={`pointer-events-none absolute inset-0 flex items-end ${
+                      // the seat the board is drawn from has no hand out here — it sits below the
+                      // board — so a centred group would put that seat's calls in the middle of its
+                      // own edge, right over the hand. Pushed to its right-hand end instead, which
+                      // is where every other seat's calls already land relative to its hand
+                      seat.hand?.length || seat.drawn ? 'justify-center' : 'justify-end'
+                    } ${slot.spin}`}
                   >
-                    <div className="flex [--tile-w:calc(100cqw/16)]">
+                    <div className="flex items-end [--tile-w:calc(100cqw/16)]">
                       {seat.hand?.map((tile, i) => (
                         <Tile key={i} id={seat.concealed ? undefined : tile.id} red={tile.red} />
                       ))}
@@ -306,88 +347,105 @@ export function Table({
                           />
                         </div>
                       )}
+                      {called && (
+                        /* smaller than the hand they sit beside, and deliberately so: four calls
+                           at the hand's own tile width run past the felt's edge, and a called set
+                           is settled information — it does not need to shout as loud as the
+                           tiles still being decided */
+                        <div
+                          data-testid="seat-calls"
+                          className="ml-[5cqw] flex items-end gap-[0.5cqw] [--tile-w:calc(100cqw/22)]"
+                        >
+                          {seat.melds?.map((meld, i) => (
+                            <MeldDisplay key={i} meld={meld} />
+                          ))}
+                          {seat.nuki && seat.nuki.length > 0 && (
+                            <div className="flex">
+                              {seat.nuki.map((tile, i) => (
+                                <Tile key={i} id={tile.id} red={tile.red} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
-                {(called || seatInfoNodes?.[index] || seat.points !== undefined) && (
-                  /* the seat's own corner: melds stacked from the edge nearest the centre, the
-                     info strip pinned (`mt-auto`) to the far one — the plate at the seat's corner,
-                     where a Mahjong Soul table puts it. The cell fills its whole 4x4 tile-width
-                     track (no `place-self-center`) so `mt-auto` has the corner to push against,
-                     and the seat's own rotation carries "far" round with it for every seat */
-                  <div
-                    data-testid="corner"
-                    data-seat={index}
-                    style={
-                      {
-                        // the corner track is 4 board tiles deep and has to hold every call this
-                        // seat has made *plus* its plate. One meld row is 4/3 of a tile tall, so
-                        // `MELD_BAND` divided by that many rows is the widest tile that still fits;
-                        // `min()` keeps a seat with one or two calls at the size it always drew,
-                        // and only a heavily open hand pays. Without it a third call pushed the
-                        // stack out of the corner and across the seat's own river.
-                        '--tile-w': `min(calc(100cqw/18), calc(${MELD_BAND}cqw / ${rows * (4 / 3)}))`,
-                      } as CSSProperties
-                    }
-                    className={`flex h-full w-full flex-col items-end justify-start gap-[0.5cqw] ${slot.melds} ${slot.spin}`}
-                  >
-                    {seat.points !== undefined && (
-                      <span
-                        aria-label={t('table.points', { count: seat.points })}
-                        className="whitespace-nowrap text-[2.4cqw] font-medium text-neutral-600 dark:text-neutral-300"
-                      >
-                        {seat.points.toLocaleString()}
-                      </span>
-                    )}
-                    {seat.melds?.map((meld, i) => (
-                      <MeldDisplay key={i} meld={meld} />
-                    ))}
-                    {seat.nuki && seat.nuki.length > 0 && (
-                      <div className="flex [--tile-w:calc(100cqw/22)]">
-                        {seat.nuki.map((tile, i) => (
-                          <Tile key={i} id={tile.id} red={tile.red} />
-                        ))}
-                      </div>
-                    )}
-                    {seatInfoNodes?.[index] && (
-                      // `max-w-full`: the column is `items-end`, which sizes every child to its own
-                      // content, so without a boundary the strip's own `flex-wrap` has nothing to
-                      // wrap against — a thirteen-sided wait drew its tiles in one line straight
-                      // across the felt and over the seat's river
-                      <div className="mt-auto max-w-full [--tile-w:calc(100cqw/22)]">
-                        {seatInfoNodes[index]}
-                      </div>
-                    )}
+                {/* the seat's plate, in the corner on its own left: the wind it is sitting, and —
+                    where a caller offers one — its algorithm, furiten and waits, with the wind
+                    handed into the strip so both share one bottom line. A caller that renders no
+                    strip gets the bare wind instead, so a seat still says which one it is on a
+                    trainer that never renders a seat strip at all */}
+                <div
+                  data-testid="seat-plate"
+                  data-seat={index}
+                  // pinned to the corner's outer edge (`items-end`) and held off it by its own
+                  // padding, so the wind is inside the felt rather than sitting on its border. The
+                  // left inset is the bigger one: it matches what centring the wind on the `8cqw`
+                  // button line already costs it vertically, so the letter sits the same distance
+                  // from both felt edges — and it is the strip's left edge too, which is what puts
+                  // the wait tiles above in line with the wind rather than indented past it
+                  className={`pointer-events-none flex h-full w-full items-end justify-start p-[0.2cqw] pl-[2.7cqw] ${slot.info} ${slot.spin}`}
+                >
+                  {/* `min-w-0 flex-1`: the strip's own wait row wraps, and without a boundary to
+                      wrap against a thirteen-sided wait drew its tiles in one line straight across
+                      the felt and over the seat's river */}
+                  <div className="pointer-events-auto min-w-0 flex-1 [--tile-w:calc(100cqw/32)]">
+                    {/* `||`, not `??`: a caller offering `seatInfo` unconditionally returns
+                        `false` per seat while its panel is off (`seatsEnabled && <SeatStrip/>`),
+                        and a nullish check would take that as a node and drop the wind entirely */}
+                    {seatInfoNodes?.[index] || windNode(index)}
                   </div>
-                )}
+                </div>
               </div>
             )
           })}
 
           {/* the gap here separates the panel's three readouts (round, counters, indicators) and
               nothing inside them — the dora/ura rows keep their own tighter grid spacing */}
-          <div className="relative col-start-2 row-start-2 flex flex-col items-center justify-center gap-[3cqw] rounded-lg border border-neutral-400/30 p-[3.5cqw] text-center text-[2.6cqw] leading-tight">
-            {seats.map((_, index) => {
+          <div
+            data-testid="centre-panel"
+            className="relative col-start-2 row-start-2 flex flex-col items-center justify-center gap-[3cqw] rounded-lg border border-neutral-400/30 p-[3.5cqw] text-center text-[2.6cqw] leading-tight"
+          >
+            {/* each seat's score, drawn on the centre panel's edge facing that seat and turned to
+                face it — the same read a real table gives, where the scores sit between the
+                players rather than on any one plate */}
+            {seats.map((seat, index) => {
               const slot = slotOf[(index - seatIndex + players) % players]
               const you = index === seatIndex
+              if (seat.points === undefined) return null
               return (
-                <span
-                  key={index}
-                  className={`absolute flex items-center rounded px-[1cqw] text-[2.4cqw] font-semibold ${WIND_MARKS[slot]} ${
-                    you ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
-                  }`}
-                >
-                  {t(`wind.${WINDS[index]}`)}
+                /* the rotation goes on a *square* overlay covering the whole panel, never on the
+                   score itself: a transform doesn't move the box it is laid out in, so turning a
+                   wide text run 90° about its own centre left the side seats' scores half their
+                   own text width further in than the bottom and top ones. Rotating the square
+                   instead leaves it exactly where it was and carries the score, pinned to its
+                   bottom edge, round to the edge facing that seat — one offset, all four seats */
+                <span key={index} className={`absolute inset-0 ${SLOTS[slot].spin}`}>
+                  <span
+                    data-testid="seat-points"
+                    data-seat={index}
+                    aria-label={t('table.points', { count: seat.points })}
+                    className={`absolute bottom-[6%] left-1/2 -translate-x-1/2 rounded px-[1cqw] text-[2.6cqw] font-semibold whitespace-nowrap ${
+                      you ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
+                    }`}
+                  >
+                    {seat.points.toLocaleString()}
+                  </span>
                 </span>
               )
             })}
 
-            {/* the bare tile is the tenhou convention, but it only reads as "the round" to
-                someone who already knows that, so it keeps its label like the dora row */}
-            <span className="flex items-center gap-[0.8cqw] [--tile-w:calc(100cqw/24)]">
-              <span className="text-neutral-500 dark:text-neutral-400">{t('table.round')}</span>
-              <Tile id={HONOR + WINDS.indexOf(round)} />
-              {roundNumber !== undefined && <span>{roundNumber}</span>}
+            {/* spelled out rather than drawn as a wind tile: "East 1 · 0" reads the same to
+                someone who has never been told the tile means the round */}
+            {/* the one line the panel leads with, so it is set a third larger than the readouts
+                under it rather than at the panel's own base size */}
+            <span className="text-[3.2cqw] text-neutral-500 dark:text-neutral-400">
+              {t(dealerRepeat === undefined ? 'table.roundLine' : 'table.roundLineRepeat', {
+                wind: t(`windFull.${round}`),
+                number: roundNumber ?? 1,
+                repeat: dealerRepeat,
+              })}
             </span>
             {/* tenhou's centre readout: tiles left, riichi bets on the table, honba counters —
                 marked by their own object rather than a word, which is what makes the row read

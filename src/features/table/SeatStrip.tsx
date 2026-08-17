@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Tile } from '../../components/tiles/Tile'
@@ -16,12 +17,6 @@ const ALGO_COLOR: Record<SeatAlgorithm, string> = {
   manual: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
 }
 
-/** Wait tiles drawn before the rest become a count. Five is what fits one line of a seat's corner
- *  cell; past that the tiles are too small to read anyway, and the extreme case — kokushi's
- *  thirteen-sided wait — is better answered by "+8" than by thirteen unreadable faces. Ordinary
- *  waits are one to three tiles, so this only ever trims the hands that are wide open. */
-const MAX_WAIT_TILES = 5
-
 interface SeatStripProps extends SeatButtonProps {
   /** This seat's own tenpai/waits/furiten (`core/table.ts#seatRead`) — present for a seat the
    *  reader plays regardless of `showWaits` (their own furiten is legitimate information a real
@@ -30,47 +25,63 @@ interface SeatStripProps extends SeatButtonProps {
   /** The board's `showSeatWaits` setting — gates the wait-tile row specifically (the furiten
    *  badge below reads `read` alone, since its presence already carries that gate for this seat). */
   showWaits: boolean
+  /** This seat's wind, already styled by `Table` — it leads the bottom line here rather than being
+   *  drawn beside the strip, which is what lets the wait tiles above start at its left edge and
+   *  run the whole width of the corner. */
+  wind?: ReactNode
 }
 
 /**
  * One seat's info strip on the felt: the settings button that opens `SeatButton`'s dialog, plus
  * — in the order the reads were specified — the furiten badge, the algorithm badge and the wait
- * tiles. Sized off the board's own `--tile-w` like everything else out here.
+ * tiles, with the seat's wind (`Table`'s own node, passed in) leading the bottom line. It fills
+ * the corner cell on that seat's left, so the waits are drawn in full rather than trimmed to the
+ * five that used to fit beside the calls, and a thirteen-sided kokushi wait wraps over two lines
+ * at a size that says plainly they are not tiles in play. Sized off the board's own `--tile-w`
+ * like everything else out here.
  */
-export function SeatStrip({ read, showWaits, ...seatButtonProps }: SeatStripProps) {
+export function SeatStrip({ read, showWaits, wind, ...seatButtonProps }: SeatStripProps) {
   const { t } = useTranslation()
   const { seat, players, defaultOrientation, config, fallbackModes } = seatButtonProps
   const mode = resolveSeatConfig(config, players, defaultOrientation, fallbackModes).modes[seat]
 
   return (
+    // a column: the waits above, the wind and the controls on the bottom line. The tiles are the
+    // tallest thing here and the widest — put on that line they pushed the settings button and
+    // the algorithm badge off the corner
     <div
       data-testid="seat-strip"
       data-seat={seat}
-      className="flex flex-wrap items-center justify-center gap-1"
+      // `w-full`, not shrink-to-fit: the wait row wraps against this width, and a column that
+      // sizes itself to its own content gives a thirteen-sided wait nothing to wrap against — it
+      // drew all thirteen in one line, straight out of the corner cell and over the next seat's
+      // river. The width comes from `Table`'s own `min-w-0 flex-1` wrapper — the whole corner
+      // cell, since the wind is inside this column now rather than beside it
+      className="flex w-full flex-col items-start justify-end gap-[0.4cqw]"
     >
-      <SeatButton {...seatButtonProps} />
-      {read?.furiten && <GlossaryTerm id="furiten" />}
-      <span className={`shrink-0 rounded px-[0.6cqw] py-[0.1cqw] text-[2cqw] ${ALGO_COLOR[mode]}`}>
-        {t(`seats.mode.${mode}`)}
-      </span>
       {showWaits && read && read.waits.length > 0 && (
-        <div className="flex items-center gap-[0.3cqw]">
-          {read.waits.slice(0, MAX_WAIT_TILES).map(({ tile, remaining }) => (
+        <div className="flex flex-wrap items-center gap-[0.3cqw]">
+          {read.waits.map(({ tile, remaining }) => (
             <div
               key={tile}
               className={`flex flex-col items-center ${remaining === 0 ? 'opacity-30' : ''}`}
             >
               <Tile id={tile} />
-              <span className="text-[1.8cqw] text-neutral-500">{remaining}</span>
+              <span className="text-[1.6cqw] leading-none text-neutral-500">{remaining}</span>
             </div>
           ))}
-          {read.waits.length > MAX_WAIT_TILES && (
-            <span className="text-[2cqw] text-neutral-500">
-              +{read.waits.length - MAX_WAIT_TILES}
-            </span>
-          )}
         </div>
       )}
+      <div className="flex flex-wrap items-center justify-start gap-[0.6cqw]">
+        {wind}
+        <SeatButton {...seatButtonProps} />
+        {read?.furiten && <GlossaryTerm id="furiten" />}
+        <span
+          className={`shrink-0 rounded px-[0.6cqw] py-[0.1cqw] text-[2cqw] ${ALGO_COLOR[mode]}`}
+        >
+          {t(`seats.mode.${mode}`)}
+        </span>
+      </div>
     </div>
   )
 }
