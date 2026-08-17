@@ -352,21 +352,27 @@ render the `SeatButton` panel at all — the underlying `seatConfig` state is pa
 
 `SeatButton` (`features/settings/SeatPanel.tsx`) is the dialog; `SeatStrip`
 (`features/table/SeatStrip.tsx`) is the thin wrapper that places its trigger on the felt itself,
-fed to `Table`'s `seatInfo?: (seat: number) => ReactNode` prop. It sits in that seat's **own corner
-cell**, pinned (`mt-auto`) to the corner's far edge with the seat's melds stacking from the edge
-nearest the centre — the player plate where a Mahjong Soul table puts it. The corner cell is 4 tile
-widths square and empty until a seat calls, so the plate costs the felt nothing; the seat's own
-rotation carries "far" round with it, so every seat's plate lands on its own outside corner.
+fed to `Table`'s `seatInfo?: (seat: number, wind: ReactNode) => ReactNode` prop — which hands a
+node back the other way. The **whole corner cell on that seat's left** is the plate's (4 tile widths
+square), and the strip lays it out as a column: the wait tiles on top, then a bottom line holding
+the seat's wind, its settings trigger and its algorithm badge. The wind is `Table`'s own styled
+node rather than the strip's, so a trainer that renders no strip still says which seat is which
+(and the fallback is `||`, never `??`: a caller returning `seatsEnabled && <SeatStrip/>` hands back
+`false`, which a nullish check reads as a node and drops the wind entirely). Putting the wind on
+that line rather than beside the strip is what lets the waits start at its left edge and take the
+cell's whole width: thirteen orphans then fit two rows instead of running out over the next seat's
+river. The seat's own rotation carries the corner round with it, so every plate lands on its own
+outside corner.
 
 **Nothing in that corner may be sized in pixels.** The cell is a track that scales with the board,
-so both things sharing it scale too: the trigger is `8cqw` tall with `3cqw` text (a fixed `h-11`
-ran a phone-sized board's plate clean off the felt), and its ≥44px touch target is kept by an
-`after:size-11` pseudo-element instead — a real 44px hit area over a layout box that costs the
-corner only what it draws. The melds get `MELD_BAND` (17cqw of the ~26.8cqw track, the plate takes
-the rest) and their `--tile-w` is `min(100cqw/18, MELD_BAND / rows·⁴⁄₃)`: one or two calls draw
-exactly as they always did, and only a heavily open hand shrinks. Without that a third call pushed
-the stack out of the corner and across the seat's own river — four calls need ~31cqw at the plain
-size, which the corner does not have and never will.
+so everything in it scales too: the trigger is `8cqw` tall (a fixed `h-11` ran a phone-sized board's
+plate clean off the felt) and its ≥44px touch target is kept by an `after:size-11` pseudo-element
+instead — a real 44px hit area over a layout box that costs the corner only what it draws, which is
+also why the box hugs its icon rather than carrying a `min-w`, whose empty sides read as gap. The
+wind takes that same `8cqw` line height and centres in it, and the plate's `pl` makes up the same
+`(8cqw - 3cqw) / 2` on the left so the letter sits the same distance from both felt edges. The
+waits are `100cqw/32` with the strip at `w-full`: without a width to wrap against, a column that
+sizes itself to its own content drew all thirteen in one line straight off the cell.
 
 Two earlier homes are recorded because both failed for reasons worth not repeating: the centre panel
 beside each wind mark (four 44px targets on a panel barely wider than that buried the round wind, the
@@ -383,7 +389,7 @@ of its own grid-item ancestry, and `items-end` lands it flush against the square
 
 `Table` computes `seatInfoNodes` once per seat rather than calling `seatInfo` again per render — a
 caller may offer `seatInfo` unconditionally and return nothing per seat while `seatsEnabled` is
-false, and each corner cell has to know which it got. Each plate opens a
+false, and each corner cell has to know which it got (and hand it the wind itself instead). Each plate opens a
 dialog scoped to that seat: "watch from here" (`onWatch`, offered on every seat but the one already
 being watched, on every trainer now that perspective is view-only — there is no longer a trainer
 where moving it would mean a different board), the efficiency/defend/manual row, and the claims
@@ -399,11 +405,13 @@ included) rather than answering it against a hand that isn't on screen.
 
 ### UI
 
-`components/tiles/Table.tsx` is the shared board — efficiency, folding and the lab always (reading the table _is_ the folding drill), scoring while its own `settings.table` is on. A 3x3 grid measured in tile widths (4fr/6fr/4fr = 14 across), seats placed by `(seat - seatIndex + players) % players` and rotated `-90deg` per step so `seatIndex`'s seat is always at the bottom, melds/nuki in the corner cells.
+`components/tiles/Table.tsx` is the shared board — efficiency, folding and the lab always (reading the table _is_ the folding drill), scoring while its own `settings.table` is on. A 3x3 grid measured in tile widths (4fr/6fr/4fr = 14 across), seats placed by `(seat - seatIndex + players) % players` and rotated `-90deg` per step so `seatIndex`'s seat is always at the bottom, each seat's plate in the corner cell on its left.
+
+Calls are **not** on the felt (ADR pending): a seat's melds and nuki ride at the right-hand end of its own hand ring — the band outside the felt that `SEAT_RING_FRACTION` pays for — where a Mahjong Soul table draws them, at `100cqw/22` against the hand's `100cqw/16`, since four melds at hand size run past the felt's edge. They used to pile up in a corner cell, which is a real table seen from above, not a client. The seat the board is *drawn from* has no hand out there at all, so its calls go to `HandDisplay` under the board instead (`melds`/`nuki` props, same 0.75 proportion and 0.8-tile gap): the three board pages drop `melds`/`nuki` from that seat's `SeatView` and wrap the hand row in `justify-center`, since calls hanging off its right put an uncentred block under a centred board. `showsHands` therefore counts melds and nuki as well as hands — a board where nobody's hand is drawn but somebody has called still has to pay for the ring, or those calls land across a river.
 
 `seatIndex` is purely which seat the board is drawn from — a viewing perspective, not "the user's seat"; `SeatView` has no player field either, only `hand`/`drawn`/`concealed`, so a seat someone plays and a seat nobody does are drawn through the exact same props. There is no on-board "(you)" label, only the bottom-seat rotation itself and (where a caller passes it) that seat's own styling. `SeatView.drawn` (optional, alongside `hand`) draws that seat's 14th tile with a small gap after the rest — the same tedashi/tsumogiri read a real felt gives, honouring `concealed` exactly like `hand` does. Rivers carry `RiverTile` flags (`tsumogiri`, `riichi`) rather than parallel arrays; absence of `tsumogiri` means tedashi.
 
-The match context reaches the board as two plain props, ADR-0014 intact — values in, no game logic: `roundNumber?: number` prints beside the wind tile in the centre panel ("East 1"; omitted when not passed), and `SeatView.points?: number` prints on that seat's own plate, where a Mahjong Soul table puts it. Points are **board truth like `riichi`/`melds`, not `seatInfo`** — the render prop is the page's settings/algorithm/waits surface, and routing board state through it would make what the felt says depend on whether the seat panel is enabled. Same rule as the rest of that corner: `cqw` only, never pixels (the points line is `2.4cqw`). Passing `honba` also fixed a hardcoded `0` in the centre readout on efficiency/lab/folding, none of which had a real value before. Scoring stays untouched — it renders a frozen result, not a running round.
+The match context reaches the board as two plain props, ADR-0014 intact — values in, no game logic: `roundNumber?: number` prints beside the wind tile in the centre panel ("East 1"; omitted when not passed), and `SeatView.points?: number` prints on the centre panel's edge facing that seat, where a real table keeps the scores. Points are **board truth like `riichi`/`melds`, not `seatInfo`** — the render prop is the page's settings/algorithm/waits surface, and routing board state through it would make what the felt says depend on whether the seat panel is enabled. Same rule as the rest of the board: `cqw` only, never pixels (the points line is `2.6cqw`). Each score is pinned to the bottom edge of a **square overlay** that carries the seat's rotation, never positioned per seat and then turned: a transform doesn't move the box it was laid out in, so per-seat placement left the two side seats' scores half a text-width further in than the top and bottom ones. The round line above them (`table.roundLine`/`roundLineRepeat`, "East 1 · 0" spelled out rather than drawn as a wind tile) is `3.2cqw` against the panel's own `2.6cqw` — it is what the panel leads with. Passing `honba` also fixed a hardcoded `0` in the centre readout on efficiency/lab/folding, none of which had a real value before. Scoring stays untouched — it renders a frozen result, not a running round.
 
 Sizing: container query units (`--tile-w: calc(100cqw/14)`), so the whole board scales from the one width on its outer div — put width there, never on the square, or a `w-full` child collapses when the board is a flex item. Tracks must stay `minmax(0,…)`: a seat block is measured before it rotates. The `short:` variant (`index.css`, max-height 520px — a phone held sideways) keys `--tile-w-raw` off `vh` instead of `vw`, since a square board is only ever limited by height; the hand stays _under_ the board at every size (a real client and a real table both put your tiles along your own edge of the felt), and the width left over becomes the gutters the fullscreen chrome and notices sit in. `controls?: ReactNode` (the fullscreen toggle) is the only thing left in the control row above the board now — each seat's own info strip moved onto the felt itself (`seatInfo`, see the trainer-pattern section) — and it lives _inside_ the width-capped outer box — it is the only element that knows the board's actual width, and a wrapper around it collapses the square. `--board-max-h` (default `calc(100svh-8rem)`) and `--board-controls` (the control row's share of that budget) let a caller resize the square's height budget without touching the component. The square's cap also carries a `100cqh` term, which is what makes it *fit* rather than merely estimate: wherever an ancestor declares itself a size container (the fullscreen stage does) that is the height genuinely left after the chrome row and the hand strip have taken theirs, and with no such ancestor the unit falls back to the small viewport — larger than `--board-max-h`'s guess, so the inline layout is unaffected. The felt inside the square is `aspect-square w-full`, never `h-full`: a percentage height against a box that only gets its own height from `aspect-ratio` is indefinite in WebKit, so the height fell back to auto, the rows sized to content instead of to their fr shares, and the board came out 390x468 on an iPhone while Chrome drew it square. The felt is square by construction (a square with equal padding on all four sides — percentage padding resolves against the width), so asking for that directly is the one form both engines agree on. `e2e/board.spec.ts` asserts squareness on iPhone portrait, iPhone landscape and desktop; that bug class is invisible to Chrome/Firefox device emulation, which is why the UI suite runs a real WebKit.
 

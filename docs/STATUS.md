@@ -25,7 +25,7 @@ seam, mobile fullscreen on every trainer.
 The **table-architecture centralization** work is complete: explicit walls, `core/table.ts`,
 `useRound`, the efficiency split, the table-settings schema, the lab.
 
-**Four waves landed after it:**
+**Five waves landed after it:**
 
 1. **Seat algorithms** (`PLAN-seat-algorithms.md`, T0–T5, commits `4b39b28`…`d658a28`) — the
    `humans`/`policy` merge, live algorithm changes, the `ALGORITHMS` decision seam, efficiency's
@@ -46,18 +46,19 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    options/state/`SeatView`/snapshot/link, riichi deducting 1000 and adding a stick, and the board
    showing round number and per-seat points. [ADR-0022](adr/0022-stored-redness.md),
    [ADR-0023](adr/0023-round-inside-match.md).
+5. **The board's Mahjong-Soul pass** (`UX-TABLE.md`, no longer in the tree) — calls off the felt
+   and beside the hand they belong to (the reader's own under the board, with `HandDisplay`), the
+   per-seat read (wind, algorithm, full wait list) on one line in the seat's left corner with its
+   waits above, points pinned to the centre panel's edge by a rotating square overlay, a
+   plain-language round line, and a sectioned wall reveal with the perspective seat's own dealt
+   tiles highlighted. Real 4/4/4+1 dealing ([ADR-0024](adr/0024-real-dealing-order.md)) shipped
+   ahead of it as its own commit, since the wall reveal draws that block back to the reader.
 
 ## In flight
 
-- `UX-TABLE.md` — the board's Mahjong-Soul pass: calls laid out horizontally beside the hand, the
-  per-seat read (algorithm, wind, full wait list) moved to the seat's left corner, points in the
-  centre panel rotated per seat, a plain-language round line, and a sectioned wall reveal with the
-  perspective seat's own dealt tiles highlighted. Real 4/4/4+1 dealing
-  ([ADR-0024](adr/0024-real-dealing-order.md)) shipped ahead of it as its own commit, since the
-  wall reveal draws that block back to the reader.
-- `PLAN-match-context.md` was the last plan file in the tree and went with T7, per
+- Nothing. `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per
   `docs/README.md`'s one-plan-file rule. `PLAN-seat-algorithms.md`, `UX-TESTS-BUG.md` and
-  `UX-SPECS.md` are all gone from root; the mobile-layout items `UX-TESTS-BUG.md` carried are
+  `UX-SPECS.md` are all gone from root too; the mobile-layout items `UX-TESTS-BUG.md` carried are
   recorded under known defects below, and the CI gap under CI.
 
 Two sessions run concurrently on `main` in this repo. Commits are rebased and GPG-signed

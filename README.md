@@ -64,9 +64,10 @@ The match params are all optional and each is left out when it is at its default
 /efficiency?wall=19m19p19s1234567z
 ```
 
-That deals a kokushi start to seat 0 and fills the rest of the wall at random — the prefix is
-consumed from the top of the deal, so pinning a hand for a later seat means padding the seats
-before it.
+That fills the rest of the wall at random and hands out those thirteen the way a table deals: four
+to East (`1m9m1p9p`), four to South (`1s9s1z2z`), four to West (`3z4z5z6z`), one to North (`7z`).
+Pinning a whole hand for one seat therefore means writing out the deal around it — the first
+thirteen tiles of a wall are the start of everyone's hand, not the start of anyone's.
 
 The **shanten trainer** shares nothing else — it deals no wall — so it keeps its own pair:
 
