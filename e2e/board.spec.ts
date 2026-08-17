@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { dealtIndices } from '../src/core/wall.ts'
 
 /** The trainers that draw a `Table`. Scoring keeps its board behind its own setting and the lab's
  *  design is still open, so neither is asserted here. */
@@ -42,12 +43,14 @@ function overlaps(a: { x: number; y: number; width: number; height: number }, b:
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
 }
 
-/** A corner cell's *content* box — the cell itself is its grid track, and what can overflow is
- *  what was put in it (the melds and the seat's plate). */
-async function cornerFits(page: Page, corner: Locator, what: string) {
-  const square = (await page.getByTestId('board').first().boundingBox())!
-  const content = await corner.evaluate((el) => {
-    const rects = [...el.children].map((c) => c.getBoundingClientRect())
+/** What a box actually draws, which is not the box: the plate is its whole grid track and the ring
+ *  is the whole square, so both report a box far larger than their contents — and both can spill
+ *  *out* of it, which is the failure these tests are looking for. */
+async function drawnBox(locator: Locator) {
+  return await locator.evaluate((el) => {
+    const rects = [...el.querySelectorAll('*')]
+      .map((c) => c.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0)
     const x = Math.min(...rects.map((r) => r.left))
     const y = Math.min(...rects.map((r) => r.top))
     return {
@@ -57,6 +60,14 @@ async function cornerFits(page: Page, corner: Locator, what: string) {
       height: Math.max(...rects.map((r) => r.bottom)) - y,
     }
   })
+}
+
+/** Everything a seat's corner holds has to stay inside the board and off every river — the plate
+ *  (its wind, its settings trigger, its waits) and, for whoever the board is *not* drawn from,
+ *  its calls out in the ring. */
+async function fitsTheBoard(page: Page, box: Locator, what: string) {
+  const square = (await page.getByTestId('board').first().boundingBox())!
+  const content = await drawnBox(box)
 
   expect(content.x, `${what} runs off the board`).toBeGreaterThanOrEqual(square.x - 1)
   expect(content.y, `${what} runs off the board`).toBeGreaterThanOrEqual(square.y - 1)
@@ -71,11 +82,6 @@ async function cornerFits(page: Page, corner: Locator, what: string) {
     if (r) expect(overlaps(content, r), `${what} overlaps a river`).toBe(false)
   }
 }
-
-/** A shared folding link whose seats call heavily — the corner cell has to hold several melds and
- *  the seat plate at once, which is the case that broke first. */
-const CALLED_BOARD =
-  '/folding?wall=0s32m4s2z3p98m9p2s9p44m8p5s32z6m45z1p8234s2z74p67m35s61z3p2m6p80m5z2s9m4s3p6z4s8p3m64z4m1z7s7473z2p1m2p3z36s5m8s1m7z8641p81s9m7p6s55m5z0p99s35p2m1z8p9s9m6s6m8s1z3s1m7z26p236m1s17p7s4m259s3m4z41975p25z7s7m4p1m95p7m2p8m3z7s6z8m6p161s7m&sanma=0&threats=1&wins=1'
 
 /** Every tile kind, in id order — the alphabet both the `wall` param and the `log` param are
  *  written in (`core/tiles.ts#parseTenhou`). */
@@ -104,45 +110,61 @@ function tenhou(tiles: string[]): string {
 /** The seat the suukantsu hand is dealt to. Deliberately *not* the reader's own seat: a seat's
  *  waits are read off the hand it is holding, and the seat whose turn it is is always holding its
  *  14th tile at rest, so its wait row is empty by construction. Toimen rests on 13 and shows the
- *  tanki — which also puts the four melds in a rotated corner rather than the upright one. */
+ *  tanki — which also puts the four melds in a rotated ring rather than the upright one. */
 const KAN_SEAT = 2
 
+/** Four seats' starting hands laid into the wall the way a table deals them — four apiece, three
+ *  times round, then one each (`DEAL_CHUNKS`). Written through `dealtIndices` rather than as four
+ *  slabs of thirteen, so these fixtures follow the engine if the dealing pattern ever moves again:
+ *  slabs are what the 4/4/4+1 deal quietly turned into four scrambled hands. */
+function dealt(hands: string[][], players = hands.length): string[] {
+  const out: string[] = []
+  hands.forEach((hand, seat) =>
+    dealtIndices(seat, players).forEach((index, i) => {
+      out[index] = hand[i]
+    }),
+  )
+  return out
+}
+
 /**
- * A wall dealt so toimen kans its way to suukantsu: four concealed triplets and a lone 5m, then
+ * A wall dealt so one seat kans its way to suukantsu: four concealed triplets and a lone 5m, then
  * the fourth copy of each triplet arrives on its next four draws. Four ankan flip four more dora
  * indicators on top of the opening one, so the board ends up drawing every indicator slot it has,
- * one corner has to hold four melds at once, and that seat's plate has to show the winning tile
- * beside them — every extreme the corner cell is asked for, in one hand.
+ * one seat's ring has to hold four melds beside its hand, and that seat's plate has to show the
+ * winning tile — every extreme the corner is asked for, in one hand.
+ *
+ * `kanSeat` moves the whole thing to another seat: at `KAN_SEAT` it is an opponent's ring, at the
+ * link's own `seat=` it is the reader's own calls, which the board hands to `HandDisplay` under it
+ * instead of drawing on the felt.
  *
  * The wall is given in full (136 tiles) rather than as a prefix on purpose: a short wall is
  * completed at random, and the dead wall — which is where every kan replacement comes from — would
  * then be tiles the `log` below could not name.
  */
-function suukantsuBoard(): string {
-  // 13 each, in deal order. Toimen's is the hand being built; the rest are junk that stays far
-  // from tenpai, so nobody claims a discard and derails the replay
+function suukantsuBoard(kanSeat = KAN_SEAT): string {
+  // 13 each. The kan seat's is the hand being built; the rest are junk that stays far from tenpai,
+  // so nobody claims a discard and derails the replay
   const quads = ['1m', '1m', '1m', '2m', '2m', '2m', '3m', '3m', '3m', '4m', '4m', '4m', '5m']
   const junkPin = [...Array.from({ length: 9 }, (_, i) => `${i + 1}p`), '1s', '2s', '3s', '4s']
   const junkSou = [
     ...Array.from({ length: 9 }, (_, i) => `${i + 1}s`),
     ...Array.from({ length: 4 }, (_, i) => `${i + 1}z`),
   ]
-  const hands = [junkPin, junkPin, quads, junkSou]
+  const spare = [junkPin, junkPin, junkSou]
+  const deal = dealt([0, 1, 2, 3].map((seat) => (seat === kanSeat ? quads : spare.pop()!)))
 
-  // live draws, in turn order: toimen takes every third-of-four and it is always the quad's last
-  // copy, the other three take a terminal they throw straight back
-  const live = ['9m', '8m', '7m', '6m'].flatMap((junk, cycle) => [
-    junk,
-    junk,
-    ['1m', '2m', '3m', '4m'][cycle],
-    junk,
-  ])
+  // live draws, in turn order from the dealer: the kan seat takes its own slot of every four and
+  // it is always the quad's last copy, the other three take a terminal they throw straight back
+  const live = ['9m', '8m', '7m', '6m'].flatMap((junk, cycle) =>
+    [0, 1, 2, 3].map((seat) => (seat === kanSeat ? ['1m', '2m', '3m', '4m'][cycle] : junk)),
+  )
 
   // the last 14: five dora indicators, five ura, then the four replacement tiles a kan draws —
-  // popped off the end, so toimen discards 4z, 3z, 2z, 1z in that order
+  // popped off the end, so the kan seat discards 4z, 3z, 2z, 1z in that order
   const dead = ['1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '1s', '1z', '2z', '3z', '4z']
 
-  const placed = [...hands.flat(), ...live, ...dead]
+  const placed = [...deal, ...live, ...dead]
   const left = new Map(KINDS.map((kind) => [kind, 4]))
   for (const tile of placed) left.set(tile, left.get(tile)! - 1)
   // reverse id order, so the 5m copies land at the very end of the live wall rather than as the
@@ -151,14 +173,18 @@ function suukantsuBoard(): string {
     .reverse()
     .flatMap(([kind, count]) => Array.from({ length: count }, () => kind))
 
-  const wall = [...hands.flat(), ...live, ...filler, ...dead]
+  const wall = [...deal, ...live, ...filler, ...dead]
   const log = ['1m', '2m', '3m', '4m']
     .map((quad, cycle) => {
       const replacement = ['4z', '3z', '2z', '1z'][cycle]
       const junk = ['9m', '8m', '7m', '6m'][cycle]
-      // one full cycle in turn order: the two seats before toimen, toimen's kan and its discard,
-      // then the seat after it
-      return `D0${junk}TD1${junk}TA${KAN_SEAT}${quad}D${KAN_SEAT}${replacement}TD3${junk}T`
+      // one full cycle in turn order: the kan seat kans and discards its replacement, everyone
+      // else throws back the terminal they drew
+      return [0, 1, 2, 3]
+        .map((seat) =>
+          seat === kanSeat ? `A${seat}${quad}D${seat}${replacement}T` : `D${seat}${junk}T`,
+        )
+        .join('')
     })
     .join('')
 
@@ -167,22 +193,21 @@ function suukantsuBoard(): string {
   return `/efficiency?wall=${tenhou(wall)}&log=${log}&seat=0&deadWall=1&aka=0&sanma=0`
 }
 
-test('four kans: the corner holds them all and every indicator flips', async ({ page }, info) => {
+test('four kans: they lie beside that seat and every indicator flips', async ({ page }, info) => {
   await page.goto(suukantsuBoard())
   const board = page.getByTestId('board').first()
   await expect(board).toBeVisible()
 
-  // four ankan in toimen's corner, and its plate still beside them
-  const corner = page.locator(`[data-testid=corner][data-seat="${KAN_SEAT}"]`)
-  const plate = corner.getByTestId('seat-strip')
-  await expect(plate).toBeVisible()
-  // points line, four melds, the plate
-  expect(await corner.evaluate((el) => el.children.length), 'points, four melds and the plate').toBe(
-    6,
-  )
+  // four ankan in that seat's own ring, off the felt at the right-hand end of its hand — twelve
+  // faces and four backs, since an ankan hides its outer two
+  const ring = page.locator(`[data-testid=seat-ring][data-seat="${KAN_SEAT}"]`)
+  const calls = ring.getByTestId('seat-calls')
+  await expect(calls.locator('> div')).toHaveCount(4)
+  await expect(calls.getByRole('img')).toHaveCount(16)
 
-  // the winning tile, on the plate beside the melds: tanki on 5m, and three copies are still out
-  // there — the hand holds the fourth
+  // the winning tile, on that seat's plate: tanki on 5m, and three copies are still out there —
+  // the hand holds the fourth
+  const plate = page.locator(`[data-testid=seat-plate][data-seat="${KAN_SEAT}"]`)
   await expect(plate.getByRole('img')).toHaveCount(1)
   await expect(plate.getByRole('img', { name: '5m' })).toBeVisible()
   await expect(plate).toContainText('3')
@@ -193,8 +218,27 @@ test('four kans: the corner holds them all and every indicator flips', async ({ 
   await expect(dora.getByRole('img')).toHaveCount(5)
   await expect(dora.getByRole('img', { name: 'Face-down tile' })).toHaveCount(0)
 
-  await cornerFits(page, corner, 'the four-kan corner')
+  await fitsTheBoard(page, calls, 'four kans')
+  await fitsTheBoard(page, plate, 'the four-kan plate')
   await page.screenshot({ path: info.outputPath('four-kans.png') })
+})
+
+test('the reader’s own calls go under the board, not onto the felt', async ({ page }) => {
+  // the same four kans, dealt to the seat the board is drawn from: it has no hand on the felt to
+  // put them beside, so they belong with the hand below it, at a size that reads against it
+  await page.goto(suukantsuBoard(0))
+  await expect(page.getByTestId('board').first()).toBeVisible()
+
+  await expect(page.locator('[data-testid=seat-ring][data-seat="0"]')).toHaveCount(0)
+  const calls = page.getByTestId('hand-calls')
+  await expect(calls.locator('> div')).toHaveCount(4)
+  await expect(calls.getByRole('img')).toHaveCount(16)
+
+  // beside the hand it belongs to, on the same line, and smaller than it
+  const hand = (await page.getByRole('button', { name: '5m' }).first().boundingBox())!
+  const meld = (await calls.getByRole('img').first().boundingBox())!
+  expect(meld.x, 'the calls sit left of the hand').toBeGreaterThan(hand.x)
+  expect(meld.width, 'the calls are drawn at hand size').toBeLessThan(hand.width)
 })
 
 /** The thirteen orphans, dealt straight to toimen: kokushi's thirteen-sided wait is the widest
@@ -217,21 +261,31 @@ function thirteenOrphansBoard(): string {
     ...Array.from({ length: 4 }, (_, i) => `${i + 2}p`),
     ...Array.from({ length: 4 }, (_, i) => `${i + 1}m`),
   ]
-  return `/efficiency?wall=${tenhou([...junkPin, ...junkSou, ...orphans])}&seat=0&sanma=0`
+  // a prefix, not a full wall: only the deal matters here, and the rest completes at random
+  const deal = dealt([junkPin, junkSou, orphans, junkPin])
+  return `/efficiency?wall=${tenhou(deal)}&seat=0&sanma=0`
 }
 
 test('a thirteen-sided wait fits on the seat that holds it', async ({ page }, info) => {
   await page.goto(thirteenOrphansBoard())
   await expect(page.getByTestId('board').first()).toBeVisible()
 
-  const corner = page.locator(`[data-testid=corner][data-seat="${KAN_SEAT}"]`)
-  const plate = corner.getByTestId('seat-strip')
-  // five faces and a count for the rest: thirteen tiles at this size are unreadable, and drawn in
-  // full they used to run straight off the corner and over the seat's river
-  await expect(plate.getByRole('img')).toHaveCount(5)
-  await expect(plate).toContainText('+8')
+  const plate = page.locator(`[data-testid=seat-plate][data-seat="${KAN_SEAT}"]`)
+  // all thirteen, drawn small rather than trimmed to the five that used to fit: the whole corner
+  // is the plate's now, and a wait you cannot read in full is not a wait you can defend against
+  await expect(plate.getByRole('img')).toHaveCount(13)
 
-  await cornerFits(page, corner, 'the thirteen-wait corner')
+  // and they wrap inside the corner cell — in one line they ran straight over the next seat's
+  // river, which is what the size is chosen against
+  const cell = (await plate.boundingBox())!
+  const drawn = await drawnBox(plate)
+  expect(drawn.width, 'the wait row is wider than its own corner').toBeLessThanOrEqual(
+    cell.width + 1,
+  )
+  expect(drawn.height, 'the plate is taller than its own corner').toBeLessThanOrEqual(
+    cell.height + 1,
+  )
+  await fitsTheBoard(page, plate, 'the thirteen-wait plate')
   await page.screenshot({ path: info.outputPath('thirteen-wait.png') })
 })
 
@@ -291,48 +345,66 @@ for (const trainer of TABLE_TRAINERS) {
   })
 }
 
-test('a called hand keeps its melds and plate inside the felt', async ({ page }) => {
-  await page.goto(CALLED_BOARD)
-  const board = page.getByTestId('board').first()
-  await expect(board).toBeVisible()
-  const square = (await board.boundingBox())!
+/**
+ * Two pons by the same seat, called from the dealer. Open calls are the shape ankan never tests:
+ * the claimed tile lies on its side, 4/3 of a tile wide, so a called hand is wider than its tile
+ * count says. Written as an explicit `log` rather than fished out of a random wall, because
+ * whether an algorithm calls at all depends on the hand it happens to be dealt.
+ */
+function ponBoard(): string {
+  const caller = 1
+  // the dealer holds the two tiles it will throw; the caller holds the pairs that claim them
+  const east = ['1m', '2m', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '2s', '3s', '4s', '5s']
+  const pairs = ['1m', '1m', '2m', '2m', '6s', '7s', '8s', '2p', '3p', '4p', '6p', '7p', '8p']
+  const junk = [...Array.from({ length: 9 }, (_, i) => `${i + 1}s`), '3m', '4m', '5m', '6m']
+  const junkToo = ['7m', '8m', '9m', '1p', '2p', '5p', '9p', '1s', '9s', '3z', '4z', '5z', '6z']
+  const deal = dealt([east, pairs, junk, junkToo])
+  // east throws 1m, the caller pons it and discards; the turn passes to the caller's shimocha, so
+  // the two seats after it play a turn each before east is back on and throws 2m for the second
+  const log =
+    `D0${'1m'}C${caller}0P1m1mD${caller}6sD2${'1s'}TD3${'7m'}T` +
+    `D0${'2m'}C${caller}0P2m2mD${caller}7sD2${'2s'}TD3${'8m'}T`
+  return `/efficiency?wall=${tenhou(deal)}&log=${log}&seat=0&deadWall=1&aka=0&sanma=0`
+}
 
-  const rivers = await page.getByTestId('river').all()
-  const riverBoxes = (await Promise.all(rivers.map((r) => r.boundingBox()))).filter((b) => !!b)
+test('an open call lies beside the hand and off every river', async ({ page }) => {
+  await page.goto(ponBoard())
+  await expect(page.getByTestId('board').first()).toBeVisible()
 
-  // the fixture is only worth anything if it really is a heavily called board: a corner cell holds
-  // one child per call, plus the seat's own plate, so four children is three calls
-  const busiest = await page
-    .getByTestId('corner')
-    .evaluateAll((cells) => Math.max(...cells.map((c) => c.children.length)))
-  expect(
-    busiest,
-    'the fixture link no longer produces a heavily called board',
-  ).toBeGreaterThanOrEqual(4)
+  const calls = page.locator('[data-testid=seat-ring][data-seat="1"]').getByTestId('seat-calls')
+  await expect(calls.locator('> div')).toHaveCount(2)
+  await expect(calls.getByRole('img')).toHaveCount(6)
 
-  for (const corner of await page.getByTestId('corner').all()) {
-    const seat = await corner.getAttribute('data-seat')
-    // the cell's own box is its grid track; what can overflow is its content
-    const content = await corner.evaluate((el) => {
-      const rects = [...el.children].map((c) => c.getBoundingClientRect())
-      const x = Math.min(...rects.map((r) => r.left))
-      const y = Math.min(...rects.map((r) => r.top))
-      return {
-        x,
-        y,
-        width: Math.max(...rects.map((r) => r.right)) - x,
-        height: Math.max(...rects.map((r) => r.bottom)) - y,
-      }
-    })
-
-    expect(content.x, `seat ${seat} corner runs off the board`).toBeGreaterThanOrEqual(square.x - 1)
-    expect(content.y, `seat ${seat} corner runs off the board`).toBeGreaterThanOrEqual(square.y - 1)
-    expect(content.x + content.width).toBeLessThanOrEqual(square.x + square.width + 1)
-    expect(content.y + content.height).toBeLessThanOrEqual(square.y + square.height + 1)
-    for (const river of riverBoxes) {
-      expect(overlaps(content, river), `seat ${seat} corner overlaps a river`).toBe(false)
-    }
+  await fitsTheBoard(page, calls, "the caller's calls")
+  for (const plate of await page.getByTestId('seat-plate').all()) {
+    await fitsTheBoard(page, plate, `seat ${await plate.getAttribute('data-seat')}'s plate`)
   }
+})
+
+test('every seat’s score sits the same distance from the centre panel', async ({ page }) => {
+  await page.goto(suukantsuBoard())
+  await expect(page.getByTestId('board').first()).toBeVisible()
+
+  // the scores are laid out upright and then turned to face their seat, and a transform does not
+  // move the box it was laid out in: positioned per seat, the two side ones came out half a text
+  // width further in than the top and bottom. Measured off the panel, whose own box is square
+  const panel = (await page.getByTestId('centre-panel').boundingBox())!
+  const scores = await page.getByTestId('seat-points').all()
+  expect(scores).toHaveLength(4)
+
+  const gaps = await Promise.all(
+    scores.map(async (score) => {
+      const b = (await score.boundingBox())!
+      // each score hugs one edge; the gap is to whichever that is
+      return Math.min(
+        b.x - panel.x,
+        b.y - panel.y,
+        panel.x + panel.width - (b.x + b.width),
+        panel.y + panel.height - (b.y + b.height),
+      )
+    }),
+  )
+  expect(Math.max(...gaps) - Math.min(...gaps), `gaps ${gaps.join(', ')}`).toBeLessThanOrEqual(2)
 })
 
 test('only a phone-sized viewport comes up fullscreen', async ({ page, viewport }) => {

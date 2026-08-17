@@ -8,7 +8,13 @@
     "skipLibCheck": true,
 
     /* Bundler mode */
-    "module": "nodenext",
+    // `preserve`/`bundler`, not `nodenext`: this project also typechecks the e2e specs, and their
+    // fixtures import the engine (`src/core/wall.ts`) so a board is dealt the way the engine deals
+    // it. Under nodenext resolution that pulls the whole extensionless `src` tree into a project
+    // that demands file extensions; Playwright and Vite both resolve these imports the bundler way
+    // anyway, which is how `tsconfig.app.json` already reads the same files.
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
