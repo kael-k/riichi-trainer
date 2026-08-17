@@ -14,8 +14,10 @@ opening it elsewhere, which a seed cannot carry.
 
 `createMatch(wall: ParsedTile[], players, options, fillSeed?)` takes the wall as data.
 
-- **Format:** one flat `wall` param in draw order — seat 0's 13 tiles, seat 1's 13, …, then the
-  live draws, then the last 14 tiles as the dead wall (dora indicator first).
+- **Format:** one flat `wall` param in draw order — the whole deal (`players * 13`), then the live
+  draws, then the last 14 tiles as the dead wall (dora indicator first). How that leading block is
+  handed out moved in [ADR-0024](0024-real-dealing-order.md): four tiles at a time round the seats,
+  three times, then one each, rather than one contiguous thirteen per seat.
 - **A short wall is a prefix:** given tiles are used in order and the remainder is completed at
   random from the copies they leave, which is what makes partial hand-authoring usable.
 - **Length implies the ruleset** (108 = sanma), and a loaded wall's length wins over the global

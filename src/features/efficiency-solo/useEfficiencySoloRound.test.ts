@@ -36,7 +36,7 @@ describe('useEfficiencySoloRound', () => {
     expect(result.current.doraIndicators).toHaveLength(1)
   })
 
-  it('deals a longer live wall than the table app off the same seat-0 hand', () => {
+  it('deals a longer live wall than the table app off the same wall', () => {
     const hand = parseTenhou('123456789m1122z')
     const wall = wallWithHand(0, hand, false, false, 'longer-wall-seed')
     const situation = { ...emptySituation(), wall }
@@ -50,14 +50,19 @@ describe('useEfficiencySoloRound', () => {
 
   it('grades the same 14-tile hand identically through both hooks', () => {
     const hand = parseTenhou('123456789m1122z') // 13 tiles, still one away from tenpai
-    const wall = wallWithHand(0, hand, false, false, 'grade-parity-seed')
     const draw = parseTenhou('3z')[0]
-    wall[1 * INITIAL_HAND_SIZE] = draw // solo's own first draw (1 seat dealt)
-    wall[4 * INITIAL_HAND_SIZE] = draw // table's own first draw (4 seats dealt)
-    const situation = { ...emptySituation(), wall }
+    // one wall each, not one shared: a seat's thirteen are dealt four at a time, so where they sit
+    // in the wall depends on how many seats there are — the same hand needs a different wall for a
+    // one-seat round than for a four-seat one
+    const soloWall = wallWithHand(0, hand, false, false, 'grade-parity-seed', 1)
+    soloWall[1 * INITIAL_HAND_SIZE] = draw // solo's own first draw (1 seat dealt)
+    const tableWall = wallWithHand(0, hand, false, false, 'grade-parity-seed')
+    tableWall[4 * INITIAL_HAND_SIZE] = draw // table's own first draw (4 seats dealt)
 
-    const solo = renderHook(() => useEfficiencySoloRound(situation, BARE, true))
-    const table = renderHook(() => useEfficiencyRound(situation, TABLE_BARE, true))
+    const soloSituation = { ...emptySituation(), wall: soloWall }
+    const tableSituation = { ...emptySituation(), wall: tableWall }
+    const solo = renderHook(() => useEfficiencySoloRound(soloSituation, BARE, true))
+    const table = renderHook(() => useEfficiencyRound(tableSituation, TABLE_BARE, true))
     expect(solo.result.current.drawn).toEqual(draw)
     expect(table.result.current.drawn).toEqual(draw)
 
@@ -84,7 +89,7 @@ describe('useEfficiencySoloRound', () => {
 
   it('kita and kan grade through the shared module, same as the table app', () => {
     const hand = parseTenhou('123456m78s22p333z') // three of the quad 3z, sanma-only kita path
-    const wall = wallWithHand(0, hand, true, false, 'solo-kan-seed')
+    const wall = wallWithHand(0, hand, true, false, 'solo-kan-seed', 1)
     wall[1 * INITIAL_HAND_SIZE] = parseTenhou('3z')[0] // the fourth 3z, completing the quad
     const situation = { ...emptySituation(), wall }
     const { result } = renderHook(() =>

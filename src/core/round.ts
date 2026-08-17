@@ -10,6 +10,7 @@ import { HONOR, NUM_TILE_TYPES, type ParsedTile, type RiverTile, type TileId } f
 import {
   completeWall,
   DEAD_WALL_SIZE,
+  DEAL_CHUNKS,
   fullWallSize,
   INITIAL_HAND_SIZE,
   TILES_PER_KIND,
@@ -297,11 +298,17 @@ export function createRound(
     replacements: 0,
   }
 
-  for (let i = 0; i < players; i++) {
-    const player = state.players[i]
-    for (const t of full.slice(i * INITIAL_HAND_SIZE, (i + 1) * INITIAL_HAND_SIZE)) {
-      addTile(player.hand, t.id)
-      insertConcealed(player, t)
+  // dealt the way a table deals: three rounds of four tiles per seat, then one apiece
+  // (`DEAL_CHUNKS`), so a seat's thirteen are spread through the leading block rather than sitting
+  // in it as one slab. `dealtSeat` is the same walk, read the other way round
+  let cut = 0
+  for (const size of DEAL_CHUNKS) {
+    for (let i = 0; i < players; i++, cut += size) {
+      const player = state.players[i]
+      for (const t of full.slice(cut, cut + size)) {
+        addTile(player.hand, t.id)
+        insertConcealed(player, t)
+      }
     }
   }
   // captured after the deal, not before: the snapshot is the wall play will actually draw from
@@ -435,7 +442,12 @@ function seatView(state: RoundState, options: RoundOptions, seat: number): SeatV
   }
 }
 
-function buildContext(state: RoundState, seat: number, winTile: TileId, tsumo: boolean): WinContext {
+function buildContext(
+  state: RoundState,
+  seat: number,
+  winTile: TileId,
+  tsumo: boolean,
+): WinContext {
   const player = state.players[seat]
   const riichi = player.riichiAt !== undefined
   const double = riichi && player.riichiTurn === 1

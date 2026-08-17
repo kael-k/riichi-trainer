@@ -8,7 +8,7 @@ import { shanten } from '../../core/shanten'
 import { type LogEntry, type RoundEvent, type RoundOptions } from '../../core/round'
 import { splitDrawn } from '../../core/table'
 import { parseTenhou, SOU, type ParsedTile } from '../../core/tiles'
-import { completeWall, wallWithHand } from '../../core/wall'
+import { completeWall, wallWithHand, wallWithHands } from '../../core/wall'
 import { useRound, type RoundCommand, type RoundEventContext } from './useRound'
 
 // wraps the real implementations in vi.fn so laziness (ADR-0012) can be proved by call count, not
@@ -241,9 +241,13 @@ describe('live option changes (ADR-0008)', () => {
 
   it('toggling claims mid-hand leaves the hand exactly as it stands', () => {
     // `claims` is a reader preference (ADR-0015), so ADR-0008 binds it: it must never redeal
-    const seat0Hand = parseTenhou('2468m2468p9s2345z')
-    const seat1Hand = parseTenhou('1133557799m11p9s')
-    const wall = completeWall([...seat0Hand, ...seat1Hand], false, false, 'match-claims-seed')
+    // through `wallWithHands`, not by concatenation: a seat's thirteen are dealt four at a time
+    const wall = wallWithHands(
+      [parseTenhou('2468m2468p9s2345z'), parseTenhou('1133557799m11p9s')],
+      false,
+      false,
+      'match-claims-seed',
+    )
     const options: RoundOptions = {
       ...BARE,
       wins: true,

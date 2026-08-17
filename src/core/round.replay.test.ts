@@ -16,7 +16,7 @@ import {
 } from './round'
 import type { SeatAlgorithm } from './policy'
 import { MAN, parseTenhou, SOU } from './tiles'
-import { INITIAL_HAND_SIZE, wallWithHand } from './wall'
+import { INITIAL_HAND_SIZE, wallWithHand, wallWithHands } from './wall'
 
 /**
  * `replayLog`'s regression net (PLAN-action-log.md T2). Not a hash like `round.golden.test.ts` —
@@ -202,12 +202,17 @@ describe('replayLog', () => {
     // seat 0 discards 9s; seat 1 (kamicha) can chi it with 7s8s, seat 2 can pon it with 99s —
     // seat order asks 1 before 2, and only seat1's chi needs no extra copies of 9s itself, which
     // is what keeps this within the 4-copy census (seat0's 1 + seat2's 2 = 3, one spare)
-    const wall = [
-      ...parseTenhou('2468m2468p9s2345z'),
-      ...parseTenhou('13579m13579p78s1z'),
-      ...parseTenhou('12345m123456p99s'),
-      ...parseTenhou('123456m123456p7z'),
-    ]
+    const wall = wallWithHands(
+      [
+        parseTenhou('2468m2468p9s2345z'),
+        parseTenhou('13579m13579p78s1z'),
+        parseTenhou('12345m123456p99s'),
+        parseTenhou('123456m123456p7z'),
+      ],
+      false,
+      true,
+      'replay-two-claims',
+    )
     const state = createRound(wall, 4, options, 'replay-two-claims')
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
@@ -226,12 +231,17 @@ describe('replayLog', () => {
 
   it('stops with the claim still pending when the log ends exactly there, and never invents a pass', () => {
     const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
-    const wall = [
-      ...parseTenhou('2468m2468p9s2345z'),
-      ...parseTenhou('13579m13579p99s1z'),
-      ...parseTenhou('123456m123456p7s'),
-      ...parseTenhou('123456m123456p7z'),
-    ]
+    const wall = wallWithHands(
+      [
+        parseTenhou('2468m2468p9s2345z'),
+        parseTenhou('13579m13579p99s1z'),
+        parseTenhou('123456m123456p7s'),
+        parseTenhou('123456m123456p7z'),
+      ],
+      false,
+      true,
+      'replay-mid-claim',
+    )
     const original = createRound(wall, 4, options, 'replay-mid-claim')
     beginTurn(original, options)
     finishTurn(original, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from './danger'
-import { handFromTenhou, removeTile, tileCount } from './hand'
+import { removeTile, tileCount } from './hand'
 import { createMatch } from './match'
 import {
   answerClaim,
@@ -23,8 +23,22 @@ import {
 } from './round'
 import type { SeatAlgorithm } from './policy'
 import { scoreHand } from './score'
-import { inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
-import { INITIAL_HAND_SIZE, TILES_PER_KIND, wallWithHand } from './wall'
+import { inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, SOU, type ParsedTile } from './tiles'
+import {
+  completeWall,
+  dealtSeat,
+  INITIAL_HAND_SIZE,
+  TILES_PER_KIND,
+  wallWithHand,
+  wallWithHands,
+} from './wall'
+
+/** A yonma wall dealing these hands to seats 0, 1, … and filling the rest off `seed`. Hands are
+ *  no longer contiguous in the wall (4/4/4+1, `dealtIndices`), so a test that wants an exact shape
+ *  on both sides of a discard has to build its wall through this rather than by concatenation. */
+function handsWall(seed: string, ...hands: string[]): ParsedTile[] {
+  return wallWithHands(hands.map(parseTenhou), false, true, seed)
+}
 
 /** `RoundOptions.algorithms` naming just the manual seats — every other seat defaults to
  *  `'efficiency'`, same as an absent entry does. */
@@ -307,11 +321,34 @@ describe('createRound', () => {
     for (let id = 0; id < NUM_TILE_TYPES; id++) expect(counts[id]).toBe(TILES_PER_KIND)
   })
 
-  it('honours a short wall prefix as seat 0’s exact starting hand', () => {
-    const state = createRound(parseTenhou('1112345678999m'), 4, YONMA)
-    expect(state.players[0].hand.counts).toEqual(handFromTenhou('1112345678999m').counts)
+  it('honours a short wall prefix as the deal itself, four tiles at a time', () => {
+    // 1112m to seat 0, 3456m to seat 1, 7899m to seat 2, the last 9m to seat 3 — a prefix is the
+    // start of a deal, not one seat's hand (that is what `wallWithHand` is for)
+    const prefix = parseTenhou('1112345678999m')
+    const state = createRound(prefix, 4, YONMA)
+    for (let i = 0; i < prefix.length; i++) {
+      expect(state.players[dealtSeat(i, 4)].concealed).toContainEqual(prefix[i])
+    }
+    expect(state.players[0].hand.counts[MAN]).toBe(3)
     const counts = census(state)
     for (let id = 0; id < NUM_TILE_TYPES; id++) expect(counts[id]).toBe(TILES_PER_KIND)
+  })
+
+  it('deals four at a time in seat order, then one apiece', () => {
+    for (const [players, options] of [
+      [4, YONMA],
+      [3, SANMA],
+    ] as const) {
+      const wall = completeWall([], options.sanma, options.aka, `deal-order-${players}`)
+      const state = createRound(wall, players, options)
+      const expected = Array.from({ length: players }, () => new Uint8Array(NUM_TILE_TYPES))
+      for (let i = 0; i < players * INITIAL_HAND_SIZE; i++) {
+        expected[dealtSeat(i, players)][wall[i].id]++
+      }
+      for (let seat = 0; seat < players; seat++) {
+        expect(state.players[seat].hand.counts).toEqual(expected[seat])
+      }
+    }
   })
 
   it('lets liveWallSnapshot plus wallDrawnCount reconstruct what is left', () => {
@@ -521,8 +558,8 @@ describe('manual claims', () => {
     const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
     // seat 0's hand only needs a spare 9s to discard; seat 1's is scattered everywhere else so it
     // is nowhere near tenpai and the only thing on offer is the pon
-    const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
-    const state = createRound(wall, 4, options, 'claim-pon-offer')
+    const wall = handsWall('claim-pon-offer', '2468m2468p9s2345z', '13579m13579p99s1z')
+    const state = createRound(wall, 4, options)
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
 
@@ -537,13 +574,14 @@ describe('manual claims', () => {
     // seat 1 is tanki tenpai on 2s (all simples, so tanyao carries the yaku on a ron); seats 2
     // and 3 hold no sou at all, so they cannot react to a sou discard and cannot steal the win
     // out from under the seed's randomness
-    const wall = [
-      ...parseTenhou('189m189p2s123456z'),
-      ...parseTenhou('234567m234567p2s'),
-      ...parseTenhou('111222333m111p7z'),
-      ...parseTenhou('444555666m222p7z'),
-    ]
-    const state = createRound(wall, 4, options, 'claim-pass')
+    const wall = handsWall(
+      'claim-pass',
+      '189m189p2s123456z',
+      '234567m234567p2s',
+      '111222333m111p7z',
+      '444555666m222p7z',
+    )
+    const state = createRound(wall, 4, options)
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
 
@@ -563,13 +601,14 @@ describe('manual claims', () => {
   it("never offers a ron on a tile sitting in the seat's own river (permanent furiten)", () => {
     const options: RoundOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
     // same tanki-2s tenpai as the pass test above, but seat 1 has already discarded a 2s itself
-    const wall = [
-      ...parseTenhou('189m189p2s123456z'),
-      ...parseTenhou('234567m234567p2s'),
-      ...parseTenhou('111222333m111p7z'),
-      ...parseTenhou('444555666m222p7z'),
-    ]
-    const state = createRound(wall, 4, options, 'furiten-own-river')
+    const wall = handsWall(
+      'furiten-own-river',
+      '189m189p2s123456z',
+      '234567m234567p2s',
+      '111222333m111p7z',
+      '444555666m222p7z',
+    )
+    const state = createRound(wall, 4, options)
     beginTurn(state, options)
     state.players[1].river.push({ id: SOU + 1, red: false })
 
@@ -585,13 +624,14 @@ describe('manual claims', () => {
 
   it('never offers a ron once the seat has missed a win on this tenpai (temporary furiten)', () => {
     const options: RoundOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
-    const wall = [
-      ...parseTenhou('189m189p2s123456z'),
-      ...parseTenhou('234567m234567p2s'),
-      ...parseTenhou('111222333m111p7z'),
-      ...parseTenhou('444555666m222p7z'),
-    ]
-    const state = createRound(wall, 4, options, 'claim-pass')
+    const wall = handsWall(
+      'claim-pass',
+      '189m189p2s123456z',
+      '234567m234567p2s',
+      '111222333m111p7z',
+      '444555666m222p7z',
+    )
+    const state = createRound(wall, 4, options)
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
     answerClaim(state, options, { kind: 'pass' })
@@ -604,8 +644,8 @@ describe('manual claims', () => {
 
   it('answering pon opens the meld and moves the tile from the river into it, keeping the log', () => {
     const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
-    const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
-    const state = createRound(wall, 4, options, 'claim-pon-answer')
+    const wall = handsWall('claim-pon-answer', '2468m2468p9s2345z', '13579m13579p99s1z')
+    const state = createRound(wall, 4, options)
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
     const pon = state.claim?.options.find((o) => o.kind === 'pon')
@@ -630,13 +670,14 @@ describe('manual claims', () => {
     const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1, 2) }
     // seat order puts seat 1 (pon-eligible) first and seat 2 (ron-eligible, chiitoi tenpai so the
     // terminal wait still carries a yaku) second; seat 3 holds no sou and cannot react at all
-    const wall = [
-      ...parseTenhou('2468m2468p9s2345z'),
-      ...parseTenhou('13579m13579p99s1z'),
-      ...parseTenhou('11335577m1133p9s'),
-      ...parseTenhou('224466m2244p667z'),
-    ]
-    const state = createRound(wall, 4, options, 'claim-priority')
+    const wall = handsWall(
+      'claim-priority',
+      '2468m2468p9s2345z',
+      '13579m13579p99s1z',
+      '11335577m1133p9s',
+      '224466m2244p667z',
+    )
+    const state = createRound(wall, 4, options)
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
 
@@ -655,8 +696,8 @@ describe('manual claims', () => {
 
   it('is a no-op for beginTurn and finishTurn while a claim is pending', () => {
     const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
-    const wall = [...parseTenhou('2468m2468p9s2345z'), ...parseTenhou('13579m13579p99s1z')]
-    const state = createRound(wall, 4, options, 'claim-noop')
+    const wall = handsWall('claim-noop', '2468m2468p9s2345z', '13579m13579p99s1z')
+    const state = createRound(wall, 4, options)
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
     expect(state.claim).toBeDefined()

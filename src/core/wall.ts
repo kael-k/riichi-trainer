@@ -95,6 +95,37 @@ export interface WallError {
   reason: 'length' | 'copies' | 'red' | 'tileSet'
 }
 
+/** How a deal comes off the wall: three rounds of four tiles per seat, then one apiece — what a
+ *  live table does, rather than four solid blocks of thirteen. Sums to `INITIAL_HAND_SIZE`.
+ *  Seats are served in index order, which is wind order whenever the dealer is seat 0 (every board
+ *  this app builds today); keeping the dealer out of it is what lets `dealtSeat` map a wall index
+ *  back to a seat without a `MatchState`. */
+export const DEAL_CHUNKS = [4, 4, 4, 1]
+
+/** Which seat the `index`-th tile of a wall was dealt to, `-1` once the deal is over. */
+export function dealtSeat(index: number, players: number): number {
+  let i = index
+  for (const size of DEAL_CHUNKS) {
+    const chunkRound = size * players
+    if (i < chunkRound) return Math.floor(i / size)
+    i -= chunkRound
+  }
+  return -1
+}
+
+/** The wall indices one seat's starting hand occupies, in dealing order — `dealtSeat` inverted,
+ *  for the two places that build a wall around a known hand rather than reading one. */
+export function dealtIndices(seat: number, players: number): number[] {
+  const out: number[] = []
+  let cut = 0
+  for (const size of DEAL_CHUNKS) {
+    for (let s = 0; s < players; s++, cut += size) {
+      if (s === seat) for (let i = 0; i < size; i++) out.push(cut + i)
+    }
+  }
+  return out
+}
+
 function zoneAt(
   index: number,
   length: number,
@@ -102,7 +133,7 @@ function zoneAt(
   sanma: boolean,
 ): { zone: WallError['zone']; seat?: number } {
   const handSize = players * INITIAL_HAND_SIZE
-  if (index < handSize) return { zone: 'hand', seat: Math.floor(index / INITIAL_HAND_SIZE) }
+  if (index < handSize) return { zone: 'hand', seat: dealtSeat(index, players) }
   // "trailing 14 of a full wall" only applies once the wall actually reaches its full length —
   // a short/partial wall has no dead wall yet, positionally
   if (length >= fullWallSize(sanma) && index >= length - DEAD_WALL_SIZE) return { zone: 'deadWall' }
@@ -148,23 +179,48 @@ export function validateWall(
   return null
 }
 
-/** A wall pinning one seat's starting hand: a random (or `seed`-built) full wall with `hand`'s
- *  copies removed, then `hand` spliced in at that seat's dealing offset. What a link pinning one
- *  seat's hand encodes, and what the lab's hand-authoring surface builds its walls with. */
+/** A wall dealing the named seats exactly these hands: a random (or `seed`-built) full wall with
+ *  their copies removed, then each hand laid into the slots that seat is actually dealt
+ *  (`dealtIndices`, 4/4/4+1 — no seat's thirteen sit in one block any more, so a wall pinning two
+ *  seats cannot be built by concatenating them). `hands` is seat-indexed and may skip a seat with
+ *  `undefined`; `players` decides where the slots fall, so a solo round (one seat) has to say so. */
+export function wallWithHands(
+  hands: readonly (ParsedTile[] | undefined)[],
+  sanma: boolean,
+  aka: boolean,
+  seed?: string,
+  players = sanma ? 3 : 4,
+): ParsedTile[] {
+  const used = new Uint8Array(NUM_TILE_TYPES)
+  for (const hand of hands) for (const t of hand ?? []) used[t.id]++
+  const padding = completeWall([], sanma, aka, seed).filter((t) => {
+    if (used[t.id] === 0) return true
+    used[t.id]--
+    return false
+  })
+  const pinned = new Map<number, ParsedTile>()
+  hands.forEach((hand, seat) => {
+    const slots = dealtIndices(seat, players)
+    hand?.forEach((tile, i) => pinned.set(slots[i], tile))
+  })
+  let filler = 0
+  return Array.from(
+    { length: padding.length + pinned.size },
+    (_, i) => pinned.get(i) ?? padding[filler++],
+  )
+}
+
+/** One seat's starting hand pinned. What a link pinning a hand encodes, and what the lab's
+ *  hand-authoring surface builds its walls with. */
 export function wallWithHand(
   seat: number,
   hand: ParsedTile[],
   sanma: boolean,
   aka: boolean,
   seed?: string,
+  players = sanma ? 3 : 4,
 ): ParsedTile[] {
-  const used = new Uint8Array(NUM_TILE_TYPES)
-  for (const t of hand) used[t.id]++
-  const padding = completeWall([], sanma, aka, seed).filter((t) => {
-    if (used[t.id] === 0) return true
-    used[t.id]--
-    return false
-  })
-  const offset = seat * INITIAL_HAND_SIZE
-  return [...padding.slice(0, offset), ...hand, ...padding.slice(offset)]
+  const hands = Array<ParsedTile[] | undefined>(seat + 1).fill(undefined)
+  hands[seat] = hand
+  return wallWithHands(hands, sanma, aka, seed, players)
 }

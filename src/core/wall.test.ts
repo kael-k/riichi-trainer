@@ -4,6 +4,8 @@ import {
   buildWall,
   completeWall,
   deal,
+  dealtIndices,
+  dealtSeat,
   fullWallSize,
   INITIAL_HAND_SIZE,
   TILES_PER_KIND,
@@ -92,7 +94,8 @@ describe('wallWithHand', () => {
     const hand = parseTenhou('1112345678999m')
     const wall = wallWithHand(1, hand, false, true, 'with-hand-seed')
     expect(wall).toHaveLength(fullWallSize(false))
-    expect(wall.slice(INITIAL_HAND_SIZE, INITIAL_HAND_SIZE * 2)).toEqual(hand)
+    // the seat's thirteen sit in the slots it is actually dealt (4/4/4+1), not in one block
+    expect(dealtIndices(1, 4).map((i) => wall[i])).toEqual(hand)
     expect(validateWall(wall, 4, false)).toBeNull()
   })
 })
@@ -104,8 +107,9 @@ describe('validateWall', () => {
   })
 
   it('rejects a fifth copy of one kind, naming its position', () => {
+    // the fifth 1m is wall index 4, which the 4/4/4+1 deal hands to seat 1, not seat 0
     const error = validateWall(parseTenhou('11111m'), 4, false)
-    expect(error).toEqual({ zone: 'hand', seat: 0, tile: 0, reason: 'copies' })
+    expect(error).toEqual({ zone: 'hand', seat: 1, tile: 0, reason: 'copies' })
   })
 
   it('rejects a full-length wall missing a copy of some kind', () => {
@@ -148,10 +152,20 @@ describe('validateWall', () => {
   })
 
   it('reports the hand zone with the right seat for a fault inside a later starting hand', () => {
-    // 13 harmless tiles for seat 0, then a non-five red for seat 1
+    // 13 harmless tiles, then a non-five red at index 13 — the fourth seat's first block of four
     const wall = [...parseTenhou('123456789m1122z'), { id: 5, red: true }]
     const error = validateWall(wall, 4, false)
-    expect(error).toEqual({ zone: 'hand', seat: 1, tile: 5, reason: 'red' })
+    expect(error).toEqual({ zone: 'hand', seat: 3, tile: 5, reason: 'red' })
+  })
+
+  it('walks the deal in blocks of four, one tile each at the end', () => {
+    expect([0, 3, 4, 7, 12, 15, 16, 47, 48, 49, 51, 52].map((i) => dealtSeat(i, 4))).toEqual([
+      0, 0, 1, 1, 3, 3, 0, 3, 0, 1, 3, -1,
+    ])
+    expect(dealtIndices(0, 4)).toEqual([0, 1, 2, 3, 16, 17, 18, 19, 32, 33, 34, 35, 48])
+    expect(dealtIndices(2, 3)).toHaveLength(INITIAL_HAND_SIZE)
+    // a solo round is dealt straight off the front, nothing interleaved
+    expect(dealtIndices(0, 1)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
   })
 
   it('accepts a valid full wall and a valid short prefix', () => {

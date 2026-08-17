@@ -5,6 +5,7 @@ import { createMatch } from './match'
 import { beginTurn, createRound, finishTurn, type RoundOptions } from './round'
 import type { SeatAlgorithm } from './policy'
 import { NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
+import { wallWithHands } from './wall'
 import {
   actingSeat,
   analysisOf,
@@ -272,12 +273,17 @@ describe('analysisOf', () => {
 describe('seatRead', () => {
   // seat 1 is tanki tenpai on 2s (two complete runs each in man/pin, plus the single wait) —
   // the same hand `round.test.ts`'s furiten regression tests use
-  const wall = [
-    ...parseTenhou('189m189p2s123456z'),
-    ...parseTenhou('234567m234567p2s'),
-    ...parseTenhou('111222333m111p7z'),
-    ...parseTenhou('444555666m222p7z'),
-  ]
+  const wall = wallWithHands(
+    [
+      parseTenhou('189m189p2s123456z'),
+      parseTenhou('234567m234567p2s'),
+      parseTenhou('111222333m111p7z'),
+      parseTenhou('444555666m222p7z'),
+    ],
+    false,
+    true,
+    'seat-read',
+  )
 
   it('reads no tenpai, no waits and no furiten for a seat far from tenpai', () => {
     const round = createRound(wall, 4, YONMA, 'seat-read-1')

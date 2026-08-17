@@ -60,7 +60,7 @@ describe('useEfficiencyRound', () => {
     // guaranteed to reach tenpai before the wall runs dry on an arbitrary random deal — real
     // opponents now always play too, draining roughly 4 tiles per turn instead of 1, so only
     // ~30 of the user's own turns are available rather than the ~120 this used to allow
-    situation.wall = completeWall([], false, false, 'seed-6')
+    situation.wall = completeWall([], false, false, 'seed-1')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
 
     for (let i = 0; i < 40 && !result.current.finished; i++) {
@@ -73,7 +73,8 @@ describe('useEfficiencyRound', () => {
 
   it('ends the round as soon as a discard reaches tenpai', () => {
     const situation = emptySituation()
-    situation.wall = parseTenhou('123456789m11227z') // discard 7z -> shanpon tenpai
+    // dealt tenpai (three runs + a shanpon), so tsumogiri of whatever is drawn keeps it there
+    situation.wall = wallWithHand(0, parseTenhou('123456789m1122z'), false, false, 'tenpai-stop')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
 
     expect(result.current.finished).toBe(false)
@@ -98,7 +99,8 @@ describe('useEfficiencyRound', () => {
 
   it('preserves a red five pinned in the situation wall', () => {
     const situation = emptySituation()
-    situation.wall = parseTenhou('123456789m0p112z') // 13 tiles incl. red 5p
+    // 13 tiles incl. red 5p — pinned through the dealing order, not as a bare prefix
+    situation.wall = wallWithHand(0, parseTenhou('123456789m0p112z'), false, false, 'red-pin')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
     expect(result.current.hand).toContainEqual({ id: 13, red: true })
   })
@@ -388,7 +390,7 @@ describe('useEfficiencyRound', () => {
 
   it('kita is a no-op outside sanma', () => {
     const situation = emptySituation()
-    situation.wall = parseTenhou('123456789p1224z')
+    situation.wall = wallWithHand(0, parseTenhou('123456789p1224z'), false, false, 'kita-yonma')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
     act(() => result.current.kita())
     expect(result.current.nuki[result.current.seatIndex]).toHaveLength(0)
@@ -464,7 +466,7 @@ describe('useEfficiencyRound', () => {
 
   it('kan is a no-op when the tile is not held four times', () => {
     const situation = emptySituation()
-    situation.wall = parseTenhou('123456789p1224z')
+    situation.wall = wallWithHand(0, parseTenhou('123456789p1224z'), false, false, 'kita-yonma')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
     act(() => result.current.kan(HONOR + 3)) // only one North held
     expect(result.current.kans).toHaveLength(0)

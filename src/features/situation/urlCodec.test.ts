@@ -3,7 +3,7 @@ import { handFromTenhou } from '../../core/hand'
 import { createMatch } from '../../core/match'
 import { createRound, type LogEntry, type RoundOptions } from '../../core/round'
 import { HONOR, PIN, parseTenhou, serializeTenhouOrdered } from '../../core/tiles'
-import { completeWall } from '../../core/wall'
+import { completeWall, wallWithHand } from '../../core/wall'
 import {
   allTiles,
   decodeSituation,
@@ -126,8 +126,7 @@ describe('urlCodec', () => {
   })
 
   it('a ?wall= string opens the exact board it names: seat 0 gets exactly the pinned hand', () => {
-    const prefix = parseTenhou('1112345678999m')
-    const wall = completeWall(prefix, false, true, 'end-to-end-seed')
+    const wall = wallWithHand(0, parseTenhou('1112345678999m'), false, true, 'end-to-end-seed')
     const s = emptySituation()
     s.wall = wall
 
@@ -140,7 +139,8 @@ describe('urlCodec', () => {
   it('rejects an invalid wall by name: the wall is emptied and never reaches createRound', () => {
     const decoded = decodeSituation(new URLSearchParams('wall=11111m'))
     expect(decoded.wall).toHaveLength(0)
-    expect(decoded.wallError).toEqual({ zone: 'hand', seat: 0, tile: 0, reason: 'copies' })
+    // the fifth 1m is wall index 4, which the 4/4/4+1 deal hands to seat 1
+    expect(decoded.wallError).toEqual({ zone: 'hand', seat: 1, tile: 0, reason: 'copies' })
   })
 
   it('a valid full or partial wall carries no wallError', () => {

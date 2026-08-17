@@ -262,7 +262,7 @@ function winningWall(seed: string): ParsedTile[] {
 // so the "pinned wall has no legal win" test deterministically exercises the fallback path rather
 // than hoping a hand-picked wall happens not to win
 function nonWinningWall(seed: string): ParsedTile[] {
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 200; i++) {
     const attemptSeed = i === 0 ? seed : `${seed}#${i}`
     const wall = completeWall([], FULL.sanma, FULL.aka, attemptSeed)
     if (!hasWin(wall)) return wall

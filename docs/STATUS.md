@@ -49,7 +49,13 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
 
 ## In flight
 
-- Nothing. `PLAN-match-context.md` was the last plan file in the tree and went with T7, per
+- `UX-TABLE.md` — the board's Mahjong-Soul pass: calls laid out horizontally beside the hand, the
+  per-seat read (algorithm, wind, full wait list) moved to the seat's left corner, points in the
+  centre panel rotated per seat, a plain-language round line, and a sectioned wall reveal with the
+  perspective seat's own dealt tiles highlighted. Real 4/4/4+1 dealing
+  ([ADR-0024](adr/0024-real-dealing-order.md)) shipped ahead of it as its own commit, since the
+  wall reveal draws that block back to the reader.
+- `PLAN-match-context.md` was the last plan file in the tree and went with T7, per
   `docs/README.md`'s one-plan-file rule. `PLAN-seat-algorithms.md`, `UX-TESTS-BUG.md` and
   `UX-SPECS.md` are all gone from root; the mobile-layout items `UX-TESTS-BUG.md` carried are
   recorded under known defects below, and the CI gap under CI.
@@ -85,7 +91,7 @@ Both re-verified present in the current tree:
   that first needs a board, and the mount effect reuses it (`ensureBuilt`, keyed on wall identity
   and restart count). Replayed events are queued by the build and drained by the effect, so
   nothing grades or logs mid-render.
-- **`wallWithHand` silently eats the promised red five** (`core/wall.ts:154-170`). It filters
+- **`wallWithHands`/`wallWithHand` silently eat the promised red five** (`core/wall.ts:187-226`). It filters
   padding by id only, and since `completeWall` marks the *first* occurrence of each red-eligible
   kind red, a plain 5m/5p/5s in `hand` strips the padding's red copy. `aka: true` with a hand
   holding a plain five yields a wall with no red for that suit. Not reachable today — the one

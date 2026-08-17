@@ -62,30 +62,32 @@ const SEEDS = Array.from({ length: 20 }, (_, i) => `golden-${i}`)
 // under Node regardless, so `process` exists at runtime even though the app config doesn't know it.
 declare const process: { env: Record<string, string | undefined> }
 
-/** Frozen against `main` as it stood before the seat-algorithm refactor. Regenerate with
- *  `GENERATE_GOLDEN=1 npx vitest run src/core/round.golden.test.ts` and paste the printed table
- *  back in here — only T3 is allowed to do that. */
+/** Frozen event streams. Regenerate with `GENERATE_GOLDEN=1 npx vitest run
+ *  src/core/round.golden.test.ts --disable-console-intercept` and paste the printed table back in
+ *  here — a change that has to move these says so in its own commit. Two have: T3 of the
+ *  seat-algorithm refactor (it changed what `defense`/`efficiency` decide) and the move to real
+ *  4/4/4+1 dealing (every seat is dealt different tiles off the same wall). */
 const GOLDEN: Record<string, [yonma: string, sanma: string]> = {
-  'golden-0': ['408c20fb1ad2a8bc', '74e9e3a6e8c51dc4'],
-  'golden-1': ['b48398ce8cc9e9de', '98a8295f0836e0c8'],
-  'golden-2': ['76c3b0e4c2346950', 'bc4013d4730d5297'],
-  'golden-3': ['41894b650eac6e33', 'def9ffb30c9bf331'],
-  'golden-4': ['035e539278653b9b', '5564f3d1252a1b63'],
-  'golden-5': ['090d89797803dcb2', '848e30900035ce39'],
-  'golden-6': ['4b7de86ac75714af', '30993eb5f791008d'],
-  'golden-7': ['d62ae0ecf415b2e5', 'ec5ea5a96cccf218'],
-  'golden-8': ['04221b3b05419d62', '312a94d150179809'],
-  'golden-9': ['a9bc11dc50688977', 'd740db08690b5a0a'],
-  'golden-10': ['a5f89ea553ad93a6', '7e09b97032ee674e'],
-  'golden-11': ['ef03cd5cf8ba7532', 'ae8d64439c7031e9'],
-  'golden-12': ['630199b42a3ee88f', 'd9471e642f98d3a9'],
-  'golden-13': ['b8f12fe7854e167c', '94e1745aa17ad34e'],
-  'golden-14': ['c978d4488ccd00d6', 'f7b88927312c0f23'],
-  'golden-15': ['07f8a6735f3174c0', '6a7d90c23d7b1a1d'],
-  'golden-16': ['bd933d8e1d7268c3', '7207471756dc7a57'],
-  'golden-17': ['0b9032a5ac86698d', 'b34ee66a828434d7'],
-  'golden-18': ['15e5c344d1d14642', '37b40241676d7135'],
-  'golden-19': ['47bd876deed31c20', '1f860e148929a3d6'],
+  'golden-0': ['ad25f22625249718', 'fb5c433711f251e4'],
+  'golden-1': ['b2ba6983ea6c034a', '66d6d8dde8f00eaa'],
+  'golden-2': ['2a86d74f06add38b', 'dd45f5aae9669696'],
+  'golden-3': ['bb468b2afb281212', '093d886952bc7b19'],
+  'golden-4': ['733fd0f6d09170b6', 'e3e73a8bb3ac9981'],
+  'golden-5': ['bcd5dc36d0a1baec', 'f67df1eb460e339a'],
+  'golden-6': ['01eed891412b24b5', '529013ca19470bea'],
+  'golden-7': ['4fcff736b166b02f', 'e5d77d1e9745c506'],
+  'golden-8': ['d1f70a12bda48ee3', '26e8510f336618f0'],
+  'golden-9': ['f0910076e355f897', '1090adc959b82c18'],
+  'golden-10': ['939714d757dc4101', '478423099ffc65e3'],
+  'golden-11': ['1d199abe707275f6', '861708430e6fc8bc'],
+  'golden-12': ['e88fd3ecdce1d896', '5d42a1da5467eb4e'],
+  'golden-13': ['a6457705cb9ab576', 'e3e6ef10c6a82b36'],
+  'golden-14': ['0d2dccfccdaf5fe1', '4d894a20482a4b67'],
+  'golden-15': ['b7f1cb42785151bb', '5526741589a1c139'],
+  'golden-16': ['bab9a5b44c0db268', '130be4521474b584'],
+  'golden-17': ['6eacbf74a6cecf39', 'cd9b62651ad55b5f'],
+  'golden-18': ['098ff6ac78118d20', '4ead3e2b1ab69ba6'],
+  'golden-19': ['62be2ff8e1e0537f', '2d2db7ef40d7ab95'],
 }
 
 describe('match golden determinism', () => {

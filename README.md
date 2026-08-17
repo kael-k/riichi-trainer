@@ -46,13 +46,13 @@ Trainers read their whole scenario from the query string, so one URL fully repro
 
 | param                       | meaning                                                                                                                    |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `wall`                      | the whole deal in draw order: seat 0's 13 tiles, seat 1's 13, …, then the live draws, then the last 14 tiles as the dead wall (dora indicator first) |
+| `wall`                      | the whole deal in draw order: four tiles to each seat in turn, three times round, then one each, then the live draws, then the last 14 tiles as the dead wall (dora indicator first) |
 | `log`                       | every seat's decisions from the deal to this point, replayed to land on a specific mid-hand turn                            |
 | `round`, `seat`             | round wind and which seat is yours                                                                                         |
 | `deadwall`, `aka`, `sanma`  | `1`/`0` — pin the round rules into the link, overriding the receiver's settings so it reproduces exactly                    |
 | `kyoku`, `honba`, `dealerrepeat`, `dealer`, `riichisticks`, `points` | the match the round sits inside: which hand within the round wind (East **1**), the honba and dealer-repeat counters, the dealer's seat, sticks on the table, and every seat's score as a comma-separated list |
 
-A **short wall is a prefix**: the tiles you give are dealt in order and the rest is completed at random from the copies they leave, so a link can pin a starting hand (the first 13 tiles for seat 0) and leave the remaining 123 to chance. A wall's length settles the ruleset on its own — 136 tiles is yonma, 108 is sanma — and a loaded wall wins over the receiver's setting.
+A **short wall is a prefix**: the tiles you give are dealt in order and the rest is completed at random from the copies they leave, so a link can pin the hands off the top of the wall and leave the rest to chance. Tiles are handed out the way a table deals them — four at a time, round the seats three times, then one each — so a 13-tile prefix is the start of a deal, not one seat's hand. A wall's length settles the ruleset on its own — 136 tiles is yonma, 108 is sanma — and a loaded wall wins over the receiver's setting.
 
 Walls are validated on load and **rejected by name**, never silently repaired: over-count a tile kind, claim two red fives of one suit, include 2m–8m under sanma, or overrun the length, and the page tells you which zone and which tile is wrong. A wall is positionally meaningful, so quietly fixing one would hand back a different board than the link claimed to share.
 
