@@ -66,8 +66,14 @@ The match params are all optional and each is left out when it is at its default
 
 That fills the rest of the wall at random and hands out those thirteen the way a table deals: four
 to East (`1m9m1p9p`), four to South (`1s9s1z2z`), four to West (`3z4z5z6z`), one to North (`7z`).
-Pinning a whole hand for one seat therefore means writing out the deal around it — the first
-thirteen tiles of a wall are the start of everyone's hand, not the start of anyone's.
+The first thirteen tiles of a wall are the start of everyone's hand, not the start of anyone's, so
+pinning a whole hand for one seat means writing out the deal around it. East's thirteen sit at wall
+indices 0–3, 16–19, 32–35 and 48, and everything in between belongs to somebody else — the kokushi
+above, actually dealt to East, is 49 tiles long:
+
+```
+/efficiency?wall=19m19p2345678m23456p19s12z78p2345678s234m3456z5678m2345678p2s7z
+```
 
 The **shanten trainer** shares nothing else — it deals no wall — so it keeps its own pair:
 
