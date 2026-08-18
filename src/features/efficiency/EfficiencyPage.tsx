@@ -3,22 +3,15 @@ import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
-import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { splitDrawn } from '../../core/table'
-import {
-  FullscreenToggle,
-  Timer,
-  TrainerStatusBar,
-  TrainerToggles,
-} from '../../components/TrainerControls'
-import { TrainerLayout } from '../../components/TrainerLayout'
+import { Timer, TrainerToggles } from '../../components/TrainerControls'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
-import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
+import { SettingRow } from '../settings/SettingsDialog'
 import { ManualControls } from '../table/ManualControls'
 import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
@@ -179,11 +172,8 @@ export function EfficiencyPage() {
     </>
   )
 
-  const { full, toggle: toggleFull } = useFullscreenBoard()
   const { canBack, back } = useLogBack()
 
-  // the same command bar the status bar draws, so the fullscreen board can draw them too rather
-  // than sending you back out to the page for them
   const toggles = {
     showToggle: settings.timerEnabled,
     paused: round.paused,
@@ -194,9 +184,6 @@ export function EfficiencyPage() {
     backLabel: t('common.undoAction'),
     onReset: restart,
     resetLabel: t('common.resetHand'),
-    full,
-    onToggleFull: toggleFull,
-    fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
   // how the session is going, written once and read in both places it is shown: the page's own
@@ -221,200 +208,171 @@ export function EfficiencyPage() {
   )
 
   return (
-    <TrainerLayout
+    <BoardStage
       title={t('trainer.efficiency.title')}
       intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
       settings={settingsRows}
-    >
-      <div className="flex flex-col gap-4">
-        <TrainerStatusBar
-          {...toggles}
-          elapsedNow={round.elapsedNow}
-          running={round.running}
-          timerEnabled={settings.timerEnabled}
-        >
-          {/* also lives in the table's own centre panel */}
+      onLogOpen={(open) => open !== round.paused && round.togglePause()}
+      status={
+        <>
+          {settings.timerEnabled && <Timer elapsedNow={round.elapsedNow} running={round.running} />}
           {scoreLines}
-        </TrainerStatusBar>
-
-        {/* stacked in the page, or filling the screen outright behind the fullscreen button */}
-        <BoardStage
-          title={t('trainer.efficiency.title')}
-          intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
-          full={full}
-          onLogOpen={(open) => open !== round.paused && round.togglePause()}
-          status={
-            <>
-              {settings.timerEnabled && (
-                <Timer elapsedNow={round.elapsedNow} running={round.running} />
-              )}
-              {scoreLines}
-            </>
-          }
-          chrome={
-            <>
-              <SettingsButton title={t('trainer.efficiency.title')}>{settingsRows}</SettingsButton>
-              <TrainerToggles {...toggles} compact />
-              {/* the trainer header's own fullscreen button is hidden behind this overlay, so
-                  the exit control has to be drawn again here */}
-              <FullscreenToggle {...toggles} compact />
-            </>
-          }
-          board={
-            <Table
-              seatInfo={(seat, wind) =>
-                seatsEnabled && (
-                  <SeatStrip
-                    seat={seat}
-                    players={round.rivers.length}
-                    defaultOrientation={round.seatIndex}
-                    config={seatConfig}
-                    onChange={setSeatConfig}
-                    claims={claims}
-                    onClaimsChange={(v) => updateTable({ claims: v })}
-                    viewSeat={perspective}
-                    onWatch={setViewSeat}
-                    read={round.seatReads[seat]}
-                    showWaits={showSeatWaits}
-                    wind={wind}
-                  />
-                )
-              }
-              seats={seats}
-              seatIndex={perspective}
-              round={situation.round}
-              roundNumber={round.match.round}
-              dealerRepeat={round.match.dealerRepeat}
-              doraIndicators={round.doraIndicators}
-              wallCount={round.liveWall.length}
-              honba={round.match.honba}
-            />
-          }
-          // one graded choice per notice: `cumulativeTotal` counts exactly those, so a re-render
-          // never brings a faded one back and a kita/kan still gets its own
-          noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
-          notice={
-            round.lastResult && (
-              <DiscardFeedback
-                result={round.lastResult}
-                showShanten={settings.showShanten}
-                showUkeire={settings.showUkeire}
-                sanma={options.sanma}
-              />
-            )
-          }
-          noticeCompact={
-            round.lastResult && (
-              <Verdict
-                severity={efficiencyVerdictSeverity(round.lastResult)}
-                text={t(EFFICIENCY_VERDICT_TEXT_KEY[efficiencyVerdictSeverity(round.lastResult)])}
-              />
-            )
-          }
-          end={
-            round.finished && (
-              <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
-                <p className="font-semibold">
-                  {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
-                </p>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  {t('efficiency.totalLost', {
-                    count: round.turn,
-                    turns: round.turn,
-                    lost: round.cumulativeLost,
-                    total: round.cumulativeTotal,
-                    accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
-                  })}
-                </p>
-                {settings.timerEnabled && (
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {t('efficiency.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={restart}
-                  className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-                >
-                  {t('common.newRound')}
-                </button>
-              </div>
-            )
-          }
-          hand={
-            <div className="flex flex-col gap-4">
-              <ManualControls
-                seatIndex={round.seatIndex}
-                acting={round.acting}
-                claim={round.claim}
-                riichiTiles={round.riichiTiles()}
-                riichiArmed={round.riichiArmed}
-                onArmRiichi={round.armRiichi}
-                onAnswer={round.answer}
+        </>
+      }
+      chrome={<TrainerToggles {...toggles} />}
+      board={
+        <Table
+          seatInfo={(seat, wind) =>
+            seatsEnabled && (
+              <SeatStrip
+                seat={seat}
+                players={round.rivers.length}
+                defaultOrientation={round.seatIndex}
+                config={seatConfig}
+                onChange={setSeatConfig}
+                claims={claims}
+                onClaimsChange={(v) => updateTable({ claims: v })}
                 viewSeat={perspective}
-                onReturn={() => setViewSeat(null)}
+                onWatch={setViewSeat}
+                read={round.seatReads[seat]}
+                showWaits={showSeatWaits}
+                wind={wind}
               />
-              {/* centred on the board above it, not left-aligned in the page: the calls hang off
+            )
+          }
+          seats={seats}
+          seatIndex={perspective}
+          round={situation.round}
+          roundNumber={round.match.round}
+          dealerRepeat={round.match.dealerRepeat}
+          doraIndicators={round.doraIndicators}
+          wallCount={round.liveWall.length}
+          honba={round.match.honba}
+        />
+      }
+      // one graded choice per notice: `cumulativeTotal` counts exactly those, so a re-render
+      // never brings a faded one back and a kita/kan still gets its own
+      noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
+      notice={
+        round.lastResult && (
+          <DiscardFeedback
+            result={round.lastResult}
+            showShanten={settings.showShanten}
+            showUkeire={settings.showUkeire}
+            sanma={options.sanma}
+          />
+        )
+      }
+      noticeCompact={
+        round.lastResult && (
+          <Verdict
+            severity={efficiencyVerdictSeverity(round.lastResult)}
+            text={t(EFFICIENCY_VERDICT_TEXT_KEY[efficiencyVerdictSeverity(round.lastResult)])}
+          />
+        )
+      }
+      end={
+        round.finished && (
+          <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
+            <p className="font-semibold">
+              {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
+            </p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              {t('efficiency.totalLost', {
+                count: round.turn,
+                turns: round.turn,
+                lost: round.cumulativeLost,
+                total: round.cumulativeTotal,
+                accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+              })}
+            </p>
+            {settings.timerEnabled && (
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('efficiency.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={restart}
+              className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+            >
+              {t('common.newRound')}
+            </button>
+          </div>
+        )
+      }
+      hand={
+        <div className="flex flex-col gap-4">
+          <ManualControls
+            seatIndex={round.seatIndex}
+            acting={round.acting}
+            claim={round.claim}
+            riichiTiles={round.riichiTiles()}
+            riichiArmed={round.riichiArmed}
+            onArmRiichi={round.armRiichi}
+            onAnswer={round.answer}
+            viewSeat={perspective}
+            onReturn={() => setViewSeat(null)}
+          />
+          {/* centred on the board above it, not left-aligned in the page: the calls hang off
                   the right of the hand, so a called hand would otherwise sit visibly off-centre
                   from the felt its own seat is drawn on */}
-              <div className="flex justify-center">
-                <HandDisplay
-                  tiles={bottomHand}
-                  drawn={bottomDrawn}
-                  concealed={bottomConcealed}
-                  melds={bottomMelds}
-                  nuki={round.nuki[perspective]}
-                  onTileClick={canAct ? (i) => round.discard(i) : undefined}
-                  lockedToDrawn={round.riichi[round.acting]}
-                />
-              </div>
+          <div className="flex justify-center">
+            <HandDisplay
+              tiles={bottomHand}
+              drawn={bottomDrawn}
+              concealed={bottomConcealed}
+              melds={bottomMelds}
+              nuki={round.nuki[perspective]}
+              onTileClick={canAct ? (i) => round.discard(i) : undefined}
+              lockedToDrawn={round.riichi[round.acting]}
+            />
+          </div>
 
-              {(options.sanma || kanEligible.length > 0) && canAct && (
-                <div className="flex flex-wrap gap-2">
-                  {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
-                    <button
-                      type="button"
-                      onClick={round.kita}
-                      className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                    >
-                      {t('efficiency.kitaButton')}
-                    </button>
-                  )}
-                  {kanEligible.map((id) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => round.kan(id)}
-                      className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                    >
-                      <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
-                        <Tile id={id} />
-                      </span>
-                      {t('efficiency.kanButton')}
-                    </button>
-                  ))}
-                </div>
+          {(options.sanma || kanEligible.length > 0) && canAct && (
+            <div className="flex flex-wrap gap-2">
+              {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
+                <button
+                  type="button"
+                  onClick={round.kita}
+                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                >
+                  {t('efficiency.kitaButton')}
+                </button>
               )}
+              {kanEligible.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => round.kan(id)}
+                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                >
+                  <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
+                    <Tile id={id} />
+                  </span>
+                  {t('efficiency.kanButton')}
+                </button>
+              ))}
             </div>
-          }
-          panel={
-            <>
-              {showWall && (
-                <WallDetails
-                  dealt={round.dealtTiles}
-                  liveWall={round.liveWallSnapshot}
-                  liveWallDrawn={round.liveWallDrawn}
-                  deadWall={round.deadWallSnapshot}
-                  replacements={round.replacements}
-                  players={round.rivers.length}
-                  seat={perspective}
-                />
-              )}
-              <CopyLinkButton query={round.situationQuery} />
-            </>
-          }
-        />
-      </div>
-    </TrainerLayout>
+          )}
+        </div>
+      }
+      panel={
+        <>
+          {showWall && (
+            <WallDetails
+              dealt={round.dealtTiles}
+              liveWall={round.liveWallSnapshot}
+              liveWallDrawn={round.liveWallDrawn}
+              deadWall={round.deadWallSnapshot}
+              replacements={round.replacements}
+              players={round.rivers.length}
+              seat={perspective}
+            />
+          )}
+          <CopyLinkButton query={round.situationQuery} />
+        </>
+      }
+    />
   )
 }

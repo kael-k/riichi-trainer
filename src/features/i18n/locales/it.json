@@ -41,7 +41,6 @@
     "yonma": "4 giocatori",
     "sanma": "3 giocatori",
     "numbersOnTiles": "Numeri sulle tessere",
-    "mobileFullscreen": "Schermo intero automatico sui telefoni",
     "glossaryOnClick": "Apri i termini del glossario solo al tocco, non al passaggio del mouse",
     "advanced": "Funzionalità avanzate",
     "tsumogiriMarks": "Mostra tsumogiri/tedashi",
@@ -104,8 +103,6 @@
     "riichiSticks": "Bastoncini riichi sul tavolo",
     "honbaSticks": "Contatori honba",
     "points": "{{count}} punti",
-    "fullscreen": "Tavolo a schermo intero",
-    "exitFullscreen": "Esci da schermo intero",
     "logDrawer": "Mostra il registro",
     "roundLine": "{{wind}} {{number}}",
     "roundLineRepeat": "{{wind}} {{number}} · {{repeat}}"

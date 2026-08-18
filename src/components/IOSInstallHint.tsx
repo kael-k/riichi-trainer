@@ -20,9 +20,10 @@ function isIOSSafariTab(): boolean {
 }
 
 /** One dismissible line pointing at the Home Screen install as the fix for Safari's own bars.
- *  Lives on the page (`TrainerLayout`), not over the board — the whole point is that it should
- *  never cover the tiles it is talking about. Dismissing it is permanent, same as every other
- *  persisted settings-store flag: closing it once means not seeing it again, not just this visit. */
+ *  Lives on the home page alone, never on a trainer — the whole point is that it should never
+ *  cover the tiles it is talking about, and every trainer is now the board itself. Dismissing it
+ *  is permanent, same as every other persisted settings-store flag: closing it once means not
+ *  seeing it again, not just this visit. */
 export function IOSInstallHint() {
   const { t } = useTranslation()
   const dismissed = useSettings((s) => s.iosInstallHintDismissed)

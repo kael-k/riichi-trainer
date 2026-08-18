@@ -6,15 +6,21 @@ import { expect, test, type Page } from '@playwright/test'
 const PINNED = '/shanten?hand=123456789m1123p'
 const PINNED_SHANTEN = 0
 
-test.beforeEach(async ({ context }) => {
-  // fullscreen off, so both the inline column and its status bar are the layout under test on
-  // every project — the reveal/new-hand controls are the one pair that exists in both places
-  await context.addInitScript(
-    `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
-      JSON.stringify({ state: { mobileFullscreen: false }, version: 3 }),
-    )})`,
-  )
-})
+/** The score line and the log both live in the session panel: docked open on a wide screen, behind
+ *  the log button below that — where it covers the board, so a narrow-viewport test opens it to
+ *  read and closes it again before touching anything underneath. */
+async function openPanel(page: Page) {
+  if (await page.getByTestId('session-panel').count()) return
+  if (await page.getByTestId('log-drawer').count()) return
+  await page.getByRole('button', { name: 'Show log' }).click()
+  await expect(page.getByTestId('log-drawer')).toBeVisible()
+}
+
+async function closePanel(page: Page) {
+  if (!(await page.getByTestId('log-drawer').count())) return
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('log-drawer')).toHaveCount(0)
+}
 
 /** The tiles the trainer is asking about, by name. Scoped: the feedback notice draws the hand you
  *  just answered, and that is a different question from what is on the table now. */
@@ -31,8 +37,11 @@ test('a pinned hand is posed, graded, and then the stream moves on', async ({ pa
 
   await page.getByRole('button', { name: String(PINNED_SHANTEN), exact: true }).click()
 
+  // the full verdict and the running score both live in the session panel
+  await openPanel(page)
   await expect(page.getByText('Correct', { exact: true })).toBeVisible()
   await expect(page.getByText('Correct: 1 / 1')).toHaveCount(1)
+  await closePanel(page)
 
   // the stream deals the next hand straight away, already revealed — there is no next-hand button
   await expect(tiles).toHaveCount(13)
@@ -47,6 +56,7 @@ test('a wrong guess names both the guess and the real answer', async ({ page }) 
 
   await page.getByRole('button', { name: '3', exact: true }).click()
 
+  await openPanel(page)
   await expect(page.getByText('You said 3')).toBeVisible()
   await expect(page.getByText(`actual shanten: ${PINNED_SHANTEN}`)).toBeVisible()
   await expect(page.getByText('Correct: 0 / 1')).toHaveCount(1)
@@ -56,17 +66,17 @@ test('a new hand abandons the current one rather than pausing it', async ({ page
   await page.goto(PINNED)
   await expect(handTiles(page)).toHaveCount(13)
 
-  // the inline status bar and the fullscreen chrome draw the same pair, and the status bar stays
-  // mounted under the fullscreen overlay — `.last()` is the one actually on top either way
-  await page.getByRole('button', { name: 'New hand' }).last().click()
+  await page.getByRole('button', { name: 'New hand' }).click()
 
   // abandoned, not paused: the hand goes face down and the answer buttons go with it, so a peeked
   // hand cannot be put back on the clock
-  await expect(page.getByRole('button', { name: 'Reveal hand' }).last()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Reveal hand' })).toBeVisible()
   await expect(page.getByRole('button', { name: '0', exact: true })).toHaveCount(0)
+  await openPanel(page)
   await expect(page.getByText('Correct: 0 / 0')).toHaveCount(1)
+  await closePanel(page)
 
-  await page.getByRole('button', { name: 'Reveal hand' }).last().click()
+  await page.getByRole('button', { name: 'Reveal hand' }).click()
   await expect(page.getByRole('button', { name: '0', exact: true })).toBeVisible()
 })
 

@@ -2,17 +2,10 @@ import { CheckCircle2, XCircle } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BoardStage } from '../../components/tiles/BoardStage'
-import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
-import {
-  FullscreenToggle,
-  Timer,
-  TrainerStatusBar,
-  TrainerToggles,
-} from '../../components/TrainerControls'
-import { TrainerLayout } from '../../components/TrainerLayout'
+import { Timer, TrainerToggles } from '../../components/TrainerControls'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { concealedTiles, wallDrawnCount } from '../../core/round'
 import { HONOR, serializeTenhou } from '../../core/tiles'
@@ -22,7 +15,7 @@ import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { useTermName } from '../i18n/useTermName'
-import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
+import { SettingRow } from '../settings/SettingsDialog'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
 import { useTableSettings } from '../settings/tableSettings'
@@ -141,15 +134,14 @@ export function ScoringPage() {
   )
 
   const round = useScoringRound(urlData, options)
-  // hooks, so called unconditionally ahead of the loading early return below
-  const { full, toggle: toggleFull } = useFullscreenBoard()
+  // a hook, so called unconditionally ahead of the loading early return below
   const { canBack, back } = useLogBack()
 
   if (round.loading || !round.situation || !round.actual) {
     return (
-      <TrainerLayout title={t('trainer.scoring.title')}>
+      <BoardStage title={t('trainer.scoring.title')}>
         <p className="p-8 text-center text-neutral-500">{t('scoring.dealing')}</p>
-      </TrainerLayout>
+      </BoardStage>
     )
   }
 
@@ -275,8 +267,6 @@ export function ScoringPage() {
     </>
   )
 
-  // the same command bar the status bar draws, so the fullscreen board can draw them too rather
-  // than sending you back out to the page for them
   const toggles = {
     showToggle: settings.timerEnabled,
     paused: round.paused,
@@ -287,9 +277,6 @@ export function ScoringPage() {
     backLabel: t('common.undoAction'),
     onReset: round.next,
     resetLabel: t('common.resetHand'),
-    full,
-    onToggleFull: toggleFull,
-    fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
   // how the session is going, written once and read in both places it is shown: the page's own
@@ -306,259 +293,229 @@ export function ScoringPage() {
   )
 
   return (
-    <TrainerLayout
+    <BoardStage
       title={t('trainer.scoring.title')}
       intro={{ text: t('trainer.scoring.intro'), wikiUrl: TRAINER_WIKI.scoring }}
       settings={settingsRows}
-    >
-      <div className="flex flex-col gap-4">
-        <TrainerStatusBar
-          {...toggles}
-          elapsedNow={round.elapsedNow}
-          running={round.running}
-          timerEnabled={settings.timerEnabled}
-        >
+      onLogOpen={(open) => open !== round.paused && round.togglePause()}
+      status={
+        <>
+          {settings.timerEnabled && <Timer elapsedNow={round.elapsedNow} running={round.running} />}
           {scoreLines}
-        </TrainerStatusBar>
-
-        {round.invalidLink && (
-          <p className="rounded-lg border border-amber-400 p-3 text-sm text-amber-700 dark:text-amber-400">
-            {t('scoring.invalidLink')}
-          </p>
-        )}
-
-        {/* stacked in the page, or filling the screen outright behind the fullscreen button —
-            same shape every other board-drawing trainer uses */}
-        <BoardStage
-          title={t('trainer.scoring.title')}
-          intro={{ text: t('trainer.scoring.intro'), wikiUrl: TRAINER_WIKI.scoring }}
-          full={full}
-          onLogOpen={(open) => open !== round.paused && round.togglePause()}
-          status={
-            <>
-              {settings.timerEnabled && (
-                <Timer elapsedNow={round.elapsedNow} running={round.running} />
+        </>
+      }
+      chrome={<TrainerToggles {...toggles} />}
+      // the table itself is opt-in (`settings.table`) — off, this is the boardless shape
+      // shanten/solo use: no `board` prop, and the round/seat/dora readout that would
+      // otherwise live on the felt moves into `hand` instead so it survives into fullscreen,
+      // where it is what the question is asking about
+      board={
+        settings.table ? (
+          <Table
+            seats={seats}
+            seatIndex={tableSeatIndex}
+            round={WINDS[ctx.round - HONOR]}
+            doraIndicators={round.situation!.doraIndicators.map((id) => ({
+              id,
+              red: false,
+            }))}
+            uraIndicators={round.situation!.uraIndicators.map((id) => ({
+              id,
+              red: false,
+            }))}
+            wallCount={round.round?.liveWall.length}
+            honba={round.situation!.honba}
+          >
+            {tableFlagBadges.length > 0 && (
+              <span className="flex flex-wrap items-center justify-center gap-[1cqw]">
+                {tableFlagBadges}
+              </span>
+            )}
+          </Table>
+        ) : undefined
+      }
+      hand={
+        <div className="flex flex-col gap-4">
+          {/* the link named a hand that could not be rebuilt, so this one is a fresh deal —
+                  said beside the question rather than in the panel, which can be shut */}
+          {round.invalidLink && (
+            <p className="rounded-lg border border-amber-400 p-3 text-sm text-amber-700 dark:text-amber-400">
+              {t('scoring.invalidLink')}
+            </p>
+          )}
+          {!settings.table && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
+              <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                {t('scoring.roundWind')} <Tile id={ctx.round} />
+              </span>
+              <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                {t('scoring.seatWind')} <Tile id={ctx.seat} />
+                {dealer && <span className="text-neutral-500">({t('scoring.dealer')})</span>}
+              </span>
+              {round.situation.doraIndicators.length > 0 && (
+                <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                  <GlossaryTerm id="dora">{t('scoring.doraIndicator')}</GlossaryTerm>
+                  {round.situation.doraIndicators.map((id, i) => (
+                    <Tile key={i} id={id} />
+                  ))}
+                </span>
               )}
-              {scoreLines}
-            </>
-          }
-          chrome={
-            <>
-              <SettingsButton title={t('trainer.scoring.title')}>{settingsRows}</SettingsButton>
-              <TrainerToggles {...toggles} compact />
-              <FullscreenToggle {...toggles} compact />
-            </>
-          }
-          // the table itself is opt-in (`settings.table`) — off, this is the boardless shape
-          // shanten/solo use: no `board` prop, and the round/seat/dora readout that would
-          // otherwise live on the felt moves into `hand` instead so it survives into fullscreen,
-          // where it is what the question is asking about
-          board={
-            settings.table ? (
-              <Table
-                seats={seats}
-                seatIndex={tableSeatIndex}
-                round={WINDS[ctx.round - HONOR]}
-                doraIndicators={round.situation!.doraIndicators.map((id) => ({
-                  id,
-                  red: false,
-                }))}
-                uraIndicators={round.situation!.uraIndicators.map((id) => ({
-                  id,
-                  red: false,
-                }))}
-                wallCount={round.round?.liveWall.length}
-                honba={round.situation!.honba}
-              >
-                {tableFlagBadges.length > 0 && (
-                  <span className="flex flex-wrap items-center justify-center gap-[1cqw]">
-                    {tableFlagBadges}
-                  </span>
-                )}
-              </Table>
-            ) : undefined
-          }
-          hand={
-            <div className="flex flex-col gap-4">
-              {!settings.table && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
-                  <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                    {t('scoring.roundWind')} <Tile id={ctx.round} />
-                  </span>
-                  <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                    {t('scoring.seatWind')} <Tile id={ctx.seat} />
-                    {dealer && <span className="text-neutral-500">({t('scoring.dealer')})</span>}
-                  </span>
-                  {round.situation.doraIndicators.length > 0 && (
-                    <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                      <GlossaryTerm id="dora">{t('scoring.doraIndicator')}</GlossaryTerm>
-                      {round.situation.doraIndicators.map((id, i) => (
-                        <Tile key={i} id={id} />
-                      ))}
-                    </span>
-                  )}
-                  {round.situation.uraIndicators.length > 0 && (
-                    <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                      <GlossaryTerm id="uraDora">{t('scoring.uraIndicator')}</GlossaryTerm>
-                      {round.situation.uraIndicators.map((id, i) => (
-                        <Tile key={i} id={id} />
-                      ))}
-                    </span>
-                  )}
-                  {round.situation.honba > 0 && (
-                    <span>{t('scoring.honbaCount', { count: round.situation.honba })}</span>
-                  )}
-                  {round.situation.kita > 0 && (
-                    <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                      {t('scoring.kitaLabel')}
-                      {Array.from({ length: round.situation.kita }, (_, i) => (
-                        <Tile key={i} id={HONOR + 3} />
-                      ))}
-                    </span>
-                  )}
-                  <span className="flex flex-wrap items-center gap-2 text-xs">
-                    {winBadge}
-                    {flagBadges}
-                  </span>
-                </div>
+              {round.situation.uraIndicators.length > 0 && (
+                <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                  <GlossaryTerm id="uraDora">{t('scoring.uraIndicator')}</GlossaryTerm>
+                  {round.situation.uraIndicators.map((id, i) => (
+                    <Tile key={i} id={id} />
+                  ))}
+                </span>
               )}
+              {round.situation.honba > 0 && (
+                <span>{t('scoring.honbaCount', { count: round.situation.honba })}</span>
+              )}
+              {round.situation.kita > 0 && (
+                <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+                  {t('scoring.kitaLabel')}
+                  {Array.from({ length: round.situation.kita }, (_, i) => (
+                    <Tile key={i} id={HONOR + 3} />
+                  ))}
+                </span>
+              )}
+              <span className="flex flex-wrap items-center gap-2 text-xs">
+                {winBadge}
+                {flagBadges}
+              </span>
+            </div>
+          )}
 
-              <div className="flex flex-col gap-2">
-                {/* which tile completed the hand decides the wait fu and menzen ron, so it is
+          <div className="flex flex-col gap-2">
+            {/* which tile completed the hand decides the wait fu and menzen ron, so it is
                     part of the question, not part of the answer — always ringed, never gated on
                     the reveal. The slot beside the hand means "you drew this", so it is only
                     right for a tsumo: on a ron the tile is a discard, and the board already rings
                     it in the river it was discarded into. With no board up there is nothing to
                     point at, so it stays here. */}
-                {/* the calls sit at the right-hand end of the hand, not on a row of their own
+            {/* the calls sit at the right-hand end of the hand, not on a row of their own
                     under it — an open hand is read left to right along one line, and stacked
                     they read as a second hand. True with the board up or down: the felt drops
                     this seat's melds for exactly this reason (see `seats` above) */}
-                <HandDisplay
-                  tiles={restConcealed}
-                  drawn={showWinTileInHand ? winTile : undefined}
-                  drawnClassName="rounded-sm outline-2 outline-red-500"
-                  melds={round.situation.melds}
-                  nuki={handNuki}
-                />
-              </div>
+            <HandDisplay
+              tiles={restConcealed}
+              drawn={showWinTileInHand ? winTile : undefined}
+              drawnClassName="rounded-sm outline-2 outline-red-500"
+              melds={round.situation.melds}
+              nuki={handNuki}
+            />
+          </div>
 
-              {!round.checked && (
-                // uncontrolled: the form is keyed to the hand, so a new hand remounts it empty
-                <form
-                  key={serializeTenhou(round.situation.concealed)}
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    submit(e.currentTarget)
-                  }}
-                  // one field per line on a phone held upright, one row everywhere there is width
-                  // for it — a tablet, a desktop, or a phone held sideways (`short:`, the same
-                  // viewport test the board itself uses). The submit button joins the row rather
-                  // than sitting under it: the answer is one thought, so it reads as one line
-                  className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch short:flex-row short:flex-wrap short:items-stretch"
-                >
-                  {settings.testHan && (
-                    <NumberField name="han" label={t('scoring.hanLabel')} autoFocus />
-                  )}
-                  {settings.testFu && <NumberField name="fu" label={t('scoring.fuLabel')} />}
-                  {settings.testPoints && !split && (
-                    <NumberField name="points" label={singlePointsLabel} step={100} />
-                  )}
-                  {settings.testPoints && split && (
-                    <>
-                      <NumberField
-                        name="pointsMain"
-                        label={t('scoring.pointsMainLabel')}
-                        step={100}
-                      />
-                      <NumberField
-                        name="pointsFromDealer"
-                        label={t('scoring.pointsFromDealerLabel')}
-                        step={100}
-                      />
-                    </>
-                  )}
-                  <button
-                    type="submit"
-                    className="min-h-14 shrink-0 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-                  >
-                    {t('scoring.checkAnswer')}
-                  </button>
-                </form>
+          {!round.checked && (
+            // uncontrolled: the form is keyed to the hand, so a new hand remounts it empty
+            <form
+              key={serializeTenhou(round.situation.concealed)}
+              onSubmit={(e) => {
+                e.preventDefault()
+                submit(e.currentTarget)
+              }}
+              // one field per line on a phone held upright, one row everywhere there is width
+              // for it — a tablet, a desktop, or a phone held sideways (`short:`, the same
+              // viewport test the board itself uses). The submit button joins the row rather
+              // than sitting under it: the answer is one thought, so it reads as one line
+              className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch short:flex-row short:flex-wrap short:items-stretch"
+            >
+              {settings.testHan && (
+                <NumberField name="han" label={t('scoring.hanLabel')} autoFocus />
               )}
-            </div>
-          }
-          end={
-            round.checked &&
-            round.lastResult && (
-              <div className="flex flex-col gap-3">
-                {settings.testHan && (
-                  <FieldFeedback
-                    correct={round.lastResult.correctHan}
-                    label={t('scoring.hanLabel')}
-                    expected={String(round.actual!.han)}
-                  />
-                )}
-                {settings.testFu && (
-                  <FieldFeedback
-                    correct={round.lastResult.correctFu}
-                    label={t('scoring.fuLabel')}
-                    expected={String(options.exactFu ? round.actual!.fuExact : round.actual!.fu)}
-                  />
-                )}
-                {settings.testPoints && !split && (
-                  <FieldFeedback
-                    correct={round.lastResult.correctPoints}
-                    label={singlePointsLabel}
-                    expected={String(round.actual!.payments.main)}
-                    note={limitName}
-                  />
-                )}
-                {settings.testPoints && split && (
-                  <FieldFeedback
-                    correct={round.lastResult.correctPoints}
-                    label={`${t('scoring.pointsMainLabel')} / ${t('scoring.pointsFromDealerLabel')}`}
-                    expected={`${round.actual!.payments.main} / ${round.actual!.payments.fromDealer}`}
-                    note={limitName}
-                  />
-                )}
-                {/* the limit name rides along with the points row; without one it needs its own line */}
-                {!settings.testPoints && limitName && (
-                  <p className="text-sm text-neutral-500">{limitName}</p>
-                )}
-                {(settings.showYaku || settings.showFu) && (
-                  <ScoreBreakdown
-                    result={round.actual!}
-                    showYaku={settings.showYaku}
-                    showFu={settings.showFu}
-                  />
-                )}
-                <button
-                  type="button"
-                  onClick={round.next}
-                  className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-                >
-                  {t('scoring.newHand')}
-                </button>
-              </div>
-            )
-          }
-          panel={
-            <>
-              {showWall && round.round && (
-                <WallDetails
-                  dealt={round.round.wall.slice(0, round.round.players.length * INITIAL_HAND_SIZE)}
-                  liveWall={round.round.liveWallSnapshot}
-                  liveWallDrawn={wallDrawnCount(round.round)}
-                  deadWall={round.round.deadWallSnapshot}
-                  replacements={round.round.replacements}
-                />
+              {settings.testFu && <NumberField name="fu" label={t('scoring.fuLabel')} />}
+              {settings.testPoints && !split && (
+                <NumberField name="points" label={singlePointsLabel} step={100} />
               )}
-              <CopyLinkButton query={round.situationQuery} />
-            </>
-          }
-        />
-      </div>
-    </TrainerLayout>
+              {settings.testPoints && split && (
+                <>
+                  <NumberField name="pointsMain" label={t('scoring.pointsMainLabel')} step={100} />
+                  <NumberField
+                    name="pointsFromDealer"
+                    label={t('scoring.pointsFromDealerLabel')}
+                    step={100}
+                  />
+                </>
+              )}
+              <button
+                type="submit"
+                className="min-h-14 shrink-0 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+              >
+                {t('scoring.checkAnswer')}
+              </button>
+            </form>
+          )}
+        </div>
+      }
+      end={
+        round.checked &&
+        round.lastResult && (
+          <div className="flex flex-col gap-3">
+            {settings.testHan && (
+              <FieldFeedback
+                correct={round.lastResult.correctHan}
+                label={t('scoring.hanLabel')}
+                expected={String(round.actual!.han)}
+              />
+            )}
+            {settings.testFu && (
+              <FieldFeedback
+                correct={round.lastResult.correctFu}
+                label={t('scoring.fuLabel')}
+                expected={String(options.exactFu ? round.actual!.fuExact : round.actual!.fu)}
+              />
+            )}
+            {settings.testPoints && !split && (
+              <FieldFeedback
+                correct={round.lastResult.correctPoints}
+                label={singlePointsLabel}
+                expected={String(round.actual!.payments.main)}
+                note={limitName}
+              />
+            )}
+            {settings.testPoints && split && (
+              <FieldFeedback
+                correct={round.lastResult.correctPoints}
+                label={`${t('scoring.pointsMainLabel')} / ${t('scoring.pointsFromDealerLabel')}`}
+                expected={`${round.actual!.payments.main} / ${round.actual!.payments.fromDealer}`}
+                note={limitName}
+              />
+            )}
+            {/* the limit name rides along with the points row; without one it needs its own line */}
+            {!settings.testPoints && limitName && (
+              <p className="text-sm text-neutral-500">{limitName}</p>
+            )}
+            {(settings.showYaku || settings.showFu) && (
+              <ScoreBreakdown
+                result={round.actual!}
+                showYaku={settings.showYaku}
+                showFu={settings.showFu}
+              />
+            )}
+            <button
+              type="button"
+              onClick={round.next}
+              className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+            >
+              {t('scoring.newHand')}
+            </button>
+          </div>
+        )
+      }
+      panel={
+        <>
+          {showWall && round.round && (
+            <WallDetails
+              dealt={round.round.wall.slice(0, round.round.players.length * INITIAL_HAND_SIZE)}
+              liveWall={round.round.liveWallSnapshot}
+              liveWallDrawn={wallDrawnCount(round.round)}
+              deadWall={round.round.deadWallSnapshot}
+              replacements={round.round.replacements}
+            />
+          )}
+          <CopyLinkButton query={round.situationQuery} />
+        </>
+      }
+    />
   )
 }

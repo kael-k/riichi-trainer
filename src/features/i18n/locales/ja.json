@@ -37,7 +37,6 @@
     "yonma": "四人麻雀",
     "sanma": "三人麻雀",
     "numbersOnTiles": "牌に数字を表示",
-    "mobileFullscreen": "スマートフォンで自動的に全画面表示",
     "glossaryOnClick": "用語集はホバーではなくタップでのみ開く",
     "advanced": "上級者向け機能",
     "tsumogiriMarks": "ツモ切り/手出しを表示",
@@ -100,8 +99,6 @@
     "riichiSticks": "供託リーチ棒",
     "honbaSticks": "本場",
     "points": "{{count}}点",
-    "fullscreen": "全画面で卓を表示",
-    "exitFullscreen": "全画面を終了",
     "logDrawer": "ログを表示",
     "roundLine": "{{wind}}{{number}}局",
     "roundLineRepeat": "{{wind}}{{number}}局・{{repeat}}本場"

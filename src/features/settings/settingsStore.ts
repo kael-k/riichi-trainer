@@ -111,13 +111,6 @@ interface SettingsState extends Settings {
    *  inline — click still opens the full popover either way, wiki link included. */
   glossaryOnClick: boolean
   setGlossaryOnClick: (onClick: boolean) => void
-  /** Auto-enter `BoardStage`'s fullscreen overlay on phone-sized viewports, every trainer
-   *  including the boardless ones. On by default; explicitly exiting it on a phone flips this
-   *  false (the persisted opt-out) rather than just closing for that one visit. A global setting,
-   *  not per-app: there is no trainer where a phone reader would want the chrome back but not
-   *  the others. */
-  mobileFullscreen: boolean
-  setMobileFullscreen: (mobileFullscreen: boolean) => void
   /** Dismissed the "install to Home Screen" hint (`IOSInstallHint.tsx`) — iOS Safari has no
    *  element fullscreen at all, so a tab there can never lose its own bars; installing to the
    *  Home Screen is the only real fix, and this is permanent once closed, same as the hint
@@ -176,8 +169,6 @@ export const useSettings = create<SettingsState>()(
       setTranslatedTerms: (translatedTerms) => set({ translatedTerms }),
       glossaryOnClick: false,
       setGlossaryOnClick: (glossaryOnClick) => set({ glossaryOnClick }),
-      mobileFullscreen: true,
-      setMobileFullscreen: (mobileFullscreen) => set({ mobileFullscreen }),
       iosInstallHintDismissed: false,
       setIosInstallHintDismissed: (iosInstallHintDismissed) => set({ iosInstallHintDismissed }),
       update: (section, patch) => set((s) => ({ ...s, [section]: { ...s[section], ...patch } })),

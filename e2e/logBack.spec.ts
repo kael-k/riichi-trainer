@@ -4,15 +4,21 @@ import { expect, test, type Page } from '@playwright/test'
  *  first hand (and so the "back" target it leaves behind) is deterministic. */
 const PINNED = '/shanten?hand=123456789m1123p'
 
-test.beforeEach(async ({ context }) => {
-  // fullscreen off, so the inline status bar is the only command bar mounted — the button under
-  // test would otherwise exist twice (inline plus the fullscreen chrome's own copy)
-  await context.addInitScript(
-    `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
-      JSON.stringify({ state: { mobileFullscreen: false }, version: 3 }),
-    )})`,
-  )
-})
+/** The score line and the log both live in the session panel: docked open on a wide screen, behind
+ *  the log button below that — where it covers the board, so a narrow-viewport test opens it to
+ *  read and closes it again before touching anything underneath. */
+async function openPanel(page: Page) {
+  if (await page.getByTestId('session-panel').count()) return
+  if (await page.getByTestId('log-drawer').count()) return
+  await page.getByRole('button', { name: 'Show log' }).click()
+  await expect(page.getByTestId('log-drawer')).toBeVisible()
+}
+
+async function closePanel(page: Page) {
+  if (!(await page.getByTestId('log-drawer').count())) return
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('log-drawer')).toHaveCount(0)
+}
 
 function handTiles(page: Page) {
   return page.getByTestId('shanten-hand').getByRole('img')
@@ -31,6 +37,7 @@ test('undo is disabled until a decision has been made', async ({ page }) => {
   await expect(handTiles(page)).toHaveCount(13)
 
   await expect(undoButton(page)).toBeDisabled()
+  await openPanel(page)
   await expect(page.getByText('Log (0)')).toBeVisible()
 })
 
@@ -53,18 +60,24 @@ test('undo re-poses the previous hand, and works more than once', async ({ page 
   expect(hand3).not.toEqual(hand2)
 
   await expect(undoButton(page)).toBeEnabled()
+  await openPanel(page)
   await expect(page.getByText('Log (2)')).toBeVisible()
+  await closePanel(page)
 
   // one step back: hand 2 is on screen again, ungraded
   await undoButton(page).click()
   await expect.poll(() => tileLabels(page)).toEqual(hand2)
+  await openPanel(page)
   await expect(page.getByText('Log (3)')).toBeVisible()
   await expect(page.getByText('Went back one step')).toBeVisible()
+  await closePanel(page)
 
   // pressing it again goes one further back: hand 1
   await undoButton(page).click()
   await expect.poll(() => tileLabels(page)).toEqual(hand1)
+  await openPanel(page)
   await expect(page.getByText('Log (4)')).toBeVisible()
+  await closePanel(page)
 
   // nothing left to undo — the button disables itself rather than looping back to hand 3
   await expect(undoButton(page)).toBeDisabled()

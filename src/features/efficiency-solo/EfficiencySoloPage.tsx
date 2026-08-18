@@ -3,19 +3,12 @@ import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
-import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
-import {
-  FullscreenToggle,
-  Timer,
-  TrainerStatusBar,
-  TrainerToggles,
-} from '../../components/TrainerControls'
-import { TrainerLayout } from '../../components/TrainerLayout'
+import { Timer, TrainerToggles } from '../../components/TrainerControls'
 import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
-import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
+import { SettingRow } from '../settings/SettingsDialog'
 import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
@@ -105,11 +98,8 @@ export function EfficiencySoloPage() {
     </>
   )
 
-  const { full, toggle: toggleFull } = useFullscreenBoard()
   const { canBack, back } = useLogBack()
 
-  // the same command bar the status bar draws, so the fullscreen chrome can draw them too rather
-  // than sending you back out to the page for them
   const toggles = {
     showToggle: settings.timerEnabled,
     paused: round.paused,
@@ -120,9 +110,6 @@ export function EfficiencySoloPage() {
     backLabel: t('common.undoAction'),
     onReset: round.restart,
     resetLabel: t('common.resetHand'),
-    full,
-    onToggleFull: toggleFull,
-    fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
   // how the session is going, written once and read in both places it is shown: the page's own
@@ -147,22 +134,120 @@ export function EfficiencySoloPage() {
   )
 
   return (
-    <TrainerLayout
+    <BoardStage
       title={t('trainer.efficiencySolo.title')}
       intro={{ text: t('trainer.efficiencySolo.intro'), wikiUrl: TRAINER_WIKI.efficiencySolo }}
       settings={settingsRows}
-    >
-      <div className="flex flex-col gap-4">
-        <TrainerStatusBar
-          {...toggles}
-          elapsedNow={round.elapsedNow}
-          running={round.running}
-          timerEnabled={settings.timerEnabled}
-        >
+      status={
+        <>
+          {settings.timerEnabled && <Timer elapsedNow={round.elapsedNow} running={round.running} />}
           {scoreLines}
-        </TrainerStatusBar>
+        </>
+      }
+      chrome={<TrainerToggles {...toggles} />}
+      hand={
+        <div className="flex flex-col gap-4">
+          <HandDisplay
+            tiles={round.hand}
+            drawn={round.drawn}
+            onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+          />
 
-        {/* no table here to show the wall/dora, so this solo trainer states them plainly */}
+          {(options.sanma || kanEligible.length > 0) && !round.finished && (
+            <div className="flex flex-wrap gap-2">
+              {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
+                <button
+                  type="button"
+                  onClick={round.kita}
+                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                >
+                  {t('efficiency.kitaButton')}
+                </button>
+              )}
+              {kanEligible.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => round.kan(id)}
+                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                >
+                  <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
+                    <Tile id={id} />
+                  </span>
+                  {t('efficiency.kanButton')}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      }
+      noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
+      notice={
+        round.lastResult && (
+          <DiscardFeedback
+            result={round.lastResult}
+            showShanten={settings.showShanten}
+            showUkeire={settings.showUkeire}
+            sanma={options.sanma}
+          />
+        )
+      }
+      noticeCompact={
+        round.lastResult && (
+          <Verdict
+            severity={efficiencyVerdictSeverity(round.lastResult)}
+            text={t(EFFICIENCY_VERDICT_TEXT_KEY[efficiencyVerdictSeverity(round.lastResult)])}
+          />
+        )
+      }
+      end={
+        round.finished && (
+          <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
+            <p className="font-semibold">
+              {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
+            </p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              {t('efficiency.totalLost', {
+                count: round.turn,
+                turns: round.turn,
+                lost: round.cumulativeLost,
+                total: round.cumulativeTotal,
+                accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+              })}
+            </p>
+            {settings.timerEnabled && (
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('efficiency.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={round.restart}
+              className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+            >
+              {t('common.newRound')}
+            </button>
+          </div>
+        )
+      }
+      panel={
+        <>
+          {showWall && (
+            <WallDetails
+              dealt={round.dealtTiles}
+              liveWall={round.liveWallSnapshot}
+              liveWallDrawn={round.liveWallDrawn}
+              deadWall={round.deadWallSnapshot}
+              replacements={round.replacements}
+            />
+          )}
+          <CopyLinkButton query={round.situationQuery} />
+        </>
+      }
+    >
+      {/* there is no felt here to read the wall and dora off, so this solo trainer says them
+          plainly above its own river — all of it in the board area, where a table would be */}
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
           <span>{t('efficiency.wallStatus', { count: round.liveWall.length })}</span>
           {round.doraIndicators.length > 0 && (
@@ -174,154 +259,31 @@ export function EfficiencySoloPage() {
             </span>
           )}
         </div>
-
-        <BoardStage
-          title={t('trainer.efficiencySolo.title')}
-          intro={{ text: t('trainer.efficiencySolo.intro'), wikiUrl: TRAINER_WIKI.efficiencySolo }}
-          full={full}
-          status={
-            <>
-              {settings.timerEnabled && (
-                <Timer elapsedNow={round.elapsedNow} running={round.running} />
-              )}
-              {scoreLines}
-            </>
-          }
-          chrome={
-            <>
-              <SettingsButton title={t('trainer.efficiencySolo.title')}>
-                {settingsRows}
-              </SettingsButton>
-              <TrainerToggles {...toggles} compact />
-              <FullscreenToggle {...toggles} compact />
-            </>
-          }
-          hand={
-            <div className="flex flex-col gap-4">
-              <HandDisplay
-                tiles={round.hand}
-                drawn={round.drawn}
-                onTileClick={round.finished ? undefined : (i) => round.discard(i)}
-              />
-
-              {(options.sanma || kanEligible.length > 0) && !round.finished && (
-                <div className="flex flex-wrap gap-2">
-                  {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
-                    <button
-                      type="button"
-                      onClick={round.kita}
-                      className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                    >
-                      {t('efficiency.kitaButton')}
-                    </button>
-                  )}
-                  {kanEligible.map((id) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => round.kan(id)}
-                      className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                    >
-                      <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
-                        <Tile id={id} />
-                      </span>
-                      {t('efficiency.kanButton')}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          }
-          noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
-          notice={
-            round.lastResult && (
-              <DiscardFeedback
-                result={round.lastResult}
-                showShanten={settings.showShanten}
-                showUkeire={settings.showUkeire}
-                sanma={options.sanma}
-              />
-            )
-          }
-          noticeCompact={
-            round.lastResult && (
-              <Verdict
-                severity={efficiencyVerdictSeverity(round.lastResult)}
-                text={t(EFFICIENCY_VERDICT_TEXT_KEY[efficiencyVerdictSeverity(round.lastResult)])}
-              />
-            )
-          }
-          end={
-            round.finished && (
-              <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
-                <p className="font-semibold">
-                  {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}
-                </p>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  {t('efficiency.totalLost', {
-                    count: round.turn,
-                    turns: round.turn,
-                    lost: round.cumulativeLost,
-                    total: round.cumulativeTotal,
-                    accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
-                  })}
-                </p>
-                {settings.timerEnabled && (
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {t('efficiency.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={round.restart}
-                  className="mt-3 min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-                >
-                  {t('common.newRound')}
-                </button>
-              </div>
-            )
-          }
-          panel={
-            <>
-              {showWall && (
-                <WallDetails
-                  dealt={round.dealtTiles}
-                  liveWall={round.liveWallSnapshot}
-                  liveWallDrawn={round.liveWallDrawn}
-                  deadWall={round.deadWallSnapshot}
-                  replacements={round.replacements}
-                />
-              )}
-              <CopyLinkButton query={round.situationQuery} />
-            </>
-          }
-        >
-          <div className="flex flex-wrap gap-4 [--tile-w:calc(var(--tile-w-base)*0.8)]">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-neutral-500">
-                {t(`wind.${WINDS[round.seatIndex]}`)} {t('efficiency.you')}
-              </span>
-              {round.rivers[round.seatIndex].length > 0 ? (
-                <River tiles={round.rivers[round.seatIndex]} />
-              ) : (
-                <span className="text-xs text-neutral-400">{t('efficiency.emptyRiver')}</span>
-              )}
-            </div>
-            {options.sanma && round.nuki.length > 0 && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-neutral-500">{t('efficiency.nukiPile')}</span>
-                <River tiles={round.nuki} />
-              </div>
-            )}
-            {round.kans.length > 0 && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-neutral-500">{t('efficiency.kanPile')}</span>
-                <River tiles={round.kans.flat()} />
-              </div>
+        <div className="flex flex-wrap gap-4 [--tile-w:calc(var(--tile-w-base)*0.8)]">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-neutral-500">
+              {t(`wind.${WINDS[round.seatIndex]}`)} {t('efficiency.you')}
+            </span>
+            {round.rivers[round.seatIndex].length > 0 ? (
+              <River tiles={round.rivers[round.seatIndex]} />
+            ) : (
+              <span className="text-xs text-neutral-400">{t('efficiency.emptyRiver')}</span>
             )}
           </div>
-        </BoardStage>
+          {options.sanma && round.nuki.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-neutral-500">{t('efficiency.nukiPile')}</span>
+              <River tiles={round.nuki} />
+            </div>
+          )}
+          {round.kans.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-neutral-500">{t('efficiency.kanPile')}</span>
+              <River tiles={round.kans.flat()} />
+            </div>
+          )}
+        </div>
       </div>
-    </TrainerLayout>
+    </BoardStage>
   )
 }

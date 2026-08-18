@@ -15,7 +15,6 @@ const TABLE_TRAINERS = ['efficiency', 'folding'] as const
 const SETTINGS = JSON.stringify({
   state: {
     advanced: true,
-    mobileFullscreen: true,
     table: { global: { showSeatWaits: true }, apps: {} },
   },
   version: 3,
@@ -27,16 +26,15 @@ test.beforeEach(async ({ context }) => {
   )
 })
 
-/** The fullscreen stage is the only layout with a hand strip of its own; phones auto-enter it, so
- *  every other viewport clicks the toggle. */
-async function enterFullscreen(page: Page) {
-  const strip = page.getByTestId('hand-strip')
-  const toggle = page.getByRole('button', { name: 'Full screen table' })
-  // folding searches fresh random walls for a hand worth drilling, so neither is on screen the
-  // instant the route loads — wait for whichever this viewport is going to offer
-  await expect(strip.or(toggle).first()).toBeVisible({ timeout: 20_000 })
-  if (!(await strip.isVisible())) await toggle.click()
-  await expect(strip).toBeVisible()
+/** Where the session panel stops being a drawer and docks beside the board instead — the same
+ *  `lg` the stage keys on. */
+const WIDE = 1024
+
+/** The stage is the whole page now, so there is nothing to enter: this only waits for it. Folding
+ *  searches fresh random walls for a hand worth drilling, so the hand is not on screen the instant
+ *  the route loads. */
+async function waitForStage(page: Page) {
+  await expect(page.getByTestId('hand-strip')).toBeVisible({ timeout: 20_000 })
 }
 
 function overlaps(a: { x: number; y: number; width: number; height: number }, b: typeof a) {
@@ -312,9 +310,9 @@ for (const trainer of TABLE_TRAINERS) {
     ).toBeLessThanOrEqual(1)
   })
 
-  test(`${trainer}: fullscreen fits the whole board and the hand on screen`, async ({ page }) => {
+  test(`${trainer}: the whole board and the hand fit on screen`, async ({ page }) => {
     await page.goto(`/${trainer}`)
-    await enterFullscreen(page)
+    await waitForStage(page)
 
     const viewport = page.viewportSize()!
     const board = (await page.getByTestId('board').first().boundingBox())!
@@ -417,26 +415,30 @@ test('every seat’s score sits the same distance from the centre panel', async 
   expect(Math.max(...gaps) - Math.min(...gaps), `gaps ${gaps.join(', ')}`).toBeLessThanOrEqual(2)
 })
 
-test('only a phone-sized viewport comes up fullscreen', async ({ page, viewport }) => {
-  // held sideways is the viewport with the least room of all, so it is the one that most needs
-  // this — and on a width-only check it was the one that never auto-entered. Anywhere roomier the
-  // stage must stay inline until the reader asks for it, which is the same rule read the other way
-  const phone = !!viewport && (viewport.width <= 640 || viewport.height <= 520)
+test('the session panel is docked and open on a wide screen, a drawer below that', async ({
+  page,
+  viewport,
+}) => {
   await page.goto('/efficiency')
+  await waitForStage(page)
 
-  const strip = page.getByTestId('hand-strip')
-  if (phone) {
-    await expect(strip).toBeVisible()
+  // wide enough to hold both: the panel is a column beside the board, already open, and there is
+  // no drawer at all. Narrower, the board keeps the whole width and the panel waits behind its
+  // own button — a phone mid-drill cannot spare 320px of felt for a log
+  if (viewport && viewport.width >= WIDE) {
+    await expect(page.getByTestId('session-panel')).toBeVisible()
+    await expect(page.getByTestId('log-drawer')).toHaveCount(0)
     return
   }
-  await expect(page.getByRole('button', { name: 'Full screen table' })).toBeVisible()
-  await expect(strip).toHaveCount(0)
-  await enterFullscreen(page)
+  await expect(page.getByTestId('session-panel')).toHaveCount(0)
+  await expect(page.getByTestId('log-drawer')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show log' }).click()
+  await expect(page.getByTestId('log-drawer')).toBeVisible()
 })
 
-test('efficiency-solo: your river is on screen in fullscreen', async ({ page }) => {
+test('efficiency-solo: your river is on screen', async ({ page }) => {
   await page.goto('/efficiency-solo')
-  await enterFullscreen(page)
+  await waitForStage(page)
 
   // discard, so the river holds something to be seen at all
   await page.getByTestId('hand-strip').getByRole('button').first().click()
@@ -447,9 +449,12 @@ test('efficiency-solo: your river is on screen in fullscreen', async ({ page }) 
   expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height + 1)
 })
 
-test('efficiency-solo: the log drawer covers the hand', async ({ page }) => {
+test('efficiency-solo: the log drawer covers the hand', async ({ page, viewport }) => {
+  // the drawer shape only: wide enough and the panel docks beside the board instead, covering
+  // nothing, which is the point of it docking
+  test.skip(!viewport || viewport.width >= WIDE, 'the panel is docked, not a drawer')
   await page.goto('/efficiency-solo')
-  await enterFullscreen(page)
+  await waitForStage(page)
 
   const hand = (await page.getByTestId('hand-strip').boundingBox())!
   await page.getByRole('button', { name: 'Show log' }).click()
@@ -472,9 +477,11 @@ test('efficiency-solo: the log drawer covers the hand', async ({ page }) => {
 
 test('the log drawer is a dialog: over the chrome row, dismissed from outside', async ({
   page,
+  viewport,
 }) => {
+  test.skip(!viewport || viewport.width >= WIDE, 'the panel is docked, not a drawer')
   await page.goto('/efficiency-solo')
-  await enterFullscreen(page)
+  await waitForStage(page)
 
   const toggle = page.getByRole('button', { name: 'Show log' })
   const chrome = (await toggle.boundingBox())!
@@ -536,7 +543,7 @@ async function revealNothing(context: BrowserContext) {
   await context.addInitScript(
     `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
       JSON.stringify({
-        state: { advanced: true, mobileFullscreen: true, table: { global: {}, apps: {} } },
+        state: { advanced: true, table: { global: {}, apps: {} } },
         version: 3,
       }),
     )})`,
@@ -570,7 +577,6 @@ test('revealing the hands reveals the furiten that goes with them', async ({ pag
       JSON.stringify({
         state: {
           advanced: true,
-          mobileFullscreen: true,
           table: { global: { showOpponentHands: true }, apps: {} },
         },
         version: 3,

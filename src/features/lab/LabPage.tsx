@@ -3,11 +3,9 @@ import { Trans, useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
-import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, UkeireTiles, WallDetails } from '../../components/tiles/Tile'
-import { BackButton, FullscreenToggle } from '../../components/TrainerControls'
-import { TrainerLayout } from '../../components/TrainerLayout'
+import { BackButton } from '../../components/TrainerControls'
 import type { SafetyTier, TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
 import type { LogEntry } from '../../core/round'
@@ -17,7 +15,7 @@ import { splitConcealedDrawn } from '../folding/useFoldingRound'
 import type { GlossaryTermId } from '../i18n/glossary'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
-import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
+import { SettingRow } from '../settings/SettingsDialog'
 import { ManualControls } from '../table/ManualControls'
 import { useSettings } from '../settings/settingsStore'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
@@ -222,7 +220,6 @@ export function LabPage() {
 
   const round = useLabRound(situation, options)
   const threatSeats = round.riichi.flatMap((inRiichi, seat) => (inRiichi ? [seat] : []))
-  const { full, toggle: toggleFull } = useFullscreenBoard()
   const { canBack, back } = useLogBack()
 
   // perspective is view-only and ephemeral: the page's own state, never the round's — reset to
@@ -290,180 +287,161 @@ export function LabPage() {
     </>
   )
 
+  // the wall this page is here to author, and everything it says about the one it has. Both live
+  // in the session panel: the board is what the lab is looking at, and this is what you type at it
+  const wallPanel = (
+    <>
+      <div className="flex flex-col gap-2">
+        <label htmlFor="lab-wall-input" className="text-xs font-medium text-neutral-500">
+          {t('lab.wallInputLabel')}
+        </label>
+        <input
+          id="lab-wall-input"
+          type="text"
+          value={wallInput}
+          onChange={(e) => setWallInput(e.target.value)}
+          className="min-h-11 rounded-lg border border-neutral-300 px-3 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={loadWall}
+            className="min-h-11 w-fit rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+          >
+            {t('lab.loadWall')}
+          </button>
+          <button
+            type="button"
+            onClick={buildWall}
+            className="min-h-11 w-fit rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+          >
+            {t('lab.buildWall')}
+          </button>
+          <button
+            type="button"
+            onClick={resetWall}
+            className="min-h-11 w-fit rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+          >
+            {t('lab.resetWall')}
+          </button>
+        </div>
+      </div>
+
+      {loaded && (
+        <>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-neutral-500">{t('lab.ranking')}</span>
+            <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+              {round.ranked.map((option) => (
+                <RankedRow key={option.discard} option={option} />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-neutral-500">{t('lab.danger')}</span>
+            <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+              {round.danger.map((entry) => (
+                <DangerRow key={entry.tile} entry={entry} seats={threatSeats} />
+              ))}
+            </div>
+          </div>
+
+          {showWall && (
+            <WallDetails
+              dealt={round.dealtTiles}
+              liveWall={round.liveWallSnapshot}
+              liveWallDrawn={round.liveWallDrawn}
+              deadWall={round.deadWallSnapshot}
+              replacements={round.replacements}
+              players={round.rivers.length}
+              seat={perspective}
+            />
+          )}
+
+          <CopyLinkButton query={round.situationQuery} />
+        </>
+      )}
+    </>
+  )
+
   return (
-    <TrainerLayout
+    <BoardStage
       title={t('trainer.lab.title')}
       intro={{ text: t('trainer.lab.intro'), wikiUrl: TRAINER_WIKI.lab }}
       settings={settingsRows}
-    >
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <label htmlFor="lab-wall-input" className="text-xs font-medium text-neutral-500">
-            {t('lab.wallInputLabel')}
-          </label>
-          <input
-            id="lab-wall-input"
-            type="text"
-            value={wallInput}
-            onChange={(e) => setWallInput(e.target.value)}
-            className="min-h-11 rounded-lg border border-neutral-300 px-3 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-          />
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={loadWall}
-              className="min-h-11 w-fit rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-            >
-              {t('lab.loadWall')}
-            </button>
-            <button
-              type="button"
-              onClick={buildWall}
-              className="min-h-11 w-fit rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-            >
-              {t('lab.buildWall')}
-            </button>
-            <button
-              type="button"
-              onClick={resetWall}
-              className="min-h-11 w-fit rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-            >
-              {t('lab.resetWall')}
-            </button>
-          </div>
-        </div>
-
-        {wallError && (
-          <p className="text-sm text-red-600 dark:text-red-400">{wallErrorMessage(t, wallError)}</p>
-        )}
-        {!wallError && !loaded && <p className="text-sm text-neutral-500">{t('lab.empty')}</p>}
-
-        {loaded && (
-          <>
-            {/* lab has no session clock to pause/reset — just undo; fullscreen itself is the
-                header's own global toggle now, not a per-page button */}
-            <div className="flex items-center gap-1">
-              <BackButton canBack={canBack} onBack={back} backLabel={t('common.undoAction')} />
-            </div>
-            <BoardStage
-              title={t('trainer.lab.title')}
-              intro={{ text: t('trainer.lab.intro'), wikiUrl: TRAINER_WIKI.lab }}
-              full={full}
-              chrome={
-                <>
-                  <SettingsButton title={t('trainer.lab.title')}>{settingsRows}</SettingsButton>
-                  <BackButton
-                    canBack={canBack}
-                    onBack={back}
-                    backLabel={t('common.undoAction')}
-                    compact
-                  />
-                  <FullscreenToggle
-                    full={full}
-                    onToggleFull={toggleFull}
-                    fullscreenLabel={t(full ? 'table.exitFullscreen' : 'table.fullscreen')}
-                    compact
-                  />
-                </>
-              }
-              board={
-                <Table
-                  seatInfo={(seat, wind) =>
-                    seatsEnabled && (
-                      <SeatStrip
-                        seat={seat}
-                        players={round.rivers.length}
-                        defaultOrientation={round.seatIndex}
-                        config={seatConfig}
-                        onChange={setSeatConfig}
-                        claims={claims}
-                        onClaimsChange={(v) => updateTable({ claims: v })}
-                        viewSeat={perspective}
-                        onWatch={setViewSeat}
-                        read={round.seatReads[seat]}
-                        showWaits={showSeatWaits}
-                        wind={wind}
-                      />
-                    )
-                  }
-                  seats={seats}
-                  seatIndex={perspective}
-                  round={situation.round}
-                  roundNumber={round.match.round}
-                  dealerRepeat={round.match.dealerRepeat}
-                  doraIndicators={round.doraIndicators}
-                  wallCount={round.liveWall.length}
-                  honba={round.match.honba}
+      chrome={<BackButton canBack={canBack} onBack={back} backLabel={t('common.undoAction')} />}
+      panel={wallPanel}
+      board={
+        loaded ? (
+          <Table
+            seatInfo={(seat, wind) =>
+              seatsEnabled && (
+                <SeatStrip
+                  seat={seat}
+                  players={round.rivers.length}
+                  defaultOrientation={round.seatIndex}
+                  config={seatConfig}
+                  onChange={setSeatConfig}
+                  claims={claims}
+                  onClaimsChange={(v) => updateTable({ claims: v })}
+                  viewSeat={perspective}
+                  onWatch={setViewSeat}
+                  read={round.seatReads[seat]}
+                  showWaits={showSeatWaits}
+                  wind={wind}
                 />
-              }
-              hand={
-                <div className="flex flex-col gap-4">
-                  <ManualControls
-                    seatIndex={round.seatIndex}
-                    acting={round.acting}
-                    claim={round.claim}
-                    riichiTiles={round.riichiTiles()}
-                    riichiArmed={round.riichiArmed}
-                    onArmRiichi={round.armRiichi}
-                    onAnswer={round.answer}
-                    viewSeat={perspective}
-                    onReturn={() => setViewSeat(null)}
-                  />
-                  {/* centred on the board above it, not left-aligned in the page: the calls hang off
-                      the right of the hand, so a called hand would otherwise sit visibly off-centre
-                      from the felt its own seat is drawn on */}
-                  <div className="flex justify-center">
-                    <HandDisplay
-                      tiles={bottomHand}
-                      drawn={bottomDrawn}
-                      concealed={bottomConcealed}
-                      melds={round.melds[perspective]}
-                      nuki={round.nuki[perspective]}
-                      onTileClick={canAct ? (i) => round.discard(i) : undefined}
-                      lockedToDrawn={round.riichi[round.acting]}
-                    />
-                  </div>
-                </div>
-              }
-              panel={
-                <>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-xs font-medium text-neutral-500">{t('lab.ranking')}</span>
-                    <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
-                      {round.ranked.map((option) => (
-                        <RankedRow key={option.discard} option={option} />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <span className="text-xs font-medium text-neutral-500">{t('lab.danger')}</span>
-                    <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
-                      {round.danger.map((entry) => (
-                        <DangerRow key={entry.tile} entry={entry} seats={threatSeats} />
-                      ))}
-                    </div>
-                  </div>
-
-                  {showWall && (
-                    <WallDetails
-                      dealt={round.dealtTiles}
-                      liveWall={round.liveWallSnapshot}
-                      liveWallDrawn={round.liveWallDrawn}
-                      deadWall={round.deadWallSnapshot}
-                      replacements={round.replacements}
-                      players={round.rivers.length}
-                      seat={perspective}
-                    />
-                  )}
-
-                  <CopyLinkButton query={round.situationQuery} />
-                </>
-              }
+              )
+            }
+            seats={seats}
+            seatIndex={perspective}
+            round={situation.round}
+            roundNumber={round.match.round}
+            dealerRepeat={round.match.dealerRepeat}
+            doraIndicators={round.doraIndicators}
+            wallCount={round.liveWall.length}
+            honba={round.match.honba}
+          />
+        ) : undefined
+      }
+      hand={
+        loaded ? (
+          <div className="flex flex-col gap-4">
+            <ManualControls
+              seatIndex={round.seatIndex}
+              acting={round.acting}
+              claim={round.claim}
+              riichiTiles={round.riichiTiles()}
+              riichiArmed={round.riichiArmed}
+              onArmRiichi={round.armRiichi}
+              onAnswer={round.answer}
+              viewSeat={perspective}
+              onReturn={() => setViewSeat(null)}
             />
-          </>
-        )}
-      </div>
-    </TrainerLayout>
+            {/* centred on the board above it, not left-aligned in the page: the calls hang off
+                the right of the hand, so a called hand would otherwise sit visibly off-centre
+                from the felt its own seat is drawn on */}
+            <div className="flex justify-center">
+              <HandDisplay
+                tiles={bottomHand}
+                drawn={bottomDrawn}
+                concealed={bottomConcealed}
+                melds={round.melds[perspective]}
+                nuki={round.nuki[perspective]}
+                onTileClick={canAct ? (i) => round.discard(i) : undefined}
+                lockedToDrawn={round.riichi[round.acting]}
+              />
+            </div>
+          </div>
+        ) : undefined
+      }
+    >
+      {/* nothing dealt: the board area says why instead of standing empty */}
+      {wallError ? (
+        <p className="text-sm text-red-600 dark:text-red-400">{wallErrorMessage(t, wallError)}</p>
+      ) : (
+        !loaded && <p className="text-sm text-neutral-500">{t('lab.empty')}</p>
+      )}
+    </BoardStage>
   )
 }

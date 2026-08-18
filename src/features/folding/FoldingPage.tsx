@@ -2,22 +2,15 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { BoardStage } from '../../components/tiles/BoardStage'
-import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
-import {
-  FullscreenToggle,
-  Timer,
-  TrainerStatusBar,
-  TrainerToggles,
-} from '../../components/TrainerControls'
-import { TrainerLayout } from '../../components/TrainerLayout'
+import { Timer, TrainerToggles } from '../../components/TrainerControls'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
-import { SettingRow, SettingsButton } from '../settings/SettingsDialog'
+import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { WINDS } from '../situation/urlCodec'
@@ -128,8 +121,7 @@ export function FoldingPage() {
   ])
 
   const round = useFoldingRound(urlData, options)
-  // hooks, so called unconditionally ahead of the loading/failed early return below
-  const { full, toggle: toggleFull } = useFullscreenBoard()
+  // a hook, so called unconditionally ahead of the loading/failed early return below
   const { canBack, back } = useLogBack()
   const players = options.sanma ? 3 : 4
   // perspective is a pure viewing choice — which seat `Table` draws at the bottom — held as the
@@ -203,12 +195,12 @@ export function FoldingPage() {
 
   if (round.loading || round.failed) {
     return (
-      <TrainerLayout title={t('trainer.folding.title')} settings={settingsRows}>
-        <p className="p-8 text-center text-neutral-500">
-          {t(round.failed ? 'folding.noHand' : 'folding.dealing')}
-        </p>
-        {round.failed && (
-          <div className="flex justify-center">
+      <BoardStage title={t('trainer.folding.title')} settings={settingsRows}>
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-center text-neutral-500">
+            {t(round.failed ? 'folding.noHand' : 'folding.dealing')}
+          </p>
+          {round.failed && (
             <button
               type="button"
               onClick={nextHand}
@@ -216,14 +208,12 @@ export function FoldingPage() {
             >
               {t('common.newRound')}
             </button>
-          </div>
-        )}
-      </TrainerLayout>
+          )}
+        </div>
+      </BoardStage>
     )
   }
 
-  // the same command bar the status bar draws, so the fullscreen board can draw them too rather
-  // than sending you back out to the page for them
   const toggles = {
     showToggle: settings.timerEnabled,
     paused: round.paused,
@@ -234,9 +224,6 @@ export function FoldingPage() {
     backLabel: t('common.undoAction'),
     onReset: nextHand,
     resetLabel: t('common.resetHand'),
-    full,
-    onToggleFull: toggleFull,
-    fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
   const seats: SeatView[] = round.rivers.map((river, seat) => {
@@ -310,182 +297,155 @@ export function FoldingPage() {
   )
 
   return (
-    <TrainerLayout
+    <BoardStage
       title={t('trainer.folding.title')}
       intro={{ text: t('trainer.folding.intro'), wikiUrl: TRAINER_WIKI.folding }}
       settings={settingsRows}
-    >
-      <div className="flex flex-col gap-4">
-        <TrainerStatusBar
-          {...toggles}
-          elapsedNow={round.elapsedNow}
-          running={round.running}
-          timerEnabled={settings.timerEnabled}
-        >
+      onLogOpen={(open) => open !== round.paused && round.togglePause()}
+      status={
+        <>
+          {settings.timerEnabled && <Timer elapsedNow={round.elapsedNow} running={round.running} />}
           {scoreLines}
-        </TrainerStatusBar>
-
-        {/* stacked normally; beside the board when the viewport is too short to stack, which is
-            what makes turning the phone sideways actually pay off */}
-        <BoardStage
-          title={t('trainer.folding.title')}
-          intro={{ text: t('trainer.folding.intro'), wikiUrl: TRAINER_WIKI.folding }}
-          full={full}
-          onLogOpen={(open) => open !== round.paused && round.togglePause()}
-          status={
-            <>
-              {settings.timerEnabled && (
-                <Timer elapsedNow={round.elapsedNow} running={round.running} />
-              )}
-              {scoreLines}
-            </>
-          }
-          chrome={
-            <>
-              <SettingsButton title={t('trainer.folding.title')}>{settingsRows}</SettingsButton>
-              <TrainerToggles {...toggles} compact />
-              <FullscreenToggle {...toggles} compact />
-            </>
-          }
-          board={
-            <Table
-              seatInfo={(seat, wind) =>
-                seatsEnabled && (
-                  <SeatStrip
-                    seat={seat}
-                    players={players}
-                    defaultOrientation={round.seatIndex}
-                    config={seatConfig}
-                    onChange={setSeatConfig}
-                    fallbackModes={round.algorithms}
-                    claims={claims}
-                    onClaimsChange={(v) => updateTable({ claims: v })}
-                    viewSeat={perspective}
-                    onWatch={setViewSeat}
-                    read={round.seatReads[seat]}
-                    showWaits={showSeatWaits}
-                    wind={wind}
-                  />
-                )
-              }
-              seats={seats}
-              seatIndex={perspective}
-              round={WINDS[round.round - HONOR]}
-              roundNumber={round.match.round}
-              dealerRepeat={round.match.dealerRepeat}
-              doraIndicators={round.doraIndicators}
-              wallCount={round.liveWall.length}
-              honba={round.match.honba}
-            />
-          }
-          hand={
-            <div className="flex flex-col gap-4">
-              <ManualControls
-                seatIndex={round.seatIndex}
-                acting={round.acting}
-                claim={round.claim}
-                riichiTiles={round.riichiTiles()}
-                riichiArmed={round.riichiArmed}
-                onArmRiichi={round.armRiichi}
-                onAnswer={round.answer}
+        </>
+      }
+      chrome={<TrainerToggles {...toggles} />}
+      board={
+        <Table
+          seatInfo={(seat, wind) =>
+            seatsEnabled && (
+              <SeatStrip
+                seat={seat}
+                players={players}
+                defaultOrientation={round.seatIndex}
+                config={seatConfig}
+                onChange={setSeatConfig}
+                fallbackModes={round.algorithms}
+                claims={claims}
+                onClaimsChange={(v) => updateTable({ claims: v })}
                 viewSeat={perspective}
-                onReturn={() => setViewSeat(null)}
+                onWatch={setViewSeat}
+                read={round.seatReads[seat]}
+                showWaits={showSeatWaits}
+                wind={wind}
               />
-              {/* centred on the board above it, not left-aligned in the page: the calls hang off
+            )
+          }
+          seats={seats}
+          seatIndex={perspective}
+          round={WINDS[round.round - HONOR]}
+          roundNumber={round.match.round}
+          dealerRepeat={round.match.dealerRepeat}
+          doraIndicators={round.doraIndicators}
+          wallCount={round.liveWall.length}
+          honba={round.match.honba}
+        />
+      }
+      hand={
+        <div className="flex flex-col gap-4">
+          <ManualControls
+            seatIndex={round.seatIndex}
+            acting={round.acting}
+            claim={round.claim}
+            riichiTiles={round.riichiTiles()}
+            riichiArmed={round.riichiArmed}
+            onArmRiichi={round.armRiichi}
+            onAnswer={round.answer}
+            viewSeat={perspective}
+            onReturn={() => setViewSeat(null)}
+          />
+          {/* centred on the board above it, not left-aligned in the page: the calls hang off
                   the right of the hand, so a called hand would otherwise sit visibly off-centre
                   from the felt its own seat is drawn on */}
-              <div className="flex justify-center">
-                <HandDisplay
-                  tiles={bottomHand}
-                  drawn={bottomDrawn}
-                  concealed={bottomConcealed}
-                  melds={round.melds[perspective]}
-                  nuki={round.nuki[perspective]}
-                  onTileClick={canAct ? (i) => round.discard(i) : undefined}
-                  lockedToDrawn={round.riichi[round.acting]}
-                />
-              </div>
-            </div>
-          }
-          // one notice per graded throw. Under `feedbackAtEnd` there is nothing to key off until
-          // the hand is over, and the whole run then lands in the end card instead
-          noticeKey={settings.feedbackAtEnd ? undefined : round.results.length}
-          notice={
-            !settings.feedbackAtEnd &&
-            round.lastResult && <FoldFeedback result={round.lastResult} seats={round.threatSeats} />
-          }
-          noticeCompact={
-            !settings.feedbackAtEnd &&
-            round.lastResult && (
-              <Verdict
-                severity={foldingVerdictSeverity(round.lastResult)}
-                text={t(FOLDING_VERDICT_TEXT_KEY[foldingVerdictSeverity(round.lastResult)])}
-              />
-            )
-          }
-          end={
-            round.end && (
-              <div className="flex flex-col gap-3">
-                {/* under `feedbackAtEnd` every turn of the hand, in play order, arrives here */}
-                {settings.feedbackAtEnd &&
-                  round.results.map((result, i) => (
-                    <FoldFeedback key={i} result={result} seats={round.threatSeats} />
-                  ))}
-                <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
-                  <p className="font-semibold">
-                    {t(`folding.end.${round.end.kind}`, {
-                      wind: round.end.seat === undefined ? '' : t(`wind.${WINDS[round.end.seat]}`),
-                      points: round.end.points ?? 0,
-                    })}
-                  </p>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {t('folding.sessionLine', {
-                      correct: round.correctCount,
-                      total: round.totalCount,
-                    })}
-                  </p>
-                  {settings.timerEnabled && (
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                      {t('folding.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
-                    </p>
-                  )}
-                </div>
-                {round.end.threats.map((threat) => (
-                  <Reveal key={threat.seat} threat={threat} seats={round.end!.threats.length} />
-                ))}
-                {/* the whole point of grading on public information: a safest-tier pick that
-                    landed in the wait was still the right call */}
-                {round.end.threats.some((threat) => threat.hits.length > 0) && (
-                  <p className="text-sm text-neutral-500">{t('folding.hindsight')}</p>
-                )}
-                <button
-                  type="button"
-                  onClick={nextHand}
-                  className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-                >
-                  {t('folding.newSituation')}
-                </button>
-              </div>
-            )
-          }
-          panel={
-            <>
-              {showWall && (
-                <WallDetails
-                  dealt={round.dealtTiles}
-                  liveWall={round.liveWallSnapshot}
-                  liveWallDrawn={round.liveWallDrawn}
-                  deadWall={round.deadWallSnapshot}
-                  replacements={round.replacements}
-                  players={players}
-                  seat={perspective}
-                />
+          <div className="flex justify-center">
+            <HandDisplay
+              tiles={bottomHand}
+              drawn={bottomDrawn}
+              concealed={bottomConcealed}
+              melds={round.melds[perspective]}
+              nuki={round.nuki[perspective]}
+              onTileClick={canAct ? (i) => round.discard(i) : undefined}
+              lockedToDrawn={round.riichi[round.acting]}
+            />
+          </div>
+        </div>
+      }
+      // one notice per graded throw. Under `feedbackAtEnd` there is nothing to key off until
+      // the hand is over, and the whole run then lands in the end card instead
+      noticeKey={settings.feedbackAtEnd ? undefined : round.results.length}
+      notice={
+        !settings.feedbackAtEnd &&
+        round.lastResult && <FoldFeedback result={round.lastResult} seats={round.threatSeats} />
+      }
+      noticeCompact={
+        !settings.feedbackAtEnd &&
+        round.lastResult && (
+          <Verdict
+            severity={foldingVerdictSeverity(round.lastResult)}
+            text={t(FOLDING_VERDICT_TEXT_KEY[foldingVerdictSeverity(round.lastResult)])}
+          />
+        )
+      }
+      end={
+        round.end && (
+          <div className="flex flex-col gap-3">
+            {/* under `feedbackAtEnd` every turn of the hand, in play order, arrives here */}
+            {settings.feedbackAtEnd &&
+              round.results.map((result, i) => (
+                <FoldFeedback key={i} result={result} seats={round.threatSeats} />
+              ))}
+            <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
+              <p className="font-semibold">
+                {t(`folding.end.${round.end.kind}`, {
+                  wind: round.end.seat === undefined ? '' : t(`wind.${WINDS[round.end.seat]}`),
+                  points: round.end.points ?? 0,
+                })}
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('folding.sessionLine', {
+                  correct: round.correctCount,
+                  total: round.totalCount,
+                })}
+              </p>
+              {settings.timerEnabled && (
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {t('folding.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
+                </p>
               )}
-              <CopyLinkButton query={round.situationQuery} />
-            </>
-          }
-        />
-      </div>
-    </TrainerLayout>
+            </div>
+            {round.end.threats.map((threat) => (
+              <Reveal key={threat.seat} threat={threat} seats={round.end!.threats.length} />
+            ))}
+            {/* the whole point of grading on public information: a safest-tier pick that
+                    landed in the wait was still the right call */}
+            {round.end.threats.some((threat) => threat.hits.length > 0) && (
+              <p className="text-sm text-neutral-500">{t('folding.hindsight')}</p>
+            )}
+            <button
+              type="button"
+              onClick={nextHand}
+              className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+            >
+              {t('folding.newSituation')}
+            </button>
+          </div>
+        )
+      }
+      panel={
+        <>
+          {showWall && (
+            <WallDetails
+              dealt={round.dealtTiles}
+              liveWall={round.liveWallSnapshot}
+              liveWallDrawn={round.liveWallDrawn}
+              deadWall={round.deadWallSnapshot}
+              replacements={round.replacements}
+              players={players}
+              seat={perspective}
+            />
+          )}
+          <CopyLinkButton query={round.situationQuery} />
+        </>
+      }
+    />
   )
 }
