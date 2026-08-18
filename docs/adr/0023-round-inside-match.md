@@ -34,8 +34,8 @@ deal, draws, discards, a win or an exhaustive draw. A **match** is the game roun
   `MatchState.prevalentWind`, which pairs with the existing `SeatView.seatWind`).
   `createRound` takes a **copy**, so a round's own mutation never writes through to caller-owned
   options.
-- **`honba` and `dealerRepeat` are separate fields.** They diverge by ruleset — Mahjong Soul zeroes
-  the repeat on a noten-dealer exhaustive draw yet still adds a honba — so one field would bake a
+- **`honba` and `dealerRepeat` are separate fields.** They diverge by ruleset — some rulesets zero
+  the repeat on a noten-dealer exhaustive draw yet still add a honba — so one field would bake a
   ruleset into the type.
 - **Carry-in and within-round mutation only.** No `nextRound()`, no dealer rotation, no honba
   increment, no payout settlement, no end-of-match detection, and the winner does not collect the

@@ -46,7 +46,7 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    options/state/`SeatView`/snapshot/link, riichi deducting 1000 and adding a stick, and the board
    showing round number and per-seat points. [ADR-0022](adr/0022-stored-redness.md),
    [ADR-0023](adr/0023-round-inside-match.md).
-5. **The board's Mahjong-Soul pass** (`UX-TABLE.md`, no longer in the tree) — calls off the felt
+5. **The board's table-layout pass** (`UX-TABLE.md`, no longer in the tree) — calls off the felt
    and beside the hand they belong to (the reader's own under the board, with `HandDisplay`), the
    per-seat read (wind, algorithm, full wait list) on one line in the seat's left corner with its
    waits above, points pinned to the centre panel's edge by a rotating square overlay, a
