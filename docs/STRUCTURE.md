@@ -73,10 +73,11 @@ Shared:
 | Path                    | Role                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------- |
 | `tiles/Table.tsx`       | The board. Zero game logic, no player concept ([ADR-0014](adr/0014-table-is-a-pure-view.md)) |
-| `tiles/BoardStage.tsx`  | Inline and fullscreen layout around `Table`                                    |
+| `tiles/BoardStage.tsx`  | **The trainer page**: chrome row, board, hand, session panel ([ADR-0025](adr/0025-one-interface.md)) |
+| `tiles/useMobileFullscreen.ts` | Asks the browser for real fullscreen on a phone, once per session       |
 | `tiles/Tile.tsx`        | One tile as a `<use>` into the build-time sprite                               |
-| `TrainerLayout.tsx`     | Header, settings dialog, log panel, `LogList`                                  |
-| `TrainerControls.tsx`   | `TrainerToggles` — start/pause and reset, shared by both surfaces              |
+| `LogList.tsx`           | The log's rows, with rewind/share/copy per entry                               |
+| `TrainerControls.tsx`   | `TrainerToggles` — start/pause, undo, reset — plus the chrome row's button style |
 | `InfoPopover.tsx`       | Portalled popover behind both `GlossaryTerm` and the trainer info button       |
 | `AppShell.tsx`          | Theme class, sprite injection, router outlet                                    |
 
@@ -85,6 +86,7 @@ Shared:
 | Path                              | Role                                                          |
 | --------------------------------- | --------------------------------------------------------------- |
 | `src/lib/useSessionStats.ts`      | Score, per-decision clock, random seed; owns "clearing the log resets the session" |
+| `src/lib/useMediaQuery.ts`        | Live `matchMedia` read; picks the session panel's docked/drawer shape |
 | `src/store/log.ts`                | Session-only action log with inline tiles and copy text        |
 | `src/routes/`                     | Route table and home page                                      |
 | `src/assets/tiles/sprite.svg`     | Generated, **committed** — `npm run tiles` regenerates          |

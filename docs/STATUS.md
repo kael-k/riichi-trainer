@@ -1,6 +1,6 @@
 # Status
 
-_Last synthesised: 2026-08-16, against the git history through `ad902b9`._
+_Last synthesised: 2026-08-18, against the git history through the one-interface run._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
@@ -20,12 +20,13 @@ Six trainers, each its own route ([ADR-0013](adr/0013-efficiency-split.md)):
 
 Also shipped: situation URLs, i18n (en/ja/zh/it), glossary popovers, beginner/advanced split,
 dark mode, PWA + GitHub Pages deploy, sanma throughout, per-seat algorithms with a live decision
-seam, mobile fullscreen on every trainer.
+seam, and — since the one-interface wave ([ADR-0025](adr/0025-one-interface.md)) — a single
+board-first layout on every trainer at every viewport.
 
 The **table-architecture centralization** work is complete: explicit walls, `core/table.ts`,
 `useRound`, the efficiency split, the table-settings schema, the lab.
 
-**Five waves landed after it:**
+**Six waves landed after it:**
 
 1. **Seat algorithms** — the `humans`/`policy` merge, live algorithm changes, the `ALGORITHMS`
    decision seam, efficiency's riichi removal. ADRs
@@ -50,6 +51,13 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    wall reveal with the perspective seat's own dealt tiles highlighted. Real 4/4/4+1 dealing
    ([ADR-0024](adr/0024-real-dealing-order.md)) shipped ahead of it, since the wall reveal draws
    that block back to the reader.
+6. **One interface** ([ADR-0025](adr/0025-one-interface.md)) — the inline layout and the fullscreen
+   toggle deleted, `BoardStage` promoted to the trainer page, `TrainerLayout` removed, and a
+   session panel (score, full feedback, wall reveal, share link, log) docked beside the board from
+   `lg` up and a drawer below that. Real fullscreen shrank to a phone-only first-tap request
+   (`useMobileFullscreen`); the `mobileFullscreen` setting went with the toggle. The size setting
+   now scales the felt as well as the tiles (`BOARD_SCALES`/`--board-scale`), and the chrome row's
+   buttons carry their names on a wide screen (`labelled:`).
 
 ## In flight
 
@@ -69,16 +77,16 @@ Originally from `UX-TESTS-BUG.md` (no longer in the tree), none fixed. This is t
 project cares most about and tests least
 ([ADR-0019](adr/0019-mobile-first-board.md)):
 
-- **The board is not square** on phones, in either orientation, fullscreen or not. It must always
-  be square, shrinking if necessary.
-- **Fullscreen must fit the whole square board on screen** — concealed hand tiles and seat strips
-  included. If an explicit tile size (e.g. XL) does not fit, override it downward rather than
-  overflowing.
-- **Efficiency solo, fullscreen:** your own river is not visible.
-- **Efficiency solo, fullscreen:** the log drawer renders under the hand; it should be over it.
+- **The board is not square** on phones, in either orientation. It must always be square,
+  shrinking if necessary.
+- **The whole square board must fit on screen** — concealed hand tiles and seat strips included.
+  If an explicit tile size (e.g. XL) does not fit, override it downward rather than overflowing.
+- **Efficiency solo:** your own river is not visible.
+- **Efficiency solo:** the log drawer renders under the hand; it should be over it.
 
-  (Both now have passing e2e coverage in `e2e/board.spec.ts`; re-check whether they are still
-  reproducible by hand before treating them as open.)
+  (All four now have passing e2e coverage in `e2e/board.spec.ts` — squareness on three viewports,
+  board-plus-hand fitting, solo's river, and the drawer over the hand — so re-check whether any is
+  still reproducible by hand before treating it as open.)
 
 ### Engine and hooks
 

@@ -1,6 +1,6 @@
 # ADR-0019 — Mobile-first: a square board, and fullscreen as a place
 
-**Status:** Accepted · **Date:** 2026-08-14
+**Status:** Amended by [ADR-0025](0025-one-interface.md) · **Date:** 2026-08-14
 **Source:** CLAUDE.md UI section; the `UX(mobile)` commit run of 2026-08-13/14
 
 ## Context
@@ -28,6 +28,10 @@ the difference. This is also the single most bug-prone area of the codebase.
   start/pause pair all live inside it. It auto-enters on phone-sized viewports behind
   `mobileFullscreen` (persisted, default on); exiting on a phone writes the setting false rather
   than closing for one visit.
+  _Taken further by [ADR-0025](0025-one-interface.md): the overlay became the only layout, so the
+  toggle, the setting and the inline shape it moved between are all gone. Everything else in this
+  bullet still holds — those controls are the stage's, and the API still only drops browser
+  chrome._
 - **`requestFullscreen` only ever fires inside a real user gesture.** A load-time call is rejected
   outright, so an auto-entered stage defers to the reader's first `pointerdown` — and the
   "no gesture yet" flag is cleared only from inside that listener, never eagerly in the effect
@@ -36,14 +40,16 @@ the difference. This is also the single most bug-prone area of the codebase.
   only by installing the PWA to the Home Screen, which `IOSInstallHint` points at.
   `viewport-fit=cover` plus `env(safe-area-inset-*)` padding keeps the layout out from under those
   bars, with the padded side flipping as `short:` moves the chrome row into the left gutter.
-- **Feedback must not cover the tiles it is talking about.** Two densities: `notice` (full) inline,
-  `noticeCompact` (one line, icon, colour) floating over the board in fullscreen — and in the
-  right-hand gutter instead once `short:`.
+- **Feedback must not cover the tiles it is talking about.** Two densities: `notice` (full) and
+  `noticeCompact` (one line, icon, colour) floating over the board — and in the right-hand gutter
+  instead once `short:`. _Under [ADR-0025](0025-one-interface.md) the full one lives in the session
+  panel and the compact one floats only while that panel is shut._
 
 ## Consequences
 
-- Combined with `mobileFullscreen` this lands compact feedback on phones and full on desktop with
-  no JS media query.
+- This lands compact feedback on phones and full on desktop — originally with no JS media query at
+  all; since [ADR-0025](0025-one-interface.md) the panel's own docked/drawer split is one
+  `useMediaQuery` read, because a layout that changes *shape* cannot be expressed in CSS alone.
 - Severity is always **derived at display level** from the grade or partial credit that already
   exists — never a new grading concept.
 - **The board being square in every orientation is an invariant, not a preference**, and it is

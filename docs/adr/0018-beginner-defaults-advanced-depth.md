@@ -1,7 +1,8 @@
 # ADR-0018 — Beginner-safe defaults, advanced depth behind settings
 
 **Status:** Accepted · **Date:** 2026-08-11
-**Source:** CLAUDE.md audience note; `features/i18n/glossary.ts`, `TrainerLayout.tsx`
+**Source:** CLAUDE.md audience note; `features/i18n/glossary.ts`, `TrainerLayout.tsx` (today
+`BoardStage.tsx`, [ADR-0025](0025-one-interface.md))
 
 ## Context
 
@@ -21,7 +22,7 @@ names); tile-number overlays default on except in ja/zh.
 
 Two beginner-facing surfaces built on the same principle:
 
-- **The trainer info button.** Each `TrainerLayout` and each home-page card takes an
+- **The trainer info button.** Each trainer page and each home-page card takes an
   `intro: TrainerIntro` — what the drill teaches, plus an optional riichi.wiki link — surfaced
   behind an `Info` icon rather than as permanent on-page text, so it costs nothing once the player
   knows the trainer.

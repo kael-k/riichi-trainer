@@ -16,7 +16,8 @@ The test is **what the value is about**, not where its control lives.
 **Persisted (a question about the reader):**
 
 - Global settings: theme, tile size, language, tile numbers, `sanma`, `aka`, advanced mode,
-  `mobileFullscreen`, per-trainer timer/display preferences.
+  per-trainer timer/display preferences. (`mobileFullscreen` was one of these until
+  [ADR-0025](0025-one-interface.md) removed the mode it switched.)
 - `TableSettings` — `opponentWins`, `deadWall`, `threats`, `showOpponentHands`, `showSeatWaits`,
   `showWall`, `claims` — resolved per app as `{ ...TABLE_DEFAULTS[app], ...global, ...appOverride }`.
   Both override layers are `Partial`: absent-key-means-inherit is plain object-spread semantics,

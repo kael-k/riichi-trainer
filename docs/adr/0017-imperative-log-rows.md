@@ -21,7 +21,8 @@ StrictMode for one and the same round. That is also why those objects come from 
 (memoised per navigation) rather than being rebuilt per render — the same identity the trainers'
 "reset `handIndex` while rendering" pattern keys on.
 
-That row is likewise why `TrainerLayout` clears the log **during its first render** rather than
+That row is likewise why `BoardStage` (`TrainerLayout` until [ADR-0025](0025-one-interface.md))
+clears the log **during its first render** rather than
 from a mount effect: effects run children-first, so a page that logs as its round mounts would
 have those rows wiped by its own layout a moment later.
 
