@@ -28,6 +28,13 @@ function handTiles(page: Page) {
   return page.getByTestId('shanten-hand').getByRole('img')
 }
 
+/** The score line (`BoardStage`'s `status`) is mounted twice — once for the plain portrait row,
+ *  once for the floating gutter HUD — and switched between by CSS media query rather than JS, so
+ *  only one is ever `:visible` at a time. Scope to that one instead of the raw text match. */
+function scoreLine(page: Page, text: string) {
+  return page.getByText(text).filter({ visible: true })
+}
+
 test('a pinned hand is posed, graded, and then the stream moves on', async ({ page }) => {
   await page.goto(PINNED)
 
@@ -40,7 +47,7 @@ test('a pinned hand is posed, graded, and then the stream moves on', async ({ pa
   // the full verdict and the running score both live in the session panel
   await openPanel(page)
   await expect(page.getByText('Correct', { exact: true })).toBeVisible()
-  await expect(page.getByText('Correct: 1 / 1')).toHaveCount(1)
+  await expect(scoreLine(page, 'Correct: 1 / 1')).toHaveCount(1)
   await closePanel(page)
 
   // the stream deals the next hand straight away, already revealed — there is no next-hand button
@@ -59,7 +66,7 @@ test('a wrong guess names both the guess and the real answer', async ({ page }) 
   await openPanel(page)
   await expect(page.getByText('You said 3')).toBeVisible()
   await expect(page.getByText(`actual shanten: ${PINNED_SHANTEN}`)).toBeVisible()
-  await expect(page.getByText('Correct: 0 / 1')).toHaveCount(1)
+  await expect(scoreLine(page, 'Correct: 0 / 1')).toHaveCount(1)
 })
 
 test('a new hand abandons the current one rather than pausing it', async ({ page }) => {
@@ -73,7 +80,7 @@ test('a new hand abandons the current one rather than pausing it', async ({ page
   await expect(page.getByRole('button', { name: 'Reveal hand' })).toBeVisible()
   await expect(page.getByRole('button', { name: '0', exact: true })).toHaveCount(0)
   await openPanel(page)
-  await expect(page.getByText('Correct: 0 / 0')).toHaveCount(1)
+  await expect(scoreLine(page, 'Correct: 0 / 0')).toHaveCount(1)
   await closePanel(page)
 
   await page.getByRole('button', { name: 'Reveal hand' }).click()
