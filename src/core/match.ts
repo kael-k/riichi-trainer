@@ -13,8 +13,7 @@ export interface MatchState {
   round: number
   /** Payout counter, feeds `ScoringRules.honba`. */
   honba: number
-  /** How many times the current dealer has repeated. Diverges from `honba` by ruleset — e.g.
-   *  Mahjong Soul zeroes this on a noten-dealer exhaustive draw yet still adds a honba. */
+  /** How many times the current dealer has repeated. Diverges from `honba` by ruleset. */
   dealerRepeat: number
   /** Seat index. */
   dealer: number
