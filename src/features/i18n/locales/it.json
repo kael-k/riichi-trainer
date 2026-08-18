@@ -161,27 +161,27 @@
     "efficiency": {
       "title": "Allenamento efficienza - con avversari",
       "desc": "Scegli lo scarto migliore contro avversari reali, a un tavolo completo.",
-      "intro": "Ogni mano ti mette a metà di una partita reale. Scarta la tessera che tiene la mano più vicina al tenpai e con più modi per migliorarla (il suo ukeire). Dopo lo scarto, il trainer mostra se era la scelta migliore e quante tessere hai lasciato sul tavolo."
+      "intro": "Cos'è: una mano intera di mahjong, dalla distribuzione in poi. Giochi un posto, mentre gli altri pescano, scartano e chiamano per conto loro, così le tessere escono dal muro come in una partita vera.\n\nPerché conta: la mano che arriva prima al tenpai di solito è quella che vince, e ogni scarto o conserva o butta via i modi di arrivarci. Questa singola scelta decide più mani di quante ne decidano il punteggio o la difesa.\n\nCome si gioca: a ogni tuo turno scarta la tessera che lascia la mano più vicina al tenpai e con più tessere ancora in grado di migliorarla — quel conteggio è il suo ukeire. Il trainer poi indica lo scarto migliore e quante tessere utili ti è costato il tuo. Raggiungere il tenpai chiude la mano, e da lì ne viene distribuita una nuova."
     },
     "efficiencySolo": {
       "title": "Allenamento efficienza - solitario",
-      "desc": "Scegli lo scarto migliore; guarda le tessere che migliorano la mano. Nessun avversario — solo tu e il muro.",
-      "intro": "Ogni mano ti mette a metà di una partita reale, senza altri posti da leggere. Scarta la tessera che tiene la mano più vicina al tenpai e con più modi per migliorarla (il suo ukeire). Dopo lo scarto, il trainer mostra se era la scelta migliore e quante tessere hai lasciato sul tavolo."
+      "desc": "Pesca e scarta fino al tenpai da solo — nessun avversario, nessuna chiamata, niente da cui difendersi.",
+      "intro": "Cos'è: la stessa scelta di scarto del trainer con avversari, ma senza il tavolo. Ricevi tredici tessere e peschi da un muro intero da solo — nessun altro scarta, chiama o vince — quindi la mano scorre dalla distribuzione fino al tuo tenpai.\n\nPerché conta: senza avversari da leggere e senza chiamate da temere, ogni decisione riguarda solo la forma della tua mano. È l'efficienza allo stato puro, l'abilità su cui si appoggiano i trainer da tavolo.\n\nCome si gioca: pesca, poi scarta la tessera che lascia la mano più vicina al tenpai e con più tessere ancora in grado di migliorarla — quel conteggio è il suo ukeire. Il trainer indica lo scarto migliore e quante tessere utili ti è costato il tuo."
     },
     "shanten": {
       "title": "Allenamento shanten",
       "desc": "Indovina a quanto shanten sei dal tenpai, contro il tempo.",
-      "intro": "Ti viene mostrata una mano e devi indovinarne lo shanten: quanti scambi di tessere servono per arrivare al tenpai (0 = già in attesa di vincere). Le mani si susseguono senza pause, quindi rispondi in fretta e passa alla successiva."
+      "intro": "Cos'è: compare una mano e devi dirne lo shanten — quanti scambi di tessere le servono ancora per arrivare al tenpai. 0 significa che è già in tenpai, in attesa di vincere; 1 che manca uno scambio utile, e così via.\n\nPerché conta: lo shanten è il numero con cui si misura ogni scarto: \"quale tessera è meglio\" quasi sempre significa \"quale tiene lo shanten più basso\". Leggerlo a colpo d'occhio è ciò che rende veloce tutto il resto del gioco.\n\nCome si gioca: la mano è già in tavola e il cronometro sta già girando, quindi rispondi con i pulsanti (o digita il numero) e la mano successiva arriva subito, con accanto la risposta a quella precedente. La pausa ferma il cronometro; il reset nasconde la mano e ne distribuisce una nuova, perché una mano che hai già studiato non si può più cronometrare."
     },
     "scoring": {
       "title": "Allenamento punteggio",
       "desc": "Indovina han, fu e punti di una mano vincente.",
-      "intro": "Ti viene mostrata una mano vincente già completa. Calcola i suoi yaku, han, fu e i punti risultanti prima di controllare la risposta: è l'abilità per cui esiste questo trainer."
+      "intro": "Cos'è: una mano vincente già completa, mostrata con tutto ciò da cui dipende il suo valore — vento di round e di posto, gli indicatori dora, se è stata vinta di ron o di tsumo, riichi e il resto.\n\nPerché conta: quanto vale una mano è ciò che ti dice se conviene spingerla, e a un tavolo vero chi vince deve contarsela da sé. È anche l'unica parte del gioco che si può allenare del tutto lontano dal tavolo.\n\nCome si gioca: individua gli yaku, somma han e fu e inserisci i punti prima di controllare la risposta. Le impostazioni scelgono quale dei tre ti viene chiesto e possono attivare le scomposizioni complete di yaku e fu, quando vuoi vedere da dove viene ogni numero."
     },
     "folding": {
       "title": "Trainer difensivo",
       "desc": "Qualcuno ha dichiarato riichi. Scegli il tile più sicuro da scartare.",
-      "intro": "Un avversario ha dichiarato riichi e non sei in condizione di attaccare. Scegli lo scarto con minor probabilità di entrare nella sua mano, usando solo informazioni pubbliche (i suoi scarti e quelli di tutti gli altri) — mai quello che sta davvero tenendo in mano."
+      "intro": "Cos'è: un avversario ha dichiarato riichi e la tua mano non vale la spinta. Il tavolo ti viene passato un turno o due dopo, e da lì fino alla fine della mano scegli la tessera con meno probabilità di entrare nella sua mano.\n\nPerché conta: il tiro nella mano avversaria è il modo più grosso di perdere punti, e le mani invincibili sono frequenti. Difendersi bene protegge, sull'arco di una partita, più punti di quanti ne aggiungano qualche vittoria in più.\n\nCome si gioca: giudica solo dalle informazioni pubbliche — le tessere che ha scartato lui stesso (genbutsu, su cui non può mai vincere), quelle scartate dopo il suo riichi senza essere reclamate, i suji e le forme che le tessere visibili escludono già. Quello che ha davvero in mano non conta mai contro di te: una tessera del livello più sicuro è valutata corretta anche se poi si scopre che era nella sua attesa."
     },
     "lab": {
       "title": "Laboratorio statistico",

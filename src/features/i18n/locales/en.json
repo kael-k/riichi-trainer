@@ -161,27 +161,27 @@
     "efficiency": {
       "title": "Efficiency trainer - with opponents",
       "desc": "Pick the best discard against real opponents at a full table.",
-      "intro": "Each round deals you a real hand mid-match. Discard the tile that keeps your hand closest to tenpai and keeps the most ways to improve it (its ukeire). After you discard, the trainer shows whether it was the best choice and how many tiles you left on the table."
+      "intro": "What it is: one full hand of mahjong, from the deal onward. You play one seat and the other seats draw, discard and call for themselves, so tiles leave the wall the way they do in a real game.\n\nWhy it matters: the hand that reaches tenpai first usually wins it, and every discard either keeps ways of getting there or throws them away. This one choice decides more hands than scoring or defence ever will.\n\nHow to play: on each of your turns, discard the tile that leaves your hand closest to tenpai and with the most tiles still able to improve it — that count is its ukeire. The trainer then names the best discard and how many improving tiles yours cost you. Reaching tenpai ends the hand, and a new one is dealt from there."
     },
     "efficiencySolo": {
       "title": "Efficiency trainer - solo",
-      "desc": "Pick the best discard; see the tiles that improve your hand. No opponents — just you and the wall.",
-      "intro": "Each round deals you a real hand mid-match, with no other seats to read. Discard the tile that keeps your hand closest to tenpai and keeps the most ways to improve it (its ukeire). After you discard, the trainer shows whether it was the best choice and how many tiles you left on the table."
+      "desc": "Draw and discard your way to tenpai alone — no opponents, no calls, nothing to defend against.",
+      "intro": "What it is: the same discard choice as the trainer with opponents, with the table taken away. You are dealt thirteen tiles and draw from a full wall by yourself — nobody else discards, calls or wins — so a hand simply runs from the deal until you reach tenpai.\n\nWhy it matters: with no opponents to read and no calls to fear, every decision is only about the shape of your own hand. That is tile efficiency on its own, and it is the skill the table trainers are built on top of.\n\nHow to play: draw, then discard the tile that leaves your hand closest to tenpai and with the most tiles still able to improve it — that count is its ukeire. The trainer names the best discard and how many improving tiles yours cost you."
     },
     "shanten": {
       "title": "Shanten trainer",
       "desc": "Guess how far a hand is from tenpai, against the clock.",
-      "intro": "You're shown a hand and asked to guess its shanten: how many tile exchanges it needs to reach tenpai (0 = already waiting to win). Hands stream continuously, so answer quickly and move on to the next."
+      "intro": "What it is: a hand appears and you say its shanten — how many tile exchanges it still needs to reach tenpai. 0 means it is already tenpai and waiting to win, 1 means one useful swap away, and so on.\n\nWhy it matters: shanten is the number every discard is measured against, since \"which tile is better\" almost always means \"which one keeps shanten lower\". Reading it at a glance is what makes the rest of the game fast.\n\nHow to play: the hand is up and the clock is already running, so answer with the buttons (or type the number) and the next hand is dealt straight away, the previous answer kept beside it. Pause stops the clock; reset hides the hand and deals a fresh one, since a hand you have already studied cannot be timed again."
     },
     "scoring": {
       "title": "Scoring trainer",
       "desc": "Guess han, fu and points for a winning hand.",
-      "intro": "You're shown a completed, winning hand. Work out its yaku, han, fu and the resulting points before checking the answer — the skill scoring trainers are built for."
+      "intro": "What it is: a completed winning hand, shown with everything its value depends on — the round and seat winds, the dora indicators, whether it was won by ron or tsumo, riichi and the rest.\n\nWhy it matters: what a hand is worth is what tells you whether it is worth pushing for, and at a real table the winner is expected to count it themselves. It is also the one part of the game you can practise entirely away from the table.\n\nHow to play: work out the yaku, add up the han and fu, and enter the points before checking the answer. Settings choose which of the three you are asked for, and can switch on the full yaku and fu breakdowns once you want to see where each number came from."
     },
     "folding": {
       "title": "Folding trainer",
       "desc": "Someone declared riichi. Pick the safest tile to throw.",
-      "intro": "An opponent has declared riichi and you're not in a position to push. Pick the discard least likely to deal into their hand, using only public information (their discards and everyone else's) — never what they're actually holding."
+      "intro": "What it is: an opponent has declared riichi and your own hand is not worth pushing. The board is handed to you a turn or two later, and from then until the hand ends you pick the tile least likely to deal into them.\n\nWhy it matters: dealing in is the single biggest way to lose points, and hands you cannot win are common. Folding well protects more points across a game than a few extra wins add.\n\nHow to play: judge from public information only — tiles they discarded themselves (genbutsu, which they can never win on), tiles thrown since their riichi without being claimed, suji, and shapes the visible tiles already rule out. What they actually hold never counts against you: a tile from the safest tier is graded correct even when it turns out to be in their wait."
     },
     "lab": {
       "title": "Statistical lab",

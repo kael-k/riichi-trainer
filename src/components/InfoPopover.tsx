@@ -97,7 +97,11 @@ export function InfoPopover({
                 </button>
               </div>
               <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 text-sm text-neutral-600 dark:text-neutral-400">
-                {text && <p>{text}</p>}
+                {/* a blank line is a paragraph break: the trainer intros are what/why/how, and
+                    three of those in one block is a wall nobody reads */}
+                {text?.split('\n\n').map((para, i) => (
+                  <p key={i}>{para}</p>
+                ))}
                 {children}
                 {wikiUrl && (
                   <a
