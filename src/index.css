@@ -4,6 +4,10 @@
 /* a viewport too short to stack a square table above the hand — a phone held sideways.
    Height, not orientation: it is the height that decides whether stacking still fits. */
 @custom-variant short (@media (max-height: 520px));
+/* room enough for a word beside each icon in the stage's chrome row. One query, not `xl:` plus a
+   `short:` override: a wide-but-short window (a laptop with a shallow browser window) is both, and
+   there its chrome stands in a 44px gutter with no room for any of them. */
+@custom-variant labelled (@media (min-width: 1400px) and (min-height: 521px));
 
 :root {
   /* unscaled tile width; --tile-w-base applies the tile-size setting (trainer <main> only —

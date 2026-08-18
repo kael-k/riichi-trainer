@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
+import { ChromeLabel, CHROME_BUTTON } from '../../components/TrainerControls'
 import { resolveLocale } from '../i18n'
 import {
   DEFAULT_TILE_SCALE,
@@ -328,9 +329,10 @@ export function SettingsButton({ title, children }: SettingsButtonProps) {
         aria-label={t('settings.button')}
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="flex size-11 items-center justify-center"
+        className={CHROME_BUTTON}
       >
         <Settings className="size-5" />
+        <ChromeLabel>{t('settings.button')}</ChromeLabel>
       </button>
       {/* portalled to <body>: the trainer header this button sits in uses backdrop-blur, which
           on WebKit becomes the containing block for anything fixed inside it */}

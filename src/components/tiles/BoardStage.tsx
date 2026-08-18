@@ -8,6 +8,7 @@ import { useMediaQuery } from '../../lib/useMediaQuery'
 import { useLog } from '../../store/log'
 import { InfoPopover } from '../InfoPopover'
 import { LogList } from '../LogList'
+import { ChromeLabel, CHROME_BUTTON } from '../TrainerControls'
 import { useMobileFullscreen } from './useMobileFullscreen'
 
 /** Where the session panel stops being a drawer and becomes a column of its own, docked beside the
@@ -86,8 +87,13 @@ export function InfoButton({ title, intro }: { title: string; intro: TrainerIntr
   return (
     <InfoPopover
       triggerLabel={t('common.aboutTrainer')}
-      trigger={<Info className="size-5" />}
-      triggerClassName="flex size-11 items-center justify-center"
+      trigger={
+        <>
+          <Info className="size-5" />
+          <ChromeLabel>{t('common.aboutTrainer')}</ChromeLabel>
+        </>
+      }
+      triggerClassName={CHROME_BUTTON}
       dialogTitle={t('common.aboutTrainerTitle', { title })}
       text={intro.text}
       wikiUrl={intro.wikiUrl}
@@ -113,8 +119,10 @@ function SessionPanel({
       {(status || notice || panel) && (
         // `flex-auto` on both halves rather than a fixed share: each is based on its own content
         // and only gives ground in proportion to it, so a long ukeire list gets the room an empty
-        // log is not using, and a log that has run all game still keeps its own
-        <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto">
+        // log is not using, and a log that has run all game still keeps its own.
+        // Tiles here are read, not played, and the column is 320px wide: at the hand's own size a
+        // single ukeire list filled the panel on its own, so they draw at the log's scale instead
+        <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto [--tile-w:calc(var(--tile-w-base)*0.6)]">
           {status && <div className="flex flex-col gap-1 text-sm text-neutral-500">{status}</div>}
           {notice}
           {panel}
@@ -253,12 +261,9 @@ export function BoardStage({
             Settings is last, after the page's own controls and the log toggle: it is the one
             button here that is about the app rather than about this hand. */}
         <div className="z-40 flex shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] dark:bg-neutral-950 short:absolute short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
-          <Link
-            to="/"
-            aria-label={t('common.back')}
-            className="flex size-11 shrink-0 items-center justify-center"
-          >
+          <Link to="/" aria-label={t('common.back')} className={CHROME_BUTTON}>
             <ArrowLeft className="size-5" />
+            <ChromeLabel>{t('common.back')}</ChromeLabel>
           </Link>
           {intro && <InfoButton title={title} intro={intro} />}
           {chrome}
@@ -267,9 +272,10 @@ export function BoardStage({
             aria-label={t('table.logDrawer')}
             aria-expanded={logOpen}
             onClick={() => setLogOpen(!logOpen)}
-            className="flex size-11 shrink-0 items-center justify-center"
+            className={CHROME_BUTTON}
           >
             <ScrollText className="size-5" />
+            <ChromeLabel>{t('table.logDrawer')}</ChromeLabel>
           </button>
           <SettingsButton title={title}>{settings}</SettingsButton>
         </div>

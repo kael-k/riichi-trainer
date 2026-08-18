@@ -22,10 +22,10 @@ function pathsLabel(breakdown: ShantenBreakdown, t: TFunction): string | null {
   return t('shanten.via', { paths: breakdown.paths.map((p) => t(`shanten.path.${p}`)).join(' / ') })
 }
 
-/** The fullscreen overlay's one-line verdict — same shape as every other trainer's
+/** The one-line verdict that floats over the board — same shape as every other trainer's
  *  `noticeCompact` (`Verdict`): a label plus the actual shanten and, when it's not the plain
  *  standard decomposition, which path it came from. No guess/tile breakdown — that stays in the
- *  full `notice` the inline layout keeps and the log always has. */
+ *  full `notice` the session panel holds, and in the log. */
 function verdictText(result: RoundResult, t: TFunction): string {
   const label = t(result.correct ? 'shanten.correctLabel' : 'shanten.wrongLabel')
   const actual = t('shanten.actualShanten', { value: result.actual.value })

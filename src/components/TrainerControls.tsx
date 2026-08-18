@@ -3,11 +3,20 @@ import { useEffect, useState } from 'react'
 import { formatElapsedMs } from '../lib/formatElapsed'
 
 /** Every button here shares the chrome row with `InfoButton` and `SettingsButton`
- *  (`BoardStage.tsx`), so it is drawn to match them: a 44px icon target, and deliberately no text
- *  color of its own — those two set none either, and a gray-vs-default split between otherwise
- *  identical icon buttons read as "some of these are disabled" when none of them were. */
-const BOX = 'flex size-11 shrink-0 items-center justify-center'
+ *  (`BoardStage.tsx`), so it is drawn to match them: a 44px target that grows to hold its own name
+ *  where there is room for one (`labelled:`, `index.css`), and deliberately no text color of its
+ *  own — those two set none either, and a gray-vs-default split between otherwise identical icon
+ *  buttons read as "some of these are disabled" when none of them were. */
+export const CHROME_BUTTON =
+  'flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 px-1 text-sm'
 const ICON = 'size-5'
+
+/** The button's own name, shown beside its icon only where the row has the width for it. The
+ *  `aria-label` stays on the button either way, so the accessible name never depends on the
+ *  viewport. */
+export function ChromeLabel({ children }: { children: string }) {
+  return <span className="hidden whitespace-nowrap labelled:inline">{children}</span>
+}
 
 /** Display refresh of the live clock; the graded time itself is read straight off the trainer's
  *  own clock at submit, so it never inherits this granularity. */
@@ -47,12 +56,13 @@ interface PauseToggleProps {
 export function PauseToggle({ showToggle, paused, onToggle, toggleLabel }: PauseToggleProps) {
   if (!showToggle) return null
   return (
-    <button type="button" onClick={onToggle} aria-label={toggleLabel} className={BOX}>
+    <button type="button" onClick={onToggle} aria-label={toggleLabel} className={CHROME_BUTTON}>
       {paused ? (
         <Play className={`${ICON} fill-current`} />
       ) : (
         <Pause className={`${ICON} fill-current`} />
       )}
+      <ChromeLabel>{toggleLabel}</ChromeLabel>
     </button>
   )
 }
@@ -73,9 +83,10 @@ export function BackButton({ canBack, onBack, backLabel }: BackButtonProps) {
       onClick={onBack}
       disabled={!canBack}
       aria-label={backLabel}
-      className={`${BOX} disabled:opacity-30`}
+      className={`${CHROME_BUTTON} disabled:opacity-30`}
     >
       <Undo2 className={ICON} />
+      <ChromeLabel>{backLabel}</ChromeLabel>
     </button>
   )
 }
@@ -88,8 +99,9 @@ interface ResetButtonProps {
 /** Abandons the current hand and deals a fresh one. */
 export function ResetButton({ onReset, resetLabel }: ResetButtonProps) {
   return (
-    <button type="button" onClick={onReset} aria-label={resetLabel} className={BOX}>
+    <button type="button" onClick={onReset} aria-label={resetLabel} className={CHROME_BUTTON}>
       <Dices className={ICON} />
+      <ChromeLabel>{resetLabel}</ChromeLabel>
     </button>
   )
 }

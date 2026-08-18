@@ -11,10 +11,11 @@ const COLOR = {
 
 /**
  * One compact feedback line — icon, colour, short text, nothing else. No numbers, no tile lists:
- * that detail stays in the full `DiscardFeedback`/`FoldFeedback` panel, which the inline layout
- * keeps and the fullscreen overlay drops down into the log instead. `BoardStage`'s two notice
- * slots (`notice`/`noticeCompact`) are what pick between the two — this component only draws
- * the compact one.
+ * that detail stays in the full `DiscardFeedback`/`FoldFeedback` panel, which is what the session
+ * panel shows. This is what floats over the board instead while that panel is shut, so a phone
+ * mid-drill still hears the verdict without losing the tiles to a wall of text. `BoardStage`'s two
+ * notice slots (`notice`/`noticeCompact`) pick between them — this component draws only the
+ * compact one.
  */
 export function Verdict({ severity, text }: { severity: VerdictSeverity; text: string }) {
   const Icon = ICON[severity]
