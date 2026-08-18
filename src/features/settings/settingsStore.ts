@@ -66,6 +66,19 @@ export interface Settings {
  *  button crowds the row on a phone. */
 export const TILE_SCALES = [1, 1.25, 1.5, 1.8] as const
 
+/** The board half of that same setting, paired with `TILE_SCALES` by index: XL is all the room
+ *  there is. Applied **only on `sizable:`** (`index.css`) — a tablet or desktop has more room than
+ *  the board needs, so how much of it to take is a choice; a phone does not, and there a square
+ *  smaller than its room pulls the side seats' hands off the screen edge. `BoardStage` hands it
+ *  down as `--board-scale`; the felt's own tiles derive from the felt's width and so follow it. */
+export const BOARD_SCALES = [0.7, 0.8, 0.9, 1] as const
+
+/** The `sizable:` variant (`index.css`) as a query, for the one thing CSS cannot do on its own:
+ *  telling the reader *why* the size buttons are dead. Both halves of the size setting — the board
+ *  and the tiles — apply only here; below it a phone gets `DEFAULT_TILE_SCALE` and a board that
+ *  fills its room, which is the only size that fits either way up. Keep in step with the variant. */
+export const SIZABLE_QUERY = '(min-width: 768px) and (min-height: 521px)'
+
 /** Size used until the reader picks one: M, big enough to read a hand on a phone. */
 export const DEFAULT_TILE_SCALE = 1.25
 

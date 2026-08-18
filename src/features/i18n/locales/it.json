@@ -37,6 +37,7 @@
     "themeLight": "Tema chiaro",
     "themeDark": "Tema scuro",
     "tileSize": "Dimensione tessere",
+    "tileSizeUnavailable": "Non disponibile su mobile",
     "ruleset": "Regolamento",
     "yonma": "4 giocatori",
     "sanma": "3 giocatori",

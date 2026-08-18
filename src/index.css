@@ -14,6 +14,15 @@
    than tucked against the chrome column) is `roomy:`, not `lg:`. Mutually exclusive with `short:`,
    so the two never race in the cascade. */
 @custom-variant roomy (@media (min-width: 1024px) and (min-height: 521px));
+/* a screen with enough room that the board's size becomes a *choice* — a tablet either way up, a
+   desktop, never a phone. Distinct from `roomy:` on purpose and at a lower width: `roomy:` is
+   where the layout spends space it has, this is where the board has more than it needs and the
+   reader may take some back (`--board-scale`, see `BoardStage`). Below it the board always fills
+   its room, which is a board rule and not a preference: the side seats' hand rows sit against the
+   square's own edge, so a square smaller than its room pulls them off the screen's edge. The
+   height half is what keeps a phone held sideways — the viewport with the least room of all —
+   out of it. */
+@custom-variant sizable (@media (min-width: 768px) and (min-height: 521px));
 
 :root {
   /* unscaled tile width; --tile-w-base applies the tile-size setting (trainer <main> only —

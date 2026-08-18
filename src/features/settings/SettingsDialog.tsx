@@ -4,10 +4,12 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { ChromeLabel, CHROME_BUTTON } from '../../components/TrainerControls'
+import { useMediaQuery } from '../../lib/useMediaQuery'
 import { resolveLocale } from '../i18n'
 import {
   DEFAULT_TILE_SCALE,
   LOCALES,
+  SIZABLE_QUERY,
   TILE_SCALES,
   useSettings,
   type Locale,
@@ -109,6 +111,11 @@ export function GlobalSettings() {
   const setAdvanced = useSettings((s) => s.setAdvanced)
   const glossaryOnClick = useSettings((s) => s.glossaryOnClick)
   const setGlossaryOnClick = useSettings((s) => s.setGlossaryOnClick)
+  // the size setting is a tablet/desktop control: below that the board fills its room whatever it
+  // says (a smaller square pulls the side seats' hands off the screen edge) and the hand is capped
+  // to the width under the board, so every step but the default is a lie. Shown and disabled
+  // rather than hidden — a row that vanishes reads as a missing feature
+  const sizable = useMediaQuery(SIZABLE_QUERY)
 
   return (
     <div className="flex flex-col gap-4">
@@ -130,16 +137,26 @@ export function GlobalSettings() {
         </div>
       </SettingRow>
       <SettingRow label={t('settings.tileSize')}>
-        <div className="flex gap-1">
-          {TILE_SCALES.map((scale) => (
-            <SegmentedButton
-              key={scale}
-              active={tileScale === scale}
-              onClick={() => setTileScale(scale)}
-            >
-              {TILE_SCALE_LABELS[scale]}
-            </SegmentedButton>
-          ))}
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex gap-1">
+            {TILE_SCALES.map((scale) => (
+              <SegmentedButton
+                key={scale}
+                // the size actually in force, which below `sizable:` is the default whatever is
+                // stored — the buttons must not claim a size the screen is not drawing
+                active={(sizable ? tileScale : DEFAULT_TILE_SCALE) === scale}
+                disabled={!sizable}
+                onClick={() => setTileScale(scale)}
+              >
+                {TILE_SCALE_LABELS[scale]}
+              </SegmentedButton>
+            ))}
+          </div>
+          {!sizable && (
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              {t('settings.tileSizeUnavailable')}
+            </span>
+          )}
         </div>
       </SettingRow>
       <SettingRow label={t('settings.ruleset')}>

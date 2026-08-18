@@ -238,13 +238,15 @@ export function Table({
     // (`100svh` minus a nominal chrome+hand) sat inside this same `min()`, so whenever it came out
     // tighter than the truth it was the guess that sized the board, not the room. With no size
     // container at all `cqh` falls back to the small viewport, which is the same guess without a
-    // variable. Nothing scales it down either — no "don't balloon" cap, and the tile-size setting
-    // no longer has a board half (`--board-scale`, deleted): a shrunk square leaves the side seats'
-    // hands floating off the screen edges, which is the one thing the board must never do.
+    // variable. There is no "don't balloon" cap. `--board-scale` is the tile-size setting's board
+    // half, and it is 1 on anything smaller than a tablet (`sizable:`, `index.css`, applied by
+    // `BoardStage`): a shrunk square leaves the side seats' hands floating off the screen edges,
+    // which on a phone is the one thing the board must never do. With room to spare — a tablet, a
+    // desktop — that margin is air the reader asked for, and XL is still all the room there is.
     // The width lives on this outer div, not on the square itself: beside the hand the board
     // is a flex item, where a `w-full` child would have nothing to resolve against and collapse to
     // nothing
-    <div className="relative mx-auto w-full max-w-[min(100%,100cqh)] shrink-0">
+    <div className="relative mx-auto w-full max-w-[calc(min(100%,100cqh)*var(--board-scale,1))] shrink-0">
       {/* the revealed hands sit outside the felt, so the square gives up 10% of its own edge on
           each side to hold them — only while they are actually shown, so an ordinary board is
           exactly as big as it was. A revealed hand row is `100cqw/16` per tile, so ~8.3cqw tall,

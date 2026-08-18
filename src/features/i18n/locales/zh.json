@@ -33,6 +33,7 @@
     "themeLight": "浅色模式",
     "themeDark": "深色模式",
     "tileSize": "牌张大小",
+    "tileSizeUnavailable": "移动端不可用",
     "ruleset": "规则",
     "yonma": "四人麻将",
     "sanma": "三人麻将",

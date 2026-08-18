@@ -39,6 +39,18 @@ by index and reaches `Table` as `--board-scale`; XL is all the room there is. Wi
 longer sharing a page there is no "don't balloon" cap left to keep — `--table-max`/`--table-cap`
 are gone.
 
+*Refined 2026-08-18, this decision otherwise standing:* the setting applies **from tablet size up
+only** (`sizable:`, `(min-width: 768px) and (min-height: 521px)`) — both halves, the board and the
+tiles. On a phone the board is always as big as its room allows, which is not a preference to
+express: the side seats' hand rows sit against the square's own edge, so a square smaller than its
+room pulls them off the screen edge by exactly the margin it leaves. The tiles follow it there
+because a phone has one size that fits either way up; the dialog shows the row disabled with
+"unavailable on mobile" rather than hiding it or leaving four buttons that do nothing. And where
+the setting does apply it is a ceiling on the hand rather than a width — the hand is capped to the
+strip it sits in, since a wrapped hand takes a tile row of height off the board, which is how
+asking for bigger tiles used to make the table *smaller*. Where there is room to spare the
+sentence above is otherwise unchanged — one control, XL is all of it.
+
 ## Consequences
 
 - Net ~500 lines lighter, and every layout fix now lands once.

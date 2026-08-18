@@ -33,6 +33,7 @@
     "themeLight": "ライトモード",
     "themeDark": "ダークモード",
     "tileSize": "牌のサイズ",
+    "tileSizeUnavailable": "モバイルでは利用できません",
     "ruleset": "ルール",
     "yonma": "四人麻雀",
     "sanma": "三人麻雀",

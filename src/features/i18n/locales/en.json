@@ -37,6 +37,7 @@
     "themeLight": "Light theme",
     "themeDark": "Dark theme",
     "tileSize": "Tile size",
+    "tileSizeUnavailable": "Unavailable on mobile",
     "ruleset": "Ruleset",
     "yonma": "4 players",
     "sanma": "3 players",

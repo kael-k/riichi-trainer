@@ -3,7 +3,12 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { SettingsButton } from '../../features/settings/SettingsDialog'
-import { DEFAULT_TILE_SCALE, useSettings } from '../../features/settings/settingsStore'
+import {
+  BOARD_SCALES,
+  DEFAULT_TILE_SCALE,
+  TILE_SCALES,
+  useSettings,
+} from '../../features/settings/settingsStore'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 import { useLog } from '../../store/log'
 import { InfoPopover } from '../InfoPopover'
@@ -197,6 +202,8 @@ export function BoardStage({
 }: BoardStageProps) {
   const { t } = useTranslation()
   const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
+  // paired by index rather than stored separately, so the one S-XL row keeps its one meaning
+  const boardScale = BOARD_SCALES[(TILE_SCALES as readonly number[]).indexOf(tileScale)] ?? 1
   const clearLog = useLog((s) => s.clear)
   const wide = useMediaQuery(WIDE_QUERY)
   const [logOpen, setLogOpen] = useState(wide)
@@ -259,10 +266,18 @@ export function BoardStage({
       // panel. The strips this layout keeps for itself are not reserved by a `100svh`-minus-chrome
       // estimate any more: the board area below declares itself a size container, so `100cqh` is
       // the room genuinely left over and the square measures itself against that alone
-      className="relative flex h-svh w-full bg-white dark:bg-neutral-950"
+      // Both halves of the size setting are gated by the *variant*, not by JS: the preference is
+      // always declared, and only a `sizable:` screen resolves it into the variable the board and
+      // the tiles read. Below that the board fills its room and the tiles stay at the default,
+      // which on a phone is the only size that fits either way up — the setting says so itself
+      // (`SIZABLE_QUERY`, `SettingsDialog`) rather than leaving four dead buttons.
+      className="relative flex h-svh w-full bg-white [--board-scale:1] [--tile-scale:var(--tile-scale-default)] sizable:[--board-scale:var(--board-scale-pref)] sizable:[--tile-scale:var(--tile-scale-pref)] dark:bg-neutral-950"
       style={
         {
-          '--tile-w-base': `calc(var(--tile-w-raw) * ${tileScale})`,
+          '--tile-w-base': 'calc(var(--tile-w-raw) * var(--tile-scale))',
+          '--tile-scale-pref': tileScale,
+          '--tile-scale-default': DEFAULT_TILE_SCALE,
+          '--board-scale-pref': boardScale,
           // re-declared here (not just --tile-w-base) so plain, non-overriding tile usages (the
           // hand itself) actually pick up the scale: --tile-w's var() reference resolves once at
           // whichever element declares it, not freshly per inheriting descendant
@@ -359,7 +374,7 @@ export function BoardStage({
               // board being small. `--gutter` is measured off the same container the square
               // measures itself against, and `roomy:inset-4` matches the board area's own margin
               // so that both stay in the same coordinates.
-              <div className="pointer-events-none absolute inset-0 hidden [--gutter:calc((100cqw-min(100cqw,100cqh))/2)] [--hud-w:clamp(7rem,calc(var(--gutter)-1rem),8rem)] short:block roomy:inset-4 roomy:block roomy:[--hud-w:clamp(7rem,calc(var(--gutter)-0.5rem),10rem)]">
+              <div className="pointer-events-none absolute inset-0 hidden [--gutter:calc((100cqw-min(100cqw,100cqh)*var(--board-scale,1))/2)] [--hud-w:clamp(7rem,calc(var(--gutter)-1rem),8rem)] short:block roomy:inset-4 roomy:block roomy:[--hud-w:clamp(7rem,calc(var(--gutter)-0.5rem),10rem)]">
                 <div className="pointer-events-auto absolute top-2 left-2 w-[var(--hud-w)] roomy:top-0 roomy:left-[max(0px,calc(var(--gutter)-var(--hud-w)))]">
                   <StatusCard>{status}</StatusCard>
                 </div>
@@ -399,9 +414,26 @@ export function BoardStage({
             rather than the chrome row above, which only ever owns one edge at a time */}
         <div
           data-testid="hand-strip"
-          className="flex max-h-[35svh] shrink-0 justify-center overflow-auto pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))]"
+          className="flex max-h-[35svh] shrink-0 justify-center overflow-auto pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] [container-type:inline-size]"
         >
-          {hand}
+          {/* the hand is 14 tiles wide and cannot exceed the room under the board without
+              wrapping, and a wrapped hand costs the board a tile row of height wherever the board
+              is limited by height (a tablet held sideways, a desktop) — which is how asking for
+              bigger tiles used to make the *table* smaller. So on the same screens the size
+              setting applies to, it is a **ceiling** rather than a width: the tiles take it while
+              it fits and shrink to the strip when it doesn't. Below `sizable:` nothing is capped
+              — the tiles are at the default there, and on a phone held upright the board is
+              limited by width, so a second hand row costs it nothing and is easier to read than
+              the sliver a cap would leave. Measured against the strip (a container, so `100cqw`
+              is its content box) rather than the viewport, since the docked session panel is not
+              room the hand has. The 4.5rem is what the tiles do not get: `p-0.5` each side of all
+              14 tile buttons, the 0.5rem gap before the drawn one, and 0.5rem of slack, an exact
+              fit wrapping anyway with fractional widths. Re-declaring `--tile-w` is not optional:
+              its `var()` resolved once at the stage root, so overriding only the base would leave
+              every plain tile uncapped */}
+          <div className="sizable:[--tile-w-base:min(calc(var(--tile-w-raw)*var(--tile-scale)),calc((100cqw-4.5rem)/14))] sizable:[--tile-w:var(--tile-w-base)]">
+            {hand}
+          </div>
         </div>
       </div>
 

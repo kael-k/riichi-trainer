@@ -333,10 +333,11 @@ for (const trainer of TABLE_TRAINERS) {
     await waitForStage(page)
 
     // the other half of "it fits": a square that fits inside a room it only half fills passes
-    // every test above and is still the bug — `--board-scale` used to spend a fifth of every
-    // default board on margin, and the `--board-max-h` estimate another slice on top of it.
-    // Measured against the *content* box of the stage's board area, which is the room the square
-    // sizes itself off (`100cqh`) — the padding a wide screen puts around it is not unused space
+    // every test above and is still the bug — the `--board-max-h` estimate used to spend a slice
+    // of every default board on margin. Measured against the *content* box of the stage's board
+    // area, which is the room the square sizes itself off (`100cqh`) — the padding a wide screen
+    // puts around it is not unused space. Times `--board-scale`, which is the reader's own share
+    // of that room and is 1 on anything narrower than a tablet (see the size-setting test below)
     const room = await page.getByTestId('board-area').evaluate((el) => {
       const style = getComputedStyle(el)
       const px = (value: string) => parseFloat(value) || 0
@@ -345,8 +346,93 @@ for (const trainer of TABLE_TRAINERS) {
         el.clientHeight - px(style.paddingTop) - px(style.paddingBottom),
       )
     })
+    const boardEl = page.getByTestId('board').first()
+    const scale = await boardEl.evaluate((el) =>
+      parseFloat(getComputedStyle(el).getPropertyValue('--board-scale')),
+    )
+    const board = (await boardEl.boundingBox())!
+    expect(board.width, `board ${board.width} in ${room} at ${scale}`).toBeGreaterThan(
+      room * scale * 0.97,
+    )
+    // and no more than that share either, so the default's own scale is asserted rather than
+    // merely allowed — a board ignoring `--board-scale` passes the lower bound on its own
+    expect(board.width, `board ${board.width} in ${room} at ${scale}`).toBeLessThan(
+      room * scale * 1.03,
+    )
+  })
+
+  test(`${trainer}: the size setting scales the board only where there is room`, async ({
+    page,
+    context,
+    viewport,
+  }) => {
+    // S (`BOARD_SCALES[0]`, 0.7) against the default M. A tablet or desktop gives the reader that
+    // choice; a phone does not, because a square smaller than its room pulls the side seats' hands
+    // off the screen edge — so the same setting must move the board on one and not the other.
+    await context.addInitScript(
+      `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
+        JSON.stringify({
+          state: { advanced: true, tileScale: 1, table: { global: {}, apps: {} } },
+          version: 3,
+        }),
+      )})`,
+    )
+    await page.goto(`/${trainer}`)
+    await waitForStage(page)
+
+    const sizable = !!viewport && viewport.width >= 768 && viewport.height >= 521
     const board = (await page.getByTestId('board').first().boundingBox())!
-    expect(board.width, `board ${board.width} in ${room}`).toBeGreaterThan(room * 0.97)
+    const room = await page.getByTestId('board-area').evaluate((el) => {
+      const style = getComputedStyle(el)
+      const px = (value: string) => parseFloat(value) || 0
+      return Math.min(
+        el.clientWidth - px(style.paddingLeft) - px(style.paddingRight),
+        el.clientHeight - px(style.paddingTop) - px(style.paddingBottom),
+      )
+    })
+
+    const ratio = board.width / room
+    if (sizable) {
+      expect(ratio, `board ${board.width} in ${room}`).toBeGreaterThan(0.7 * 0.97)
+      expect(ratio, `board ${board.width} in ${room}`).toBeLessThan(0.8)
+    } else {
+      expect(ratio, `board ${board.width} in ${room}`).toBeGreaterThan(0.97)
+    }
+  })
+
+  test(`${trainer}: the hand stays one row at the largest tile size`, async ({
+    page,
+    context,
+    viewport,
+  }) => {
+    // XL, the size that used to break this. Where the size setting applies at all it is a
+    // *ceiling* on the hand, not a width: a hand that wraps costs the board a tile row of height,
+    // which is how asking for bigger tiles used to make the table smaller. A phone is skipped
+    // because it is skipped by the setting itself — the tiles are at the default there.
+    test.skip(!viewport || viewport.width < 768 || viewport.height < 521, 'the size setting is off')
+    await context.addInitScript(
+      `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
+        JSON.stringify({
+          state: { advanced: true, tileScale: 1.8, table: { global: {}, apps: {} } },
+          version: 3,
+        }),
+      )})`,
+    )
+    await page.goto(`/${trainer}`)
+    await waitForStage(page)
+
+    const hand = await page.getByTestId('hand-strip').evaluate((el) => {
+      // the calls ride on the same line at 0.75 size, so their tops differ by design
+      const tiles = [...el.querySelectorAll('svg[role="img"]')].filter(
+        (tile) => !tile.closest('[data-testid="hand-calls"]'),
+      )
+      return {
+        count: tiles.length,
+        rows: new Set(tiles.map((tile) => Math.round(tile.getBoundingClientRect().top))).size,
+      }
+    })
+    expect(hand.count).toBeGreaterThanOrEqual(8)
+    expect(hand.rows, `${hand.count} tiles over ${hand.rows} rows`).toBe(1)
   })
 
   test(`${trainer}: no seat plate lands on a river`, async ({ page }) => {
