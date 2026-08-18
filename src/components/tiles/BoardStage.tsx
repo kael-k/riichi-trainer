@@ -81,8 +81,19 @@ interface BoardStageProps {
 const NOTICE_MS = 6000
 
 /** Info button explaining what the trainer drills, with an optional link to the full
- *  rules/theory on riichi.wiki. Also used by the home page's own trainer cards. */
-export function InfoButton({ title, intro }: { title: string; intro: TrainerIntro }) {
+ *  rules/theory on riichi.wiki. Also used by the home page's own trainer cards — which is why the
+ *  name beside the icon is opt-in: it belongs to the chrome row, where it tells a line of
+ *  unlabelled icons apart. On the home page every card already carries its own title, and six
+ *  "About"s down the right-hand edge are six repetitions of nothing. */
+export function InfoButton({
+  title,
+  intro,
+  labelled,
+}: {
+  title: string
+  intro: TrainerIntro
+  labelled?: boolean
+}) {
   const { t } = useTranslation()
   return (
     <InfoPopover
@@ -90,7 +101,7 @@ export function InfoButton({ title, intro }: { title: string; intro: TrainerIntr
       trigger={
         <>
           <Info className="size-5" />
-          <ChromeLabel>{t('common.aboutTrainer')}</ChromeLabel>
+          {labelled && <ChromeLabel>{t('common.aboutTrainer')}</ChromeLabel>}
         </>
       }
       triggerClassName={CHROME_BUTTON}
@@ -265,7 +276,7 @@ export function BoardStage({
             <ArrowLeft className="size-5" />
             <ChromeLabel>{t('common.back')}</ChromeLabel>
           </Link>
-          {intro && <InfoButton title={title} intro={intro} />}
+          {intro && <InfoButton title={title} intro={intro} labelled />}
           {chrome}
           <button
             type="button"
@@ -277,7 +288,9 @@ export function BoardStage({
             <ScrollText className="size-5" />
             <ChromeLabel>{t('table.logDrawer')}</ChromeLabel>
           </button>
-          <SettingsButton title={title}>{settings}</SettingsButton>
+          <SettingsButton title={title} labelled>
+            {settings}
+          </SettingsButton>
         </div>
 
         {/* padded clear of the gutter chrome, so the square still centres on what is left — widened

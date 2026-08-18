@@ -298,11 +298,15 @@ interface SettingsButtonProps {
   title?: string
   /** App-specific rows shown above the Global section. */
   children?: ReactNode
+  /** Show the button's name beside its icon where there is room (`ChromeLabel`). The stage's
+   *  chrome row asks for it, since a row of bare icons needs telling apart; the home page's lone
+   *  gear does not. */
+  labelled?: boolean
 }
 
 /** Gear button + dialog with app-specific settings (if any) on top and Global settings
  *  underneath — the one settings surface shared by every screen, including home. */
-export function SettingsButton({ title, children }: SettingsButtonProps) {
+export function SettingsButton({ title, children, labelled }: SettingsButtonProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -332,7 +336,7 @@ export function SettingsButton({ title, children }: SettingsButtonProps) {
         className={CHROME_BUTTON}
       >
         <Settings className="size-5" />
-        <ChromeLabel>{t('settings.button')}</ChromeLabel>
+        {labelled && <ChromeLabel>{t('settings.button')}</ChromeLabel>}
       </button>
       {/* portalled to <body>: the trainer header this button sits in uses backdrop-blur, which
           on WebKit becomes the containing block for anything fixed inside it */}
