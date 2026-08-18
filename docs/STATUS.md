@@ -1,6 +1,6 @@
 # Status
 
-_Last synthesised: 2026-08-18, against the git history through the one-interface run._
+_Last synthesised: 2026-08-18, against the git history through the stats-on-the-board wave._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
@@ -61,6 +61,13 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    move: it is a chrome-row button and dialog of its own (`WallDetails`, `BoardStage`'s `wall`
    slot) on every trainer that deals a wall, and the `showWall` setting — the last advanced-gated
    field in `useTableSettings` — is deleted rather than defaulted on.
+7. **Stats on the board** ([ADR-0026](adr/0026-stats-on-the-board.md)) — session stats
+   (score/accuracy/clock) moved out of the session panel's top box into a small HUD floating in
+   the board area's own corner, always on screen at every viewport rather than behind a drawer tap.
+   Every trainer's round-build effect now writes a `log.dealt`/`log.dealtHand` row the moment a
+   board exists, so the log's own rewind/share buttons cover the board as freshly dealt too; the
+   page-level `CopyLinkButton` share pill is deleted. The session panel is left holding full
+   feedback, the lab's own rankings/wall authoring, and the log.
 
 ## In flight
 

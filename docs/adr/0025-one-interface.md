@@ -3,6 +3,7 @@
 **Status:** Accepted · **Date:** 2026-08-18
 **Source:** `UX.md`; the one-interface commit run of 2026-08-18
 **Amends:** [ADR-0019](0019-mobile-first-board.md) (fullscreen as a place), [ADR-0015](0015-what-persists.md) (`mobileFullscreen` no longer exists)
+**Amended by:** [ADR-0026](0026-stats-on-the-board.md) (session stats move out of the panel onto the board; the share pill is deleted)
 
 ## Context
 
