@@ -7,8 +7,11 @@ import { useLog } from '../store/log'
  *  rewindable) but are not something "back" should walk through: they are not decisions made in
  *  this session, and re-navigating to one on every "back" click (`logReplay`'s dedup key is the
  *  decoded situation's identity, which a URL change always mints fresh) would grow this list on
- *  every press and break the cursor below. */
-const META_KEYS = new Set(['log.replay'])
+ *  every press and break the cursor below. The board-as-dealt rows (`log.dealt`/`log.dealtHand`,
+ *  ADR-0026) are the same kind of row for the same reason — a board coming into existence is not
+ *  a decision the reader made, and letting it count as one made "undo" enabled with nothing yet to
+ *  undo. */
+const META_KEYS = new Set(['log.replay', 'log.dealt', 'log.dealtHand'])
 
 /** One step back through this session's own decisions, reusing the rewind every log entry
  *  already carries (`entry.situation`, the state before that entry) — same mechanism as a log

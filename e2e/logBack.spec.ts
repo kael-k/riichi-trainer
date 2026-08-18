@@ -47,7 +47,9 @@ test('undo is disabled until a decision has been made', async ({ page }) => {
 
   await expect(undoButton(page)).toBeDisabled()
   await openPanel(page)
-  await expect(page.getByText('Log (0)')).toBeVisible()
+  // the board-as-dealt row (ADR-0026) is already on the log — it's not a decision, so it must not
+  // enable undo, but it does count toward the header's total
+  await expect(page.getByText('Log (1)')).toBeVisible()
 })
 
 test('undo re-poses the previous hand, and works more than once', async ({ page }) => {
@@ -67,14 +69,17 @@ test('undo re-poses the previous hand, and works more than once', async ({ page 
 
   await expect(undoButton(page)).toBeEnabled()
   await openPanel(page)
-  await expect(page.getByText('Log (2)')).toBeVisible()
+  // each hand's own "dealt" row (ADR-0026) sits alongside its graded result: hand1 dealt, hand1
+  // graded, hand2 dealt, hand2 graded, hand3 dealt
+  await expect(page.getByText('Log (5)')).toBeVisible()
   await closePanel(page)
 
   // one step back: hand 2 is on screen again, ungraded
   await undoButton(page).click()
   await expect.poll(() => tileLabels(page)).toEqual(hand2)
   await openPanel(page)
-  await expect(page.getByText('Log (3)')).toBeVisible()
+  // +1 for the "went back" row, +1 for hand2's own dealt row logged again on the re-pose
+  await expect(page.getByText('Log (7)')).toBeVisible()
   await expect(page.getByText('Went back one step')).toBeVisible()
   await closePanel(page)
 
@@ -82,7 +87,7 @@ test('undo re-poses the previous hand, and works more than once', async ({ page 
   await undoButton(page).click()
   await expect.poll(() => tileLabels(page)).toEqual(hand1)
   await openPanel(page)
-  await expect(page.getByText('Log (4)')).toBeVisible()
+  await expect(page.getByText('Log (9)')).toBeVisible()
   await closePanel(page)
 
   // nothing left to undo — the button disables itself rather than looping back to hand 3
