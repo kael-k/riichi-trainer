@@ -6,6 +6,7 @@ import { BoardStage } from '../../components/tiles/BoardStage'
 import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import {
   FullscreenToggle,
+  Timer,
   TrainerStatusBar,
   TrainerToggles,
 } from '../../components/TrainerControls'
@@ -105,6 +106,19 @@ export function ShantenPage() {
     fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
+  // how the session is going, written once and read in both places it is shown: the page's own
+  // status bar, and the session panel beside the board
+  const scoreLines = (
+    <>
+      <span>
+        {t('shanten.correctScore', { correct: round.correctCount, total: round.totalCount })}
+      </span>
+      {settings.timerEnabled && (
+        <span>{t('shanten.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
+      )}
+    </>
+  )
+
   return (
     <TrainerLayout
       title={t('trainer.shanten.title')}
@@ -118,18 +132,21 @@ export function ShantenPage() {
           running={round.running}
           timerEnabled={settings.timerEnabled}
         >
-          <span>
-            {t('shanten.correctScore', { correct: round.correctCount, total: round.totalCount })}
-          </span>
-          {settings.timerEnabled && (
-            <span>{t('shanten.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-          )}
+          {scoreLines}
         </TrainerStatusBar>
 
         <BoardStage
           title={t('trainer.shanten.title')}
           intro={{ text: t('trainer.shanten.intro'), wikiUrl: TRAINER_WIKI.shanten }}
           full={full}
+          status={
+            <>
+              {settings.timerEnabled && (
+                <Timer elapsedNow={round.elapsedNow} running={round.running} />
+              )}
+              {scoreLines}
+            </>
+          }
           chrome={
             <>
               <SettingsButton title={t('trainer.shanten.title')}>{settingsRows}</SettingsButton>

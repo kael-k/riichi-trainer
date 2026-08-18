@@ -8,6 +8,7 @@ import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import {
   FullscreenToggle,
+  Timer,
   TrainerStatusBar,
   TrainerToggles,
 } from '../../components/TrainerControls'
@@ -291,6 +292,19 @@ export function ScoringPage() {
     fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
+  // how the session is going, written once and read in both places it is shown: the page's own
+  // status bar, and the session panel beside the board
+  const scoreLines = (
+    <>
+      <span>
+        {t('scoring.correctScore', { correct: round.correctCount, total: round.totalCount })}
+      </span>
+      {settings.timerEnabled && (
+        <span>{t('scoring.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
+      )}
+    </>
+  )
+
   return (
     <TrainerLayout
       title={t('trainer.scoring.title')}
@@ -304,12 +318,7 @@ export function ScoringPage() {
           running={round.running}
           timerEnabled={settings.timerEnabled}
         >
-          <span>
-            {t('scoring.correctScore', { correct: round.correctCount, total: round.totalCount })}
-          </span>
-          {settings.timerEnabled && (
-            <span>{t('scoring.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-          )}
+          {scoreLines}
         </TrainerStatusBar>
 
         {round.invalidLink && (
@@ -325,6 +334,14 @@ export function ScoringPage() {
           intro={{ text: t('trainer.scoring.intro'), wikiUrl: TRAINER_WIKI.scoring }}
           full={full}
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
+          status={
+            <>
+              {settings.timerEnabled && (
+                <Timer elapsedNow={round.elapsedNow} running={round.running} />
+              )}
+              {scoreLines}
+            </>
+          }
           chrome={
             <>
               <SettingsButton title={t('trainer.scoring.title')}>{settingsRows}</SettingsButton>
@@ -526,19 +543,21 @@ export function ScoringPage() {
               </div>
             )
           }
-        >
-          {showWall && round.round && (
-            <WallDetails
-              dealt={round.round.wall.slice(0, round.round.players.length * INITIAL_HAND_SIZE)}
-              liveWall={round.round.liveWallSnapshot}
-              liveWallDrawn={wallDrawnCount(round.round)}
-              deadWall={round.round.deadWallSnapshot}
-              replacements={round.round.replacements}
-            />
-          )}
-
-          <CopyLinkButton query={round.situationQuery} />
-        </BoardStage>
+          panel={
+            <>
+              {showWall && round.round && (
+                <WallDetails
+                  dealt={round.round.wall.slice(0, round.round.players.length * INITIAL_HAND_SIZE)}
+                  liveWall={round.round.liveWallSnapshot}
+                  liveWallDrawn={wallDrawnCount(round.round)}
+                  deadWall={round.round.deadWallSnapshot}
+                  replacements={round.round.replacements}
+                />
+              )}
+              <CopyLinkButton query={round.situationQuery} />
+            </>
+          }
+        />
       </div>
     </TrainerLayout>
   )

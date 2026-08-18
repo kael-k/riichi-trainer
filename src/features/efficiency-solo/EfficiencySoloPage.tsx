@@ -6,6 +6,7 @@ import { BoardStage } from '../../components/tiles/BoardStage'
 import { useFullscreenBoard } from '../../components/tiles/useFullscreenBoard'
 import {
   FullscreenToggle,
+  Timer,
   TrainerStatusBar,
   TrainerToggles,
 } from '../../components/TrainerControls'
@@ -124,6 +125,27 @@ export function EfficiencySoloPage() {
     fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
+  // how the session is going, written once and read in both places it is shown: the page's own
+  // status bar, and the session panel beside the board
+  const scoreLines = (
+    <>
+      <span>
+        <Trans
+          i18nKey="efficiency.ukeireLost"
+          values={{
+            lost: round.cumulativeLost,
+            total: round.cumulativeTotal,
+            accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+          }}
+          components={{ term: <GlossaryTerm id="ukeire" /> }}
+        />
+      </span>
+      {settings.timerEnabled && (
+        <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
+      )}
+    </>
+  )
+
   return (
     <TrainerLayout
       title={t('trainer.efficiencySolo.title')}
@@ -137,20 +159,7 @@ export function EfficiencySoloPage() {
           running={round.running}
           timerEnabled={settings.timerEnabled}
         >
-          <span>
-            <Trans
-              i18nKey="efficiency.ukeireLost"
-              values={{
-                lost: round.cumulativeLost,
-                total: round.cumulativeTotal,
-                accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
-              }}
-              components={{ term: <GlossaryTerm id="ukeire" /> }}
-            />
-          </span>
-          {settings.timerEnabled && (
-            <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-          )}
+          {scoreLines}
         </TrainerStatusBar>
 
         {/* no table here to show the wall/dora, so this solo trainer states them plainly */}
@@ -170,6 +179,14 @@ export function EfficiencySoloPage() {
           title={t('trainer.efficiencySolo.title')}
           intro={{ text: t('trainer.efficiencySolo.intro'), wikiUrl: TRAINER_WIKI.efficiencySolo }}
           full={full}
+          status={
+            <>
+              {settings.timerEnabled && (
+                <Timer elapsedNow={round.elapsedNow} running={round.running} />
+              )}
+              {scoreLines}
+            </>
+          }
           chrome={
             <>
               <SettingsButton title={t('trainer.efficiencySolo.title')}>
@@ -264,6 +281,20 @@ export function EfficiencySoloPage() {
               </div>
             )
           }
+          panel={
+            <>
+              {showWall && (
+                <WallDetails
+                  dealt={round.dealtTiles}
+                  liveWall={round.liveWallSnapshot}
+                  liveWallDrawn={round.liveWallDrawn}
+                  deadWall={round.deadWallSnapshot}
+                  replacements={round.replacements}
+                />
+              )}
+              <CopyLinkButton query={round.situationQuery} />
+            </>
+          }
         >
           <div className="flex flex-wrap gap-4 [--tile-w:calc(var(--tile-w-base)*0.8)]">
             <div className="flex flex-col gap-1">
@@ -289,18 +320,6 @@ export function EfficiencySoloPage() {
               </div>
             )}
           </div>
-
-          {showWall && (
-            <WallDetails
-              dealt={round.dealtTiles}
-              liveWall={round.liveWallSnapshot}
-              liveWallDrawn={round.liveWallDrawn}
-              deadWall={round.deadWallSnapshot}
-              replacements={round.replacements}
-            />
-          )}
-
-          <CopyLinkButton query={round.situationQuery} />
         </BoardStage>
       </div>
     </TrainerLayout>

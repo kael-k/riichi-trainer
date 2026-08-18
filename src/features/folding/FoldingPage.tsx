@@ -7,6 +7,7 @@ import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import {
   FullscreenToggle,
+  Timer,
   TrainerStatusBar,
   TrainerToggles,
 } from '../../components/TrainerControls'
@@ -284,6 +285,30 @@ export function FoldingPage() {
   const bottomConcealed = !viewingManual && !showOpponentHands
   const canAct = perspective === round.acting && !round.finished
 
+  // how the session is going, written once and read in both places it is shown: the page's own
+  // status bar, and the session panel beside the board
+  const scoreLines = (
+    <>
+      {/* the running score says "that last one was wrong" as loudly as the panel does, so it
+          waits with it — the clock is not an answer and keeps running either way */}
+      {!answersHeld && (
+        <>
+          <span>
+            {t('folding.score', { correct: round.correctCount, total: round.totalCount })}
+          </span>
+          {/* safest-or-not is pass/fail; this says how close the rest were, measured against
+              the most dangerous tile each hand actually held */}
+          {round.totalCount > 0 && (
+            <span>{t('folding.accuracy', { percent: Math.round(round.accuracy * 100) })}</span>
+          )}
+        </>
+      )}
+      {settings.timerEnabled && (
+        <span>{t('folding.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
+      )}
+    </>
+  )
+
   return (
     <TrainerLayout
       title={t('trainer.folding.title')}
@@ -297,23 +322,7 @@ export function FoldingPage() {
           running={round.running}
           timerEnabled={settings.timerEnabled}
         >
-          {/* the running score says "that last one was wrong" as loudly as the panel does, so it
-              waits with it — the clock is not an answer and keeps running either way */}
-          {!answersHeld && (
-            <>
-              <span>
-                {t('folding.score', { correct: round.correctCount, total: round.totalCount })}
-              </span>
-              {/* safest-or-not is pass/fail; this says how close the rest were, measured against
-                  the most dangerous tile each hand actually held */}
-              {round.totalCount > 0 && (
-                <span>{t('folding.accuracy', { percent: Math.round(round.accuracy * 100) })}</span>
-              )}
-            </>
-          )}
-          {settings.timerEnabled && (
-            <span>{t('folding.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-          )}
+          {scoreLines}
         </TrainerStatusBar>
 
         {/* stacked normally; beside the board when the viewport is too short to stack, which is
@@ -323,6 +332,14 @@ export function FoldingPage() {
           intro={{ text: t('trainer.folding.intro'), wikiUrl: TRAINER_WIKI.folding }}
           full={full}
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
+          status={
+            <>
+              {settings.timerEnabled && (
+                <Timer elapsedNow={round.elapsedNow} running={round.running} />
+              )}
+              {scoreLines}
+            </>
+          }
           chrome={
             <>
               <SettingsButton title={t('trainer.folding.title')}>{settingsRows}</SettingsButton>
@@ -451,21 +468,23 @@ export function FoldingPage() {
               </div>
             )
           }
-        >
-          {showWall && (
-            <WallDetails
-              dealt={round.dealtTiles}
-              liveWall={round.liveWallSnapshot}
-              liveWallDrawn={round.liveWallDrawn}
-              deadWall={round.deadWallSnapshot}
-              replacements={round.replacements}
-              players={players}
-              seat={perspective}
-            />
-          )}
-
-          <CopyLinkButton query={round.situationQuery} />
-        </BoardStage>
+          panel={
+            <>
+              {showWall && (
+                <WallDetails
+                  dealt={round.dealtTiles}
+                  liveWall={round.liveWallSnapshot}
+                  liveWallDrawn={round.liveWallDrawn}
+                  deadWall={round.deadWallSnapshot}
+                  replacements={round.replacements}
+                  players={players}
+                  seat={perspective}
+                />
+              )}
+              <CopyLinkButton query={round.situationQuery} />
+            </>
+          }
+        />
       </div>
     </TrainerLayout>
   )

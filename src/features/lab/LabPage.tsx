@@ -425,39 +425,42 @@ export function LabPage() {
                   </div>
                 </div>
               }
-            >
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-neutral-500">{t('lab.ranking')}</span>
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
-                  {round.ranked.map((option) => (
-                    <RankedRow key={option.discard} option={option} />
-                  ))}
-                </div>
-              </div>
+              panel={
+                <>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-medium text-neutral-500">{t('lab.ranking')}</span>
+                    <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+                      {round.ranked.map((option) => (
+                        <RankedRow key={option.discard} option={option} />
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-neutral-500">{t('lab.danger')}</span>
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
-                  {round.danger.map((entry) => (
-                    <DangerRow key={entry.tile} entry={entry} seats={threatSeats} />
-                  ))}
-                </div>
-              </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-medium text-neutral-500">{t('lab.danger')}</span>
+                    <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+                      {round.danger.map((entry) => (
+                        <DangerRow key={entry.tile} entry={entry} seats={threatSeats} />
+                      ))}
+                    </div>
+                  </div>
 
-              {showWall && (
-                <WallDetails
-                  dealt={round.dealtTiles}
-                  liveWall={round.liveWallSnapshot}
-                  liveWallDrawn={round.liveWallDrawn}
-                  deadWall={round.deadWallSnapshot}
-                  replacements={round.replacements}
-                  players={round.rivers.length}
-                  seat={perspective}
-                />
-              )}
+                  {showWall && (
+                    <WallDetails
+                      dealt={round.dealtTiles}
+                      liveWall={round.liveWallSnapshot}
+                      liveWallDrawn={round.liveWallDrawn}
+                      deadWall={round.deadWallSnapshot}
+                      replacements={round.replacements}
+                      players={round.rivers.length}
+                      seat={perspective}
+                    />
+                  )}
 
-              <CopyLinkButton query={round.situationQuery} />
-            </BoardStage>
+                  <CopyLinkButton query={round.situationQuery} />
+                </>
+              }
+            />
           </>
         )}
       </div>

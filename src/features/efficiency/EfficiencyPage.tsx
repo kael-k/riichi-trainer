@@ -8,6 +8,7 @@ import { Table, type SeatView } from '../../components/tiles/Table'
 import { splitDrawn } from '../../core/table'
 import {
   FullscreenToggle,
+  Timer,
   TrainerStatusBar,
   TrainerToggles,
 } from '../../components/TrainerControls'
@@ -198,6 +199,27 @@ export function EfficiencyPage() {
     fullscreenLabel: t(full ? 'table.exitFullscreen' : 'table.fullscreen'),
   }
 
+  // how the session is going, written once and read in both places it is shown: the page's own
+  // status bar, and the session panel beside the board
+  const scoreLines = (
+    <>
+      <span>
+        <Trans
+          i18nKey="efficiency.ukeireLost"
+          values={{
+            lost: round.cumulativeLost,
+            total: round.cumulativeTotal,
+            accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
+          }}
+          components={{ term: <GlossaryTerm id="ukeire" /> }}
+        />
+      </span>
+      {settings.timerEnabled && (
+        <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
+      )}
+    </>
+  )
+
   return (
     <TrainerLayout
       title={t('trainer.efficiency.title')}
@@ -212,20 +234,7 @@ export function EfficiencyPage() {
           timerEnabled={settings.timerEnabled}
         >
           {/* also lives in the table's own centre panel */}
-          <span>
-            <Trans
-              i18nKey="efficiency.ukeireLost"
-              values={{
-                lost: round.cumulativeLost,
-                total: round.cumulativeTotal,
-                accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
-              }}
-              components={{ term: <GlossaryTerm id="ukeire" /> }}
-            />
-          </span>
-          {settings.timerEnabled && (
-            <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-          )}
+          {scoreLines}
         </TrainerStatusBar>
 
         {/* stacked in the page, or filling the screen outright behind the fullscreen button */}
@@ -234,6 +243,14 @@ export function EfficiencyPage() {
           intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
           full={full}
           onLogOpen={(open) => open !== round.paused && round.togglePause()}
+          status={
+            <>
+              {settings.timerEnabled && (
+                <Timer elapsedNow={round.elapsedNow} running={round.running} />
+              )}
+              {scoreLines}
+            </>
+          }
           chrome={
             <>
               <SettingsButton title={t('trainer.efficiency.title')}>{settingsRows}</SettingsButton>
@@ -380,21 +397,23 @@ export function EfficiencyPage() {
               )}
             </div>
           }
-        >
-          {showWall && (
-            <WallDetails
-              dealt={round.dealtTiles}
-              liveWall={round.liveWallSnapshot}
-              liveWallDrawn={round.liveWallDrawn}
-              deadWall={round.deadWallSnapshot}
-              replacements={round.replacements}
-              players={round.rivers.length}
-              seat={perspective}
-            />
-          )}
-
-          <CopyLinkButton query={round.situationQuery} />
-        </BoardStage>
+          panel={
+            <>
+              {showWall && (
+                <WallDetails
+                  dealt={round.dealtTiles}
+                  liveWall={round.liveWallSnapshot}
+                  liveWallDrawn={round.liveWallDrawn}
+                  deadWall={round.deadWallSnapshot}
+                  replacements={round.replacements}
+                  players={round.rivers.length}
+                  seat={perspective}
+                />
+              )}
+              <CopyLinkButton query={round.situationQuery} />
+            </>
+          }
+        />
       </div>
     </TrainerLayout>
   )
