@@ -118,6 +118,16 @@ export function InfoButton({
   )
 }
 
+/** The stats HUD's own card — shared by its two placements (real flow on a narrow portrait phone,
+ *  floating everywhere else) so the two can't drift out of style with each other. */
+function StatusCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-lg border border-neutral-200 bg-white/95 px-3 py-2 text-xs text-neutral-600 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400">
+      {children}
+    </div>
+  )
+}
+
 /**
  * Everything that is not the board or the hand: how the session is going, what the last decision
  * was worth in full, whatever the trainer wants to say about the board, and the log. One renderer
@@ -300,20 +310,19 @@ export function BoardStage({
             centring row under it stay clear of the chrome column held sideways */}
         <div className="flex min-h-0 flex-1 flex-col short:pl-[calc(2.75rem+env(safe-area-inset-left))]">
           {status && (
-            // real flow, not a float: a reserved row pushes the board down to make room rather
-            // than sitting over whatever seat's plate would otherwise be there. Boxed so it reads
-            // as a HUD rather than stray text — same card treatment as the notice below it, one
-            // size down
-            <div className="flex shrink-0 justify-start p-2">
-              <div className="flex flex-col gap-0.5 rounded-lg border border-neutral-200 bg-white/95 px-2.5 py-1.5 text-xs text-neutral-600 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400">
-                {status}
-              </div>
+            // real flow, not a float, but only on a narrow portrait phone: a reserved row pushes
+            // the board down to make room rather than sitting over whatever seat's plate would
+            // otherwise be there. Desktop (`lg:`) and landscape (`short:`) already have slack
+            // above the square, so there it floats instead (the block below) rather than costing
+            // height nobody is short on
+            <div className="flex shrink-0 justify-start p-2 short:hidden lg:hidden">
+              <StatusCard>{status}</StatusCard>
             </div>
           )}
           {/* `container-type: size` is what makes the square actually fit: `Table` caps itself at
               `100cqh` of *this* row, which is the height genuinely left over after the chrome row,
-              the HUD row and the hand strip have taken theirs — the `--board-max-h` guess on the
-              stage root can only estimate those. */}
+              the HUD row (on a narrow portrait phone) and the hand strip have taken theirs — the
+              `--board-max-h` guess on the stage root can only estimate those. */}
           <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size]">
             {board ? (
               board
@@ -322,6 +331,16 @@ export function BoardStage({
               // and neither has one that has not dealt yet — solo's river lives in here, and a table
               // where you cannot see your own discards is not a table
               <div className="max-h-full overflow-auto px-2">{children}</div>
+            )}
+            {status && (
+              // the floating counterpart of the reserved row above, shown only where that row is
+              // hidden (`lg:`/`short:`) — those already have room above the square, so paying for
+              // a reserved row there would just be shrinking the board for nothing
+              <div className="pointer-events-none absolute top-2 left-2 hidden max-w-[45%] short:block short:max-w-[calc((100svw-2.75rem-var(--board-max-h))/2-0.5rem)] lg:block">
+                <div className="pointer-events-auto">
+                  <StatusCard>{status}</StatusCard>
+                </div>
+              </div>
             )}
             {!logOpen && (noticeCompact ?? notice) && noticeShown && (
               // pointer-events-none: a notice must never sit between the reader and a tile they are
