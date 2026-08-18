@@ -26,7 +26,12 @@ export default defineConfig({
         theme_color: '#863bff',
         background_color: '#ffffff',
         display: 'standalone',
-        icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+        // `maskable` as well as `any`: the artwork is a square felt field with the tile inside the
+        // middle 78%, so an adaptive launcher can crop it to its own shape without clipping the
+        // tile. Declaring it while the tile still ran the full height is what made it stretch.
+        icons: [
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+        ],
       },
     }),
   ],

@@ -12,7 +12,7 @@ import {
   TrainerToggles,
 } from '../../components/TrainerControls'
 import { TrainerLayout } from '../../components/TrainerLayout'
-import { HandDisplay, MeldDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
+import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { concealedTiles, wallDrawnCount } from '../../core/round'
 import { HONOR, serializeTenhou } from '../../core/tiles'
 import { INITIAL_HAND_SIZE } from '../../core/wall'
@@ -53,16 +53,26 @@ function NumberField({
   autoFocus?: boolean
 }) {
   return (
-    <label className="flex items-center justify-between gap-3">
-      <span>{label}</span>
+    // the label is a hint inside the field rather than a word parked beside it: "Han" against an
+    // empty box says the same thing in a third of the width, which is what lets the fields stand
+    // in one row on anything wider than a phone held upright. It rides up to the field's top edge
+    // once there is a value to read, so the question never disappears behind the answer
+    <label className="relative flex min-w-28 flex-1 flex-col">
       <input
         type="number"
         name={name}
         min={0}
         step={step}
         autoFocus={autoFocus}
-        className="min-h-11 w-28 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+        inputMode="numeric"
+        // `placeholder=" "`: `:placeholder-shown` is the only pure-CSS read of "this field is
+        // empty", and it needs a placeholder to shadow
+        placeholder=" "
+        className="peer min-h-14 w-full rounded-lg border border-neutral-300 bg-transparent px-3 pt-5 pb-1 text-lg tabular-nums [appearance:textfield] focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:focus:border-neutral-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
+      <span className="pointer-events-none absolute top-1 left-3 text-xs text-neutral-500 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:translate-y-0 peer-focus:text-xs">
+        {label}
+      </span>
     </label>
   )
 }
@@ -176,6 +186,12 @@ export function ScoringPage() {
   ).sort((a, b) => a.id - b.id)
   const winTile =
     winIndex >= 0 ? round.situation.concealed[winIndex] : { id: ctx.winTile, red: false }
+  // nuki are counted, not held: the situation carries how many norths were pulled, and each one
+  // draws as a plain north beside the melds
+  const handNuki = Array.from({ length: round.situation.kita }, () => ({
+    id: HONOR + 3,
+    red: false,
+  }))
   // a ron tile belongs to the discarder's river, where the board rings it; only a tsumo is
   // genuinely a tile you drew. Without the board there is no river to read it from, so it has
   // to sit beside the hand regardless.
@@ -210,24 +226,20 @@ export function ScoringPage() {
   // hand has no round behind it and still shows only the winds and the winner's melds.
   const players = options.sanma ? 3 : 4
   const tableSeatIndex = Math.min(round.seat, players - 1)
+  // the seat the board is drawn from has no hand out on the felt — it is the one below the board —
+  // so its calls do not belong out there either: they ride at the right-hand end of `HandDisplay`
+  // instead, the same split every other board trainer makes. Left on the felt they piled up on the
+  // seat's own edge, above the hand they belong beside
   const seats: SeatView[] = round.round
     ? round.round.players.map((player, seat) => ({
         river: player.river,
-        melds: player.melds,
-        nuki: player.nuki,
+        ...(seat !== tableSeatIndex && { melds: player.melds, nuki: player.nuki }),
         riichi: player.riichiAt !== undefined,
         hand: seat !== round.seat ? concealedTiles(player) : undefined,
         concealed: !showOpponentHands,
       }))
     : Array.from({ length: players }, (_, seat) => ({
-        ...(seat === tableSeatIndex && {
-          melds: round.situation!.melds,
-          nuki: Array.from({ length: round.situation!.kita }, () => ({
-            id: HONOR + 3,
-            red: false,
-          })),
-          riichi: ctx.riichi || ctx.doubleRiichi,
-        }),
+        ...(seat === tableSeatIndex && { riichi: ctx.riichi || ctx.doubleRiichi }),
       }))
 
   const testsEnabled = [settings.testHan, settings.testFu, settings.testPoints].filter(
@@ -401,18 +413,17 @@ export function ScoringPage() {
                     right for a tsumo: on a ron the tile is a discard, and the board already rings
                     it in the river it was discarded into. With no board up there is nothing to
                     point at, so it stays here. */}
+                {/* the calls sit at the right-hand end of the hand, not on a row of their own
+                    under it — an open hand is read left to right along one line, and stacked
+                    they read as a second hand. True with the board up or down: the felt drops
+                    this seat's melds for exactly this reason (see `seats` above) */}
                 <HandDisplay
                   tiles={restConcealed}
                   drawn={showWinTileInHand ? winTile : undefined}
                   drawnClassName="rounded-sm outline-2 outline-red-500"
+                  melds={round.situation.melds}
+                  nuki={handNuki}
                 />
-                {!settings.table && round.situation.melds.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {round.situation.melds.map((meld, i) => (
-                      <MeldDisplay key={i} meld={meld} />
-                    ))}
-                  </div>
-                )}
               </div>
 
               {!round.checked && (
@@ -423,7 +434,11 @@ export function ScoringPage() {
                     e.preventDefault()
                     submit(e.currentTarget)
                   }}
-                  className="flex flex-col gap-3"
+                  // one field per line on a phone held upright, one row everywhere there is width
+                  // for it — a tablet, a desktop, or a phone held sideways (`short:`, the same
+                  // viewport test the board itself uses). The submit button joins the row rather
+                  // than sitting under it: the answer is one thought, so it reads as one line
+                  className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch short:flex-row short:flex-wrap short:items-stretch"
                 >
                   {settings.testHan && (
                     <NumberField name="han" label={t('scoring.hanLabel')} autoFocus />
@@ -448,7 +463,7 @@ export function ScoringPage() {
                   )}
                   <button
                     type="submit"
-                    className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+                    className="min-h-14 shrink-0 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
                   >
                     {t('scoring.checkAnswer')}
                   </button>

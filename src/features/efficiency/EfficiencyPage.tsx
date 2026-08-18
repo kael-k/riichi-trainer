@@ -67,8 +67,9 @@ export function EfficiencyPage() {
       seats: seatConfig,
       claims,
       showSeatWaits,
+      showOpponentHands,
     }),
-    [situation, deadWall, aka, sanma, seatConfig, claims, showSeatWaits],
+    [situation, deadWall, aka, sanma, seatConfig, claims, showSeatWaits, showOpponentHands],
   )
 
   const round = useEfficiencyRound(situation, options, settings.timerEnabled)
@@ -347,6 +348,7 @@ export function EfficiencyPage() {
                   melds={bottomMelds}
                   nuki={round.nuki[perspective]}
                   onTileClick={canAct ? (i) => round.discard(i) : undefined}
+                  lockedToDrawn={round.riichi[round.acting]}
                 />
               </div>
 

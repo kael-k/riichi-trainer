@@ -38,6 +38,10 @@ export interface EfficiencyOptions {
   /** The seat panel's "show tenpai/waits" setting — threaded to `useRound`, which is where the
    *  per-seat cost of computing it is actually paid. */
   showSeatWaits: boolean
+  /** The board's reveal switch. Only reaches `useRound` (as half of `showReads`): the page draws
+   *  the faces itself. A seat whose tiles are already on screen gets its `SeatRead` too, since a
+   *  furiten mark says nothing the hand does not. */
+  showOpponentHands: boolean
 }
 
 /** Drives one efficiency round on top of `useRound`: dealing, replay, opponents and the go-round
@@ -186,7 +190,7 @@ export function useEfficiencyRound(
     players,
     options: roundOptions,
     replay: situation.log,
-    showSeatWaits: options.showSeatWaits,
+    showReads: options.showSeatWaits || options.showOpponentHands,
     onEvent,
   })
 

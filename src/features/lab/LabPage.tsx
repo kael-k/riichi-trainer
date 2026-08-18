@@ -420,6 +420,7 @@ export function LabPage() {
                       melds={round.melds[perspective]}
                       nuki={round.nuki[perspective]}
                       onTileClick={canAct ? (i) => round.discard(i) : undefined}
+                      lockedToDrawn={round.riichi[round.acting]}
                     />
                   </div>
                 </div>

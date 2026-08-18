@@ -118,11 +118,13 @@ export interface TableSnapshot {
    *  sorted), so a page that wants it shown apart passes this through `splitDrawn` for the seat it
    *  is drawing. */
   drawn: { seat: number; tile: ParsedTile } | undefined
-  /** Each seat's own tenpai/waits/furiten (`seatRead`). Always present for a seat the reader
-   *  plays — a manual seat's own furiten is legitimate information a real client shows, and one
-   *  more `waits` call is negligible next to the analysis that seat's own turn already pays for
-   *  — `undefined` for every other seat unless `showSeatWaits` is on, since `waits` runs
-   *  `improvingTiles` (~34 shanten probes) per seat and nobody asked to pay that for opponents. */
+  /** Each seat's own tenpai/waits/furiten (`seatRead`). Present whenever the reader can already
+   *  see that seat's tiles — a seat they play, any seat once the hand is over, and every seat
+   *  while the board's own reveal switch is on (`showReads`, which callers pass as
+   *  `showSeatWaits || showOpponentHands`) — since a furiten read is nothing the tiles do not
+   *  already say. `undefined` otherwise: `waits` runs `improvingTiles` (~34 shanten probes) per
+   *  seat, and nobody asked to pay that for a hand they cannot see. Whether the *wait tiles* are
+   *  then drawn is `showSeatWaits`' own business, one layer up in `SeatStrip`. */
   seatReads: (SeatRead | undefined)[]
   /** The match this round sits inside — points, honba, dealer, riichi sticks, which round.
    *  One field, not flattened, since it is one thing a table reads together (`core/match.ts`). */
@@ -143,8 +145,10 @@ export function splitDrawn(
   return { tiles: i >= 0 ? [...tiles.slice(0, i), ...tiles.slice(i + 1)] : tiles, drawn }
 }
 
-/** Builds a `TableSnapshot` for `core` as the match stands right now. */
-export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnapshot {
+/** Builds a `TableSnapshot` for `core` as the match stands right now. `showReads` is "the reader
+ *  can see everyone's tiles" — `showSeatWaits || showOpponentHands` at every call site — and only
+ *  widens which seats get a `SeatRead`. */
+export function snapshotTable(core: TableCore, showReads = false): TableSnapshot {
   const { round, options } = core
   const drawnTile = round.players[round.seat].drawn
   return {
@@ -169,8 +173,13 @@ export function snapshotTable(core: TableCore, showSeatWaits = false): TableSnap
     seat: actingSeat(core),
     claim: round.claim,
     drawn: drawnTile ? { seat: round.seat, tile: drawnTile } : undefined,
+    // `round.ended` is in here rather than left to the caller because it is snapshot-time truth:
+    // every trainer turns the hands face-up once the hand is over, and a furiten mark on a hand
+    // you are already looking at is not a reveal
     seatReads: round.players.map((_, seat) =>
-      showSeatWaits || isManual(round, seat) ? seatRead(round, seat, options.sanma) : undefined,
+      showReads || round.ended || isManual(round, seat)
+        ? seatRead(round, seat, options.sanma)
+        : undefined,
     ),
     // a fresh copy, not a reference: `points` mutates in place on a riichi declaration
     // (`round.ts`), and a snapshot must not move under whoever holds it

@@ -103,7 +103,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     players,
     options: roundOptions,
     replay: situation.log,
-    showSeatWaits: options.showSeatWaits,
+    showReads: options.showSeatWaits || options.showOpponentHands,
     onEvent,
   })
 

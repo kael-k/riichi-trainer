@@ -594,6 +594,34 @@ describe('manual claims', () => {
     expect(state.ended).toBeUndefined()
     expect(state.seat).toBe(1) // the turn moves on exactly as it would with nothing to ask about
     expect(state.players[1].missedWin).toBe(true) // declined a win that was really there
+
+    // temporary furiten lasts until this seat has taken its own turn, and it is the *discard*
+    // that ends it, not the draw that opens it: the badge stays up while the reader is deciding,
+    // and no ron is possible in between either way — nobody else discards while seat 1 holds 14
+    beginTurn(state, options)
+    expect(state.players[1].missedWin, 'still furiten while it holds its draw').toBe(true)
+    finishTurn(state, options, { tile: state.players[1].drawn!, fromDrawn: true })
+    expect(state.players[1].missedWin, 'lifted by its own discard').toBe(false)
+  })
+
+  it('leaves a manual seat unfuriten when claims are off — it was never offered the ron', () => {
+    // the same declined win as above, except `claims: false` means the engine never asks. A seat
+    // that could not have declared cannot have declined, so marking it furiten would poison the
+    // hand over a decision nobody was given (the rule `reconsiderClaim` follows too)
+    const options: RoundOptions = { ...YONMA, claims: false, calls: false, algorithms: manual(1) }
+    const wall = handsWall(
+      'claim-never-asked',
+      '189m189p2s123456z',
+      '234567m234567p2s',
+      '111222333m111p7z',
+      '444555666m222p7z',
+    )
+    const state = createRound(wall, 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
+
+    expect(state.claim).toBeUndefined()
+    expect(state.players[1].missedWin).toBe(false)
   })
 
   // Req 2.3's second half — furiten already cannot ron (`tryWin`, round.ts:404); these are
@@ -799,6 +827,24 @@ describe('manual riichi declaration', () => {
     // canDeclareRiichi is the same legality check finishTurn just used — pinning it here is what
     // makes the UI's riichi button trustworthy: it never offers a declaration finishTurn refuses
     expect(canDeclareRiichi(state, options, 0)).toBe(false) // riichiAt is now set, so it's done
+  })
+
+  it('throws the drawn tile once in riichi, even handed an explicit tedashi', () => {
+    // riichi locks every later discard to tsumogiri. The lock used to sit behind the "no explicit
+    // discard" branch, so it only ever reached the seats nobody was deciding for — a manual seat
+    // in riichi could hand in any tile it liked and the engine threw it
+    const { state, options } = tenpaiManualState('riichi-locks-tedashi')
+    const player = state.players[0]
+    player.riichiAt = 0
+    const drawn = player.drawn!
+    const held = player.concealed.find((t) => t.id !== drawn.id)!
+
+    finishTurn(state, options, { tile: held, fromDrawn: false })
+
+    const thrown = player.river.at(-1)!
+    expect(thrown.id).toBe(drawn.id)
+    expect(thrown.tsumogiri).toBe(true)
+    expect(player.concealed.some((t) => t.id === held.id && t.red === held.red)).toBe(true)
   })
 
   it('deducts 1000 points and adds a riichi stick on declaration (T4)', () => {

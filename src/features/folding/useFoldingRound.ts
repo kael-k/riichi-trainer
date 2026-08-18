@@ -607,7 +607,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     players: options.sanma ? 3 : 4,
     options: liveOptions ?? IDLE,
     replay: round?.replay,
-    showSeatWaits: options.showSeatWaits,
+    showReads: options.showSeatWaits || options.showOpponentHands,
     onEvent,
   })
 

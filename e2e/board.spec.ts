@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test'
 import { dealtIndices } from '../src/core/wall.ts'
 
 /** The trainers that draw a `Table`. Scoring keeps its board behind its own setting and the lab's
@@ -234,10 +234,20 @@ test('the reader’s own calls go under the board, not onto the felt', async ({ 
   await expect(calls.locator('> div')).toHaveCount(4)
   await expect(calls.getByRole('img')).toHaveCount(16)
 
-  // beside the hand it belongs to, on the same line, and smaller than it
+  // after the hand it belongs to in reading order, and smaller than it. "After" is two cases and
+  // the phone is the second one: four kans plus the hand are wider than a 390px strip, so the
+  // calls wrap onto their own line *below* the tiles rather than being squeezed beside them at a
+  // size nobody can read. Only when they do share a line does "after" mean "to the right" — and
+  // the old x-only form quietly passed the wrapped case on an accident of the calls' left margin,
+  // which is why it kept holding until the hand row was centred
   const hand = (await page.getByRole('button', { name: '5m' }).first().boundingBox())!
   const meld = (await calls.getByRole('img').first().boundingBox())!
-  expect(meld.x, 'the calls sit left of the hand').toBeGreaterThan(hand.x)
+  const sameLine = meld.y < hand.y + hand.height && hand.y < meld.y + meld.height
+  if (sameLine) {
+    expect(meld.x, 'the calls sit left of the hand they belong to').toBeGreaterThan(hand.x)
+  } else {
+    expect(meld.y, 'the calls wrapped above the hand they belong to').toBeGreaterThan(hand.y)
+  }
   expect(meld.width, 'the calls are drawn at hand size').toBeLessThan(hand.width)
 })
 
@@ -458,4 +468,142 @@ test('efficiency-solo: the log drawer covers the hand', async ({ page }) => {
     [hand.x + hand.width - 4, hand.y + hand.height / 2],
   )
   expect(onTop).toBe('log-drawer')
+})
+
+test('the log drawer is a dialog: over the chrome row, dismissed from outside', async ({
+  page,
+}) => {
+  await page.goto('/efficiency-solo')
+  await enterFullscreen(page)
+
+  const toggle = page.getByRole('button', { name: 'Show log' })
+  const chrome = (await toggle.boundingBox())!
+  await toggle.click()
+  const drawer = page.getByTestId('log-drawer')
+  await expect(drawer).toBeVisible()
+
+  // it outranks the chrome row rather than being wedged under it — the button that opened it is
+  // covered, which is only safe because the scrim below closes it
+  const box = (await drawer.boundingBox())!
+  expect(box.y, 'the drawer stops below the chrome row').toBeLessThanOrEqual(chrome.y)
+
+  // a press on the scrim, well clear of the panel, closes it the way every other dialog does
+  await page.mouse.click(Math.max(4, box.x / 2), box.y + box.height / 2)
+  await expect(drawer).toHaveCount(0)
+})
+
+/**
+ * Two seats in furiten at once: the reader's own (it threw the 1z it waits on) and toimen's
+ * neighbour (it threw the 5s its tanki waits on). Every live draw is authored, so nothing after
+ * the deal is random and both reads are the same on every run.
+ */
+function twoFuritenBoard(): string {
+  const orphans = [
+    '1m',
+    '9m',
+    '1p',
+    '9p',
+    '1s',
+    '9s',
+    ...Array.from({ length: 7 }, (_, i) => `${i + 1}z`),
+  ]
+  const tanki = ['1m', '2m', '3m', '4p', '5p', '6p', '7p', '8p', '9p', '2s', '3s', '4s', '5s']
+  const spaced = (last: string) => [
+    '2m',
+    '4m',
+    '6m',
+    '8m',
+    '2p',
+    '4p',
+    '6p',
+    '8p',
+    '2s',
+    '4s',
+    '6s',
+    '8s',
+    last,
+  ]
+  const deal = dealt([orphans, tanki, spaced('5m'), spaced('5p')])
+  // seat 0 draws the 14th orphan and throws it; seat 1 draws a 5s and throws it; the rest is junk,
+  // then seat 0's next draw — deliberately not an orphan, so its thirteen-sided wait still stands
+  const live = ['1z', '5s', '3p', '3s', '5m']
+  return `/efficiency?wall=${tenhou([...deal, ...live])}&log=D01zTD15sT&seat=0&sanma=0`
+}
+
+/** This file's own `SETTINGS` turns the waits on, which reveals every seat's read. A test about
+ *  what shows with *nothing* revealed has to put that back — a later init script wins. */
+async function revealNothing(context: BrowserContext) {
+  await context.addInitScript(
+    `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
+      JSON.stringify({
+        state: { advanced: true, mobileFullscreen: true, table: { global: {}, apps: {} } },
+        version: 3,
+      }),
+    )})`,
+  )
+}
+
+test('a furiten seat is marked exactly when its tiles are on screen', async ({ page, context }) => {
+  await revealNothing(context)
+  await page.goto(twoFuritenBoard())
+  await expect(page.getByTestId('board').first()).toBeVisible()
+
+  const furiten = page.getByRole('button', { name: 'Explain: Furiten' })
+  // the reader's own seat and nobody else's: their own furiten is information a real client shows
+  // and their tiles are on screen whatever the reveal settings say, while the opponent that is
+  // just as furiten is holding a hand nobody can see
+  await expect(furiten).toHaveCount(1)
+
+  // the badge explains itself rather than sitting there as a label — and the explanation comes up
+  // upright, not turned with the seat plate it was opened from
+  await furiten.click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  expect(await dialog.evaluate((el) => getComputedStyle(el).transform)).toBe('none')
+})
+
+test('revealing the hands reveals the furiten that goes with them', async ({ page, context }) => {
+  // `showOpponentHands` on: seeing an opponent's tiles is seeing its furiten, so the badge follows
+  // the faces rather than needing the waits setting of its own
+  await context.addInitScript(
+    `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
+      JSON.stringify({
+        state: {
+          advanced: true,
+          mobileFullscreen: true,
+          table: { global: { showOpponentHands: true }, apps: {} },
+        },
+        version: 3,
+      }),
+    )})`,
+  )
+  await page.goto(twoFuritenBoard())
+  await expect(page.getByTestId('board').first()).toBeVisible()
+
+  // the reader's own seat plus the opponent whose hand is now face-up
+  await expect(page.getByRole('button', { name: 'Explain: Furiten' })).toHaveCount(2)
+})
+
+test('a declared seat may only throw the tile it just drew', async ({ page }) => {
+  // seat 0 is dealt a shanpon tenpai on 1p/2p, draws a 9s it cannot use and declares riichi
+  // throwing it straight back. Riichi locks every later discard to tsumogiri, so on its next turn
+  // the thirteen tiles in hand must not be clickable at all — the engine would refuse any of them
+  // (`forcedTsumogiri`), and a tile that looks live and silently throws a different one is worse
+  // than one that does not look live
+  const me = [...Array.from({ length: 9 }, (_, i) => `${i + 1}m`), '1p', '1p', '2p', '2p']
+  const pin = Array.from({ length: 7 }, (_, i) => `${i + 3}p`)
+  const deal = dealt([
+    me,
+    [...pin, '1s', '2s', '3s', '4s', '5s', '6s'],
+    [...pin, '7s', '8s', '9s', '1z', '2z', '3z'],
+    [...pin, '4z', '5z', '6z', '7z', '1s', '2s'],
+  ])
+  // seat 0's declaring draw, a junk draw each for the other three, then seat 0's next draw
+  const live = ['9s', '1z', '2z', '3z', '4z']
+  await page.goto(`/lab?wall=${tenhou([...deal, ...live])}&log=D09sTR&seat=0&sanma=0`)
+  await expect(page.getByTestId('board').first()).toBeVisible()
+
+  const hand = page.locator('div.flex.justify-center').last()
+  await expect(hand.getByRole('img'), 'thirteen tiles plus the draw').toHaveCount(14)
+  await expect(hand.getByRole('button'), 'only the drawn tile is live').toHaveCount(1)
 })

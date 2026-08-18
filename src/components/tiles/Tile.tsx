@@ -130,6 +130,10 @@ interface HandDisplayProps {
    *  stranded on the board's edge at a size its own hand never matches. */
   melds?: Meld[]
   nuki?: ParsedTile[]
+  /** Only the drawn tile may be clicked — the hand proper is inert. Riichi locks every later
+   *  discard to tsumogiri (`finishTurn`'s `forcedTsumogiri`, which the engine enforces whatever a
+   *  caller hands it), so a declared seat must not be offered a choice the engine will refuse. */
+  lockedToDrawn?: boolean
 }
 
 export function HandDisplay({
@@ -140,9 +144,11 @@ export function HandDisplay({
   concealed,
   melds,
   nuki,
+  lockedToDrawn,
 }: HandDisplayProps) {
   const render = (tile: ParsedTile, i: number) =>
-    onTileClick ? (
+    // `i === tiles.length` is the drawn tile, the one thing still live under the lock
+    onTileClick && !(lockedToDrawn && i < tiles.length) ? (
       <TileButton
         key={i}
         id={concealed ? undefined : tile.id}
@@ -154,8 +160,13 @@ export function HandDisplay({
     )
   return (
     // `items-end`: the calls are drawn smaller than the hand, and they sit on the same line the
-    // tiles do rather than hanging from its top edge
-    <div className="flex flex-wrap items-end">
+    // tiles do rather than hanging from its top edge.
+    // `justify-center` is about the line *after* a wrap: a called hand is wider than the column it
+    // sits in, so the calls drop to a second line and the tiles above them were left flush to the
+    // left edge — visibly off-centre from the felt the same seat is drawn on, even though the
+    // caller had already centred this box as a whole. Unwrapped it changes nothing: the box is
+    // sized to its own content
+    <div className="flex flex-wrap items-end justify-center">
       {tiles.map(render)}
       {drawn && <div className={`ml-2 ${drawnClassName}`}>{render(drawn, tiles.length)}</div>}
       {((melds?.length ?? 0) > 0 || (nuki?.length ?? 0) > 0) && (

@@ -127,12 +127,20 @@ function LogPanel() {
 
 /** The log rows on their own, without the panel's own summary/clear header — the fullscreen
  *  board's log drawer (`BoardStage.tsx`) shows exactly the same list, so there is one renderer
- *  for it rather than a second that drifts. */
-export function LogList() {
+ *  for it rather than a second that drifts.
+ *
+ *  `className` is how tall it is allowed to get, and the two surfaces answer that differently: in
+ *  the page's own panel the log is one section of a scrolling column and takes a fixed slice of
+ *  it (the default), while the fullscreen drawer is a full-height box the list should simply fill
+ *  (`min-h-0 flex-1`). The fixed slice applied there left a drawer the height of the screen
+ *  showing a row and a half. */
+export function LogList({ className = 'max-h-48 short:max-h-none' }: { className?: string }) {
   const { t } = useTranslation()
   const entries = useLog((s) => s.entries)
   return (
-    <ol className="max-h-48 overflow-y-auto px-3 pb-2 text-sm short:max-h-none [--tile-w:calc(var(--tile-w-base)*0.55)]">
+    <ol
+      className={`overflow-y-auto px-3 pb-2 text-sm [--tile-w:calc(var(--tile-w-base)*0.55)] ${className}`}
+    >
       {entries.length === 0 && <li className="py-1 text-neutral-400">{t('common.noActions')}</li>}
       {/* numbered from the session's first action, so the numbers stay put as the list grows —
           the panel shows newest first, which would otherwise renumber every row each turn */}

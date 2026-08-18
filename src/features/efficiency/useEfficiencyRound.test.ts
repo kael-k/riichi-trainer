@@ -16,6 +16,7 @@ const BARE: EfficiencyOptions = {
   seats: null,
   claims: false,
   showSeatWaits: false,
+  showOpponentHands: false,
 }
 
 describe('useEfficiencyRound', () => {
@@ -229,6 +230,7 @@ describe('useEfficiencyRound', () => {
       seats: null,
       claims: false,
       showSeatWaits: false,
+      showOpponentHands: false,
     }
     const a = renderHook(() => useEfficiencyRound(situation, opts, true))
     act(() => a.result.current.discard(0))
@@ -245,6 +247,7 @@ describe('useEfficiencyRound', () => {
           seats: null,
           claims: false,
           showSeatWaits: false,
+          showOpponentHands: false,
         },
         true,
       ),

@@ -94,8 +94,10 @@ export interface UseRoundInput {
    *  makes it immune to a later algorithm change (ADR-0021), and adds no tiles: everything named
    *  is already accounted for by `wall`. */
   replay?: readonly LogEntry[]
-  /** Threaded straight to `snapshotTable`, which is where the per-seat `waits` cost is paid. */
-  showSeatWaits?: boolean
+  /** "The reader can see everyone's tiles" — `showSeatWaits || showOpponentHands` at every call
+   *  site. Threaded straight to `snapshotTable`, which is where the per-seat `waits` cost is paid
+   *  and which widens it once more with `round.ended`. */
+  showReads?: boolean
   onEvent?: RoundEventHandler
 }
 
@@ -244,7 +246,7 @@ export function useRound(input: UseRoundInput) {
       }
       if (generation.current !== mine) return
       if (halted) {
-        setSnapshot(snapshotTable(current, input.showSeatWaits))
+        setSnapshot(snapshotTable(current, input.showReads))
         return
       }
       if (!restart) break
@@ -258,7 +260,7 @@ export function useRound(input: UseRoundInput) {
     }
     if (generation.current !== mine) return
     capture(current)
-    setSnapshot(snapshotTable(current, input.showSeatWaits))
+    setSnapshot(snapshotTable(current, input.showReads))
   }
 
   /**
@@ -303,7 +305,7 @@ export function useRound(input: UseRoundInput) {
   }
 
   const [snapshot, setSnapshot] = useState<TableSnapshot>(() =>
-    snapshotTable(ensureBuilt(), input.showSeatWaits),
+    snapshotTable(ensureBuilt(), input.showReads),
   )
 
   useEffect(() => {
@@ -312,7 +314,7 @@ export function useRound(input: UseRoundInput) {
     const pending = queued.current
     queued.current = []
     for (const event of pending) report(c, event, true)
-    setSnapshot(snapshotTable(c, input.showSeatWaits))
+    setSnapshot(snapshotTable(c, input.showReads))
     void drive(c)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -356,13 +358,13 @@ export function useRound(input: UseRoundInput) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [algorithmsKey, input.options.claims])
 
-  // `showSeatWaits` alone must not rebuild (that would redeal) — re-snapshot the board as it
-  // stands, which is what makes toggling the setting live rather than waiting for the next discard
+  // a reveal setting alone must not rebuild (that would redeal) — re-snapshot the board as it
+  // stands, which is what makes toggling one live rather than waiting for the next discard
   useEffect(() => {
     const c = core.current
-    if (c) setSnapshot(snapshotTable(c, input.showSeatWaits))
+    if (c) setSnapshot(snapshotTable(c, input.showReads))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input.showSeatWaits])
+  }, [input.showReads])
 
   /** Discards `tile` for the seat currently acting, declaring riichi with it when asked. */
   function discard(tile: ParsedTile, fromDrawn: boolean, declareRiichi = riichiArmed): void {
@@ -375,7 +377,7 @@ export function useRound(input: UseRoundInput) {
       const command = report(c, event, false)
       if (command && 'stop' in command) {
         c.round.players[c.round.seat].drawn = undefined
-        setSnapshot(snapshotTable(c, input.showSeatWaits))
+        setSnapshot(snapshotTable(c, input.showReads))
         return
       }
     }
@@ -401,7 +403,7 @@ export function useRound(input: UseRoundInput) {
     if (c.round.players[seat].hand.counts[NORTH] === 0) return
     for (const event of callKita(c.round, c.options, seat)) report(c, event, false)
     capture(c)
-    setSnapshot(snapshotTable(c, input.showSeatWaits))
+    setSnapshot(snapshotTable(c, input.showReads))
   }
 
   /** Calls a closed kan on a held quad. */
@@ -413,7 +415,7 @@ export function useRound(input: UseRoundInput) {
     if (c.round.players[seat].hand.counts[id] !== 4) return
     for (const event of callAnkan(c.round, seat, id)) report(c, event, false)
     capture(c)
-    setSnapshot(snapshotTable(c, input.showSeatWaits))
+    setSnapshot(snapshotTable(c, input.showReads))
   }
 
   /** Tiles the acting seat could discard *and* declare riichi on, read off the same captured

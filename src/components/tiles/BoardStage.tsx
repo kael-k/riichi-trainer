@@ -104,6 +104,16 @@ export function BoardStage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [full])
 
+  // the drawer covers the chrome row now, so it dismisses the way every other overlay in the app
+  // does (`SeatPanel`, `InfoPopover`): Escape, or a press on the scrim outside it
+  useEffect(() => {
+    if (!logOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && toggleLog(false)
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logOpen])
+
   if (!full) {
     return (
       // the hand stays under the board at every size. Held sideways it used to move *beside* it,
@@ -138,9 +148,9 @@ export function BoardStage({
           either way — pads itself clear of them: the status bar/notch above in portrait, and
           whichever physical edge is now "left" (env() tracks the current orientation, not a
           fixed side) once the row itself has moved there for `short:` */}
-      {/* z-40 and opaque: the log drawer below spans the whole overlay (it has to cover the hand
-          strip), so this row has to stay above it — otherwise the drawer buries the very button
-          that closes it */}
+      {/* z-40 and opaque so it sits over the board area; the log drawer below is the one thing
+          that outranks it (`z-50`), since a drawer is a dialog and dismisses on its own scrim
+          rather than through the button it covers */}
       <div className="z-40 flex shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] dark:bg-neutral-950 short:absolute short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
         <Link
           to="/"
@@ -220,13 +230,23 @@ export function BoardStage({
       {/* the drawer is the stage's own, not the board area's: it spans the whole overlay so it
           covers the hand strip too. Opened from a row that sits above the hand, a panel that
           stopped at the board's bottom edge left the tiles it was meant to be read over showing
-          underneath it */}
+          underneath it.
+          It sits *above* the chrome row (`z-50` against its `z-40`) and brings a scrim with it,
+          the same shape every dialog in the app has: pressing outside closes it, so covering the
+          button that opened it costs nothing */}
       {logOpen && (
         <div
-          data-testid="log-drawer"
-          className="absolute inset-y-0 right-0 z-30 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
+          onClick={(e) => e.target === e.currentTarget && toggleLog(false)}
+          className="absolute inset-0 z-50 bg-black/40"
         >
-          <LogList />
+          <div
+            data-testid="log-drawer"
+            // it reaches the top of the overlay now, so it owns the top inset too — under Safari's
+            // bars the first log row would otherwise start beneath the notch
+            className="absolute inset-y-0 right-0 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
+          >
+            <LogList className="min-h-0 flex-1" />
+          </div>
         </div>
       )}
     </div>

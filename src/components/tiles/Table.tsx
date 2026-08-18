@@ -56,10 +56,10 @@ interface TableProps {
   /** Extra centre content — the scoring trainer's win-condition badges. */
   children?: ReactNode
   /** One seat's own info strip — the settings button plus its furiten/algorithm/wait reads — given
-   *  the whole corner cell on that seat's *left*, so a thirteen-sided wait has a 4x4 tile-width
+   *  the whole corner cell on that seat's *right*, so a thirteen-sided wait has a 4x4 tile-width
    *  track to wrap into. The seat's wind comes back the other way, as the second argument: an
    *  already-styled node the strip puts on its own bottom line, which is what lets the wait tiles
-   *  above start at the wind's left edge rather than indented past it. A caller that returns
+   *  above start at the wind's outer edge rather than indented past it. A caller that returns
    *  nothing for a seat gets the bare wind drawn there instead. (Earlier homes, all rejected: one
    *  ring *outboard* of the seat's hand, which cost the board a 16% margin on every side purely to
    *  host a 44px button — on a phone that band came out ~50px and the strip landed on the seat's
@@ -72,26 +72,30 @@ interface TableProps {
  *  (you), then clockwise. The rotation puts every seat's first river row nearest the centre
  *  with rows growing outward, and it carries the seat's `info` corner (its wind, its algorithm,
  *  its waits) along with it. The calls are not a corner cell at all any more — they lie beside
- *  the seat's own hand, off the felt, in the ring below. */
+ *  the seat's own hand, off the felt, in the ring below.
+ *
+ *  `info` is the corner cell on that seat's own **right**, read after `spin` is applied: the
+ *  bottom seat's is the board's bottom-right, and each further slot's is one corner round from
+ *  there. Every seat gets a distinct corner, sanma's three (`SEAT_SLOTS[3]`) included. */
 const SLOTS = [
   {
     river: 'col-start-2 row-start-3',
-    info: 'col-start-1 row-start-3',
+    info: 'col-start-3 row-start-3',
     spin: 'rotate-0',
   },
   {
     river: 'col-start-3 row-start-2',
-    info: 'col-start-3 row-start-3',
+    info: 'col-start-3 row-start-1',
     spin: '-rotate-90',
   },
   {
     river: 'col-start-2 row-start-1',
-    info: 'col-start-3 row-start-1',
+    info: 'col-start-1 row-start-1',
     spin: 'rotate-180',
   },
   {
     river: 'col-start-1 row-start-2',
-    info: 'col-start-1 row-start-1',
+    info: 'col-start-1 row-start-3',
     spin: 'rotate-90',
   },
 ]
@@ -213,12 +217,18 @@ export function Table({
   // that renders no strip gets nothing to place it in, so the board draws it itself below
   const windNode = (index: number) => (
     <span
-      className={`mr-[2cqw] flex h-[8cqw] shrink-0 items-center text-[3cqw] leading-none font-semibold ${
+      // `ml`, not `mr`: the strip's bottom line runs `flex-row-reverse` so the wind stays the
+      // corner-most element, which puts the rest of the line on the wind's *inboard* side
+      // `justify-end` matters only when this node is the *whole* plate — a trainer with its seat
+      // panel off renders no strip, and the wind then fills the corner cell's full width on its
+      // own. Left-aligned there it sat mid-felt instead of on the corner. Inside the strip it is a
+      // `shrink-0` flex item sized to the letter, so the same class changes nothing
+      className={`ml-[2cqw] flex h-[8cqw] shrink-0 items-center justify-end text-[3cqw] leading-none font-semibold ${
         // the settings trigger beside it is `8cqw` tall (`SeatPanel`), several times the letter's
         // own box — bottom-aligning the two would leave the wind sitting visibly below it, so it
-        // takes that line's height and centres itself in it. The plate's own `pl` makes up the
-        // same `(8cqw - 3cqw) / 2` on the left, so the letter sits the same distance from both
-        // felt edges
+        // takes that line's height and centres itself in it. The plate's own `pr` makes up the
+        // same `(8cqw - 3cqw) / 2` on the outer side, so the letter sits the same distance from
+        // both felt edges
         index === seatIndex ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
       }`}
     >
@@ -379,13 +389,14 @@ export function Table({
                 <div
                   data-testid="seat-plate"
                   data-seat={index}
-                  // pinned to the corner's outer edge (`items-end`) and held off it by its own
-                  // padding, so the wind is inside the felt rather than sitting on its border. The
-                  // left inset is the bigger one: it matches what centring the wind on the `8cqw`
-                  // button line already costs it vertically, so the letter sits the same distance
-                  // from both felt edges — and it is the strip's left edge too, which is what puts
-                  // the wait tiles above in line with the wind rather than indented past it
-                  className={`pointer-events-none flex h-full w-full items-end justify-start p-[0.2cqw] pl-[2.7cqw] ${slot.info} ${slot.spin}`}
+                  // pinned to the corner's outer edge (`items-end justify-end`) and held off it by
+                  // its own padding, so the wind is inside the felt rather than sitting on its
+                  // border. The right inset is the bigger one: it matches what centring the wind on
+                  // the `8cqw` button line already costs it vertically, so the letter sits the same
+                  // distance from both felt edges — and it is the strip's outer edge too, which is
+                  // what puts the wait tiles above in line with the wind rather than indented past
+                  // it. Both alignments are the seat's own right corner once `spin` has run
+                  className={`pointer-events-none flex h-full w-full items-end justify-end p-[0.2cqw] pr-[2.7cqw] ${slot.info} ${slot.spin}`}
                 >
                   {/* `min-w-0 flex-1`: the strip's own wait row wraps, and without a boundary to
                       wrap against a thirteen-sided wait drew its tiles in one line straight across

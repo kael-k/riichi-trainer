@@ -17,6 +17,7 @@ const TABLE_BARE: TableRoundOptions = {
   seats: null,
   claims: false,
   showSeatWaits: false,
+  showOpponentHands: false,
 }
 
 describe('useEfficiencySoloRound', () => {

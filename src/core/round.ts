@@ -567,7 +567,6 @@ export function beginTurn(
   // than one in each of the four callers that step a match
   if (state.ended || state.claim) return []
   const player = state.players[state.seat]
-  player.missedWin = player.riichiAt !== undefined && player.missedWin
 
   if (!state.pendingDraw) {
     state.pendingDraw = true
@@ -721,12 +720,17 @@ export function finishTurn(
   const forcedTsumogiri = player.riichiAt !== undefined && player.drawn !== undefined
   let tile: ParsedTile | undefined
   let fromDrawn: boolean
-  if (discard) {
-    tile = discard.tile
-    fromDrawn = discard.fromDrawn
-  } else if (forcedTsumogiri) {
+  // riichi first, *before* the explicit discard: the lock is a rule of the game, not a default an
+  // argument may override. It used to sit in the `else` branch, so it only ever reached the seats
+  // nobody was deciding for — a manual seat in riichi could hand in any tile it liked and the
+  // engine threw it. Replay is unaffected: a riichi seat's logged discard is its drawn tile
+  // already, so forcing it here resolves to the same tile the log names.
+  if (forcedTsumogiri) {
     tile = player.drawn
     fromDrawn = true
+  } else if (discard) {
+    tile = discard.tile
+    fromDrawn = discard.fromDrawn
   } else {
     // no explicit discard and not forced tsumogiri: `finishTurn` is being driven mechanically
     // (a test, `playRound`'s bare loop, `useFoldingRound.ts`'s own generation) rather than
@@ -776,6 +780,13 @@ export function finishTurn(
   if (declaring) entry.riichi = true
   player.river.push(entry)
   state.discards.push({ seat, tile: entry })
+  // temporary furiten (declining a win on somebody else's discard) lasts until this seat has taken
+  // its own turn — cleared here, on the discard that ends it, rather than on the draw that opened
+  // it, so the badge is still up while the reader is deciding and can say why the ron was refused.
+  // No ron is possible between the two moments either way: nobody else discards while this seat
+  // holds its 14th. A seat in riichi keeps it for the rest of the hand, which is the actual rule
+  // and the reason this is not a plain `= false`.
+  player.missedWin = player.riichiAt !== undefined && player.missedWin
   state.log.push({
     kind: 'discard',
     seat,
@@ -851,8 +862,15 @@ function resolveReactions(
       return [...events, ...endWith(state, win)]
     }
     // declining a win that was there is what makes a player temporarily furiten — for a manual
-    // seat that passed just as much as for an AI seat the engine never offered it to
-    if (options.wins && couldHaveWon(state, other, tile.id)) state.players[other].missedWin = true
+    // seat that passed just as much as for an AI seat, whose algorithm was genuinely asked.
+    // A manual seat is the one case that can be skipped *without* being asked: with `claims` off
+    // the engine never offers it a ron at all, so it cannot have declined one, and marking it
+    // furiten would poison its hand over a decision nobody was given. Same rule `reconsiderClaim`
+    // follows when it refuses to invent a pass on the reader's behalf.
+    const asked = options.claims || !isManual(state, other)
+    if (options.wins && asked && couldHaveWon(state, other, tile.id)) {
+      state.players[other].missedWin = true
+    }
   }
 
   if (options.calls) {
