@@ -27,32 +27,29 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
 
 **Five waves landed after it:**
 
-1. **Seat algorithms** (`PLAN-seat-algorithms.md`, T0–T5, commits `4b39b28`…`d658a28`) — the
-   `humans`/`policy` merge, live algorithm changes, the `ALGORITHMS` decision seam, efficiency's
-   riichi removal, docs. ADRs [0007](adr/0007-every-seat-is-a-player.md)–[0011](adr/0011-at-least-one-manual-seat.md).
-2. **A follow-up wave** (commits `07569cc`…`116095d`), whose plan file is not in the tree: the
-   drawn tile moved onto `Hand` (`MatchState.drawn` deleted — and moved again in wave 4, to
-   `PlayerState.drawn`), `SeatView.dealer`,
-   `Algorithm.discard` returning `{ tile, fromDrawn }`, and a fourth algorithm — `tsumogiri` —
-   added as pure seam input with zero engine edits.
-3. **The full action log** (`PLAN-action-log.md`, uncommitted, T0–T9) — `RoundState.log`,
-   `replayLog` (consults no algorithm at all), `core/actionLog.ts`'s codec, and every wall-based
-   trainer's link (`Situation.log`, `FoldingUrl.log`) switched over. Scoring's wall link and
-   shanten's seed+hand format are untouched — nothing decision-shaped to log in either. mjai export
-   deferred as its own small follow-up. [ADR-0021](adr/0021-action-log-replay.md).
-4. **Match context + stored redness** (`PLAN-match-context.md`, T0–T7, commits `27bf71c`…`48f4ab1`) —
-   the round/match rename cascade, `PlayerState.concealed` replacing `PlayerState.reds` and
-   `Hand.drawn`, a real `core/match.ts` (`MatchState`, `createMatch`), that state plumbed through
-   options/state/`SeatView`/snapshot/link, riichi deducting 1000 and adding a stick, and the board
-   showing round number and per-seat points. [ADR-0022](adr/0022-stored-redness.md),
-   [ADR-0023](adr/0023-round-inside-match.md).
-5. **The board's table-layout pass** (`UX-TABLE.md`, no longer in the tree) — calls off the felt
-   and beside the hand they belong to (the reader's own under the board, with `HandDisplay`), the
-   per-seat read (wind, algorithm, full wait list) on one line in the seat's left corner with its
-   waits above, points pinned to the centre panel's edge by a rotating square overlay, a
-   plain-language round line, and a sectioned wall reveal with the perspective seat's own dealt
-   tiles highlighted. Real 4/4/4+1 dealing ([ADR-0024](adr/0024-real-dealing-order.md)) shipped
-   ahead of it as its own commit, since the wall reveal draws that block back to the reader.
+1. **Seat algorithms** — the `humans`/`policy` merge, live algorithm changes, the `ALGORITHMS`
+   decision seam, efficiency's riichi removal. ADRs
+   [0007](adr/0007-every-seat-is-a-player.md)–[0011](adr/0011-at-least-one-manual-seat.md).
+2. **A follow-up wave** — the drawn tile moved onto `Hand` (later onto `PlayerState.drawn`, wave
+   4), `SeatView.dealer`, `Algorithm.discard` returning `{ tile, fromDrawn }`, and a fourth
+   algorithm — `tsumogiri` — added as pure seam input with zero engine edits.
+3. **The full action log** — `RoundState.log`, `replayLog` (consults no algorithm at all),
+   `core/actionLog.ts`'s codec, and every wall-based trainer's link (`Situation.log`,
+   `FoldingUrl.log`) switched over. Scoring's wall link and shanten's seed+hand format are
+   untouched — nothing decision-shaped to log in either. mjai export deferred as its own small
+   follow-up. [ADR-0021](adr/0021-action-log-replay.md).
+4. **Match context + stored redness** — the round/match rename cascade, `PlayerState.concealed`
+   replacing `PlayerState.reds` and `Hand.drawn`, a real `core/match.ts` (`MatchState`,
+   `createMatch`), that state plumbed through options/state/`SeatView`/snapshot/link, riichi
+   deducting 1000 and adding a stick, and the board showing round number and per-seat points.
+   [ADR-0022](adr/0022-stored-redness.md), [ADR-0023](adr/0023-round-inside-match.md).
+5. **The board's table-layout pass** — calls off the felt and beside the hand they belong to (the
+   reader's own under the board, with `HandDisplay`), the per-seat read (wind, algorithm, full
+   wait list) on one line in the seat's left corner with its waits above, points pinned to the
+   centre panel's edge by a rotating square overlay, a plain-language round line, and a sectioned
+   wall reveal with the perspective seat's own dealt tiles highlighted. Real 4/4/4+1 dealing
+   ([ADR-0024](adr/0024-real-dealing-order.md)) shipped ahead of it, since the wall reveal draws
+   that block back to the reader.
 
 ## In flight
 

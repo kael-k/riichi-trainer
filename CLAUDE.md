@@ -46,18 +46,18 @@ Three layers: pure engine (`src/core/`), URL situation codec (`src/features/situ
 
 ### Round and match: the naming model (ADR-0023)
 
-A **round** is one deal (deal, draws, discards, a win or an exhaustive draw), a **match** is the game the rounds sit inside. So `core/round.ts` is the engine that plays a hand — `RoundState`, `RoundOptions`, `RoundEvent`, `createRound`, `playRound`, `stepRound` — and `core/match.ts` is a small, standalone, pure module holding what persists *across* rounds:
+A **round** is one deal (deal, draws, discards, a win or an exhaustive draw), a **match** is the game the rounds sit inside (why: ADR-0023). `core/round.ts` is the engine that plays a hand — `RoundState`, `RoundOptions`, `RoundEvent`, `createRound`, `playRound`, `stepRound` — and `core/match.ts` is a small, standalone, pure module holding what persists *across* rounds:
 
 ```ts
 MatchState { prevalentWind, round, honba, dealerRepeat, dealer, riichiSticks, points }
 createMatch(sanma, overrides?)   // East 1, zeros, dealer 0, 25000 yonma / 35000 sanma
 ```
 
-`prevalentWind` is an honour tile id (`HONOR` = East) and pairs with the existing `SeatView.seatWind`; `round` is which kyoku within it (East 1 is `1`). `honba` and `dealerRepeat` are **separate fields on purpose**: they diverge by ruleset — some rulesets zero the repeat on a noten-dealer exhaustive draw yet still add a honba — so collapsing them would bake one ruleset into the type.
+`prevalentWind` is an honour tile id (`HONOR` = East) and pairs with `SeatView.seatWind`; `round` is which kyoku within it (East 1 is `1`). `honba` and `dealerRepeat` are separate fields — they diverge by ruleset — and are never collapsed into one.
 
-It is **carry-in context, not a sequencer**: there is no `nextRound()`, no dealer rotation, no honba increment, no payout settlement, no end-of-match detection. Nothing steps between rounds. The one thing that does move within a round is riichi — `finishTurn`'s declaring branch takes 1000 off `state.match.points[seat]` and adds a stick — which is why `createRound` takes a **copy** of `options.match` rather than aliasing it: a round must never write through to caller-owned options. `MatchState` reaches everything else from there (`RoundState.match`, `SeatView.match`, `TableSnapshot.match`, the situation link), and its defaults are identity with the pre-match behaviour, which is what let the golden hashes stay byte-identical through the whole plumbing.
+It is **carry-in context, not a sequencer**: no `nextRound()`, no dealer rotation, no honba increment, no payout settlement, no end-of-match detection. The one in-round mutation is riichi — `finishTurn`'s declaring branch takes 1000 off `state.match.points[seat]` and adds a stick — so `createRound` takes a **copy** of `options.match`, never an alias: a round must never write through to caller-owned options. `MatchState` reaches `RoundState.match`, `SeatView.match`, `TableSnapshot.match` and the situation link from there.
 
-Three "east is seat 0" assumptions died with it: `seatWind` is `HONOR + ((seat - dealer + players) % players)`, "am I dealer" is `seat === state.match.dealer`, and the turn counter increments on the dealer's seat rather than seat 0. `scoreHand`'s own `ctx.seat === HONOR` needed no edit — it is correct transitively once `seatWind` is. `RoundState.match.honba` also feeds `ScoringRules.honba`, whose 300/100 payout maths already existed.
+Dealer is no longer assumed to be seat 0: `seatWind` is `HONOR + ((seat - dealer + players) % players)`, "am I dealer" is `seat === state.match.dealer`, and the turn counter increments on the dealer's seat. `RoundState.match.honba` feeds `ScoringRules.honba`'s existing 300/100 payout maths.
 
 ### The round engine (`core/round.ts` + `core/policy.ts`)
 
@@ -71,23 +71,23 @@ Every seat is a **player**, and a player has an **algorithm**: `PlayerState.algo
 
 Call and win permissions live entirely in `RoundOptions`, never in `Table` — the board is a pure
 view (see the `Table.tsx` note in the UI section) and has no concept of what a seat is allowed to
-do. Four flags, each shared by every seat rather than split by algorithm: `wins` gates `tryWin`
-itself (`round.ts`'s sole win evaluator), so `wins: false` blocks ron **and** tsumo for every seat
-and drops the ron entry from `claimOptions` outright — this is what `opponentWins: false` (folding)
-and the hardcoded `wins: false` (efficiency, since ending a per-turn drill on someone else's tsumo
-would cut it short) actually reach. `calls` and `claims` are two different gates on pon/chi: `calls`
-lets an AI algorithm call at all, `claims` is whether a manual seat gets *asked* about one (§ above).
-`riichi` gates `canDeclareRiichi` for AI and manual seats alike — there is no algorithm-only variant
-today, so a trainer that wants no manual riichi (`useEfficiencySoloRound.ts`) turns it off for the
-AI too, and the efficiency trainer does the same for a different reason: it reads no danger, so an
-opponent's riichi there was decoration, not signal (`useEfficiencyRound.ts`). Layering is legality
-(`RoundOptions`) → choice (the algorithm) → prompt (`claims`, manual seats only) — with `wins: false`
-the engine never even asks an algorithm's `win`. Per-seat call permissions were considered and
-rejected: an algorithm that "can't pon" expresses that in its own logic (`defense.call` always
-returns `null`), not in a per-seat permission set `Table` would have to learn about. Daiminkan is
-never offered to anyone (§ above); a manual seat's own tsumo is never an explicit choice —
-`beginTurn` wins the instant the draw completes the hand. Whether these four need finer, per-algorithm
-split control (a call permissions review, not a `Table` prop) is open and tracked outside this file.
+do. Four flags, each shared by every seat (why: ADR-0010):
+
+| Flag     | Gates                                                                              |
+| -------- | ----------------------------------------------------------------------------------- |
+| `wins`   | `tryWin` itself — `false` blocks ron **and** tsumo for every seat and drops the ron entry from `claimOptions` |
+| `calls`  | Whether an AI algorithm may pon/chi at all                                         |
+| `riichi` | `canDeclareRiichi`, for AI and manual seats alike                                  |
+| `claims` | Whether a **manual** seat is *asked* about another seat's discard                  |
+
+Layering is legality (`RoundOptions`) → choice (the algorithm) → prompt (`claims`, manual seats
+only) — with `wins: false` the engine never even asks an algorithm's `win`. `wins: false` is what
+`opponentWins: false` (folding) and efficiency's hardcoded value reach (ending a per-turn drill on
+someone else's tsumo would cut it short); efficiency also runs `riichi: false`, since it reads no
+danger, so an opponent's riichi there was decoration, not signal. Daiminkan is never offered to
+anyone — the engine models no called kan at all — and a manual seat's own tsumo is never an
+explicit choice: `beginTurn` wins the instant the draw completes the hand. Whether these four need
+a finer per-algorithm split is open, tracked in `docs/STATUS.md`.
 
 `core/table.ts#actingSeat(core)` is "whose turn is this, right now": `round.seat`, except that a pending claim outranks the turn order (`claim.seat`). `TableCore` is `{ round, options }` and carries **no seat at all** — which seat a trainer grades and which seat a page draws at the bottom are both that consumer's business, and keeping them in one field is what made grading and perspective the same idea for as long as they were (ADR-0012). `seenBy(core, seat)` and `analysisOf(core, seat)` take the seat explicitly; `snapshotTable` is uniformly per-seat, exposing `seat` (whose turn) and `drawn: { seat, tile }` rather than one privileged `hand`/`drawn` pair. `goRound(core)` plays every AI-decided seat and stops at the next manual turn, a pending claim, or the hand's end — one line over `stepRound` with the manual check passed as `canAct`. With no manual seat at all it plays the hand out, which is the autoplay ADR-0011 had deferred.
 
@@ -107,7 +107,7 @@ Furiten invariant: ron legality lives in `tryWin` alone (own-river or `missedWin
 
 Five decision points — discard, pon/chi, riichi declaration, take-a-win, kita — used to be five scattered conditionals inside `round.ts`, each hand-rolling its own `algorithm === 'defense'` check. They are now one dispatch table: `ALGORITHMS: Record<AIAlgorithm, Algorithm>` (`AIAlgorithm` is `SeatAlgorithm` minus `'manual'`, which is never a key here — `round.ts` short-circuits on `isManual` before ever reaching `ALGORITHMS`). `Algorithm.discard` returns `{ tile, fromDrawn }` rather than a bare tile — `fromDrawn` is the algorithm's own advisory read of tedashi vs tsumogiri (it decides at the kind level and never sees redness), and `finishTurn` still re-derives the river's actual flag from the tile `pickTile` really resolves, so the returned slot is not authoritative on its own. `round.ts`'s five call sites collapse to `ALGORITHMS[player.algorithm].<method>(view, …)`. Adding a new algorithm is one ~10-line object literal plus its own `AIAlgorithm` member; nothing in `round.ts` changes — `tsumogiri` (`core/algorithm.ts`, discards `view.drawn` every turn, never calls/declares/wins) is the proof: it shipped as pure seam input, zero engine edits. No base class, no `Partial` merge — `efficiency`, `defense` and `tsumogiri` are independent object literals.
 
-What an algorithm is allowed to know is a curated `SeatView` (`core/algorithm.ts#seatView`), never raw `RoundState` — a live view would let an algorithm read concealed hands. Public information only (every seat's river, melds, riichi, nuki) plus its own hand and the board; `seen` and `threats` are lazy getters, the same trick `TableAnalysis` uses, since the call gate builds a `SeatView` for every seat on every discard and both cost real work (`seenBy`, `threatViews`) an algorithm that never reads them shouldn't pay for. `win(view, candidate)` is the one method with a second argument: `WinCandidate { tile, from?, score }`, already priced by `tryWin` before it asks — an algorithm that can't see what it declines can't price it, which is what makes `defense.win` an honest `() => false` rather than a blanket carve-out in `tryWin` itself. Purity is unchanged from `policy.ts`: same view ⇒ same choice, every ranking a total order, which is what lets a whole round reproduce from its wall. `SeatView.dealer` (`seatWind === HONOR`) rides along free off `seatWind` itself, added so no algorithm has to re-derive it, and `SeatView.concealed`/`drawn` name the tiles as actually held while `hand` stays counts-only for the maths. `SeatView.match` is the whole `MatchState` — points, honba, sticks, dealer, which round — and is the *same object* `RoundState.match` holds rather than a snapshot, so a mid-round riichi's 1000-point deduction is visible to whoever reads it next. Nothing reads it today; it exists so an EV algorithm has somewhere real to (ADR-0023 lifts ADR-0009's "honba/sticks stay off the view" rejection, which rested on there being no model behind them — now there is one, and no field is permanently `undefined`). Still rejected, so it is not re-derived: dora-in-hand is a function of `concealed` + `doraIndicators` (a helper, not a field — a `Hand` property would couple `Hand` to indicators); per-seat discard counts are already `players[i].river.length`, nothing to add.
+What an algorithm is allowed to know is a curated `SeatView` (`core/algorithm.ts#seatView`), never raw `RoundState`. Public information only (every seat's river, melds, riichi, nuki) plus its own hand and the board; `seen` and `threats` are lazy getters (the `TableAnalysis` trick), since the call gate builds a `SeatView` for every seat on every discard. `win(view, candidate)` is the one method with a second argument: `WinCandidate { tile, from?, score }`, already priced by `tryWin` before it asks — `defense.win` is simply `() => false`. Purity is unchanged from `policy.ts`: same view ⇒ same choice, every ranking a total order. `SeatView.dealer` (`seatWind === HONOR`) rides along free off `seatWind`; `SeatView.concealed`/`drawn` name the tiles as actually held while `hand` stays counts-only for the maths. `SeatView.match` is the whole `MatchState` — points, honba, sticks, dealer, which round — the *same object* `RoundState.match` holds rather than a snapshot, so a mid-round riichi's 1000-point deduction is visible to whoever reads it next (ADR-0023 amends ADR-0009's rejection of this). Nothing reads it today. Still rejected: dora-in-hand stays a helper over `concealed` + `doraIndicators`, not a field; per-seat discard counts are already `players[i].river.length`.
 
 Two behaviour changes rode in with the seam, not before: `defense.kita` is `false` (a folding player is leaving the hand, not chasing dora — every AI seat used to pull regardless), and declining a win is now expressible per algorithm (`win` receives the priced candidate) rather than a single hardcoded "defense never wins" in `tryWin`.
 
@@ -164,12 +164,10 @@ play matter.
 
 ### The danger model (`core/danger.ts`) + the folding trainer
 
-`assessDiscards(hand, threats, visible, sanma)` ranks every tile in hand by how dangerous it is
-against the seats in riichi. **Ordinal, never probabilistic** — published betaori tables exist, but a
-number typed in from memory becomes a number the user learns, so tiles land in tiers and grading is
-tier ordering. If real deal-in rates are ever wanted, measure them by simulation over the reachable
-hand space; do not type them in. Judged on **public information only**: what the threat actually
-holds is never consulted, which is what makes a correct-but-unlucky choice still correct.
+`assessDiscards(hand, threats, visible, sanma)` ranks every tile in hand into danger tiers against
+the seats in riichi — **ordinal, never probabilistic** (why: ADR-0004). Judged on **public
+information only**: what the threat actually holds is never consulted, so a correct-but-unlucky
+choice still grades correct.
 
 Tiers, safest first: `genbutsu`, `noChance`, `oneChance`, `doubleSuji`, `suji`, `honour`, `halfSuji`,
 `nonSuji`. Two placements that are decisions, not accidents: `halfSuji` (4/5/6 with only one side
@@ -374,18 +372,17 @@ wind takes that same `8cqw` line height and centres in it, and the plate's `pl` 
 waits are `100cqw/32` with the strip at `w-full`: without a width to wrap against, a column that
 sizes itself to its own content drew all thirteen in one line straight off the cell.
 
-Two earlier homes are recorded because both failed for reasons worth not repeating: the centre panel
-beside each wind mark (four 44px targets on a panel barely wider than that buried the round wind, the
-wall count and the dora row), and one ring **outboard** of that seat's hand, which cost the square a
-`SEAT_RING_FRACTION` margin on all four sides purely to host that button — on a phone the band came
-out ~50px, so the plate and the hand row together overflowed it and landed on the seat's third river
-row. `SEAT_RING_FRACTION` survives that move at 10%, but it is now the revealed-hand ring alone (one
-row of tiles at `100cqw/16`, ~8.3cqw deep) and applies only while `showsHands` — it still drives both
-the felt's own padding and the `--table-cap` divisor that keeps the felt from shrinking when the band
-is spent. The hand ring itself is unchanged: `absolute inset-0` on the *outer* square (the `relative`
-box the felt's own padding lives inside) — `display: contents` on the per-seat grid wrapper doesn't
-generate a box, so the absolutely positioned ring still resolves against that outer square regardless
-of its own grid-item ancestry, and `items-end` lands it flush against the square's true edge.
+Two earlier homes failed and are recorded so they aren't retried: a centre-panel row (too narrow for
+three 44px targets plus the round wind, wall count and dora row), and a ring **outboard** of the
+seat's hand (its `SEAT_RING_FRACTION` margin ran ~50px on a phone, overflowing the plate and hand row
+onto the seat's third river row). `SEAT_RING_FRACTION` survives that move at 10%, but is now the
+revealed-hand ring alone (one row of tiles at `100cqw/16`, ~8.3cqw deep), applies only while
+`showsHands`, and still drives both the felt's own padding and the `--table-cap` divisor that keeps
+the felt from shrinking when the band is spent. The hand ring itself: `absolute inset-0` on the
+*outer* square (the `relative` box the felt's own padding lives inside) — `display: contents` on the
+per-seat grid wrapper generates no box, so the ring still resolves against that outer square
+regardless of its own grid-item ancestry — and `items-end` lands it flush against the square's true
+edge.
 
 `Table` computes `seatInfoNodes` once per seat rather than calling `seatInfo` again per render — a
 caller may offer `seatInfo` unconditionally and return nothing per seat while `seatsEnabled` is
