@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { SettingsButton } from '../../features/settings/SettingsDialog'
-import { DEFAULT_TILE_SCALE, useSettings } from '../../features/settings/settingsStore'
+import { boardScale, DEFAULT_TILE_SCALE, useSettings } from '../../features/settings/settingsStore'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 import { useLog } from '../../store/log'
 import { InfoPopover } from '../InfoPopover'
@@ -229,6 +229,10 @@ export function BoardStage({
       style={
         {
           '--tile-w-base': `calc(var(--tile-w-raw) * ${tileScale})`,
+          // one size setting over the whole table: the tiles scale by the line above, and the felt
+          // they lie on scales with them by this one, so S is a small board with small tiles
+          // rather than small tiles marooned on the same board XL gets
+          '--board-scale': boardScale(tileScale),
           // re-declared here (not just --tile-w-base) so plain, non-overriding tile usages (the
           // hand itself) actually pick up the scale: --tile-w's var() reference resolves once at
           // whichever element declares it, not freshly per inheriting descendant

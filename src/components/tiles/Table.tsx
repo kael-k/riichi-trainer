@@ -1,8 +1,7 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Meld } from '../../core/agari'
 import type { ParsedTile, RiverTile } from '../../core/tiles'
-import { DEFAULT_TILE_SCALE, useSettings } from '../../features/settings/settingsStore'
 import { WINDS, type Wind } from '../../features/situation/urlCodec'
 import { MeldDisplay, River, Tile } from './Tile'
 
@@ -108,14 +107,6 @@ const SEAT_SLOTS: Record<number, number[]> = { 3: [0, 1, 3], 4: [0, 1, 2, 3] }
  *  instead of silently growing. */
 const INDICATOR_SLOTS = 5
 
-/** Fraction of the board's own edge given up to the per-seat hand ring when hands are revealed
- *  (`showsHands`) — the single number behind both the felt's own padding (`p-[10%]`, hardcoded
- *  below since Tailwind's class scanner needs the literal) and the `--table-cap` divisor that
- *  keeps the felt from shrinking when it's spent. A revealed hand row is `100cqw/16` per tile,
- *  so ~8.3cqw tall — 10% of the square clears it. It was 16% while the seat strip lived out here
- *  too; the strip has moved to the corner cells, and the board keeps the difference. */
-const SEAT_RING_FRACTION = 0.1
-
 /** A betting stick, sized off the board's tile width like everything else here: 1000 points
  *  (one red dot) for a riichi bet, 100 points (plain) for an honba counter. It reads as a
  *  counter mark beside the tile icon, so it inherits whatever small `--tile-w` that row sets
@@ -204,7 +195,6 @@ export function Table({
   // the board draws its own tiles as a fraction of its width, so the tile-size setting can only
   // reach them through the board's cap — 25.6rem is the old fixed 32rem read back out at the
   // default scale, so an untouched setting leaves the board exactly where it was
-  const tileScale = useSettings((s) => s.tileScale) ?? DEFAULT_TILE_SCALE
   // the ring outside the felt holds hands *and* calls, so a board where nobody's hand is drawn
   // but somebody has called still has to pay for the band — otherwise those calls would be drawn
   // over the felt's own edge and across a river
@@ -241,36 +231,25 @@ export function Table({
   const seatInfoNodes = seatInfo ? seats.map((_, i) => seatInfo(i, windNode(i))) : undefined
 
   return (
-    // square, so its size is one number: the narrower of the column it sits in and the height
-    // left after the page chrome (~8rem of header, status line and padding — the fullscreen
-    // board overrides that with its own `--board-max-h`), capped so it does not balloon on a
-    // desktop. The width lives on this outer div, not on the square
-    // itself: beside the hand the board is a flex item, where a `w-full` child would have
-    // nothing to resolve against and collapse to nothing
-    <div
-      // `100cqh` is the real height left for the board wherever an ancestor declares itself a
-      // size container (the fullscreen stage does), so the square fits what is actually there
-      // rather than what `--board-max-h` guessed the chrome and the hand would take. With no such
-      // ancestor the unit falls back to the small viewport, which is larger than the guess and so
-      // changes nothing for the inline layout
-      className="relative mx-auto w-full max-w-[min(100%,100cqh,var(--board-max-h,calc(100svh-8rem)),var(--table-max,var(--table-cap)))] shrink-0"
-      style={
-        {
-          // the revealed hands are paid for out of the board's own footprint (the 10% below), so
-          // the cap grows to match: at the same felt size the square needs 1/0.8 of the width.
-          // Without it, revealing hands shrank the felt.
-          // Named `--table-cap`, not `--table-max`: this is the desktop "don't balloon" default,
-          // and an inline style would otherwise outrank the `--table-max` a caller sets on an
-          // ancestor — which is exactly how fullscreen lifts the cap
-          '--table-cap': `${(25.6 * tileScale) / (showsHands ? 1 - 2 * SEAT_RING_FRACTION : 1)}rem`,
-        } as CSSProperties
-      }
-    >
-      {/* the revealed hands sit outside the felt, so the square gives up a margin's worth of its
-          own width to hold them — only while they are actually shown, so an ordinary board is
-          exactly as big as it was. The border box stays square either way, which is what keeps
-          each seat's rotation covering it. `relative`: the ring below is anchored to *this* box's
-          own edge, not the felt's, so it can never leave the square */}
+    // square, so its size is one number: the smaller of the width it is given and the height left
+    // beside it. Both are read off the stage's own board area, which declares itself a size
+    // container — `100cqh` is the height genuinely left after the chrome row and the hand strip
+    // have taken theirs, rather than the `--board-max-h` estimate of them (the fallback for any
+    // caller that is not a size container). There is no "don't balloon" cap any more: the board
+    // fills the stage, and `--board-scale` (the tile-size setting, set on the stage root) is what
+    // says how much of it to take. The width lives on this outer div, not on the square itself:
+    // beside the hand the board is a flex item, where a `w-full` child would have nothing to
+    // resolve against and collapse to nothing
+    <div className="relative mx-auto w-full max-w-[calc(min(100%,100cqh,var(--board-max-h,100svh))*var(--board-scale,1))] shrink-0">
+      {/* the revealed hands sit outside the felt, so the square gives up 10% of its own edge on
+          each side to hold them — only while they are actually shown, so an ordinary board is
+          exactly as big as it was. A revealed hand row is `100cqw/16` per tile, so ~8.3cqw tall,
+          which 10% clears; it was 16% while the seat strip lived out here too, and the board kept
+          the difference when the strip moved into the corner cells. The literal is written out
+          rather than computed because Tailwind's class scanner needs to see it.
+          The border box stays square either way, which is what keeps each seat's rotation covering
+          it. `relative`: the ring below is anchored to *this* box's own edge, not the felt's, so
+          it can never leave the square */}
       <div
         data-testid="board"
         className={`@container relative aspect-square w-full ${showsHands ? 'p-[10%]' : ''}`}

@@ -66,8 +66,22 @@ export interface Settings {
  *  button crowds the row on a phone. */
 export const TILE_SCALES = [1, 1.25, 1.5, 1.8] as const
 
+/** How much of the space available to it the board takes, one entry per `TILE_SCALES` step — the
+ *  size setting is one control over the whole table, hand and felt alike, so the felt has to grow
+ *  with the tiles under it rather than staying the size the viewport happens to allow. XL is the
+ *  whole of it; the smaller steps leave the margin that makes them read as smaller at all. The two
+ *  arrays are paired by index and must stay the same length. */
+export const BOARD_SCALES = [0.7, 0.8, 0.9, 1] as const
+
 /** Size used until the reader picks one: M, big enough to read a hand on a phone. */
 export const DEFAULT_TILE_SCALE = 1.25
+
+/** The board's share of its space for a given tile scale — an unrecognised scale (an older
+ *  persisted value) falls back to full rather than to nothing. */
+export function boardScale(tileScale: number): number {
+  const step = TILE_SCALES.indexOf(tileScale as (typeof TILE_SCALES)[number])
+  return BOARD_SCALES[step] ?? 1
+}
 
 interface SettingsState extends Settings {
   theme: Theme
