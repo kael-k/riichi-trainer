@@ -33,7 +33,7 @@ interface BoardStageProps {
    *  felt. Omitted by shanten: it has no felt, and puts its puzzle (tiles plus the guess controls)
    *  through `board` instead so the stage centres it rather than pinning it to the hand strip. */
   hand?: ReactNode
-  /** The trainer's own score/accuracy/clock lines. A boxed HUD reserved above the board, top-right,
+  /** The trainer's own score/accuracy/clock lines. A boxed HUD reserved above the board, top-left,
    *  rather than living in the session panel — a clock behind a drawer tap is a clock nobody reads.
    *  Real flow, not a float: the board is pushed down to make room for it rather than covering
    *  whatever seat's plate would otherwise sit there. Always on screen, panel open or shut. */
@@ -301,10 +301,10 @@ export function BoardStage({
         <div className="flex min-h-0 flex-1 flex-col short:pl-[calc(2.75rem+env(safe-area-inset-left))]">
           {status && (
             // real flow, not a float: a reserved row pushes the board down to make room rather
-            // than sitting over whatever seat's plate would otherwise be there (top-right is
-            // toimen's corner in portrait). Boxed so it reads as a HUD rather than stray text —
-            // same card treatment as the notice below it, one size down
-            <div className="flex shrink-0 justify-end p-2">
+            // than sitting over whatever seat's plate would otherwise be there. Boxed so it reads
+            // as a HUD rather than stray text — same card treatment as the notice below it, one
+            // size down
+            <div className="flex shrink-0 justify-start p-2">
               <div className="flex flex-col gap-0.5 rounded-lg border border-neutral-200 bg-white/95 px-2.5 py-1.5 text-xs text-neutral-600 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400">
                 {status}
               </div>
