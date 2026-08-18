@@ -186,8 +186,7 @@ export function EfficiencyPage() {
     resetLabel: t('common.resetHand'),
   }
 
-  // how the session is going, written once and read in both places it is shown: the page's own
-  // status bar, and the session panel beside the board
+  // how the session is going — passed to BoardStage's `status`, which floats it as a HUD over the board
   const scoreLines = (
     <>
       <span>

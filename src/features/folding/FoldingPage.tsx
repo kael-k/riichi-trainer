@@ -271,8 +271,7 @@ export function FoldingPage() {
   const bottomConcealed = !viewingManual && !showOpponentHands
   const canAct = perspective === round.acting && !round.finished
 
-  // how the session is going, written once and read in both places it is shown: the page's own
-  // status bar, and the session panel beside the board
+  // how the session is going — passed to BoardStage's `status`, which floats it as a HUD over the board
   const scoreLines = (
     <>
       {/* the running score says "that last one was wrong" as loudly as the panel does, so it

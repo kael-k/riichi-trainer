@@ -33,8 +33,9 @@ interface BoardStageProps {
    *  felt. Omitted by shanten: it has no felt, and puts its puzzle (tiles plus the guess controls)
    *  through `board` instead so the stage centres it rather than pinning it to the hand strip. */
   hand?: ReactNode
-  /** The trainer's own score/accuracy/clock lines, as plain children of a small column — the
-   *  session panel styles them. */
+  /** The trainer's own score/accuracy/clock lines. Floats as a small HUD in the board area's own
+   *  corner rather than living in the session panel — a clock behind a drawer tap is a clock
+   *  nobody reads. Kept short: it sits over the felt at every viewport, panel open or shut. */
   status?: ReactNode
   /** Per-action feedback, in full: tile lists, ukeire counts, the lot. What the session panel
    *  shows. */
@@ -123,22 +124,20 @@ export function InfoButton({
  * drawer below that — so the two cannot drift apart.
  */
 function SessionPanel({
-  status,
   notice,
   panel,
-}: Pick<BoardStageProps, 'status' | 'notice' | 'panel'>) {
+}: Pick<BoardStageProps, 'notice' | 'panel'>) {
   const { t } = useTranslation()
   const { entries, clear } = useLog()
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      {(status || notice || panel) && (
+      {(notice || panel) && (
         // `flex-auto` on both halves rather than a fixed share: each is based on its own content
         // and only gives ground in proportion to it, so a long ukeire list gets the room an empty
         // log is not using, and a log that has run all game still keeps its own.
         // Tiles here are read, not played, and the column is 320px wide: at the hand's own size a
         // single ukeire list filled the panel on its own, so they draw at the log's scale instead
         <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto [--tile-w:calc(var(--tile-w-base)*0.6)]">
-          {status && <div className="flex flex-col gap-1 text-sm text-neutral-500">{status}</div>}
           {notice}
           {panel}
         </div>
@@ -315,6 +314,21 @@ export function BoardStage({
             // where you cannot see your own discards is not a table
             <div className="max-h-full overflow-auto px-2">{children}</div>
           )}
+          {status && (
+            // ambient, not transient: no timer, no dismiss. Bottom-left rather than alongside the
+            // notice above (`inset-x-2 top-2`, centred — spans the whole width on a phone), so the
+            // two floats never fight for the same strip. The board area centres a square, so one
+            // axis always has slack; whichever it is, the corner lands in it, and the translucent
+            // backdrop covers the (rare) case it doesn't. `short:` mirrors the notice's own move
+            // into the gutter, offset past the chrome column instead of the board's near edge.
+            // Not pointer-events-none as a whole: efficiency's ukeire line carries a live
+            // GlossaryTerm popover trigger, so only the wrapper is inert and the chip itself isn't
+            <div className="pointer-events-none absolute bottom-2 left-2 flex max-w-[45%] short:bottom-auto short:top-2 short:left-[calc(3.25rem+env(safe-area-inset-left))] short:max-w-[calc((100svw-2.75rem-var(--board-max-h))/2-0.5rem)]">
+              <div className="pointer-events-auto flex flex-col gap-0.5 rounded-lg bg-white/85 px-2 py-1 text-xs text-neutral-600 backdrop-blur-sm dark:bg-neutral-950/85 dark:text-neutral-400">
+                {status}
+              </div>
+            </div>
+          )}
           {!logOpen && (noticeCompact ?? notice) && noticeShown && (
             // pointer-events-none: a notice must never sit between the reader and a tile they are
             // about to click, which is the whole difference between this and a dialog. Held
@@ -362,7 +376,7 @@ export function BoardStage({
           data-testid="session-panel"
           className="flex w-80 shrink-0 flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
         >
-          <SessionPanel status={status} notice={notice} panel={panel} />
+          <SessionPanel notice={notice} panel={panel} />
         </aside>
       )}
 
@@ -383,7 +397,7 @@ export function BoardStage({
             // the first log row would otherwise start beneath the notch
             className="absolute inset-y-0 right-0 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
           >
-            <SessionPanel status={status} notice={notice} panel={panel} />
+            <SessionPanel notice={notice} panel={panel} />
           </div>
         </div>
       )}
