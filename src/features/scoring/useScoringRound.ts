@@ -158,6 +158,20 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
     round: null,
     invalidLink: false,
   })
+  // the (urlData, handIndex) pair whose deal is already on the log — a plain `request.current`
+  // check only catches a *stale* async resolution (see below), not the synchronous branches,
+  // which both StrictMode invocations of this effect reach trivially; keying on the pair that
+  // actually names "this hand" (handIndex resets to 0 whenever urlData changes, above) is what
+  // survives the double-invoke the same way `loggedReplay` does elsewhere
+  const loggedDeal = useRef<{ urlData: ScoringUrl; handIndex: number } | undefined>(undefined)
+
+  function logDealt(query: string) {
+    if (loggedDeal.current?.urlData === urlData && loggedDeal.current?.handIndex === handIndex) {
+      return
+    }
+    loggedDeal.current = { urlData, handIndex }
+    log('log.dealt', undefined, undefined, undefined, query)
+  }
 
   function fallbackHand(seed: string, invalidLink: boolean): State {
     const situation = generateHand(seed, options)
@@ -193,6 +207,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
       loading: false,
       invalidLink,
     }))
+    logDealt(encodeScoringWallUrl(wall, options))
   }
 
   useEffect(() => {
@@ -212,6 +227,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
         loading: false,
         invalidLink: false,
       }))
+      logDealt(encodeScoringUrl(pinned, options.sanma))
       return
     }
 
@@ -237,10 +253,9 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
       if (!found) {
         // no attempt in the budget produced a legal win: fall back to a constructed hand, which
         // is also the only way rare shapes (kokushi, yakuman) ever come up
-        setState((prev) => ({
-          ...fallbackHand(fallbackSeed, false),
-          lastResult: prev?.lastResult ?? null,
-        }))
+        const fallback = fallbackHand(fallbackSeed, false)
+        setState((prev) => ({ ...fallback, lastResult: prev?.lastResult ?? null }))
+        logDealt(encodeScoringUrl(fallback.situation, options.sanma))
         return
       }
       pending.current = {

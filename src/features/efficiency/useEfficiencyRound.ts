@@ -216,6 +216,10 @@ export function useEfficiencyRound(
     if (loggedReplay.current === situation) return
     loggedReplay.current = situation
     const base = table.situation(seatIndex, [])
+    // the deal itself, as its own row: its rewind link is the board as dealt, and its share
+    // button is the one surface left for sending a fresh board — the page's own share pill is
+    // gone (T3), so every deal has to leave a row behind it or the board is unshareable
+    log('log.dealt', undefined, undefined, undefined, encodeSituation(base))
     table.replayed().forEach((entry, i) => {
       if (entry.kind !== 'discard' || entry.seat !== seatIndex) return
       log(

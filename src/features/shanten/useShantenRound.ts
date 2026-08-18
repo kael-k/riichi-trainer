@@ -52,14 +52,34 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
   // exact hand, which only the index-0 deal below shows. Reset it whenever the situation changes
   // identity — the "adjust state while rendering" pattern the other trainers use
   const [lastSituation, setLastSituation] = useState(situation)
+  // the dedupe ref below only tells hands apart by handIndex, which restarts at 0 for every new
+  // situation — reset it alongside the index so a fresh link's own hand 0 isn't skipped as "already
+  // logged" just because the previous situation's hand 0 was
+  const loggedDealIndex = useRef<number | undefined>(undefined)
   if (situation !== lastSituation) {
     setLastSituation(situation)
     setHandIndex(0)
+    loggedDealIndex.current = undefined
   }
   const stats = useSessionStats()
   const handRef = useRef<Hand>(undefined)
   const [state, setState] = useState<State>(() => nextHand())
   const log = useLog((s) => s.log)
+
+  /** The hand as dealt, as its own log row — see the table hook's own `logReplay` for why every
+   *  deal needs one now that the page's own share pill is gone (T3). Keyed on `handIndex` rather
+   *  than `situation` (which does not move per hand in this stream) — see the reset above. */
+  function logDealt(hand: ParsedTile[]) {
+    if (loggedDealIndex.current === handIndex) return
+    loggedDealIndex.current = handIndex
+    log(
+      'log.dealtHand',
+      undefined,
+      hand,
+      serializeTenhou(hand),
+      encodeSituation({ ...situation, hand, wall: [], log: [] }),
+    )
+  }
 
   /** Deals the hand for the current `handIndex`, carrying over whether the stream is
    *  revealed and the pending feedback so an answered hand rolls straight into the next. */
@@ -87,7 +107,9 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
   }
 
   useEffect(() => {
-    setState((s) => nextHand(s))
+    const next = nextHand(state)
+    setState(next)
+    logDealt(next.hand)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [situation, handIndex, sanma])
 

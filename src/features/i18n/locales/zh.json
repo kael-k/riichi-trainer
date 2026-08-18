@@ -397,6 +397,8 @@
     "rewound": "已撤回到第 {{number}} 条记录",
     "wentBack": "已后退一步",
     "replay": "回放：打出 {{tile}}",
+    "dealt": "已发牌",
+    "dealtHand": "已发牌",
     "lab": {
       "discard": "第{{turn}}巡: 打出{{tile}}"
     },

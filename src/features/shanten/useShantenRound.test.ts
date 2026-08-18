@@ -117,8 +117,14 @@ describe('useShantenRound', () => {
     act(() => result.current.reveal())
     act(() => result.current.submit(0))
 
-    const entry = useLog.getState().entries.at(-1)!
+    // submit() auto-advances into the next hand, whose own "dealt" row lands after the result —
+    // the result itself is the second-to-last entry
+    const entries = useLog.getState().entries
+    const entry = entries.at(-2)!
+    expect(entry.key).toBe('log.shanten.result')
     expect(decodeSituation(new URLSearchParams(entry.situation!)).hand).toEqual(situation.hand)
+    // the newly-dealt next hand gets its own row, shareable before it has been answered
+    expect(entries.at(-1)!.key).toBe('log.dealtHand')
     // a pinned hand is served once: the stream carries on rather than re-serving it forever
     expect(result.current.hand).not.toEqual(situation.hand)
   })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
 import { createMatch } from '../../core/match'
@@ -77,6 +77,8 @@ export function useLabRound(situation: Situation, options: LabOptions) {
 
   const log = useLog((s) => s.log)
   const [analysis, setAnalysis] = useState<LabAnalysis>({ ranked: [], danger: [] })
+  // the situation whose deal is already on the log; see `logDealt` below
+  const loggedDeal = useRef<Situation>(undefined)
 
   /** No grading at all — the lab logs the reader's own discards plainly and reads the analysis
    *  for whichever seat is about to act. It never returns a command: the hand plays out. */
@@ -106,6 +108,20 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     showReads: options.showSeatWaits || options.showOpponentHands,
     onEvent,
   })
+
+  /** The deal itself, as its own row — see the table hook's own `logReplay` for why every deal
+   *  needs one now that the page's own share pill is gone (T3). Keyed on the situation's identity
+   *  the same way, since this effect runs more than once per mount for one and the same round. */
+  function logDealt() {
+    if (loggedDeal.current === situation) return
+    loggedDeal.current = situation
+    log('log.dealt', undefined, undefined, undefined, encodeSituation(table.situation(seatIndex, [])))
+  }
+
+  useEffect(() => {
+    logDealt()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [situation])
 
   const snapshot = table.snapshot
   const acting = snapshot?.seat ?? seatIndex

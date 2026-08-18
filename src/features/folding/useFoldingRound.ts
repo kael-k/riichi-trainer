@@ -640,6 +640,9 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
   function logReplay(built: RoundBoard) {
     if (loggedReplay.current === urlData) return
     loggedReplay.current = urlData
+    // the board as handed over, as its own row — see the table hook's own `logReplay` for why
+    // every deal needs one now that the page's own share pill is gone (T3)
+    log('log.dealt', undefined, undefined, undefined, encodeFoldingUrl(built.wall, built.board, []))
     const sinceHandover = built.replay.slice(built.handedOverAt)
     sinceHandover.forEach((entry, i) => {
       if (entry.kind !== 'discard' || entry.seat !== built.seatIndex) return

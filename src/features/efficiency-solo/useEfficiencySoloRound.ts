@@ -164,6 +164,9 @@ export function useEfficiencySoloRound(
     if (loggedReplay.current === situation) return
     loggedReplay.current = situation
     const base = table.situation(seatIndex)
+    // the deal itself, as its own row — see the table hook's own `logReplay` for why every deal
+    // needs one now that the page's own share pill is gone (T3)
+    log('log.dealt', undefined, undefined, undefined, encodeSituation({ ...base, log: [] }))
     table.replayed().forEach((entry, i) => {
       if (entry.kind !== 'discard') return
       log(

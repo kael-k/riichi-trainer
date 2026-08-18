@@ -397,6 +397,8 @@
     "rewound": "{{number}}件目の記録まで巻き戻しました",
     "wentBack": "1つ前に戻りました",
     "replay": "リプレイ: {{tile}}を捨てた",
+    "dealt": "配牌完了",
+    "dealtHand": "配牌完了",
     "lab": {
       "discard": "{{turn}}巡目: {{tile}}を切った"
     },

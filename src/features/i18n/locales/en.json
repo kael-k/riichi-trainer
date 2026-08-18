@@ -499,6 +499,8 @@
     "rewound": "Rewound to entry {{number}}",
     "wentBack": "Went back one step",
     "replay": "Replayed discard {{tile}}",
+    "dealt": "Board dealt",
+    "dealtHand": "Hand dealt",
     "lab": {
       "discard": "Turn {{turn}}: discarded {{tile}}"
     },

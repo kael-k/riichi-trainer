@@ -499,6 +499,8 @@
     "rewound": "Tornato indietro alla voce {{number}}",
     "wentBack": "Tornato indietro di un passo",
     "replay": "Scarto ripetuto {{tile}}",
+    "dealt": "Mano distribuita",
+    "dealtHand": "Mano distribuita",
     "lab": {
       "discard": "Turno {{turn}}: scartato {{tile}}"
     },

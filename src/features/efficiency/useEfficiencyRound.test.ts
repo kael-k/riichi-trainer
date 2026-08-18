@@ -309,13 +309,14 @@ describe('useEfficiencyRound', () => {
     useLog.getState().clear()
     const link = renderHook(() => useEfficiencyRound(shared, BARE, true))
     const entries = useLog.getState().entries
-    expect(entries.map((e) => e.key)).toEqual(['log.replay', 'log.replay'])
+    // the board as dealt gets its own leading row, ahead of the replayed discards (T2)
+    expect(entries.map((e) => e.key)).toEqual(['log.dealt', 'log.replay', 'log.replay'])
     expect(
       entries.map((e) => {
         const log = decodeSituation(new URLSearchParams(e.situation!)).log
         return log.filter((entry) => entry.kind === 'discard' && entry.seat === 0).length
       }),
-    ).toEqual([0, 1])
+    ).toEqual([0, 0, 1])
     expect(link.result.current.hand).toEqual(played.result.current.hand)
     expect(link.result.current.turn).toBe(played.result.current.turn)
   })
