@@ -165,12 +165,12 @@
     },
     "efficiencySolo": {
       "title": "Efficiency trainer - solo",
-      "desc": "Draw and discard your way to tenpai alone — no opponents, no calls, nothing to defend against.",
+      "desc": "Draw and discard your way to tenpai alone.",
       "intro": "What it is: the same discard choice as the trainer with opponents, with the table taken away. You are dealt thirteen tiles and draw from a full wall by yourself — nobody else discards, calls or wins — so a hand simply runs from the deal until you reach tenpai.\n\nWhy it matters: with no opponents to read and no calls to fear, every decision is only about the shape of your own hand. That is tile efficiency on its own, and it is the skill the table trainers are built on top of.\n\nHow to play: draw, then discard the tile that leaves your hand closest to tenpai and with the most tiles still able to improve it — that count is its ukeire. The trainer names the best discard and how many improving tiles yours cost you."
     },
     "shanten": {
       "title": "Shanten trainer",
-      "desc": "Guess how far a hand is from tenpai, against the clock.",
+      "desc": "Guess how far a hand is from tenpai.",
       "intro": "What it is: a hand appears and you say its shanten — how many tile exchanges it still needs to reach tenpai. 0 means it is already tenpai and waiting to win, 1 means one useful swap away, and so on.\n\nWhy it matters: shanten is the number every discard is measured against, since \"which tile is better\" almost always means \"which one keeps shanten lower\". Reading it at a glance is what makes the rest of the game fast.\n\nHow to play: the hand is up and the clock is already running, so answer with the buttons (or type the number) and the next hand is dealt straight away, the previous answer kept beside it. Pause stops the clock; reset hides the hand and deals a fresh one, since a hand you have already studied cannot be timed again."
     },
     "scoring": {
