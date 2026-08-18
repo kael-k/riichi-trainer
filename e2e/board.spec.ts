@@ -328,6 +328,27 @@ for (const trainer of TABLE_TRAINERS) {
     expect(hand.y + hand.height).toBeLessThanOrEqual(viewport.height + 1)
   })
 
+  test(`${trainer}: the board fills the room it is given`, async ({ page }) => {
+    await page.goto(`/${trainer}`)
+    await waitForStage(page)
+
+    // the other half of "it fits": a square that fits inside a room it only half fills passes
+    // every test above and is still the bug — `--board-scale` used to spend a fifth of every
+    // default board on margin, and the `--board-max-h` estimate another slice on top of it.
+    // Measured against the *content* box of the stage's board area, which is the room the square
+    // sizes itself off (`100cqh`) — the padding a wide screen puts around it is not unused space
+    const room = await page.getByTestId('board-area').evaluate((el) => {
+      const style = getComputedStyle(el)
+      const px = (value: string) => parseFloat(value) || 0
+      return Math.min(
+        el.clientWidth - px(style.paddingLeft) - px(style.paddingRight),
+        el.clientHeight - px(style.paddingTop) - px(style.paddingBottom),
+      )
+    })
+    const board = (await page.getByTestId('board').first().boundingBox())!
+    expect(board.width, `board ${board.width} in ${room}`).toBeGreaterThan(room * 0.97)
+  })
+
   test(`${trainer}: no seat plate lands on a river`, async ({ page }) => {
     await page.goto(`/${trainer}`)
     await expect(page.getByTestId('board').first()).toBeVisible()

@@ -234,13 +234,17 @@ export function Table({
     // square, so its size is one number: the smaller of the width it is given and the height left
     // beside it. Both are read off the stage's own board area, which declares itself a size
     // container — `100cqh` is the height genuinely left after the chrome row and the hand strip
-    // have taken theirs, rather than the `--board-max-h` estimate of them (the fallback for any
-    // caller that is not a size container). There is no "don't balloon" cap any more: the board
-    // fills the stage, and `--board-scale` (the tile-size setting, set on the stage root) is what
-    // says how much of it to take. The width lives on this outer div, not on the square itself:
-    // beside the hand the board is a flex item, where a `w-full` child would have nothing to
-    // resolve against and collapse to nothing
-    <div className="relative mx-auto w-full max-w-[calc(min(100%,100cqh,var(--board-max-h,100svh))*var(--board-scale,1))] shrink-0">
+    // have taken theirs. Nothing estimates that any more: the old `--board-max-h` guess
+    // (`100svh` minus a nominal chrome+hand) sat inside this same `min()`, so whenever it came out
+    // tighter than the truth it was the guess that sized the board, not the room. With no size
+    // container at all `cqh` falls back to the small viewport, which is the same guess without a
+    // variable. Nothing scales it down either — no "don't balloon" cap, and the tile-size setting
+    // no longer has a board half (`--board-scale`, deleted): a shrunk square leaves the side seats'
+    // hands floating off the screen edges, which is the one thing the board must never do.
+    // The width lives on this outer div, not on the square itself: beside the hand the board
+    // is a flex item, where a `w-full` child would have nothing to resolve against and collapse to
+    // nothing
+    <div className="relative mx-auto w-full max-w-[min(100%,100cqh)] shrink-0">
       {/* the revealed hands sit outside the felt, so the square gives up 10% of its own edge on
           each side to hold them — only while they are actually shown, so an ordinary board is
           exactly as big as it was. A revealed hand row is `100cqw/16` per tile, so ~8.3cqw tall,

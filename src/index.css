@@ -8,6 +8,12 @@
    `short:` override: a wide-but-short window (a laptop with a shallow browser window) is both, and
    there its chrome stands in a 44px gutter with no room for any of them. */
 @custom-variant labelled (@media (min-width: 1400px) and (min-height: 521px));
+/* a window with room on both axes: a desktop or a tablet, never a phone held sideways. `lg:` on
+   its own also matches a wide-but-shallow window, which is exactly the viewport with no height to
+   spare — anything that spends space (the board's own margin, a HUD hung off the square rather
+   than tucked against the chrome column) is `roomy:`, not `lg:`. Mutually exclusive with `short:`,
+   so the two never race in the cascade. */
+@custom-variant roomy (@media (min-width: 1024px) and (min-height: 521px));
 
 :root {
   /* unscaled tile width; --tile-w-base applies the tile-size setting (trainer <main> only —
