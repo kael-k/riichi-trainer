@@ -28,6 +28,15 @@ async function tileLabels(page: Page): Promise<(string | null)[]> {
   return handTiles(page).evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))
 }
 
+/** Waits for the stream to pose the next hand, and returns it. The count never moves — a graded
+ *  hand is replaced in place by another thirteen tiles — so "a new hand is up" can only be waited
+ *  for by what the tiles *are*. Reading them straight after the click raced the re-render and
+ *  sometimes captured the hand that had just been answered. */
+async function nextHandAfter(page: Page, previous: (string | null)[]) {
+  await expect.poll(() => tileLabels(page)).not.toEqual(previous)
+  return tileLabels(page)
+}
+
 function undoButton(page: Page) {
   return page.getByRole('button', { name: 'Undo last action' })
 }
@@ -49,15 +58,12 @@ test('undo re-poses the previous hand, and works more than once', async ({ page 
 
   // hand 1 answered — the stream moves on to hand 2
   await page.getByRole('button', { name: '0', exact: true }).click()
-  await expect(handTiles(page)).toHaveCount(13)
-  const hand2 = await tileLabels(page)
-  expect(hand2).not.toEqual(hand1)
+  const hand2 = await nextHandAfter(page, hand1)
 
-  // hand 2 answered — the stream moves on to hand 3
+  // hand 2 answered — the stream moves on to hand 3, which nothing below needs by name: the two
+  // undos walk back to hand 2 and hand 1
   await page.getByRole('button', { name: '0', exact: true }).click()
-  await expect(handTiles(page)).toHaveCount(13)
-  const hand3 = await tileLabels(page)
-  expect(hand3).not.toEqual(hand2)
+  await nextHandAfter(page, hand2)
 
   await expect(undoButton(page)).toBeEnabled()
   await openPanel(page)
