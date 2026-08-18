@@ -1,6 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Timer, TrainerToggles } from '../../components/TrainerControls'
@@ -238,7 +237,6 @@ export function EfficiencySoloPage() {
           replacements={round.replacements}
         />
       }
-      panel={<CopyLinkButton query={round.situationQuery} />}
     >
       {/* there is no felt here to read the wall and dora off, so this solo trainer says them
           plainly above its own river — all of it in the board area, where a table would be */}

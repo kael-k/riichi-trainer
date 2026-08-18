@@ -2,7 +2,6 @@ import { CheckCircle2, XCircle } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BoardStage } from '../../components/tiles/BoardStage'
-import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { Timer, TrainerToggles } from '../../components/TrainerControls'
@@ -512,7 +511,6 @@ export function ScoringPage() {
           />
         ) : undefined
       }
-      panel={<CopyLinkButton query={round.situationQuery} />}
     />
   )
 }

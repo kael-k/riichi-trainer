@@ -88,9 +88,8 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
           >
             <RotateCcw className="size-3.5" />
           </button>
-          {/* the same situation the rewind restores, as a link someone else can open — built
-              the way `CopyLinkButton` builds the page's own, since it is the same address with
-              a different query */}
+          {/* the same situation the rewind restores, as a link someone else can open — the one
+              sharing surface a trainer has, now that every deal leaves its own row here (T2/T3) */}
           <CopyButton
             label={t('common.copySituationLink')}
             icon={<Share2 className="size-3.5" />}

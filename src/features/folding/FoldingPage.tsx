@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
@@ -439,7 +438,6 @@ export function FoldingPage() {
           seat={perspective}
         />
       }
-      panel={<CopyLinkButton query={round.situationQuery} />}
     />
   )
 }

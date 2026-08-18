@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
@@ -345,8 +344,6 @@ export function LabPage() {
               ))}
             </div>
           </div>
-
-          <CopyLinkButton query={round.situationQuery} />
         </>
       )}
     </>

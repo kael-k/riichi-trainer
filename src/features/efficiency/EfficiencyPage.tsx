@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
@@ -367,7 +366,6 @@ export function EfficiencyPage() {
           seat={perspective}
         />
       }
-      panel={<CopyLinkButton query={round.situationQuery} />}
     />
   )
 }
