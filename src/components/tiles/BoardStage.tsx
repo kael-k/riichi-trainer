@@ -33,9 +33,10 @@ interface BoardStageProps {
    *  felt. Omitted by shanten: it has no felt, and puts its puzzle (tiles plus the guess controls)
    *  through `board` instead so the stage centres it rather than pinning it to the hand strip. */
   hand?: ReactNode
-  /** The trainer's own score/accuracy/clock lines. Floats as a small HUD in the board area's own
-   *  corner rather than living in the session panel — a clock behind a drawer tap is a clock
-   *  nobody reads. Kept short: it sits over the felt at every viewport, panel open or shut. */
+  /** The trainer's own score/accuracy/clock lines. A boxed HUD reserved above the board, top-right,
+   *  rather than living in the session panel — a clock behind a drawer tap is a clock nobody reads.
+   *  Real flow, not a float: the board is pushed down to make room for it rather than covering
+   *  whatever seat's plate would otherwise sit there. Always on screen, panel open or shut. */
   status?: ReactNode
   /** Per-action feedback, in full: tile lists, ukeire counts, the lot. What the session panel
    *  shows. */
@@ -123,10 +124,7 @@ export function InfoButton({
  * for both surfaces it appears on — docked beside the board from `lg` up, pulled over the top in a
  * drawer below that — so the two cannot drift apart.
  */
-function SessionPanel({
-  notice,
-  panel,
-}: Pick<BoardStageProps, 'notice' | 'panel'>) {
+function SessionPanel({ notice, panel }: Pick<BoardStageProps, 'notice' | 'panel'>) {
   const { t } = useTranslation()
   const { entries, clear } = useLog()
   return (
@@ -298,61 +296,58 @@ export function BoardStage({
           </SettingsButton>
         </div>
 
-        {/* padded clear of the gutter chrome, so the square still centres on what is left — widened
-            by the same inset the chrome column itself just grew by, so the reservation still
-            matches its real width.
-            `container-type: size` is what makes the square actually fit: `Table` caps itself at
-            `100cqh` of *this* box, which is the height genuinely left over after the chrome row and
-            the hand strip have taken theirs — the `--board-max-h` guess above can only estimate
-            those. */}
-        <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size] short:pl-[calc(2.75rem+env(safe-area-inset-left))]">
-          {board ? (
-            board
-          ) : (
-            // a boardless trainer (shanten, solo) has nothing to put in the middle of the stage,
-            // and neither has one that has not dealt yet — solo's river lives in here, and a table
-            // where you cannot see your own discards is not a table
-            <div className="max-h-full overflow-auto px-2">{children}</div>
-          )}
+        {/* the gutter offset lives on this outer column, so both the HUD row below and the
+            centring row under it stay clear of the chrome column held sideways */}
+        <div className="flex min-h-0 flex-1 flex-col short:pl-[calc(2.75rem+env(safe-area-inset-left))]">
           {status && (
-            // ambient, not transient: no timer, no dismiss. Bottom-left rather than alongside the
-            // notice above (`inset-x-2 top-2`, centred — spans the whole width on a phone), so the
-            // two floats never fight for the same strip. The board area centres a square, so one
-            // axis always has slack; whichever it is, the corner lands in it, and the translucent
-            // backdrop covers the (rare) case it doesn't. `short:` mirrors the notice's own move
-            // into the gutter, offset past the chrome column instead of the board's near edge.
-            // Not pointer-events-none as a whole: efficiency's ukeire line carries a live
-            // GlossaryTerm popover trigger, so only the wrapper is inert and the chip itself isn't
-            <div className="pointer-events-none absolute bottom-2 left-2 flex max-w-[45%] short:bottom-auto short:top-2 short:left-[calc(3.25rem+env(safe-area-inset-left))] short:max-w-[calc((100svw-2.75rem-var(--board-max-h))/2-0.5rem)]">
-              <div className="pointer-events-auto flex flex-col gap-0.5 rounded-lg bg-white/85 px-2 py-1 text-xs text-neutral-600 backdrop-blur-sm dark:bg-neutral-950/85 dark:text-neutral-400">
+            // real flow, not a float: a reserved row pushes the board down to make room rather
+            // than sitting over whatever seat's plate would otherwise be there (top-right is
+            // toimen's corner in portrait). Boxed so it reads as a HUD rather than stray text —
+            // same card treatment as the notice below it, one size down
+            <div className="flex shrink-0 justify-end p-2">
+              <div className="flex flex-col gap-0.5 rounded-lg border border-neutral-200 bg-white/95 px-2.5 py-1.5 text-xs text-neutral-600 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400">
                 {status}
               </div>
             </div>
           )}
-          {!logOpen && (noticeCompact ?? notice) && noticeShown && (
-            // pointer-events-none: a notice must never sit between the reader and a tile they are
-            // about to click, which is the whole difference between this and a dialog. Held
-            // sideways it stops floating over the board at all and stands in the right-hand
-            // gutter instead — sized so it cannot reach the square (the board is `--board-max-h`
-            // wide there, centred in what is left after the chrome column), because feedback that
-            // covers the tiles it is talking about is feedback you have to wait out. Compact here:
-            // a phone mid-drill has no room for `notice`'s tile lists and ukeire counts, and the
-            // full breakdown is a tap away in the panel. With the panel open in either shape it
-            // does not render at all: the full feedback is already on screen, and saying the same
-            // thing twice is how a reader ends up looking for a difference that isn't there
-            <div className="pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:bottom-2 short:right-2 short:items-center">
-              <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 short:max-h-full short:max-w-[calc((100svw-2.75rem-var(--board-max-h))/2-0.5rem)] dark:bg-neutral-900/95 dark:ring-white/10">
-                {noticeCompact ?? notice}
+          {/* `container-type: size` is what makes the square actually fit: `Table` caps itself at
+              `100cqh` of *this* row, which is the height genuinely left over after the chrome row,
+              the HUD row and the hand strip have taken theirs — the `--board-max-h` guess on the
+              stage root can only estimate those. */}
+          <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size]">
+            {board ? (
+              board
+            ) : (
+              // a boardless trainer (shanten, solo) has nothing to put in the middle of the stage,
+              // and neither has one that has not dealt yet — solo's river lives in here, and a table
+              // where you cannot see your own discards is not a table
+              <div className="max-h-full overflow-auto px-2">{children}</div>
+            )}
+            {!logOpen && (noticeCompact ?? notice) && noticeShown && (
+              // pointer-events-none: a notice must never sit between the reader and a tile they are
+              // about to click, which is the whole difference between this and a dialog. Held
+              // sideways it stops floating over the board at all and stands in the right-hand
+              // gutter instead — sized so it cannot reach the square (the board is `--board-max-h`
+              // wide there, centred in what is left after the chrome column), because feedback that
+              // covers the tiles it is talking about is feedback you have to wait out. Compact here:
+              // a phone mid-drill has no room for `notice`'s tile lists and ukeire counts, and the
+              // full breakdown is a tap away in the panel. With the panel open in either shape it
+              // does not render at all: the full feedback is already on screen, and saying the same
+              // thing twice is how a reader ends up looking for a difference that isn't there
+              <div className="pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:bottom-2 short:right-2 short:items-center">
+                <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 short:max-h-full short:max-w-[calc((100svw-2.75rem-var(--board-max-h))/2-0.5rem)] dark:bg-neutral-900/95 dark:ring-white/10">
+                  {noticeCompact ?? notice}
+                </div>
               </div>
-            </div>
-          )}
-          {end && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 p-3">
-              <div className="max-h-full w-[min(92vw,28rem)] overflow-y-auto rounded-xl bg-white p-4 shadow-xl dark:bg-neutral-900">
-                {end}
+            )}
+            {end && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 p-3">
+                <div className="max-h-full w-[min(92vw,28rem)] overflow-y-auto rounded-xl bg-white p-4 shadow-xl dark:bg-neutral-900">
+                  {end}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* capped: the claim prompt and the kita/kan row make this strip taller some turns, and it
