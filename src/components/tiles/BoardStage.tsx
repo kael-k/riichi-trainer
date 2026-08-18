@@ -51,10 +51,14 @@ interface BoardStageProps {
   noticeKey?: string | number
   /** Shown once the hand is over, as a centred card over the board. */
   end?: ReactNode
-  /** The trainer's own extras — wall reveal, share link, the lab's rankings. They live in the
-   *  session panel beside the log, since they are things you read *about* the board rather than
-   *  play on it. */
+  /** The trainer's own extras — share link, the lab's rankings. They live in the session panel
+   *  beside the log, since they are things you read *about* the board rather than play on it. */
   panel?: ReactNode
+  /** The wall reveal (`WallDetails`, which is its own button + dialog), given a place of its own
+   *  in the chrome row rather than a row in the panel behind a setting. Omitted only by a trainer
+   *  that has no wall to show — shanten deals no wall at all, and the board trainers pass nothing
+   *  until they have dealt one. */
+  wall?: ReactNode
   /** Board-area content for a trainer that has no felt (shanten's puzzle, solo's river), and the
    *  place a trainer with nothing dealt yet says so (folding's "dealing…", the lab's empty state).
    *  Centred where the board would otherwise be. */
@@ -173,6 +177,7 @@ export function BoardStage({
   noticeKey,
   end,
   panel,
+  wall,
   children,
   onLogOpen,
   chrome,
@@ -278,6 +283,7 @@ export function BoardStage({
           </Link>
           {intro && <InfoButton title={title} intro={intro} labelled />}
           {chrome}
+          {wall}
           <button
             type="button"
             aria-label={t('table.logDrawer')}

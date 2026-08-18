@@ -238,7 +238,7 @@ export function GlobalSettings() {
 }
 
 /** The board-rendering settings shared by every trainer that draws a `Table` (efficiency, scoring,
- *  folding, the lab): whether opponent hands and the wall are shown. Its own section, separate
+ *  folding, the lab): whether opponent hands and seat waits are shown. Its own section, separate
  *  from Global — these are about what the board shows, not the app as a whole. Edits the *global*
  *  layer of `table` (`tableSettings.ts`, ADR-0015); the per-app override layer has no UI this phase
  *  (absent key means inherit — a three-state control is not needed). `'efficiency'` is an
@@ -246,10 +246,9 @@ export function GlobalSettings() {
  *  app id is passed only matters for a field that had a per-app override, and none does. */
 export function BoardSettings() {
   const { t } = useTranslation()
-  const advanced = useSettings((s) => s.advanced)
   const table = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
-  const { showWall, showOpponentHands, showSeatWaits } = resolveTableSettings('efficiency', table)
+  const { showOpponentHands, showSeatWaits } = resolveTableSettings('efficiency', table)
   // `update` only merges at the section level, so a patch of `{ global: {...} }` would otherwise
   // replace the whole global layer instead of adding one key to it — merge the existing layer in
   // first, same as every per-app write site does with its own `apps[app]` slice.
@@ -277,18 +276,6 @@ export function BoardSettings() {
           className="size-5"
         />
       </SettingRow>
-      {/* stays behind the Advanced gate on GlobalSettings: a hidden row must not mean a live
-          value, and the stored choice comes straight back once Advanced is re-enabled */}
-      {advanced && (
-        <SettingRow label={t('settings.showWall')}>
-          <input
-            type="checkbox"
-            checked={showWall}
-            onChange={(e) => updateGlobal({ showWall: e.target.checked })}
-            className="size-5"
-          />
-        </SettingRow>
-      )}
     </div>
   )
 }

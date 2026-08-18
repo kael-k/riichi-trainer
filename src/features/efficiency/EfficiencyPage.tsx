@@ -36,7 +36,7 @@ export function EfficiencyPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const { aka } = useAdvancedSettings()
-  const { deadWall, showWall, showOpponentHands, showSeatWaits, claims, seatsEnabled } =
+  const { deadWall, showOpponentHands, showSeatWaits, claims, seatsEnabled } =
     useTableSettings('efficiency')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
@@ -357,22 +357,18 @@ export function EfficiencyPage() {
           )}
         </div>
       }
-      panel={
-        <>
-          {showWall && (
-            <WallDetails
-              dealt={round.dealtTiles}
-              liveWall={round.liveWallSnapshot}
-              liveWallDrawn={round.liveWallDrawn}
-              deadWall={round.deadWallSnapshot}
-              replacements={round.replacements}
-              players={round.rivers.length}
-              seat={perspective}
-            />
-          )}
-          <CopyLinkButton query={round.situationQuery} />
-        </>
+      wall={
+        <WallDetails
+          dealt={round.dealtTiles}
+          liveWall={round.liveWallSnapshot}
+          liveWallDrawn={round.liveWallDrawn}
+          deadWall={round.deadWallSnapshot}
+          replacements={round.replacements}
+          players={round.rivers.length}
+          seat={perspective}
+        />
       }
+      panel={<CopyLinkButton query={round.situationQuery} />}
     />
   )
 }

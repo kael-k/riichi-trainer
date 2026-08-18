@@ -45,7 +45,6 @@
     "advanced": "Advanced features",
     "tsumogiriMarks": "Show tsumogiri/tedashi",
     "redFives": "Red fives",
-    "showWall": "Show wall",
     "showOpponentHands": "Show opponent hands",
     "showSeatWaits": "Show tenpai and waits",
     "language": "Language",
@@ -97,6 +96,7 @@
   },
   "table": {
     "wall": "Wall {{count}}",
+    "wallButton": "Wall",
     "dora": "Dora",
     "ura": "Ura",
     "riichiStick": "1000-point riichi stick",

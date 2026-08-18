@@ -32,7 +32,7 @@ export function EfficiencySoloPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const { aka } = useAdvancedSettings()
-  const { deadWall, showWall } = useTableSettings('efficiencySolo')
+  const { deadWall } = useTableSettings('efficiencySolo')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
   // `apps.efficiencySolo` slice in first.
@@ -230,20 +230,16 @@ export function EfficiencySoloPage() {
           </div>
         )
       }
-      panel={
-        <>
-          {showWall && (
-            <WallDetails
-              dealt={round.dealtTiles}
-              liveWall={round.liveWallSnapshot}
-              liveWallDrawn={round.liveWallDrawn}
-              deadWall={round.deadWallSnapshot}
-              replacements={round.replacements}
-            />
-          )}
-          <CopyLinkButton query={round.situationQuery} />
-        </>
+      wall={
+        <WallDetails
+          dealt={round.dealtTiles}
+          liveWall={round.liveWallSnapshot}
+          liveWallDrawn={round.liveWallDrawn}
+          deadWall={round.deadWallSnapshot}
+          replacements={round.replacements}
+        />
       }
+      panel={<CopyLinkButton query={round.situationQuery} />}
     >
       {/* there is no felt here to read the wall and dora off, so this solo trainer says them
           plainly above its own river — all of it in the board area, where a table would be */}

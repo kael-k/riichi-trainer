@@ -41,7 +41,6 @@
     "advanced": "上級者向け機能",
     "tsumogiriMarks": "ツモ切り/手出しを表示",
     "redFives": "赤ドラ",
-    "showWall": "山を表示",
     "showOpponentHands": "対戦相手の手牌を表示",
     "showSeatWaits": "テンパイと待ちを表示",
     "language": "言語",
@@ -93,6 +92,7 @@
   },
   "table": {
     "wall": "残り{{count}}",
+    "wallButton": "山",
     "dora": "ドラ",
     "ura": "裏",
     "riichiStick": "リーチ棒(1000点)",

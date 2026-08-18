@@ -133,7 +133,6 @@ export function LabPage() {
   const update = useSettings((s) => s.update)
   const {
     deadWall,
-    showWall,
     opponentWins,
     showOpponentHands,
     showSeatWaits,
@@ -347,18 +346,6 @@ export function LabPage() {
             </div>
           </div>
 
-          {showWall && (
-            <WallDetails
-              dealt={round.dealtTiles}
-              liveWall={round.liveWallSnapshot}
-              liveWallDrawn={round.liveWallDrawn}
-              deadWall={round.deadWallSnapshot}
-              replacements={round.replacements}
-              players={round.rivers.length}
-              seat={perspective}
-            />
-          )}
-
           <CopyLinkButton query={round.situationQuery} />
         </>
       )}
@@ -371,6 +358,19 @@ export function LabPage() {
       intro={{ text: t('trainer.lab.intro'), wikiUrl: TRAINER_WIKI.lab }}
       settings={settingsRows}
       chrome={<BackButton canBack={canBack} onBack={back} backLabel={t('common.undoAction')} />}
+      wall={
+        loaded ? (
+          <WallDetails
+            dealt={round.dealtTiles}
+            liveWall={round.liveWallSnapshot}
+            liveWallDrawn={round.liveWallDrawn}
+            deadWall={round.deadWallSnapshot}
+            replacements={round.replacements}
+            players={round.rivers.length}
+            seat={perspective}
+          />
+        ) : undefined
+      }
       panel={wallPanel}
       board={
         loaded ? (

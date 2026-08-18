@@ -29,11 +29,11 @@ describe('resolveTableSettings', () => {
 
   it('inherits a key absent from both layers', () => {
     const resolved = resolveTableSettings('efficiency', {
-      global: { showWall: true },
+      global: { showOpponentHands: true },
       apps: {},
     })
     expect(resolved.deadWall).toBe(TABLE_DEFAULTS.efficiency.deadWall)
-    expect(resolved.showWall).toBe(true)
+    expect(resolved.showOpponentHands).toBe(true)
   })
 
   it('resolves every field for every TableApp', () => {
@@ -43,7 +43,6 @@ describe('resolveTableSettings', () => {
       expect(resolved.deadWall).toBeDefined()
       expect(resolved.threats).toBeDefined()
       expect(resolved.showOpponentHands).toBeDefined()
-      expect(resolved.showWall).toBeDefined()
     }
   })
 

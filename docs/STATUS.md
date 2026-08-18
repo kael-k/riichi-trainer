@@ -53,11 +53,14 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    that block back to the reader.
 6. **One interface** ([ADR-0025](adr/0025-one-interface.md)) — the inline layout and the fullscreen
    toggle deleted, `BoardStage` promoted to the trainer page, `TrainerLayout` removed, and a
-   session panel (score, full feedback, wall reveal, share link, log) docked beside the board from
+   session panel (score, full feedback, share link, log) docked beside the board from
    `lg` up and a drawer below that. Real fullscreen shrank to a phone-only first-tap request
    (`useMobileFullscreen`); the `mobileFullscreen` setting went with the toggle. The size setting
    now scales the felt as well as the tiles (`BOARD_SCALES`/`--board-scale`), and the chrome row's
-   buttons carry their names on a wide screen (`labelled:`).
+   buttons carry their names on a wide screen (`labelled:`). The wall reveal followed the same
+   move: it is a chrome-row button and dialog of its own (`WallDetails`, `BoardStage`'s `wall`
+   slot) on every trainer that deals a wall, and the `showWall` setting — the last advanced-gated
+   field in `useTableSettings` — is deleted rather than defaulted on.
 
 ## In flight
 

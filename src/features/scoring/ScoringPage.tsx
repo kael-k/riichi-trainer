@@ -115,7 +115,7 @@ export function ScoringPage() {
   const sanma = useSettings((s) => s.sanma)
   const advanced = useSettings((s) => s.advanced)
   const { aka, exactFu } = useAdvancedSettings()
-  const { showWall, showOpponentHands } = useTableSettings('scoring')
+  const { showOpponentHands } = useTableSettings('scoring')
 
   // the scoring section supplies the round's options, but a link can pin the rules the round was
   // simulated under — without them the same seed would replay into a different hand. exactFu is
@@ -502,20 +502,18 @@ export function ScoringPage() {
           </div>
         )
       }
-      panel={
-        <>
-          {showWall && round.round && (
-            <WallDetails
-              dealt={round.round.wall.slice(0, round.round.players.length * INITIAL_HAND_SIZE)}
-              liveWall={round.round.liveWallSnapshot}
-              liveWallDrawn={wallDrawnCount(round.round)}
-              deadWall={round.round.deadWallSnapshot}
-              replacements={round.round.replacements}
-            />
-          )}
-          <CopyLinkButton query={round.situationQuery} />
-        </>
+      wall={
+        round.round ? (
+          <WallDetails
+            dealt={round.round.wall.slice(0, round.round.players.length * INITIAL_HAND_SIZE)}
+            liveWall={round.round.liveWallSnapshot}
+            liveWallDrawn={wallDrawnCount(round.round)}
+            deadWall={round.round.deadWallSnapshot}
+            replacements={round.round.replacements}
+          />
+        ) : undefined
       }
+      panel={<CopyLinkButton query={round.situationQuery} />}
     />
   )
 }

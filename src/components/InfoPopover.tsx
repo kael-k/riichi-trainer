@@ -10,13 +10,20 @@ interface InfoPopoverProps {
   trigger: ReactNode
   triggerClassName: string
   dialogTitle: string
-  text: string
+  text?: string
   wikiUrl?: string
+  /** Header icon; the `Info` glyph unless a caller has a better one for what it is showing. */
+  icon?: ReactNode
+  /** Arbitrary dialog content, below `text` when both are given — the wall reveal draws rows of
+   *  tiles in here rather than a paragraph. */
+  children?: ReactNode
+  /** A dialog for content rather than a sentence: 42rem instead of 26. */
+  wide?: boolean
 }
 
 /** Trigger button + modal, portalled to <body>, scrim-dismissed, Escape-closed, body scroll
- *  locked while open. Shared by the trainer info button and inline glossary terms — anywhere a
- *  short explanation needs a tap target that doesn't take permanent page space. */
+ *  locked while open. Shared by the trainer info button, inline glossary terms and the wall
+ *  reveal — anywhere something needs a tap target that doesn't take permanent page space. */
 export function InfoPopover({
   triggerLabel,
   trigger,
@@ -24,6 +31,9 @@ export function InfoPopover({
   dialogTitle,
   text,
   wikiUrl,
+  icon,
+  children,
+  wide,
 }: InfoPopoverProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -67,10 +77,14 @@ export function InfoPopover({
             }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3"
           >
-            <div className="flex max-h-full w-[min(90vw,26rem)] flex-col overflow-hidden rounded-xl bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
+            <div
+              className={`flex max-h-full ${wide ? 'w-[min(90vw,42rem)]' : 'w-[min(90vw,26rem)]'} flex-col overflow-hidden rounded-xl bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100`}
+            >
               <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-semibold">
-                  <Info className="size-4 shrink-0 text-neutral-400" />
+                  <span className="shrink-0 text-neutral-400">
+                    {icon ?? <Info className="size-4" />}
+                  </span>
                   {dialogTitle}
                 </h2>
                 <button
@@ -83,7 +97,8 @@ export function InfoPopover({
                 </button>
               </div>
               <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 text-sm text-neutral-600 dark:text-neutral-400">
-                <p>{text}</p>
+                {text && <p>{text}</p>}
+                {children}
                 {wikiUrl && (
                   <a
                     href={wikiUrl}

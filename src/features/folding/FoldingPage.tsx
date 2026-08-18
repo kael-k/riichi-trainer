@@ -75,7 +75,6 @@ export function FoldingPage() {
   // folding always shows the board (reading it is the drill); the reveal gate below
   // withholds real tile ids until `round.finished` or `showOpponentHands`
   const {
-    showWall,
     showOpponentHands,
     showSeatWaits,
     threats,
@@ -430,22 +429,18 @@ export function FoldingPage() {
           </div>
         )
       }
-      panel={
-        <>
-          {showWall && (
-            <WallDetails
-              dealt={round.dealtTiles}
-              liveWall={round.liveWallSnapshot}
-              liveWallDrawn={round.liveWallDrawn}
-              deadWall={round.deadWallSnapshot}
-              replacements={round.replacements}
-              players={players}
-              seat={perspective}
-            />
-          )}
-          <CopyLinkButton query={round.situationQuery} />
-        </>
+      wall={
+        <WallDetails
+          dealt={round.dealtTiles}
+          liveWall={round.liveWallSnapshot}
+          liveWallDrawn={round.liveWallDrawn}
+          deadWall={round.deadWallSnapshot}
+          replacements={round.replacements}
+          players={players}
+          seat={perspective}
+        />
       }
+      panel={<CopyLinkButton query={round.situationQuery} />}
     />
   )
 }

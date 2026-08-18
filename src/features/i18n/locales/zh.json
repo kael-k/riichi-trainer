@@ -41,7 +41,6 @@
     "advanced": "高级功能",
     "tsumogiriMarks": "显示摸切/手切标记",
     "redFives": "赤宝牌",
-    "showWall": "显示牌山",
     "showOpponentHands": "显示对手手牌",
     "showSeatWaits": "显示听牌与进张",
     "language": "语言",
@@ -93,6 +92,7 @@
   },
   "table": {
     "wall": "剩余{{count}}",
+    "wallButton": "牌山",
     "dora": "宝牌",
     "ura": "里宝",
     "riichiStick": "立直棒(1000点)",

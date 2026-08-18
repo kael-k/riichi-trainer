@@ -1,3 +1,4 @@
+import { BrickWall } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Meld } from '../../core/agari'
@@ -12,6 +13,8 @@ import {
 import { dealtSeat } from '../../core/wall'
 import { useAdvancedSettings } from '../../features/settings/useAdvancedSettings'
 import { useShowTileNumbers } from '../../features/settings/useShowTileNumbers'
+import { InfoPopover } from '../InfoPopover'
+import { ChromeLabel, CHROME_BUTTON } from '../TrainerControls'
 
 interface TileProps {
   /** Omit for a face-down tile. */
@@ -287,8 +290,10 @@ function WallSection({ label, children }: { label: string; children: ReactNode }
 }
 
 /** The whole wall as built, dealt hands first, then live tiles, then dead, with a marker at each
- *  seam. Collapsed behind a `<details>` — seeing the wall in draw order is a deliberate peek, not
- *  something to show by default. Every tile it was dealt with is shown, not just what's left:
+ *  seam. It is a button in the stage's chrome row (`BoardStage`'s `wall` slot) rather than a row
+ *  in the session panel behind a setting: seeing the wall in draw order is a deliberate peek, and
+ *  a peek wants a button of its own, not a preference somebody has to find first. Every tile it
+ *  was dealt with is shown, not just what's left:
  *  already-dealt hands, already-drawn live tiles and already-taken dead-wall tiles are all greyed
  *  rather than omitted, so the summary count (which stays the *remaining* count) and the row don't
  *  have to agree on length. */
@@ -329,9 +334,20 @@ export function WallDetails({
       ? (index: number) => dealtSeat(index, players) === seat
       : undefined
   return (
-    <details className="text-sm text-neutral-500">
-      <summary className="cursor-pointer">{t('common.wallDetails', { count: remaining })}</summary>
-      <div className="mt-2 flex flex-col gap-2 [--tile-w:calc(var(--tile-w-base)*0.55)]">
+    <InfoPopover
+      triggerLabel={t('table.wallButton')}
+      trigger={
+        <>
+          <BrickWall className="size-5" />
+          <ChromeLabel>{t('table.wallButton')}</ChromeLabel>
+        </>
+      }
+      triggerClassName={CHROME_BUTTON}
+      icon={<BrickWall className="size-4" />}
+      dialogTitle={t('common.wallDetails', { count: remaining })}
+      wide
+    >
+      <div className="flex flex-col gap-2 [--tile-w:calc(var(--tile-w-base)*0.55)]">
         {dealt.length > 0 && (
           <WallSection label={t('common.dealtMarker')}>
             <WallRow tiles={dealt} drawn={() => true} mine={mine} />
@@ -349,7 +365,7 @@ export function WallDetails({
           </WallSection>
         )}
       </div>
-    </details>
+    </InfoPopover>
   )
 }
 

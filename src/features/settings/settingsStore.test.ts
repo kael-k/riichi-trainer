@@ -15,9 +15,9 @@ describe('settingsStore table section', () => {
   it('persists a table update, read back by resolveTableSettings', async () => {
     const { useSettings } = await import('./settingsStore')
     const { resolveTableSettings } = await import('./tableSettings')
-    useSettings.getState().update('table', { global: { showWall: true } })
-    expect(useSettings.getState().table.global.showWall).toBe(true)
-    expect(resolveTableSettings('efficiency', useSettings.getState().table).showWall).toBe(true)
+    useSettings.getState().update('table', { global: { showOpponentHands: true } })
+    expect(useSettings.getState().table.global.showOpponentHands).toBe(true)
+    expect(resolveTableSettings('efficiency', useSettings.getState().table).showOpponentHands).toBe(true)
   })
 
   it('drops a v2 blob instead of merging it, falling back to table defaults', async () => {
@@ -25,8 +25,8 @@ describe('settingsStore table section', () => {
       'riichi-trainer-settings',
       JSON.stringify({
         state: {
-          table: { global: { showWall: true }, apps: {} },
-          showWall: true,
+          table: { global: { showOpponentHands: true }, apps: {} },
+          showOpponentHands: true,
           efficiency: { showShanten: true, timerEnabled: true, showUkeire: true, deadWall: true },
         },
         version: 2,

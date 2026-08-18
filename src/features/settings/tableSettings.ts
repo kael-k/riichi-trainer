@@ -81,8 +81,6 @@ export interface TableSettings {
    *  per concept beats a narrower one with a special case, and switching it on is the reader
    *  choosing to spoil their own drill. */
   showSeatWaits: boolean
-  /** Reveal the live (and, where applicable, dead) wall in draw order. */
-  showWall: boolean
   /** Ask manual seats about pon/chi/ron on other seats' discards (`RoundOptions.claims`). Stays
    *  match-wide and persisted (ADR-0015, unlike the per-seat algorithms themselves — see `SeatConfig`)
    *  since it answers a question about the reader, not about the board. Off in the graded drills,
@@ -105,7 +103,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    showWall: false,
     claims: false,
   },
   efficiencySolo: {
@@ -114,7 +111,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    showWall: false,
     claims: false,
   },
   folding: {
@@ -123,7 +119,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    showWall: false,
     claims: false,
   },
   scoring: {
@@ -132,7 +127,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    showWall: false,
     claims: false,
   },
   lab: {
@@ -141,7 +135,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    showWall: false,
     // the lab is the free-play board: manual seats are the point there, so it ships with the
     // claim prompts on. Per-seat `modes` themselves are never a settings default — they are page
     // state seeded from the link (ADR-0015), same as every other app
@@ -163,20 +156,18 @@ export function resolveTableSettings(
   return { ...TABLE_DEFAULTS[app], ...table.global, ...(table.apps[app] ?? {}) }
 }
 
-/** The resolver, read live off the settings store, with one adjustment: `showWall` stays behind
- *  the existing Advanced gate (`useAdvancedSettings.ts`) — a hidden row must not mean a live
- *  value, and the stored choice comes straight back when Advanced is re-enabled.
- *  `showOpponentHands` is explicitly *not* advanced-gated, same as today. */
+/** The resolver, read live off the settings store. Nothing here is advanced-gated any more: the
+ *  wall reveal was the one field that was, and it is a chrome-row button now rather than a
+ *  setting at all (`WallDetails`), so there is no stored value left to force off behind a hidden
+ *  row. */
 export function useTableSettings(app: TableApp): TableSettings & { seatsEnabled: boolean } {
   const table = useSettings((s) => s.table)
   const advanced = useSettings((s) => s.advanced)
-  const resolved = resolveTableSettings(app, table)
   // the lab is the exception to the Advanced gate — free play *is* what that page is for, so its
   // seat panel is always available
   const seatsEnabled = advanced || app === 'lab'
   return {
-    ...resolved,
-    showWall: advanced && resolved.showWall,
+    ...resolveTableSettings(app, table),
     /** Whether the seat panel is offered at all — the per-seat algorithms themselves are page
      *  state now (ADR-0015), not a settings value, so there is nothing here left to force off when the
      *  panel is hidden. */
