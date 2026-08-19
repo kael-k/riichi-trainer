@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
 import { CheckCircle2, XCircle } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Timer, TrainerToggles } from '../../components/TrainerControls'
@@ -39,32 +39,35 @@ export function ShantenPage() {
   const settings = useSettings((s) => s.shanten)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
-  const [guessInput, setGuessInput] = useState('')
 
   const round = useShantenRound(situation, settings.timerEnabled, situation.sanma ?? sanma)
-
-  useEffect(() => setGuessInput(''), [round.hand])
-
-  // Space toggles reveal/stop — the number input auto-focuses on reveal, so typing a
-  // digit + Enter already submits without any extra wiring
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.code !== 'Space') return
-      const tag = (e.target as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return
-      e.preventDefault()
-      if (!round.revealed) round.reveal()
-      else round.togglePause()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round.revealed, round.togglePause, round.reveal])
 
   const submitGuess = (value: number) => {
     if (Number.isNaN(value) || value < 0) return
     round.submit(value)
   }
+
+  // Space toggles reveal/stop; once a hand is up, digit keys 0-6 submit a guess directly
+  // (every quick-guess answer is a single digit, so there's nothing to buffer before Enter)
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return
+      if (e.code === 'Space') {
+        e.preventDefault()
+        if (!round.revealed) round.reveal()
+        else round.togglePause()
+        return
+      }
+      if (!round.concealed && QUICK_GUESSES.includes(Number(e.key))) {
+        e.preventDefault()
+        submitGuess(Number(e.key))
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round.revealed, round.concealed, round.togglePause, round.reveal])
 
   const settingsRows = (
     <SettingRow label={t('shanten.settings.timer')}>
@@ -122,38 +125,14 @@ export function ShantenPage() {
         // hand just answered), so "the tiles on screen" needs to say which. Passed as `board`
         // rather than `hand`: shanten has no felt, and this is what the stage centres in the
         // viewport instead of pinning it to the hand strip at the bottom
-        <div data-testid="shanten-hand" className="flex flex-col gap-8">
+        <div data-testid="shanten-hand" className="flex flex-col items-center gap-8">
           <HandDisplay tiles={round.hand} concealed={round.concealed} />
 
           {!round.concealed && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                submitGuess(Number(guessInput))
-              }}
-              className="flex flex-col gap-2"
-            >
-              {/* typing a number needs a keyboard, and a keyboard on a phone covers the hand
-                      you are counting — so the field is a tablet-and-up control and the buttons
-                      are the whole answer below that. Held sideways the same applies at any
-                      width: `short:` is where the keyboard would eat the screen outright */}
-              <div className="flex gap-2 max-sm:hidden short:hidden">
-                <input
-                  type="number"
-                  min={0}
-                  autoFocus
-                  value={guessInput}
-                  onChange={(e) => setGuessInput(e.target.value)}
-                  placeholder={t('shanten.placeholder')}
-                  className="min-h-11 w-24 rounded border border-neutral-300 px-2 [appearance:textfield] dark:border-neutral-700 dark:bg-neutral-900 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                />
-                <button
-                  type="submit"
-                  className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-                >
-                  {t('common.submit')}
-                </button>
-              </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                {t('shanten.guessHint')}
+              </p>
               {/* seven answers, so a phone gets four per row with the last three (4-6)
                       centred under them rather than stuck to the left of an empty fourth cell —
                       flex-wrap centres an incomplete line the way grid's fixed tracks can't, and
@@ -162,7 +141,7 @@ export function ShantenPage() {
                       (chiitoitsu caps shanten at 6). Held sideways they go on one row: height is
                       the only axis short of room there, and a second row would come out of the
                       board's */}
-              <div className="flex flex-wrap gap-2 max-sm:justify-center short:grid short:grid-cols-7">
+              <div className="flex flex-wrap justify-center gap-2 short:grid short:grid-cols-7">
                 {QUICK_GUESSES.map((n) => (
                   <button
                     key={n}
@@ -174,7 +153,7 @@ export function ShantenPage() {
                   </button>
                 ))}
               </div>
-            </form>
+            </div>
           )}
         </div>
       }

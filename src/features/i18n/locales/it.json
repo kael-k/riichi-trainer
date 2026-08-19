@@ -236,7 +236,7 @@
     },
     "correctScore": "Corrette: {{correct}} / {{total}}",
     "avgTime": "media {{time}}",
-    "placeholder": "shanten?",
+    "guessHint": "Tocca un pulsante, oppure digita la tua risposta sulla tastiera",
     "correctLabel": "Corretto",
     "wrongLabel": "Sbagliato",
     "correct": "corretto",

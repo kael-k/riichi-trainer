@@ -184,7 +184,7 @@
     },
     "correctScore": "正解数: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
-    "placeholder": "シャンテン数?",
+    "guessHint": "ボタンをクリックするか、キーボードで数字を入力してください",
     "correctLabel": "正解",
     "wrongLabel": "不正解",
     "correct": "正解",

@@ -184,7 +184,7 @@
     },
     "correctScore": "正确: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
-    "placeholder": "上听数?",
+    "guessHint": "点击按钮，或用键盘输入你的答案",
     "correctLabel": "正确",
     "wrongLabel": "错误",
     "correct": "正确",

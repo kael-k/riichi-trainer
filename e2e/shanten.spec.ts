@@ -87,19 +87,24 @@ test('a new hand abandons the current one rather than pausing it', async ({ page
   await expect(page.getByRole('button', { name: '0', exact: true })).toBeVisible()
 })
 
-test('the answer buttons are the whole answer on a phone', async ({ page, viewport }) => {
+test('the answer buttons are the whole answer on every viewport', async ({ page }) => {
   await page.goto(PINNED)
   await expect(handTiles(page)).toHaveCount(13)
 
-  // typing a number needs a keyboard, and a keyboard on a phone covers the hand you are counting,
-  // so the field is a tablet-and-up control. The 0-6 buttons have to carry it alone below that —
-  // chiitoitsu caps shanten at 6, so every reachable answer is on screen
-  const field = page.getByPlaceholder('shanten?')
-  const phone = !!viewport && (viewport.width <= 640 || viewport.height <= 520)
-  if (phone) await expect(field).toBeHidden()
-  else await expect(field).toBeVisible()
-
+  // chiitoitsu caps shanten at 6, so every reachable answer is on screen — no field to hide on a
+  // phone any more, since a guess can also be typed via the global keyboard handler
   for (const n of [0, 1, 2, 3, 4, 5, 6]) {
     await expect(page.getByRole('button', { name: String(n), exact: true })).toBeVisible()
   }
+})
+
+test('typing a digit on the keyboard submits the guess', async ({ page }) => {
+  await page.goto(PINNED)
+  await expect(handTiles(page)).toHaveCount(13)
+
+  await page.keyboard.press(String(PINNED_SHANTEN))
+
+  await openPanel(page)
+  await expect(page.getByText('Correct', { exact: true })).toBeVisible()
+  await expect(scoreLine(page, 'Correct: 1 / 1')).toHaveCount(1)
 })
