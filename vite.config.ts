@@ -18,7 +18,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icon-square.svg'],
+      includeAssets: ['favicon.svg', 'icon-square.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Riichi Trainer',
         short_name: 'Riichi Trainer',
