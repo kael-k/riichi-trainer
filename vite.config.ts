@@ -18,7 +18,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'icon-square.svg'],
       manifest: {
         name: 'Riichi Trainer',
         short_name: 'Riichi Trainer',
@@ -26,11 +26,13 @@ export default defineConfig({
         theme_color: '#863bff',
         background_color: '#ffffff',
         display: 'standalone',
-        // `maskable` as well as `any`: the artwork is a square felt field with the tile inside the
-        // middle 78%, so an adaptive launcher can crop it to its own shape without clipping the
-        // tile. Declaring it while the tile still ran the full height is what made it stretch.
+        // `favicon.svg` (300x400, transparent) is the browser tab icon. Home-screen launchers force
+        // a square icon, so `icon-square.svg` is a separate 400x400 asset with the same tile centred
+        // at full height on transparent — never `purpose: 'maskable'`, since a maskable safe-zone
+        // crop would clip the top/bottom of a tile that tall.
         icons: [
-          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'icon-square.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
     }),
