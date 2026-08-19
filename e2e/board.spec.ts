@@ -697,6 +697,50 @@ test('revealing the hands reveals the furiten that goes with them', async ({ pag
   await expect(page.getByRole('button', { name: 'Explain: Furiten' })).toHaveCount(2)
 })
 
+/**
+ * A shared link with one replayed discard already on its `log`, dealt so the reader's seat sits on
+ * a chiitoitsu tenpai (six pairs of 1m-6m plus a lone 7m) the whole time: the replayed discard just
+ * tosses that turn's junk draw straight back, and every live turn after it does the same, so
+ * whichever tile the reader actually draws live, discarding it keeps the same tenpai shape. That is
+ * what lets "New round" show up without hand-authoring the exact live draw — the point of this
+ * fixture is the *replayed* log entry sitting on the situation, not the tenpai wait itself.
+ */
+function tenpaiWithReplayedLogBoard(): string {
+  const seat0 = ['1m', '1m', '2m', '2m', '3m', '3m', '4m', '4m', '5m', '5m', '6m', '6m', '7m']
+  const seat1 = ['1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '1s', '2s', '3s', '4s']
+  const seat2 = ['5s', '6s', '7s', '8s', '9s', '1z', '2z', '3z', '4z', '5z', '6z', '7z', '9m']
+  const seat3 = ['8m', '9m', '7m', '8p', '9p', '1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s']
+  const deal = dealt([seat0, seat1, seat2, seat3])
+  // seat 0's opening draw, discarded straight back by the replayed log entry — a short wall
+  // prefix, the rest completed at random since nothing after it needs to be a specific tile
+  const draw = '9s'
+  return `/efficiency?wall=${tenhou([...deal, draw])}&log=D0${draw}T&seat=0&deadWall=1&aka=0&sanma=0`
+}
+
+test('restarting a shared-link round with a replayed log does not crash', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+
+  await page.goto(tenpaiWithReplayedLogBoard())
+  const handStrip = page.getByTestId('hand-strip')
+  await expect(handStrip).toBeVisible()
+
+  // wait for the reader's own turn to come back around with a live draw, then tsumogiri it —
+  // the hand stays on the same tenpai shape whatever was drawn, which is what reaches tenpai and
+  // surfaces "New round" without pinning the live draw itself
+  await expect(handStrip.getByRole('button')).toHaveCount(14, { timeout: 10_000 })
+  await handStrip.getByRole('button').last().click()
+
+  const newRound = page.getByRole('button', { name: 'New round' })
+  await expect(newRound).toBeVisible()
+  await newRound.click()
+
+  // a fresh hand deals in, rather than the page crashing on the old link's log replayed against a
+  // brand new random wall
+  await expect(handStrip.getByRole('button')).toHaveCount(14, { timeout: 10_000 })
+  expect(errors).toEqual([])
+})
+
 test('a declared seat may only throw the tile it just drew', async ({ page }) => {
   // seat 0 is dealt a shanpon tenpai on 1p/2p, draws a 9s it cannot use and declares riichi
   // throwing it straight back. Riichi locks every later discard to tsumogiri, so on its next turn

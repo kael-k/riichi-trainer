@@ -288,7 +288,7 @@ export function useRound(input: UseRoundInput) {
     // a consumer rebuilds from one stream rather than needing a second path for links. A command
     // is not honoured mid-replay: the recording says what happened, and a handler cannot stop or
     // redeal a board that already played out this way.
-    const log = input.replay ?? []
+    const log = restartCount === 0 ? (input.replay ?? []) : []
     const consumed = replayLog(c.round, c.options, log, (event) => queued.current.push(event))
     replayed.current = log.slice(0, consumed)
     capture(c)
