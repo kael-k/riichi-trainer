@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router'
 import { AppShell } from '../components/AppShell'
+import { CrashPage } from '../components/CrashPage'
 import { EfficiencyPage } from '../features/efficiency/EfficiencyPage'
 import { EfficiencySoloPage } from '../features/efficiency-solo/EfficiencySoloPage'
 import { FoldingPage } from '../features/folding/FoldingPage'
@@ -13,6 +14,7 @@ export const router = createBrowserRouter(
     {
       path: '/',
       element: <AppShell />,
+      errorElement: <CrashPage />,
       children: [
         { index: true, element: <HomePage /> },
         { path: 'efficiency', element: <EfficiencyPage /> },

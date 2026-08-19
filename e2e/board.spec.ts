@@ -741,6 +741,37 @@ test('restarting a shared-link round with a replayed log does not crash', async 
   expect(errors).toEqual([])
 })
 
+/** Same deal as `tenpaiWithReplayedLogBoard`, but the log names a tile seat 0 never held or drew —
+ *  the shape a hand-edited or stale link takes. `replayLog` throws immediately on load, which is
+ *  what the router's `errorElement` (`CrashPage`) exists to catch rather than a blank page. */
+function crashingBoard(): string {
+  const seat0 = ['1m', '1m', '2m', '2m', '3m', '3m', '4m', '4m', '5m', '5m', '6m', '6m', '7m']
+  const seat1 = ['1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '1s', '2s', '3s', '4s']
+  const seat2 = ['5s', '6s', '7s', '8s', '9s', '1z', '2z', '3z', '4z', '5z', '6z', '7z', '9m']
+  const seat3 = ['8m', '9m', '7m', '8p', '9p', '1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s']
+  const deal = dealt([seat0, seat1, seat2, seat3])
+  return `/efficiency?wall=${tenhou([...deal, '9s'])}&log=D09mT&seat=0&deadWall=1&aka=0&sanma=0`
+}
+
+test('a crash falls to the report page with a prefilled GitHub issue link', async ({ page }) => {
+  await page.goto(crashingBoard())
+
+  await expect(page.getByRole('heading', { name: 'Something went wrong' })).toBeVisible()
+  await expect(page.locator('p', { hasText: 'cannot remove tile' })).toBeVisible()
+
+  const report = page.getByRole('link', { name: 'Report on GitHub' })
+  // `URLSearchParams` encodes spaces as `+`, which plain `decodeURIComponent` leaves alone
+  const href = decodeURIComponent((await report.getAttribute('href'))!.replace(/\+/g, ' '))
+  expect(href).toContain('https://github.com/kael-k/riichi-trainer/issues/new')
+  expect(href).toContain('template=bug_report.md')
+  // the situation link, the browser's own UA and the actual thrown message all ride along
+  expect(href).toContain(page.url())
+  expect(href).toContain('cannot remove tile')
+  expect(href.toLowerCase()).toContain((await page.evaluate(() => navigator.userAgent)).toLowerCase())
+
+  await expect(page.getByRole('link', { name: 'Back to home' })).toHaveAttribute('href', '/')
+})
+
 test('a declared seat may only throw the tile it just drew', async ({ page }) => {
   // seat 0 is dealt a shanpon tenpai on 1p/2p, draws a 9s it cannot use and declares riichi
   // throwing it straight back. Riichi locks every later discard to tsumogiri, so on its next turn
