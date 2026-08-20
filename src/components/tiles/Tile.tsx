@@ -215,12 +215,19 @@ function Discard({ tile }: { tile: RiverTile }) {
 
 /** Discard pile, 6 tiles per row like a real river. Rows are flex, not grid columns, so a
  *  sideways riichi tile can widen its own row the way it does on a real table. Tile size is
- *  the caller's `--tile-w` — the table sets its own, the flat trainer layout scales it down. */
-export function River({ tiles }: { tiles: RiverTile[] }) {
+ *  the caller's `--tile-w` — the table sets its own, the flat trainer layout scales it down.
+ *
+ *  `wide` lets those rows stand side by side instead of stacking, which is a river read off the
+ *  felt — the solo trainer's own, eighteen rows deep by the time the wall is out. The rows
+ *  themselves are still six: they wrap into whatever width the caller gives this box (twelve
+ *  tiles' worth, there) with a gap between the pair, so reading order and the six-tile beat a
+ *  player counts a river by both survive. The caller owns the width, since a river that widens
+ *  as it fills walks the hand below it across the screen. */
+export function River({ tiles, wide }: { tiles: RiverTile[]; wide?: boolean }) {
   const rows: RiverTile[][] = []
   for (let i = 0; i < tiles.length; i += 6) rows.push(tiles.slice(i, i + 6))
   return (
-    <div className="flex w-fit flex-col">
+    <div className={wide ? 'flex w-full flex-wrap gap-x-2' : 'flex w-fit flex-col'}>
       {rows.map((row, i) => (
         <div key={i} className="flex items-center">
           {row.map((tile, j) => (

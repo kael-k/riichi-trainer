@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, type CSSProperties, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
@@ -228,6 +228,7 @@ export function EfficiencySoloPage() {
           </div>
         )
       }
+      flow
       wall={
         <WallDetails
           dealt={round.dealtTiles}
@@ -239,9 +240,12 @@ export function EfficiencySoloPage() {
       }
     >
       {/* there is no felt here to read the wall and dora off, so this solo trainer says them
-          plainly above its own river — all of it in the board area, where a table would be */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
+          plainly above its own river — all of it in the board area, where a table would be.
+          A size container: the river below sizes its own tiles off the width this block is
+          given rather than off the hand's, which is what lets a phone spend the room it has
+          on the river instead of leaving two thirds of the screen beside it empty */}
+      <div className="flex w-full flex-col gap-4 [container-type:inline-size]">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-neutral-500">
           <span>{t('efficiency.wallStatus', { count: round.liveWall.length })}</span>
           {round.doraIndicators.length > 0 && (
             <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
@@ -252,16 +256,33 @@ export function EfficiencySoloPage() {
             </span>
           )}
         </div>
-        <div className="flex flex-wrap gap-4 [--tile-w:calc(var(--tile-w-base)*0.8)]">
+        {/* Twelve tiles to a line, at whichever is smaller: the tile size this screen would draw
+            them at, or the twelfth of the room the block actually has. On a phone the second one
+            never binds, so the river fills the width it has instead of hugging one edge of it;
+            on anything from a tablet up it draws below the hand's own size, where a river read
+            off the felt belongs. */}
+        <div className="flex flex-wrap justify-center gap-4 [--tile-w:min(var(--tile-w-base),calc((100cqw-0.5rem)/12))] sizable:[--tile-w:min(calc(var(--tile-w-base)*0.8),calc((100cqw-0.5rem)/12))]">
           <div className="flex flex-col gap-1">
             <span className="text-xs text-neutral-500">
               {t(`wind.${WINDS[round.seatIndex]}`)} {t('efficiency.you')}
             </span>
-            {round.rivers[round.seatIndex].length > 0 ? (
-              <River tiles={round.rivers[round.seatIndex]} />
-            ) : (
-              <span className="text-xs text-neutral-400">{t('efficiency.emptyRiver')}</span>
-            )}
+            {/* Both dimensions fixed from the deal: twelve tiles across, and — where the hand
+                rides up under it (`roomy:`, the `flow` gate) — as many rows as this round's own
+                wall can ever fill. A river that grows into its space walks the hand down the
+                screen a row at a time, and a hand that moves under the pointer between turns is
+                a hand you misclick. */}
+            <div
+              style={
+                { '--river-rows': Math.ceil(round.liveWallSnapshot.length / 12) } as CSSProperties
+              }
+              className="w-[calc(var(--tile-w)*12+0.5rem)] roomy:min-h-[calc(var(--river-rows)*var(--tile-w)*4/3)]"
+            >
+              {round.rivers[round.seatIndex].length > 0 ? (
+                <River tiles={round.rivers[round.seatIndex]} wide />
+              ) : (
+                <span className="text-xs text-neutral-400">{t('efficiency.emptyRiver')}</span>
+              )}
+            </div>
           </div>
           {options.sanma && round.nuki.length > 0 && (
             <div className="flex flex-col gap-1">

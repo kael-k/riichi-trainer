@@ -70,6 +70,16 @@ interface BoardStageProps {
    *  place a trainer with nothing dealt yet says so (folding's "dealing…", the lab's empty state).
    *  Centred where the board would otherwise be. */
   children?: ReactNode
+  /** Read `children` as something that grows down the page rather than one block posed in the
+   *  middle of the stage. It is anchored to the top of the board area and given its full width
+   *  to size itself off, and from `roomy:` up the area stops reserving the height it isn't using,
+   *  so the hand rides up under the content instead of standing at the bottom of an empty screen.
+   *  Below that gate — a phone either way up, a tablet — nothing moves: the hand keeps the bottom
+   *  edge the way a felt gives it (`Table`), and the content scrolls in what is left. Content that
+   *  rides up has to be a fixed height whatever it holds, or the hand walks down the screen as it
+   *  fills; that is the page's own job, not this one's. Solo efficiency's river is the one thing shaped like this — the other
+   *  boardless slots hold a single line ("Dealing…"), which reads better centred. */
+  flow?: boolean
   /** Called with `true` while the session panel is covering the board, so a graded trainer can
    *  stop its clock — reading back over the log is not thinking time. Only fires for the drawer:
    *  a panel docked beside the board hides nothing and must never pause the hand. */
@@ -194,6 +204,7 @@ export function BoardStage({
   panel,
   wall,
   children,
+  flow,
   onLogOpen,
   chrome,
   settings,
@@ -322,7 +333,12 @@ export function BoardStage({
 
         {/* the gutter offset lives on this outer column, so both the HUD row below and the
             centring row under it stay clear of the chrome column held sideways */}
-        <div className="flex min-h-0 flex-1 flex-col short:pl-[calc(2.75rem+env(safe-area-inset-left))]">
+        {/* `flow` hands the leftover height back here as well as in the board area below: this
+            column is what actually reserves it, so a board area that has stopped growing past its
+            content only moves the hand up once this one stops too */}
+        <div
+          className={`flex min-h-0 flex-1 flex-col short:pl-[calc(2.75rem+env(safe-area-inset-left))] ${flow && !board ? 'roomy:flex-initial' : ''}`}
+        >
           {status && (
             // Portrait: a row of its own, full width, above the board — upright there is no gutter
             // beside the square to stand in (the board fills the width), and the room left over is
@@ -343,7 +359,22 @@ export function BoardStage({
               room inside it and the square shrinks to fit rather than overflowing by that much. */}
           <div
             data-testid="board-area"
-            className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size] roomy:p-4"
+            className={
+              flow && !board
+                ? // `flow`: the content is a river that grows, not a board that is posed. Anchored
+                  // to the top (`items-start`), and from `sizable:` up `flex-initial` hands back
+                  // the height it is not using so the hand strip below rides up under it — the
+                  // stage stops reserving a screenful for six discards. It still shrinks when the
+                  // content outgrows the room (`flex: 0 1 auto` plus `min-h-0`), which is the
+                  // whole-wall case: the area fills, the wrapper scrolls, and `pb-6` is the gap
+                  // that keeps the last river row off the hand. `min-h-36` is for the floating HUD
+                  // that is absolutely positioned in here — a board area shorter than that card
+                  // would let it hang out over the hand. `container-type` drops to `inline-size`:
+                  // size containment would make this box ignore its own content and collapse, and
+                  // `100cqh` belongs to `Table`'s square, which a flow page does not have.
+                  'relative flex min-h-0 flex-1 items-start justify-center px-2 pt-2 pb-16 [container-type:inline-size] roomy:min-h-36 roomy:flex-initial roomy:px-4 roomy:pt-4'
+                : 'relative flex min-h-0 flex-1 items-center justify-center [container-type:size] roomy:p-4'
+            }
           >
             {board ? (
               board
@@ -351,7 +382,9 @@ export function BoardStage({
               // a boardless trainer (shanten, solo) has nothing to put in the middle of the stage,
               // and neither has one that has not dealt yet — solo's river lives in here, and a table
               // where you cannot see your own discards is not a table
-              <div className="max-h-full overflow-auto px-2">{children}</div>
+              <div className={`max-h-full overflow-auto ${flow ? 'w-full' : 'px-2'}`}>
+                {children}
+              </div>
             )}
             {status && (
               // Held sideways and on a window with room to spare, the square is limited by its
@@ -391,7 +424,14 @@ export function BoardStage({
               // full breakdown is a tap away in the panel. With the panel open in either shape it
               // does not render at all: the full feedback is already on screen, and saying the same
               // thing twice is how a reader ends up looking for a difference that isn't there
-              <div className="pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:bottom-2 short:right-2 short:items-center">
+              // `flow` moves it to the foot of the board area instead: that content is anchored to
+              // the top and starts with the wall count and the dora indicator, which is exactly
+              // what a notice at the top covers — and dora is something you read *while* deciding.
+              // The `pb-16` the flow area carries is the strip it lands in, so it never reaches
+              // the river above it either
+              <div
+                className={`pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:right-2 short:bottom-2 short:items-center ${flow && !board ? 'top-auto bottom-2' : ''}`}
+              >
                 <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 short:max-h-full short:max-w-[calc((100svw-2.75rem-100cqh)/2-0.5rem)] dark:bg-neutral-900/95 dark:ring-white/10">
                   {noticeCompact ?? notice}
                 </div>
