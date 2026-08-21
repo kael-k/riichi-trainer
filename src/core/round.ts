@@ -777,7 +777,13 @@ export function finishTurn(
 
   const entry: RiverTile = { id: tile.id, red: tile.red }
   if (fromDrawn) entry.tsumogiri = true
-  if (declaring) entry.riichi = true
+  // The rotated tile marks where this seat's river stopped being safe, so it has to survive the
+  // declaration tile being called away: `resolveReactions` pops that tile out of the river, which
+  // puts `river.length` back to exactly the `riichiAt` it was declared at, and the next discard
+  // this seat makes lands in the same slot and takes the mark instead. One comparison covers both
+  // — the declaration itself (`riichiAt` is set to `river.length` just above) and the re-rotation
+  // after a call. `riichiAt` needs no repair for the same reason: the slot it names is refilled.
+  if (player.riichiAt === player.river.length) entry.riichi = true
   player.river.push(entry)
   state.discards.push({ seat, tile: entry })
   // temporary furiten (declining a win on somebody else's discard) lasts until this seat has taken

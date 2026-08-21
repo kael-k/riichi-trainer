@@ -268,10 +268,107 @@ describe('playRound', () => {
       const { state } = playRound(`riichi-mark-${i}`, 4, YONMA)
       for (const player of state.players) {
         const marked = player.river.filter((t) => t.riichi).length
-        // a claimed declaration tile leaves the river with the meld, so the marker can be gone
+        // a claimed declaration tile leaves the river with the meld and the mark moves to this
+        // seat's next discard — so it is missing only while that discard is still owed, which is
+        // where a hand ending on the call itself leaves it
         expect(marked).toBeLessThanOrEqual(player.riichiAt === undefined ? 0 : 1)
       }
     }
+  })
+
+  it('re-rotates the next discard when the declaration tile is called away', () => {
+    // seat 0 declares on a 9s and seat 1, its shimocha, chis it as 789s — which pops the rotated
+    // tile out of seat 0's river along with the meld. The mark says where the river stopped being
+    // safe, so it has to land on whatever seat 0 throws next instead of vanishing with the tile.
+    const wall = handsWall('riichi-called', '123456789m1122p', '111222333m99p78s')
+    const first = 4 * INITIAL_HAND_SIZE
+    const nine = wall.findIndex((t, i) => i > first && t.id === SOU + 8)
+    ;[wall[first], wall[nine]] = [wall[nine], wall[first]]
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0, 1), claims: true }
+    const state = createRound(wall, 4, options)
+
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: true }, true)
+    expect(state.players[0].river[0]?.riichi).toBe(true)
+
+    answerClaim(state, options, { kind: 'chi', from: [SOU + 6, SOU + 7] })
+    expect(state.players[1].melds).toHaveLength(1)
+    expect(state.players[0].river).toHaveLength(0)
+
+    // seat 0 is in riichi, so its next discard is forced — and takes the mark the call carried off
+    const quiet: RoundOptions = { ...options, claims: false }
+    while (!state.ended && state.players[0].river.length === 0) {
+      beginTurn(state, quiet)
+      finishTurn(state, quiet)
+    }
+    const river = state.players[0].river
+    expect(river.filter((t) => t.riichi)).toHaveLength(1)
+    expect(river[0].riichi).toBe(true)
+    // the slot the call emptied is the slot the next discard fills, so `riichiAt` still points at it
+    expect(state.players[0].riichiAt).toBe(0)
+  })
+
+  it('keeps re-rotating for as long as the mark keeps being called away', () => {
+    // seat 0 is in riichi from its first discard, so every discard after it is its own draw —
+    // pinned here to 1s/2s/3s/4s, with seat 1 holding a pair of each of the first three. Three
+    // declarations in a row are ponned straight out of the river; the fourth is a lone 4s nobody
+    // can take, and that is where the mark has to end up.
+    const wall = handsWall('riichi-called-thrice', '123456789m1122p', '456789m1z112233s')
+    const draws = ['1s', '2s', '3s', '4s'].map((code) => parseTenhou(code)[0])
+    draws.forEach((tile, i) => {
+      // seat 1 pons instead of drawing, so seat 0's draws are every third tile off the live wall
+      const slot = 4 * INITIAL_HAND_SIZE + i * 3
+      const source = wall.findIndex((t, j) => j > slot && t.id === tile.id)
+      expect(source).toBeGreaterThan(slot)
+      ;[wall[slot], wall[source]] = [wall[source], wall[slot]]
+    })
+    const options: RoundOptions = {
+      ...YONMA,
+      // seats 2 and 3 on tsumogiri: they never call and never win, so nothing between seat 0 and
+      // seat 1 can take a tile out from under this test
+      algorithms: ['manual', 'manual', 'tsumogiri', 'tsumogiri'],
+      claims: true,
+    }
+    const state = createRound(wall, 4, options)
+
+    /** Plays on to seat 0's next turn, passing on every claim raised in between. */
+    function toSeatZero() {
+      while (!state.ended && state.seat !== 0) {
+        if (state.claim) {
+          answerClaim(state, options, { kind: 'pass' })
+          continue
+        }
+        beginTurn(state, options)
+        const player = state.players[state.seat]
+        const manualDiscard = { tile: player.concealed[0], fromDrawn: false }
+        finishTurn(state, options, player.algorithm === 'manual' ? manualDiscard : undefined)
+      }
+    }
+
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: draws[0], fromDrawn: true }, true)
+    expect(state.players[0].riichiAt).toBe(0)
+    expect(state.players[0].river[0]?.riichi).toBe(true)
+
+    for (const tile of draws.slice(0, 3)) {
+      expect(state.players[0].river.at(-1)).toMatchObject({ id: tile.id, riichi: true })
+      expect(state.claim?.seat).toBe(1)
+      answerClaim(state, options, { kind: 'pon', from: [tile.id, tile.id] })
+      expect(state.players[0].river).toHaveLength(0)
+
+      toSeatZero()
+      beginTurn(state, options)
+      // in riichi, so the pinned draw is the discard — no explicit tile needed
+      finishTurn(state, options)
+    }
+
+    // nobody holds a second 4s, and seat 1's sou tiles all went into the three melds
+    expect(state.claim).toBeUndefined()
+    expect(state.players[1].melds).toHaveLength(3)
+    const river = state.players[0].river
+    expect(river).toHaveLength(1)
+    expect(river[0]).toMatchObject({ id: draws[3].id, riichi: true })
+    expect(state.players[0].riichiAt).toBe(0)
   })
 
   it('only ever declares riichi on a closed hand', () => {
