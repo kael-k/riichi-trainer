@@ -103,6 +103,8 @@ Win legality is free from existing code: `decompose()` non-empty is the shape, `
 
 The rotated river tile is derived, not stored as a one-shot flag: `finishTurn` writes `entry.riichi` when `player.riichiAt === player.river.length`, which is true both for the declaration itself and again for the seat's next discard after a call popped the declaration tile out of the river. The mark says where a seat's river stopped being safe, so it has to survive being called away — and `riichiAt` needs no repair either, since a pop puts the river back to exactly the length it names and the next discard refills that slot. `state.discards` keeps the called copy (it is never popped), so `threatViews`' genbutsu-after-riichi cut still finds the real declaration point.
 
+`finishTurn` takes an optional `beforeReactions` callback, run after the discard is on the river and any riichi is declared but before any seat reacts to it. It exists because "the moment a riichi lands" is otherwise not observable from outside the engine: by the time `finishTurn` returns, the pon/chi/ron made on that declaration tile have already happened. The folding drill's blanket fold is its only caller (see `playToRiichi` below).
+
 Furiten invariant: ron legality lives in `tryWin` alone (own-river or `missedWin`), and `claimOptions` only ever offers `'ron'` when `tryWin` returns a record — so there is exactly one place that can offer a furiten seat a ron, and it never does. Covered by a regression test in `round.test.ts` rather than left to `seatRead`'s badge (`core/table.ts`) to imply correctness on its own.
 
 The two kinds of furiten are stored differently and expire differently. Own-river furiten is **derived** (`isFuriten(waits, river)`), so it comes and goes with the hand and needs no bookkeeping. Temporary furiten is the stored half, `PlayerState.missedWin`, and it is lifted in `finishTurn` — on the seat's own **discard**, the end of the turn that clears it, rather than on the draw that opens that turn. Nothing is legal in between (nobody else discards while this seat holds its 14th), so the choice is a display one: the badge stays up while the reader is deciding and can still say why the ron was refused. It is `player.missedWin = player.riichiAt !== undefined && player.missedWin`, not a plain clear, because a seat that declines a win **while in riichi** stays furiten for the rest of the hand. Setting it stays inside `resolveReactions` and stays monotonic there, which is what keeps that function restartable.
@@ -202,7 +204,12 @@ same view the folding trainer grades against.
 `playToRiichi` steps `beginTurn`/`finishTurn` itself during generation. The moment its riichi target is reached, every seat that has not
 itself declared and is not itself manual has its `algorithm` switched to `'defense'` — otherwise
 the opponents keep pushing for the rest of the hand, declaring further riichi and flooding the table
-with genbutsu the drill never earned. Generation (`findRound`) searches **fresh random walls** for a
+with genbutsu the drill never earned. "The moment" is literal, and has to be: the flip rides in
+through `finishTurn`'s `beforeReactions` seam rather than after the turn, because the declaration
+tile is one every other seat gets to react to. Applied a moment later, a seat still on
+`'efficiency'` pons or chis the very tile it is about to spend the rest of the hand defending
+against, and the reader is handed a board whose folding seats carry fresh melds they would never
+have called. Generation (`findRound`) searches **fresh random walls** for a
 hand worth drilling (not ended, the seat due to act is not itself in riichi, at least 1-shanten,
 enough wall left, and the ranking holds both a genbutsu and something bare), yielding between
 attempts so the page stays responsive, and **falls back to fewer threats** rather than failing,

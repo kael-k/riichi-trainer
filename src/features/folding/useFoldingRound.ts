@@ -237,17 +237,15 @@ function playToRiichi(
   claims: boolean,
 ) {
   const match = createRound(wall, players, options)
-  // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
-  for (let guard = 0; guard < 400 && !match.ended; guard++) {
-    beginTurn(match, options)
-    finishTurn(match, options)
-    if (riichiSeats(match).length < threats) continue
-
-    // the target is met, so everyone still building a hand folds: an opponent left to chase
-    // tenpai keeps declaring and floods the table with fresh genbutsu, which is exactly the
-    // pressure this drill means to put on the player's own discards, not the AI's. Applied
-    // before the handover turns below, so those turns cannot add a threat the link never
-    // promised — the seat that ends up yours is one the engine stops deciding for anyway
+  // the target is met, so everyone still building a hand folds: an opponent left to chase
+  // tenpai keeps declaring and floods the table with fresh genbutsu, which is exactly the
+  // pressure this drill means to put on the player's own discards, not the AI's. Run through
+  // `finishTurn`'s `beforeReactions` seam rather than after the turn: the declaration tile is
+  // one every other seat gets to react to, and a seat still on `'efficiency'` at that instant
+  // pons or chis the very tile it is about to spend the rest of the hand defending against —
+  // which then hands the reader a board whose folding seats have fresh melds on it
+  const fold = () => {
+    if (riichiSeats(match).length < threats) return
     for (const player of match.players) {
       if (player.riichiAt === undefined) player.algorithm = 'defense'
     }
@@ -256,12 +254,22 @@ function playToRiichi(
     seats?.modes.forEach((mode, seat) => {
       if (match.players[seat]) match.players[seat].algorithm = mode
     })
+  }
+  // a hand is ~18 turns; the bound is a backstop against a rule bug spinning forever
+  for (let guard = 0; guard < 400 && !match.ended; guard++) {
+    beginTurn(match, options)
+    finishTurn(match, options, undefined, false, fold)
+    if (riichiSeats(match).length < threats) continue
+
     // seeded off the wall like the round wind, so replaying the wall seats you the same way and
     // a shared link stays exact
     const rng = mulberry32(`${wallKey(wall)}:seat`)
+    // the fold is already applied (`beforeReactions` fired on the declaring turn), so these turns
+    // cannot add a threat the link never promised — the seat that ends up yours is one the engine
+    // stops deciding for anyway
     for (let extra = Math.floor(rng() * (players - 1)); extra > 0 && !match.ended; extra--) {
       beginTurn(match, options)
-      finishTurn(match, options)
+      finishTurn(match, options, undefined, false, fold)
     }
     if (match.ended) return null
 

@@ -705,12 +705,18 @@ export function wallDrawnCount(state: RoundState): number {
  *
  * The reaction half can suspend (see `resolveReactions`) when a manual seat has a legal claim on
  * the discard. The turn is then unfinished until `answerClaim` resolves it.
+ *
+ * `beforeReactions` runs between the two halves — after the tile is on the river and any riichi is
+ * declared, before any seat reacts. It exists because "the moment a riichi lands" is otherwise not
+ * observable from outside: by the time `finishTurn` returns, the calls made on that declaration
+ * tile have already happened.
  */
 export function finishTurn(
   state: RoundState,
   options: RoundOptions,
   discard?: { tile: ParsedTile; fromDrawn: boolean },
   declareRiichi = false,
+  beforeReactions?: (state: RoundState) => void,
 ): RoundEvent[] {
   if (state.ended || state.claim) return []
   const seat = state.seat
@@ -803,6 +809,13 @@ export function finishTurn(
   state.visible[tile.id]++
   if (declaring) events.push({ kind: 'riichi', seat })
   events.push({ kind: 'discard', seat, tile: entry })
+
+  // the one seam between "the discard is on the river, riichi and all" and "everyone reacts to
+  // it" — a riichi declared this turn is already visible to every seat about to decide, so a
+  // caller that wants to act on the declaration (the folding drill flips every non-declarer to
+  // `'defense'`) has to do it here or the seats it flips will already have called the declaration
+  // tile with the algorithm they had a moment ago
+  beforeReactions?.(state)
 
   return [...events, ...resolveReactions(state, options, seat, entry, {})]
 }

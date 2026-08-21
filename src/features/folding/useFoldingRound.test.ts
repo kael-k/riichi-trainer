@@ -30,6 +30,12 @@ const OPTIONS: FoldingOptions = {
   claims: false,
 }
 
+/** The wall from the report that named both bugs — a called riichi declaration tile. */
+const REPORTED_WALL =
+  '4s4m6s9p8m1p71z27m3s0m6s3z1m64z1m70p2z3p9s5z95m8s3z4s1p5m3p7s5p6s2z7226994p2s1m7s' +
+  '6p4z4p3z1p9s12z6m6p7s6m53p2291s8p9m3p3m7p0s8p4s4p8s5z43m7z6p4z75p8m31s1p5s1z8s678' +
+  '399m8s2m26z5s5z47m6z1m6s6z8m15s228p49s7z6m3s7m5z94p2m1z52m7z2s3m3z8p4z3s4m17s'
+
 /** A deterministic pseudo-random full wall — not necessarily a worthwhile board on its own (a
  *  pinned wall that isn't falls through to a fresh search), just a repeatable one to hand the
  *  hook in place of the old seed strings. */
@@ -258,6 +264,26 @@ describe('useFoldingRound', () => {
     // a threat in riichi is tenpai by construction, so it has a real wait to show
     expect(end.threats[0].hand.length).toBe(13)
     expect(end.threats[0].waits.length).toBeGreaterThan(0)
+  })
+
+  it('keeps the rotated tile on a threat’s river, and never calls the tile it is folding against', async () => {
+    // the board this was reported on: seat 0 declared riichi on a 4s and seat 1 — a seat the
+    // drill flips to `'defense'` the instant that declaration lands — chi'd it, which both took
+    // the rotated tile off the river and gave a folding seat a fresh meld on the tile it was
+    // about to spend the hand defending against
+    const boards = [
+      parseTenhou(REPORTED_WALL),
+      wall('rotate-1'),
+      wall('rotate-2'),
+      wall('rotate-3'),
+    ]
+    for (const board of boards) {
+      const result = await deal({ wall: board })
+      expect(result.current.threatSeats.length).toBeGreaterThan(0)
+      for (const seat of result.current.threatSeats) {
+        expect(result.current.rivers[seat].filter((t) => t.riichi)).toHaveLength(1)
+      }
+    }
   })
 
   it('never lets the engine call for the player', async () => {
