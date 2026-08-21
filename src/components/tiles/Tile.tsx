@@ -354,7 +354,13 @@ export function WallDetails({
       dialogTitle={t('common.wallDetails', { count: remaining })}
       wide
     >
-      <div className="flex flex-col gap-2 [--tile-w:calc(var(--tile-w-base)*0.55)]">
+      {/* Sized by its own clamp rather than off `--tile-w-base`: the dialog is portalled to
+          <body>, so it never sees the stage's scaled base and resolves the raw viewport clamp
+          instead — which shrinks with width exactly where the reveal can least afford it. A tile
+          in here is read, not played, but at ~14px on a phone it was unreadable. The flat range
+          keeps it legible on a phone and stops it ballooning on a desktop; fewer tiles per row is
+          the trade, and the dialog already scrolls. */}
+      <div className="flex flex-col gap-2 [--tile-w:clamp(1.5rem,6.4vw,1.75rem)]">
         {dealt.length > 0 && (
           <WallSection label={t('common.dealtMarker')}>
             <WallRow tiles={dealt} drawn={() => true} mine={mine} />
