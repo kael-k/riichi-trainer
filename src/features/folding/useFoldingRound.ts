@@ -112,9 +112,12 @@ export const FOLDING_VERDICT_TEXT_KEY: Record<VerdictSeverity, string> = {
  *  draw. `seats[i]` names `entry.against[i]`'s threat: both come from the same seat-ascending
  *  `riichiSeats` walk, so the indices line up. */
 function reasonLines(entry: TileDanger, seats: number[]): LogDetail[] {
+  // the wind only earns its place in the sentence once there's more than one threat to tell
+  // apart — same gate `FoldFeedback`'s `Reasons` used
+  const showSeat = entry.against.length > 1
   return entry.against.map((against, i) => ({
     key: 'log.folding.reason',
-    params: { seat: seats[i], tier: against.tier },
+    params: { seat: showSeat ? seats[i] : undefined, tier: against.tier },
     tiles: against.because.map((id) => ({ id, red: false })),
   }))
 }

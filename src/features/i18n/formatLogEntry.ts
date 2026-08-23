@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
 import { formatElapsedMs } from '../../lib/formatElapsed'
-import type { LogEntry } from '../../store/log'
+import type { LogDetail, LogEntry } from '../../store/log'
 import { WINDS } from '../situation/urlCodec'
 
 interface ShantenResultParams {
@@ -104,4 +104,17 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
     return t(entry.key, { ...entry.params, shantenSuffix })
   }
   return t(entry.key, entry.params)
+}
+
+/** One expanded-row detail line. Same idea as `formatLogEntry`'s own special cases — the one
+ *  key that needs render-time composition (the wind name, looked up from a raw seat number) gets
+ *  its own branch, everything else is a plain `t(key, params)`. */
+export function formatLogDetail(detail: LogDetail, t: TFunction): string {
+  if (detail.key === 'log.folding.reason') {
+    const { seat, tier } = detail.params as unknown as { seat?: number; tier: string }
+    return seat === undefined
+      ? t(`folding.tier.${tier}`)
+      : t('log.folding.reason', { wind: t(`wind.${WINDS[seat]}`), tier: t(`folding.tier.${tier}`) })
+  }
+  return t(detail.key, detail.params)
 }
