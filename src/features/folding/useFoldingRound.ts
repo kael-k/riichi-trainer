@@ -611,6 +611,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
         correct,
       },
       tiles: correct ? [tile] : [tile, { id: safest[0].tile, red: false }],
+      // a wrong throw draws the safer tile past a seam; a right one has nothing to diff against
+      seam: correct ? undefined : 1,
       situation: situationBefore,
       severity: foldingVerdictSeverity(result),
       detail: foldingDetail(result, riichiSeats(core.round)),

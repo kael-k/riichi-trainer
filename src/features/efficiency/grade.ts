@@ -184,6 +184,8 @@ export function efficiencyLogRows(
           shanten: yours.shanten,
         },
         tiles: [...drawnTiles, tile, { id: best.discard, red: false }],
+        // the row's last tile is the one that beat yours, so the seam falls right before it
+        seam: drawnTiles.length + 1,
         severity,
         detail,
       })

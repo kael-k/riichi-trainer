@@ -22,6 +22,11 @@ export interface LogEntry {
   params?: Record<string, unknown>
   /** Tiles rendered inline after the text, e.g. the discard being described. */
   tiles?: ParsedTile[]
+  /** Index in `tiles` where the *better* tile the entry names begins — the row draws a hairline
+   *  seam there, so your own choice and the one that beat it read as the two halves of a diff.
+   *  Absent means the row's tiles are all one thing. Set by whoever built `tiles`, since only it
+   *  knows which end is which. */
+  seam?: number
   /** When set, the log row gets a copy button that copies this text (e.g. tenhou notation). */
   copyText?: string
   /** Situation query string for the drill as it stood *before* the logged action — when set,
