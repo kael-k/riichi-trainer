@@ -3,6 +3,7 @@ import { addTile, createHand, type Hand } from '../../core/hand'
 import { NORTH } from '../../core/round'
 import type { TableAnalysis } from '../../core/table'
 import { tileCode, type ParsedTile, type TileId } from '../../core/tiles'
+import type { LogDetail, LogEntry } from '../../store/log'
 import type { VerdictSeverity } from '../table/Verdict'
 
 /**
@@ -119,6 +120,25 @@ export function gradeAction(stats: ActionStats, turn: number, sanma: boolean): T
   return { turn, yours, best, kind, grade, missed }
 }
 
+type LogRow = Omit<LogEntry, 'id' | 'situation'>
+
+/** The detail lines a graded main row expands to — your own line always, the best line too once
+ *  the choice was an actual mistake (a tie's "best" carries no ukeire list in `DiscardFeedback`
+ *  either, since there's nothing lost to show). Generic "your discard"/"best discard" labels
+ *  regardless of kind: the row's own text already says "Kita"/kanned, and the tiles say the rest. */
+function discardDetail(result: TurnResult): LogDetail[] {
+  const { yours, best, grade } = result
+  const detail: LogDetail[] = [{ key: 'discardFeedback.yourDiscard', ukeire: yours.ukeireTiles }]
+  if (grade === 'error') {
+    detail.push({
+      key: 'discardFeedback.bestDiscard',
+      tiles: [{ id: best.discard, red: false }],
+      ukeire: best.ukeireTiles,
+    })
+  }
+  return detail
+}
+
 /** Turns a graded `TurnResult` into the log rows both efficiency apps write — same i18n keys,
  *  same param shape and same tile order today's hook already produces. `drawn` is the tile drawn
  *  this turn for a plain discard, or the kita/kan's own replacement (rinshan) draw — callers of
@@ -128,29 +148,33 @@ export function efficiencyLogRows(
   result: TurnResult,
   drawn: ParsedTile | undefined,
   tile: ParsedTile,
-): [string, Record<string, unknown>, ParsedTile[]][] {
+): LogRow[] {
   const { turn, yours, best, kind, grade, missed } = result
-  const rows: [string, Record<string, unknown>, ParsedTile[]][] = []
+  const rows: LogRow[] = []
+  const severity = efficiencyVerdictSeverity(result)
+  const detail = discardDetail(result)
 
   if (kind === 'discard') {
     const drawnCode = drawn ? tileCode(drawn.id, drawn.red) : undefined
     const drawnTiles = drawn ? [drawn] : []
     if (grade !== 'error') {
-      rows.push([
-        drawnCode ? 'log.efficiency.discardBestDrew' : 'log.efficiency.discardBest',
-        {
+      rows.push({
+        key: drawnCode ? 'log.efficiency.discardBestDrew' : 'log.efficiency.discardBest',
+        params: {
           turn,
           drawn: drawnCode,
           tile: tileCode(tile.id, tile.red),
           ukeire: yours.ukeireCount,
           shanten: yours.shanten,
         },
-        [...drawnTiles, tile],
-      ])
+        tiles: [...drawnTiles, tile],
+        severity,
+        detail,
+      })
     } else {
-      rows.push([
-        drawnCode ? 'log.efficiency.discardMistakeDrew' : 'log.efficiency.discardMistake',
-        {
+      rows.push({
+        key: drawnCode ? 'log.efficiency.discardMistakeDrew' : 'log.efficiency.discardMistake',
+        params: {
           turn,
           drawn: drawnCode,
           tile: tileCode(tile.id, tile.red),
@@ -159,22 +183,25 @@ export function efficiencyLogRows(
           bestUkeire: best.ukeireCount,
           shanten: yours.shanten,
         },
-        [...drawnTiles, tile, { id: best.discard, red: false }],
-      ])
+        tiles: [...drawnTiles, tile, { id: best.discard, red: false }],
+        severity,
+        detail,
+      })
     }
     if (missed) {
-      rows.push([
-        missed.kind === 'kita' ? 'log.efficiency.missedKita' : 'log.efficiency.missedKan',
-        { turn, tile: tileCode(missed.tile) },
-        [{ id: missed.tile, red: false }],
-      ])
+      rows.push({
+        key: missed.kind === 'kita' ? 'log.efficiency.missedKita' : 'log.efficiency.missedKan',
+        params: { turn, tile: tileCode(missed.tile) },
+        tiles: [{ id: missed.tile, red: false }],
+        severity: 'warning',
+      })
     }
     if (yours.shanten <= 0) {
-      rows.push([
-        'log.efficiency.tenpai',
-        { turn },
-        yours.ukeireTiles.map((t) => ({ id: t.tile, red: false })),
-      ])
+      rows.push({
+        key: 'log.efficiency.tenpai',
+        params: { turn },
+        tiles: yours.ukeireTiles.map((t) => ({ id: t.tile, red: false })),
+      })
     }
     return rows
   }
@@ -184,14 +211,16 @@ export function efficiencyLogRows(
   if (kind === 'kita') {
     rows.push(
       grade === 'ok'
-        ? [
-            'log.efficiency.kitaBest',
-            { turn, ukeire: yours.ukeireCount, shanten: yours.shanten },
+        ? {
+            key: 'log.efficiency.kitaBest',
+            params: { turn, ukeire: yours.ukeireCount, shanten: yours.shanten },
             tiles,
-          ]
-        : [
-            'log.efficiency.kitaMistake',
-            {
+            severity,
+            detail,
+          }
+        : {
+            key: 'log.efficiency.kitaMistake',
+            params: {
               turn,
               yours: yours.ukeireCount,
               best: tileCode(best.discard),
@@ -199,19 +228,28 @@ export function efficiencyLogRows(
               shanten: yours.shanten,
             },
             tiles,
-          ],
+            severity,
+            detail,
+          },
     )
   } else {
     rows.push(
       grade === 'ok'
-        ? [
-            'log.efficiency.kanBest',
-            { turn, tile: tileCode(tile.id), ukeire: yours.ukeireCount, shanten: yours.shanten },
+        ? {
+            key: 'log.efficiency.kanBest',
+            params: {
+              turn,
+              tile: tileCode(tile.id),
+              ukeire: yours.ukeireCount,
+              shanten: yours.shanten,
+            },
             tiles,
-          ]
-        : [
-            'log.efficiency.kanMistake',
-            {
+            severity,
+            detail,
+          }
+        : {
+            key: 'log.efficiency.kanMistake',
+            params: {
               turn,
               tile: tileCode(tile.id),
               yours: yours.ukeireCount,
@@ -220,7 +258,9 @@ export function efficiencyLogRows(
               shanten: yours.shanten,
             },
             tiles,
-          ],
+            severity,
+            detail,
+          },
     )
   }
   return rows

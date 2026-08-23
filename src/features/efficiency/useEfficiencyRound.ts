@@ -112,8 +112,8 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     tile: ParsedTile,
     situationBefore: string,
   ) {
-    for (const [key, params, tiles] of efficiencyLogRows(result, drawn, tile)) {
-      log({ key, params, tiles, situation: situationBefore })
+    for (const row of efficiencyLogRows(result, drawn, tile)) {
+      log({ ...row, situation: situationBefore })
     }
   }
 

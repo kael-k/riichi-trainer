@@ -322,6 +322,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
       },
       tiles: state.situation.concealed,
       copyText: serializeTenhou(state.situation.concealed),
+      severity: correct ? 'ok' : 'error',
       situation: situationBefore,
     })
     stats.record(correct, elapsed)

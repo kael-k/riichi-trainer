@@ -162,6 +162,7 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
         },
         tiles: state.hand,
         copyText: serializeTenhou(state.hand),
+        severity: correct ? 'ok' : 'error',
         // the hand as it was asked, so the row rewinds (and shares) back to this exact deal —
         // the tiles pin it outright, which is why no seed replay is involved
         situation: encodeSituation({ ...situation, hand: state.hand, wall: [], log: [] }),

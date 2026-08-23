@@ -80,8 +80,8 @@ export function useEfficiencySoloRound(situation: Situation, options: SoloOption
     tile: ParsedTile,
     before: string,
   ) {
-    for (const [key, params, tiles] of efficiencyLogRows(result, drawn, tile)) {
-      log({ key, params, tiles, situation: before })
+    for (const row of efficiencyLogRows(result, drawn, tile)) {
+      log({ ...row, situation: before })
     }
     setCumulativeLost((n) => n + lostVs(result.yours, result.best))
     setCumulativeTotal((n) => n + result.best.ukeireCount)

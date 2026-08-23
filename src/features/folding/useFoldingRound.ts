@@ -27,7 +27,7 @@ import {
 import { completeWall, validateWall, type WallError } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
-import { useLog, type LogEntry as UiLogEntry } from '../../store/log'
+import { useLog, type LogDetail, type LogEntry as UiLogEntry } from '../../store/log'
 import { resolveSanma } from '../situation/urlCodec'
 import type { Settings } from '../settings/settingsStore'
 import type { SeatConfig } from '../settings/tableSettings'
@@ -106,6 +106,39 @@ export const FOLDING_VERDICT_TEXT_KEY: Record<VerdictSeverity, string> = {
   ok: 'folding.verdictOk',
   warning: 'folding.verdictWarning',
   error: 'folding.verdictError',
+}
+
+/** One line per threat this tile was judged against — what `FoldFeedback`'s `Reasons` used to
+ *  draw. `seats[i]` names `entry.against[i]`'s threat: both come from the same seat-ascending
+ *  `riichiSeats` walk, so the indices line up. */
+function reasonLines(entry: TileDanger, seats: number[]): LogDetail[] {
+  return entry.against.map((against, i) => ({
+    key: 'log.folding.reason',
+    params: { seat: seats[i], tier: against.tier },
+    tiles: against.because.map((id) => ({ id, red: false })),
+  }))
+}
+
+/** The detail lines a graded folding row expands to: why your own tile sits at its tier, then
+ *  — only when it was a mistake — the safest tile and why it sits at its own. The equally-safe
+ *  tie list is logged unconditionally alongside them (when correct and one exists) and gated at
+ *  *render* on `settings.folding.showEquallySafe`, exactly as `FoldFeedback` gated it, so toggling
+ *  the setting takes effect on already-logged rows without re-grading them. */
+function foldingDetail(result: TurnResult, seats: number[]): LogDetail[] {
+  const { yours, safest, correct } = result
+  const detail = reasonLines(yours, seats)
+  if (!correct) {
+    detail.push({ key: 'folding.safestDiscard', tiles: [{ id: safest[0].tile, red: false }] })
+    detail.push(...reasonLines(safest[0], seats))
+  }
+  const alsoSafe = safest.filter((entry) => entry.tile !== yours.tile)
+  if (correct && alsoSafe.length > 0) {
+    detail.push({
+      key: 'folding.equallySafe',
+      tiles: alsoSafe.map((entry) => ({ id: entry.tile, red: false })),
+    })
+  }
+  return detail
 }
 
 export interface ThreatReveal {
@@ -576,6 +609,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
       },
       tiles: correct ? [tile] : [tile, { id: safest[0].tile, red: false }],
       situation: situationBefore,
+      severity: foldingVerdictSeverity(result),
+      detail: foldingDetail(result, riichiSeats(core.round)),
     })
     stats.record(correct, elapsed, quality)
     roundActionCount.current++
@@ -588,6 +623,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
         params: { seat: end.seat, points: end.points, tile: tileCode(tile.id, tile.red) },
         tiles: [tile],
         situation: situationBefore,
+        severity: 'error',
       })
     }
     stats.startClock()

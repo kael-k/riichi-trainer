@@ -134,10 +134,10 @@ describe('grade', () => {
       const tile = { id: 10, red: false }
 
       const withDraw = efficiencyLogRows(result, { id: 10, red: false }, tile)
-      expect(withDraw[0][0]).toBe('log.efficiency.discardBestDrew')
+      expect(withDraw[0].key).toBe('log.efficiency.discardBestDrew')
 
       const withoutDraw = efficiencyLogRows(result, undefined, tile)
-      expect(withoutDraw[0][0]).toBe('log.efficiency.discardBest')
+      expect(withoutDraw[0].key).toBe('log.efficiency.discardBest')
     })
 
     it('emits a tenpai row once the graded discard reaches tenpai', () => {
@@ -145,7 +145,7 @@ describe('grade', () => {
       const stats = statsFor(hand, 'discard', 10)
       const result = gradeAction(stats, 3, false)
       const rows = efficiencyLogRows(result, undefined, { id: 10, red: false })
-      expect(rows.some(([key]) => key === 'log.efficiency.tenpai')).toBe(true)
+      expect(rows.some((row) => row.key === 'log.efficiency.tenpai')).toBe(true)
     })
 
     it('emits a missedKan row for a warning-graded discard', () => {
@@ -153,7 +153,7 @@ describe('grade', () => {
       const stats = statsFor(hand, 'discard', HONOR + 2)
       const result = gradeAction(stats, 4, false)
       const rows = efficiencyLogRows(result, undefined, { id: HONOR + 2, red: false })
-      expect(rows.some(([key]) => key === 'log.efficiency.missedKan')).toBe(true)
+      expect(rows.some((row) => row.key === 'log.efficiency.missedKan')).toBe(true)
     })
   })
 })
