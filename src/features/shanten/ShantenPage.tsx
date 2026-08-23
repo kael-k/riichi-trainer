@@ -1,5 +1,4 @@
 import type { TFunction } from 'i18next'
-import { CheckCircle2, XCircle } from 'lucide-react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BoardStage } from '../../components/tiles/BoardStage'
@@ -104,8 +103,8 @@ export function ShantenPage() {
       }
       chrome={<TrainerToggles {...toggles} />}
       board={
-        // named for the UI suite: the feedback notice draws a `HandDisplay` of its own (the
-        // hand just answered), so "the tiles on screen" needs to say which. Passed as `board`
+        // named for the UI suite: an answered hand keeps its own tiles on its log row, so "the
+        // tiles on screen" needs to say which is the one being asked about. Passed as `board`
         // rather than `hand`: shanten has no felt, and this is what the stage centres in the
         // viewport instead of pinning it to the hand strip at the bottom
         <div data-testid="shanten-hand" className="flex flex-col items-center gap-8">
@@ -147,34 +146,6 @@ export function ShantenPage() {
             severity={round.lastResult.correct ? 'ok' : 'error'}
             text={verdictText(round.lastResult, t)}
           />
-        )
-      }
-      notice={
-        round.lastResult && (
-          <div className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-            <p
-              className={`flex items-center gap-1.5 font-semibold ${round.lastResult.correct ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
-            >
-              {round.lastResult.correct ? (
-                <>
-                  <CheckCircle2 className="size-4" /> {t('shanten.correctLabel')}
-                </>
-              ) : (
-                <>
-                  <XCircle className="size-4" />{' '}
-                  {t('shanten.youSaid', { guess: round.lastResult.guess })}
-                </>
-              )}
-            </p>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              {t('shanten.previousHand', { value: round.lastResult.actual.value })}
-              {pathsLabel(round.lastResult.actual, t) &&
-                ` ${pathsLabel(round.lastResult.actual, t)}`}
-            </p>
-            <div className="[--tile-w:calc(var(--tile-w-base)*0.55)]">
-              <HandDisplay tiles={round.lastResult.hand} />
-            </div>
-          </div>
         )
       }
     />

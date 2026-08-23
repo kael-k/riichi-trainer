@@ -14,7 +14,6 @@ import { useSettings } from '../settings/settingsStore'
 import { useTableSettings, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation, WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
-import { DiscardFeedback } from '../efficiency/DiscardFeedback'
 import { EFFICIENCY_VERDICT_TEXT_KEY, efficiencyVerdictSeverity } from '../efficiency/grade'
 import { NORTH, useEfficiencySoloRound, type SoloOptions } from './useEfficiencySoloRound'
 
@@ -149,9 +148,6 @@ export function EfficiencySoloPage() {
         </div>
       }
       noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
-      notice={
-        round.lastResult && <DiscardFeedback result={round.lastResult} sanma={options.sanma} />
-      }
       noticeCompact={
         round.lastResult && (
           <Verdict

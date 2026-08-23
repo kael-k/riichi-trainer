@@ -43,16 +43,11 @@ interface BoardStageProps {
    *  Real flow, not a float: the board is pushed down to make room for it rather than covering
    *  whatever seat's plate would otherwise sit there. Always on screen, panel open or shut. */
   status?: ReactNode
-  /** Per-action feedback, in full: tile lists, ukeire counts, the lot. What the session panel
-   *  shows. */
-  notice?: ReactNode
-  /** The same feedback, one `Verdict` line (icon, colour, short text, `features/table/Verdict.tsx`)
-   *  — what floats over the board when the session panel is not on screen to hold the full one,
-   *  since a phone mid-drill has no room for tile lists and the full breakdown is a tap away in
-   *  the panel either way. Falls back to `notice` when omitted, so a caller with nothing compact
-   *  to say still gets *something* rather than a silent gap. */
+  /** Per-action feedback, one `Verdict` line (icon, colour, short text,
+   *  `features/table/Verdict.tsx`) — what floats over the board. The only density there is: the
+   *  full breakdown, tile lists and all, is a tap away on the action's own log row (ADR-0027). */
   noticeCompact?: ReactNode
-  /** Bumped whenever `notice`/`noticeCompact` is a *new* one — that is what re-shows a faded
+  /** Bumped whenever `noticeCompact` is a *new* one — that is what re-shows a faded
    *  floating notice. A notice whose key has not moved stays hidden, so re-renders do not
    *  resurrect it. The panel's own copy never fades and ignores this. */
   noticeKey?: string | number
@@ -147,42 +142,26 @@ function StatusCard({ children }: { children: ReactNode }) {
 }
 
 /**
- * Everything that is not the board or the hand: how the session is going, what the last decision
- * was worth in full, whatever the trainer wants to say about the board, and the log. One renderer
+ * Everything that is not the board or the hand: whatever the trainer wants to say about the board
+ * (the lab's rankings and wall authoring, the one remaining consumer), and the log menu — which is
+ * now the feedback surface too, every turn of it rather than the last one (ADR-0027). One renderer
  * for both surfaces it appears on — docked beside the board from `lg` up, pulled over the top in a
  * drawer below that — so the two cannot drift apart.
  */
-function SessionPanel({ notice, panel }: Pick<BoardStageProps, 'notice' | 'panel'>) {
-  const { t } = useTranslation()
-  const { entries, clear } = useLog()
+function SessionPanel({ panel }: Pick<BoardStageProps, 'panel'>) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      {(notice || panel) && (
+      {panel && (
         // `flex-auto` on both halves rather than a fixed share: each is based on its own content
-        // and only gives ground in proportion to it, so a long ukeire list gets the room an empty
-        // log is not using, and a log that has run all game still keeps its own.
+        // and only gives ground in proportion to it, so a long ranking gets the room an empty log
+        // is not using, and a log that has run all game still keeps its own.
         // Tiles here are read, not played, and the column is 320px wide: at the hand's own size a
         // single ukeire list filled the panel on its own, so they draw at the log's scale instead
         <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto [--tile-w:calc(var(--tile-w-base)*0.6)]">
-          {notice}
           {panel}
         </div>
       )}
-      <div className="flex min-h-0 flex-auto flex-col border-t border-neutral-200 dark:border-neutral-800">
-        <div className="flex min-h-11 items-center gap-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">
-          {t('common.log', { count: entries.length })}
-          {entries.length > 0 && (
-            <button
-              type="button"
-              onClick={clear}
-              className="ml-auto rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-            >
-              {t('common.clear')}
-            </button>
-          )}
-        </div>
-        <LogList className="min-h-0 flex-1" />
-      </div>
+      <LogList className="flex-auto border-t border-neutral-200 dark:border-neutral-800" />
     </div>
   )
 }
@@ -197,7 +176,6 @@ export function BoardStage({
   board,
   hand,
   status,
-  notice,
   noticeCompact,
   noticeKey,
   end,
@@ -413,7 +391,7 @@ export function BoardStage({
                 </div>
               </div>
             )}
-            {!drawerOpen && (noticeCompact ?? notice) && noticeShown && (
+            {!drawerOpen && noticeCompact && noticeShown && (
               // pointer-events-none: a notice must never sit between the reader and a tile they are
               // about to click, which is the whole difference between this and a dialog. Held
               // sideways it stops floating over the board at all and stands in the right-hand
@@ -434,7 +412,7 @@ export function BoardStage({
                 className={`pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:right-2 short:bottom-2 short:items-center ${flow && !board ? 'top-auto bottom-2' : ''}`}
               >
                 <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 short:max-h-full short:max-w-[calc((100svw-2.75rem-100cqh)/2-0.5rem)] dark:bg-neutral-900/95 dark:ring-white/10">
-                  {noticeCompact ?? notice}
+                  {noticeCompact}
                 </div>
               </div>
             )}
@@ -486,7 +464,7 @@ export function BoardStage({
           data-testid="session-panel"
           className="flex w-80 shrink-0 flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
         >
-          <SessionPanel notice={notice} panel={panel} />
+          <SessionPanel panel={panel} />
         </aside>
       )}
 
@@ -507,7 +485,7 @@ export function BoardStage({
             // the first log row would otherwise start beneath the notch
             className="absolute inset-y-0 right-0 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
           >
-            <SessionPanel notice={notice} panel={panel} />
+            <SessionPanel panel={panel} />
           </div>
         </div>
       )}

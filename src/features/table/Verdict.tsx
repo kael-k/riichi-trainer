@@ -12,11 +12,10 @@ const COLOR = {
 
 /**
  * One compact feedback line — icon, colour, short text, nothing else. No numbers, no tile lists:
- * that detail stays in the full `DiscardFeedback`/`FoldFeedback` panel, which is what the session
- * panel shows. This is what floats over the board instead, at every viewport, so a reader hears the
- * verdict without losing the tiles to a wall of text. `BoardStage`'s two
- * notice slots (`notice`/`noticeCompact`) pick between them — this component draws only the
- * compact one.
+ * that detail stays on the action's own log row, one tap away, for every turn of the session
+ * rather than the last one (ADR-0027). This is what floats over the board, at every viewport, so a
+ * reader hears the verdict without losing the tiles to a wall of text — the only feedback density
+ * `BoardStage` has left (`noticeCompact`).
  */
 export function Verdict({ severity, text }: { severity: VerdictSeverity; text: string }) {
   const Icon = ICON[severity]

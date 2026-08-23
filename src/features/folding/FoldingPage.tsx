@@ -16,7 +16,6 @@ import { WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { ManualControls } from '../table/ManualControls'
 import { Verdict } from '../table/Verdict'
-import { FoldFeedback } from './FoldFeedback'
 import {
   decodeFoldingUrl,
   FOLDING_VERDICT_TEXT_KEY,
@@ -369,10 +368,6 @@ export function FoldingPage() {
       // one notice per graded throw. Under `feedbackAtEnd` there is nothing to key off until
       // the hand is over, and the whole run then lands in the end card instead
       noticeKey={settings.feedbackAtEnd ? undefined : round.results.length}
-      notice={
-        !settings.feedbackAtEnd &&
-        round.lastResult && <FoldFeedback result={round.lastResult} seats={round.threatSeats} />
-      }
       noticeCompact={
         !settings.feedbackAtEnd &&
         round.lastResult && (
@@ -385,11 +380,6 @@ export function FoldingPage() {
       end={
         round.end && (
           <div className="flex flex-col gap-3">
-            {/* under `feedbackAtEnd` every turn of the hand, in play order, arrives here */}
-            {settings.feedbackAtEnd &&
-              round.results.map((result, i) => (
-                <FoldFeedback key={i} result={result} seats={round.threatSeats} />
-              ))}
             <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
               <p className="font-semibold">
                 {t(`folding.end.${round.end.kind}`, {

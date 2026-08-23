@@ -18,7 +18,6 @@ import { useSettings } from '../settings/settingsStore'
 import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
-import { DiscardFeedback } from './DiscardFeedback'
 import { EFFICIENCY_VERDICT_TEXT_KEY, efficiencyVerdictSeverity } from './grade'
 import { NORTH, useEfficiencyRound, type EfficiencyOptions } from './useEfficiencyRound'
 
@@ -220,9 +219,6 @@ export function EfficiencyPage() {
       // one graded choice per notice: `cumulativeTotal` counts exactly those, so a re-render
       // never brings a faded one back and a kita/kan still gets its own
       noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
-      notice={
-        round.lastResult && <DiscardFeedback result={round.lastResult} sanma={options.sanma} />
-      }
       noticeCompact={
         round.lastResult && (
           <Verdict
