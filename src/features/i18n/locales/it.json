@@ -4,6 +4,10 @@
     "close": "Chiudi",
     "clear": "Cancella",
     "noActions": "Nessuna azione ancora.",
+    "filterAll": "Tutto",
+    "filterMistakes": "Errori",
+    "noMistakes": "Nessun errore finora.",
+    "showDetail": "Mostra dettagli",
     "copyHand": "Copia la mano in formato tenhou",
     "copySituationLink": "Copia link della situazione",
     "copied": "Copiato",
@@ -502,7 +506,8 @@
     "folding": {
       "safe": "Turno {{turn}}: scartato {{tile}} — {{tier}}, il più sicuro disponibile",
       "risky": "Turno {{turn}}: scartato {{tile}} ({{tier}}); {{best}} era più sicuro ({{bestTier}})",
-      "dealIn": "Ron subito: {{tile}} a {{wind}} — {{points}} punti"
+      "dealIn": "Ron subito: {{tile}} a {{wind}} — {{points}} punti",
+      "reason": "{{wind}}: {{tier}}"
     },
     "efficiency": {
       "shanten": "shanten {{count}}",

@@ -4,6 +4,10 @@
     "close": "Close",
     "clear": "Clear",
     "noActions": "No actions yet.",
+    "filterAll": "All",
+    "filterMistakes": "Mistakes",
+    "noMistakes": "No mistakes yet.",
+    "showDetail": "Show details",
     "copyHand": "Copy hand in tenhou format",
     "copySituationLink": "Copy situation link",
     "copied": "Copied",
@@ -502,7 +506,8 @@
     "folding": {
       "safe": "Turn {{turn}}: threw {{tile}} — {{tier}}, the safest available",
       "risky": "Turn {{turn}}: threw {{tile}} ({{tier}}); {{best}} was safer ({{bestTier}})",
-      "dealIn": "Dealt in: {{tile}} to {{wind}} — {{points}} points"
+      "dealIn": "Dealt in: {{tile}} to {{wind}} — {{points}} points",
+      "reason": "{{wind}}: {{tier}}"
     },
     "efficiency": {
       "shanten": "shanten {{count}}",

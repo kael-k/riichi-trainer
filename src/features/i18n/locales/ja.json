@@ -4,6 +4,10 @@
     "close": "閉じる",
     "clear": "クリア",
     "noActions": "まだ操作はありません。",
+    "filterAll": "すべて",
+    "filterMistakes": "ミス",
+    "noMistakes": "まだミスはありません。",
+    "showDetail": "詳細を表示",
     "copyHand": "天鳳形式でコピー",
     "copySituationLink": "局面リンクをコピー",
     "copied": "コピーしました",
@@ -400,7 +404,8 @@
     "folding": {
       "safe": "{{turn}}巡目: {{tile}}を切った——{{tier}}、この局面で最も安全",
       "risky": "{{turn}}巡目: {{tile}}を切った（{{tier}}）; {{best}}の方が安全（{{bestTier}}）",
-      "dealIn": "放銃: {{tile}}を{{wind}}に——{{points}}点"
+      "dealIn": "放銃: {{tile}}を{{wind}}に——{{points}}点",
+      "reason": "{{wind}}: {{tier}}"
     },
     "efficiency": {
       "shanten": "シャンテン {{count}}",
