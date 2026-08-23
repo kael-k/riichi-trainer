@@ -8,15 +8,20 @@ import { copyText } from '../lib/clipboard'
 import { useLog, type LogDetail, type LogEntry, type LogSeverity } from '../store/log'
 import { Tile, UkeireTiles } from './tiles/Tile'
 
-/** The verdict spine down the log's left edge, one segment per row. A correct decision carries no
- *  colour at all: forty green ticks are noise, the log's job is review, and the floating verdict
- *  already said "well done" at the time. Width carries it alongside colour, so it still reads for
- *  a colour-blind reader — and the sentence beside it names the better tile in words regardless. */
+/** The verdict spine down the log's left edge, one segment per row: read top to bottom it *is* the
+ *  session's accuracy record. Width carries it alongside colour, so it still reads for a
+ *  colour-blind reader — and the sentence beside it names the better tile in words regardless. */
 const SPINE: Record<LogSeverity, string> = {
-  ok: 'w-px bg-neutral-200 dark:bg-neutral-800',
+  ok: 'w-0.5 bg-green-600 dark:bg-green-400',
   warning: 'w-0.5 bg-amber-600 dark:bg-amber-400',
   error: 'w-0.5 bg-red-600 dark:bg-red-400',
 }
+
+/** No `severity` is not the same claim as `severity: 'ok'`, which is why the spine does not fall
+ *  back to it: a rewind, a replayed discard, the tenpai note and every row the lab writes are not
+ *  graded decisions at all, and a green bar beside one says the reader got something right that
+ *  nobody was scoring. */
+const NO_VERDICT = 'w-px bg-neutral-200 dark:bg-neutral-800'
 
 /** The deal is a boundary, not a decision: those rows draw as a rule across the list and break the
  *  spine, which is true — a new deal really is where the record starts again. */
@@ -30,7 +35,7 @@ const ICON_BUTTON =
 /**
  * The session's decisions, and — one tap per row — why each was graded the way it was. This is the
  * feedback surface: the panel no longer carries a separate last-action box, so every turn of the
- * session stays reviewable rather than just the most recent one (ADR-0027).
+ * session stays reviewable rather than just the most recent one.
  *
  * `className` is how tall the menu is allowed to get, which is the one thing its two surfaces
  * answer differently: the session panel hands it the space its own flex split left over
@@ -207,7 +212,9 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
       <span className="w-5 shrink-0 pt-1.5 text-right text-[10px] text-neutral-400 tabular-nums">
         {number}
       </span>
-      <div className={`shrink-0 rounded-full ${SPINE[entry.severity ?? 'ok']}`} />
+      <div
+        className={`shrink-0 rounded-full ${entry.severity ? SPINE[entry.severity] : NO_VERDICT}`}
+      />
       <div className="min-w-0 flex-1 py-1">
         <div className="flex items-center gap-1">
           <div className="flex min-w-0 flex-wrap items-center">
