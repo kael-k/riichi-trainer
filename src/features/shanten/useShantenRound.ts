@@ -72,13 +72,12 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
   function logDealt(hand: ParsedTile[]) {
     if (loggedDealIndex.current === handIndex) return
     loggedDealIndex.current = handIndex
-    log(
-      'log.dealtHand',
-      undefined,
-      hand,
-      serializeTenhou(hand),
-      encodeSituation({ ...situation, hand, wall: [], log: [] }),
-    )
+    log({
+      key: 'log.dealtHand',
+      tiles: hand,
+      copyText: serializeTenhou(hand),
+      situation: encodeSituation({ ...situation, hand, wall: [], log: [] }),
+    })
   }
 
   /** Deals the hand for the current `handIndex`, carrying over whether the stream is
@@ -151,9 +150,9 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
       // correct/elapsed go through as params (not formatted text) so a later language switch
       // re-translates the line instead of leaving stale fragments — see formatLogEntry's
       // special case for this key.
-      log(
-        'log.shanten.result',
-        {
+      log({
+        key: 'log.shanten.result',
+        params: {
           hand: stats.totalCount + 1,
           guess,
           actual: actual.value,
@@ -161,12 +160,12 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
           correct,
           elapsedMs: elapsed,
         },
-        state.hand,
-        serializeTenhou(state.hand),
+        tiles: state.hand,
+        copyText: serializeTenhou(state.hand),
         // the hand as it was asked, so the row rewinds (and shares) back to this exact deal —
         // the tiles pin it outright, which is why no seed replay is involved
-        encodeSituation({ ...situation, hand: state.hand, wall: [], log: [] }),
-      )
+        situation: encodeSituation({ ...situation, hand: state.hand, wall: [], log: [] }),
+      })
       stats.record(correct, elapsed)
       // keep running: the feedback rides along with the hand dealt by the index bump
       setState((s) => ({ ...s, lastResult: { guess, actual, correct, hand: s.hand } }))

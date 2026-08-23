@@ -170,7 +170,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
       return
     }
     loggedDeal.current = { urlData, handIndex }
-    log('log.dealt', undefined, undefined, undefined, query)
+    log({ key: 'log.dealt', situation: query })
   }
 
   function fallbackHand(seed: string, invalidLink: boolean): State {
@@ -311,19 +311,19 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
 
     // logged here (not from a page effect) so entries stay in play order; raw fields go
     // through as params rather than formatted text, so a later language switch re-translates
-    log(
-      'log.scoring.result',
-      {
+    log({
+      key: 'log.scoring.result',
+      params: {
         hand: stats.totalCount + 1,
         correct,
         han: actual.han,
         timerEnabled: options.timerEnabled,
         elapsedMs: elapsed,
       },
-      state.situation.concealed,
-      serializeTenhou(state.situation.concealed),
-      situationBefore,
-    )
+      tiles: state.situation.concealed,
+      copyText: serializeTenhou(state.situation.concealed),
+      situation: situationBefore,
+    })
     stats.record(correct, elapsed)
 
     const result: RoundResult = {

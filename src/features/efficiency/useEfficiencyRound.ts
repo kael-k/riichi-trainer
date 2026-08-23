@@ -113,7 +113,7 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     situationBefore: string,
   ) {
     for (const [key, params, tiles] of efficiencyLogRows(result, drawn, tile)) {
-      log(key, params, tiles, undefined, situationBefore)
+      log({ key, params, tiles, situation: situationBefore })
     }
   }
 
@@ -215,16 +215,15 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     // the deal itself, as its own row: its rewind link is the board as dealt, and its share
     // button is the one surface left for sending a fresh board — the page's own share pill is
     // gone (T3), so every deal has to leave a row behind it or the board is unshareable
-    log('log.dealt', undefined, undefined, undefined, encodeSituation(base))
+    log({ key: 'log.dealt', situation: encodeSituation(base) })
     table.replayed().forEach((entry, i) => {
       if (entry.kind !== 'discard' || entry.seat !== seatIndex) return
-      log(
-        'log.replay',
-        { tile: tileCode(entry.tile.id, entry.tile.red) },
-        [entry.tile],
-        undefined,
-        encodeSituation({ ...base, log: table.replayed().slice(0, i) }),
-      )
+      log({
+        key: 'log.replay',
+        params: { tile: tileCode(entry.tile.id, entry.tile.red) },
+        tiles: [entry.tile],
+        situation: encodeSituation({ ...base, log: table.replayed().slice(0, i) }),
+      })
     })
   }
 

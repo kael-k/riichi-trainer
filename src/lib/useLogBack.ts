@@ -43,7 +43,7 @@ export function useLogBack() {
       if (!target) return
       setSteps((s) => s + 1)
       setSearchParams(target.situation!)
-      log('log.wentBack')
+      log({ key: 'log.wentBack' })
     },
   }
 }

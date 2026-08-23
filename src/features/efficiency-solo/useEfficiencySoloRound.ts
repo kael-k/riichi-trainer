@@ -81,7 +81,7 @@ export function useEfficiencySoloRound(situation: Situation, options: SoloOption
     before: string,
   ) {
     for (const [key, params, tiles] of efficiencyLogRows(result, drawn, tile)) {
-      log(key, params, tiles, undefined, before)
+      log({ key, params, tiles, situation: before })
     }
     setCumulativeLost((n) => n + lostVs(result.yours, result.best))
     setCumulativeTotal((n) => n + result.best.ukeireCount)
@@ -162,16 +162,15 @@ export function useEfficiencySoloRound(situation: Situation, options: SoloOption
     const base = table.situation(seatIndex)
     // the deal itself, as its own row — see the table hook's own `logReplay` for why every deal
     // needs one now that the page's own share pill is gone (T3)
-    log('log.dealt', undefined, undefined, undefined, encodeSituation({ ...base, log: [] }))
+    log({ key: 'log.dealt', situation: encodeSituation({ ...base, log: [] }) })
     table.replayed().forEach((entry, i) => {
       if (entry.kind !== 'discard') return
-      log(
-        'log.replay',
-        { tile: tileCode(entry.tile.id, entry.tile.red) },
-        [entry.tile],
-        undefined,
-        encodeSituation({ ...base, log: table.replayed().slice(0, i) }),
-      )
+      log({
+        key: 'log.replay',
+        params: { tile: tileCode(entry.tile.id, entry.tile.red) },
+        tiles: [entry.tile],
+        situation: encodeSituation({ ...base, log: table.replayed().slice(0, i) }),
+      })
     })
   }
 

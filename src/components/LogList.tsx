@@ -80,7 +80,7 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
               setSearchParams(entry.situation!)
               // appended, not replacing the log: rewinding is itself an action worth a record,
               // and clearing history on rewind would erase feedback the player hasn't seen yet
-              log('log.rewound', { number })
+              log({ key: 'log.rewound', params: { number } })
             }}
             className="flex size-6 shrink-0 items-center justify-center self-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
           >

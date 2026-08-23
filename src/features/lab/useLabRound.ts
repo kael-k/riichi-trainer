@@ -86,13 +86,12 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     if (replaying) return
     if (event.kind === 'discard' && manualSeats.includes(event.seat)) {
       // one plain log row naming the tile and the turn — no grade, no partial credit
-      log(
-        'log.lab.discard',
-        { turn: core.round.turn, tile: tileCode(event.tile.id, event.tile.red) },
-        [event.tile],
-        undefined,
-        encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength))),
-      )
+      log({
+        key: 'log.lab.discard',
+        params: { turn: core.round.turn, tile: tileCode(event.tile.id, event.tile.red) },
+        tiles: [event.tile],
+        situation: encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength))),
+      })
     }
     // read both once per turn, not from render — evaluateDiscards/assessDiscards are real work
     if (event.kind === 'draw' && manualSeats.includes(event.seat) && turn) {
@@ -115,7 +114,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
   function logDealt() {
     if (loggedDeal.current === situation) return
     loggedDeal.current = situation
-    log('log.dealt', undefined, undefined, undefined, encodeSituation(table.situation(seatIndex, [])))
+    log({ key: 'log.dealt', situation: encodeSituation(table.situation(seatIndex, [])) })
   }
 
   useEffect(() => {

@@ -27,7 +27,7 @@ import {
 import { completeWall, validateWall, type WallError } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
-import { useLog } from '../../store/log'
+import { useLog, type LogEntry as UiLogEntry } from '../../store/log'
 import { resolveSanma } from '../situation/urlCodec'
 import type { Settings } from '../settings/settingsStore'
 import type { SeatConfig } from '../settings/tableSettings'
@@ -474,7 +474,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
   // the link whose replayed discards are already on the log; see `logReplay`
   const loggedReplay = useRef<FoldingUrl>(undefined)
   // rows waiting for the hand to end, under `feedbackAtEnd`; see `writeLog`
-  const held = useRef<[string, Record<string, unknown>, ParsedTile[], string][]>([])
+  const held = useRef<Omit<UiLogEntry, 'id'>[]>([])
   // graded discards made in *this* hand, for the end-of-hand panel's own average — distinct from
   // `stats.averageTime`, which keeps running across every hand until the log is cleared
   const roundActionCount = useRef(0)
@@ -564,9 +564,9 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     const quality = worst > 0 ? (worst - dangerScore(yours)) / worst : 1
     const result: TurnResult = { turn: core.round.turn, yours, safest, correct, quality }
 
-    writeLog(
-      'log.folding.discard',
-      {
+    writeLog({
+      key: 'log.folding.discard',
+      params: {
         turn: core.round.turn,
         tile: tileCode(tile.id, tile.red),
         tier: yours.tier,
@@ -574,21 +574,21 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
         bestTier: safest[0].tier,
         correct,
       },
-      correct ? [tile] : [tile, { id: safest[0].tile, red: false }],
-      situationBefore,
-    )
+      tiles: correct ? [tile] : [tile, { id: safest[0].tile, red: false }],
+      situation: situationBefore,
+    })
     stats.record(correct, elapsed, quality)
     roundActionCount.current++
     roundTotalMs.current += elapsed
 
     const end = endOf(core.round, seatIndex, options.sanma)
     if (end?.kind === 'dealIn') {
-      writeLog(
-        'log.folding.dealIn',
-        { seat: end.seat, points: end.points, tile: tileCode(tile.id, tile.red) },
-        [tile],
-        situationBefore,
-      )
+      writeLog({
+        key: 'log.folding.dealIn',
+        params: { seat: end.seat, points: end.points, tile: tileCode(tile.id, tile.red) },
+        tiles: [tile],
+        situation: situationBefore,
+      })
     }
     stats.startClock()
     setLastResult(result)
@@ -650,17 +650,16 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     loggedReplay.current = urlData
     // the board as handed over, as its own row — see the table hook's own `logReplay` for why
     // every deal needs one now that the page's own share pill is gone (T3)
-    log('log.dealt', undefined, undefined, undefined, encodeFoldingUrl(built.wall, built.board, []))
+    log({ key: 'log.dealt', situation: encodeFoldingUrl(built.wall, built.board, []) })
     const sinceHandover = built.replay.slice(built.handedOverAt)
     sinceHandover.forEach((entry, i) => {
       if (entry.kind !== 'discard' || entry.seat !== built.seatIndex) return
-      log(
-        'log.replay',
-        { tile: tileCode(entry.tile.id, entry.tile.red) },
-        [entry.tile],
-        undefined,
-        encodeFoldingUrl(built.wall, built.board, sinceHandover.slice(0, i)),
-      )
+      log({
+        key: 'log.replay',
+        params: { tile: tileCode(entry.tile.id, entry.tile.red) },
+        tiles: [entry.tile],
+        situation: encodeFoldingUrl(built.wall, built.board, sinceHandover.slice(0, i)),
+      })
     })
   }
 
@@ -670,20 +669,13 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
   }, [round])
 
   /** One log row, held back until the hand ends when the drill is running answers-at-the-end. */
-  function writeLog(
-    key: string,
-    params: Record<string, unknown>,
-    tiles: ParsedTile[],
-    situation: string,
-  ) {
-    if (!options.feedbackAtEnd) log(key, params, tiles, undefined, situation)
-    else held.current.push([key, params, tiles, situation])
+  function writeLog(entry: Omit<UiLogEntry, 'id'>) {
+    if (!options.feedbackAtEnd) log(entry)
+    else held.current.push(entry)
   }
 
   function flushLog() {
-    for (const [key, params, tiles, situation] of held.current) {
-      log(key, params, tiles, undefined, situation)
-    }
+    for (const entry of held.current) log(entry)
     held.current = []
   }
 

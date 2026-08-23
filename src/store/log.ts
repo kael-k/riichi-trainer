@@ -19,13 +19,7 @@ export interface LogEntry {
 
 interface LogState {
   entries: LogEntry[]
-  log: (
-    key: string,
-    params?: Record<string, unknown>,
-    tiles?: ParsedTile[],
-    copyText?: string,
-    situation?: string,
-  ) => void
+  log: (entry: Omit<LogEntry, 'id'>) => void
   clear: () => void
 }
 
@@ -34,9 +28,6 @@ let nextId = 1
 /** Per-session action log shown in the trainer log panel. Not persisted. */
 export const useLog = create<LogState>((set) => ({
   entries: [],
-  log: (key, params, tiles, copyText, situation) =>
-    set((s) => ({
-      entries: [...s.entries, { id: nextId++, key, params, tiles, copyText, situation }],
-    })),
+  log: (entry) => set((s) => ({ entries: [...s.entries, { id: nextId++, ...entry }] })),
   clear: () => set({ entries: [] }),
 }))
