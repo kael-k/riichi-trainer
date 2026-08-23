@@ -16,10 +16,10 @@ async function openPanel(page: Page) {
   await expect(page.getByTestId('log-drawer')).toBeVisible()
 }
 
-/** The session panel itself, whichever shape it is in. Feedback is on screen twice on a wide
- *  viewport — `BoardStage` floats the compact verdict over the board *and* keeps the full notice
- *  in the docked panel — so an assertion about the full breakdown has to say which one it means
- *  or it resolves to both. */
+/** The session panel itself, whichever shape it is in. The verdict is on screen twice on a wide
+ *  viewport — `BoardStage` floats the compact one over the board while the log row beside it
+ *  carries the full record — so an assertion about the logged row has to say which one it means
+ *  or it risks resolving to both. */
 function panel(page: Page) {
   return page.getByTestId('session-panel').or(page.getByTestId('log-drawer'))
 }
@@ -52,9 +52,9 @@ test('a pinned hand is posed, graded, and then the stream moves on', async ({ pa
 
   await page.getByRole('button', { name: String(PINNED_SHANTEN), exact: true }).click()
 
-  // the full verdict and the running score both live in the session panel
+  // the graded hand's own log row is the full record now (ADR-0027); the score line is the HUD's
   await openPanel(page)
-  await expect(panel(page).getByText('Correct', { exact: true })).toBeVisible()
+  await expect(panel(page).getByText(/Hand 1: guessed 0, actual 0.*correct/)).toBeVisible()
   await expect(scoreLine(page, 'Correct: 1 / 1')).toHaveCount(1)
   await closePanel(page)
 
@@ -72,8 +72,11 @@ test('a wrong guess names both the guess and the real answer', async ({ page }) 
   await page.getByRole('button', { name: '3', exact: true }).click()
 
   await openPanel(page)
-  await expect(panel(page).getByText('You said 3')).toBeVisible()
-  await expect(panel(page).getByText(`actual shanten: ${PINNED_SHANTEN}`)).toBeVisible()
+  await expect(
+    panel(page).getByText(
+      new RegExp(`Hand 1: guessed 3, actual ${PINNED_SHANTEN}.*wrong`),
+    ),
+  ).toBeVisible()
   await expect(scoreLine(page, 'Correct: 0 / 1')).toHaveCount(1)
 })
 
@@ -113,6 +116,6 @@ test('typing a digit on the keyboard submits the guess', async ({ page }) => {
   await page.keyboard.press(String(PINNED_SHANTEN))
 
   await openPanel(page)
-  await expect(panel(page).getByText('Correct', { exact: true })).toBeVisible()
+  await expect(panel(page).getByText(/Hand 1: guessed 0, actual 0.*correct/)).toBeVisible()
   await expect(scoreLine(page, 'Correct: 1 / 1')).toHaveCount(1)
 })
