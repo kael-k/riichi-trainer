@@ -17,7 +17,9 @@ describe('settingsStore table section', () => {
     const { resolveTableSettings } = await import('./tableSettings')
     useSettings.getState().update('table', { global: { showOpponentHands: true } })
     expect(useSettings.getState().table.global.showOpponentHands).toBe(true)
-    expect(resolveTableSettings('efficiency', useSettings.getState().table).showOpponentHands).toBe(true)
+    expect(resolveTableSettings('efficiency', useSettings.getState().table).showOpponentHands).toBe(
+      true,
+    )
   })
 
   it('drops a v2 blob instead of merging it, falling back to table defaults', async () => {
@@ -40,16 +42,39 @@ describe('settingsStore table section', () => {
     localStorage.setItem(
       'riichi-trainer-settings',
       JSON.stringify({
-        state: { efficiency: { showShanten: false } },
+        state: { scoring: { showYaku: true } },
         version: 3,
       }),
     )
     const { useSettings } = await import('./settingsStore')
     const state = useSettings.getState()
-    expect(state.efficiency.showShanten).toBe(false)
+    expect(state.scoring.showYaku).toBe(true)
     // a field the persisted blob omitted still comes from the fresh default, not `undefined`
-    expect(state.efficiency.showUkeire).toBe(true)
+    expect(state.scoring.testHan).toBe(true)
     expect(state.table).toEqual({ global: {}, apps: {} })
+  })
+
+  it('keeps the rest of a v3 blob that still carries the removed efficiency/shanten sections', async () => {
+    localStorage.setItem(
+      'riichi-trainer-settings',
+      JSON.stringify({
+        state: {
+          efficiency: { showShanten: false, timerEnabled: false, showUkeire: false },
+          shanten: { timerEnabled: false },
+          scoring: { showYaku: true },
+          locale: 'ja',
+        },
+        version: 3,
+      }),
+    )
+    const { useSettings } = await import('./settingsStore')
+    // the version was deliberately left at 3 when those two sections were dropped: a bump would
+    // discard the whole blob, costing every existing reader the settings they did choose. The
+    // stale keys ride along on the state object (the merge spreads the blob wholesale) but are
+    // off the `Settings` type and unread — what matters is that everything else still loads
+    expect(useSettings.getState().scoring.showYaku).toBe(true)
+    expect(useSettings.getState().locale).toBe('ja')
+    expect(useSettings.getState().scoring.testHan).toBe(true)
   })
 
   it('bumps persist version to 3', async () => {

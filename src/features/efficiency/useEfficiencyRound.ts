@@ -50,11 +50,7 @@ export interface EfficiencyOptions {
  *  about. Which seat is graded is decided here and nowhere else: `useRound` reports every seat's
  *  events and this handler ignores the ones that are not `seatIndex`'s, which is what lets a second
  *  manual seat be *played* without being *scored*. */
-export function useEfficiencyRound(
-  situation: Situation,
-  options: EfficiencyOptions,
-  timerEnabled: boolean,
-) {
+export function useEfficiencyRound(situation: Situation, options: EfficiencyOptions) {
   const players = options.sanma ? 3 : 4
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
@@ -291,7 +287,7 @@ export function useEfficiencyRound(
     cumulativeTotal,
     elapsedNow: stats.elapsedNow,
     /** Whether the clock is ticking: the hand is still in play and unpaused. */
-    running: !finished && !stats.paused && timerEnabled,
+    running: !finished && !stats.paused,
     paused: stats.paused,
     averageTime: stats.averageTime,
     /** Mean time per graded choice in *this* round alone, ms — what the round-complete panel

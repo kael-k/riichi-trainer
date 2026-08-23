@@ -3,7 +3,6 @@ import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { formatLogEntry } from '../features/i18n/formatLogEntry'
-import { useSettings } from '../features/settings/settingsStore'
 import { copyText } from '../lib/clipboard'
 import { useLog, type LogEntry } from '../store/log'
 import { Tile } from './tiles/Tile'
@@ -55,7 +54,6 @@ function CopyButton({ label, text, icon }: { label: string; text: string; icon: 
 
 function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
   const { t } = useTranslation()
-  const showShanten = useSettings((s) => s.efficiency.showShanten)
   const [, setSearchParams] = useSearchParams()
   const log = useLog((s) => s.log)
   return (
@@ -64,7 +62,7 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
         {number}
       </span>
       <div className="min-w-0 flex-1">
-        <p>{formatLogEntry(entry, t, showShanten)}</p>
+        <p>{formatLogEntry(entry, t)}</p>
         {entry.tiles && entry.tiles.length > 0 && (
           <div className="flex flex-wrap">
             {entry.tiles.map((tile, i) => (

@@ -25,7 +25,7 @@ describe('useEfficiencyRound', () => {
     // fillSeed-backed rather than a bare prefix: nine gates is tenpai on every tile, so an
     // unpinned draw+discard(0) risks re-landing on tenpai and ending the round on turn 1
     situation.wall = completeWall(parseTenhou('1112345678999m'), false, false, 'test-seed')
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
     expect(result.current.hand).toHaveLength(13)
     expect(result.current.drawn).toBeDefined()
@@ -50,7 +50,7 @@ describe('useEfficiencyRound', () => {
     const drawn = parseTenhou('3p')[0]
     wall[4 * INITIAL_HAND_SIZE] = drawn
     situation.wall = wall
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     expect(result.current.hand).toHaveLength(13)
     expect(result.current.drawn).toEqual(drawn)
   })
@@ -62,7 +62,7 @@ describe('useEfficiencyRound', () => {
     // opponents now always play too, draining roughly 4 tiles per turn instead of 1, so only
     // ~30 of the user's own turns are available rather than the ~120 this used to allow
     situation.wall = completeWall([], false, false, 'seed-1')
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
     for (let i = 0; i < 40 && !result.current.finished; i++) {
       act(() => result.current.discard(0))
@@ -76,7 +76,7 @@ describe('useEfficiencyRound', () => {
     const situation = emptySituation()
     // dealt tenpai (three runs + a shanpon), so tsumogiri of whatever is drawn keeps it there
     situation.wall = wallWithHand(0, parseTenhou('123456789m1122z'), false, false, 'tenpai-stop')
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
     expect(result.current.finished).toBe(false)
     act(() => result.current.discard(13)) // the 7z
@@ -89,7 +89,7 @@ describe('useEfficiencyRound', () => {
 
   it('restart deals a fresh hand', () => {
     const situation = emptySituation()
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     const firstHand = result.current.hand
     act(() => result.current.discard(0))
     act(() => result.current.restart())
@@ -102,7 +102,7 @@ describe('useEfficiencyRound', () => {
     const situation = emptySituation()
     // 13 tiles incl. red 5p — pinned through the dealing order, not as a bare prefix
     situation.wall = wallWithHand(0, parseTenhou('123456789m0p112z'), false, false, 'red-pin')
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     expect(result.current.hand).toContainEqual({ id: 13, red: true })
   })
 
@@ -112,7 +112,7 @@ describe('useEfficiencyRound', () => {
     const wall = wallWithHand(0, hand, false, false, 'red-draw-seed')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('0s')[0] // the user's own first draw: red 5s
     situation.wall = wall
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
     expect(result.current.drawn).toEqual({ id: 22, red: true })
     expect(result.current.hand).not.toContainEqual({ id: 22, red: true })
@@ -130,7 +130,7 @@ describe('useEfficiencyRound', () => {
   // opponents' hands are hidden, so only "none at all when aka is off" is checkable
   it('seeds no red fives at all when aka is disabled', () => {
     const situation = emptySituation()
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     const visible = [
       ...result.current.hand,
       ...(result.current.drawn ? [result.current.drawn] : []),
@@ -141,9 +141,7 @@ describe('useEfficiencyRound', () => {
 
   it('reserves a dead wall and exposes its dora indicator', () => {
     const situation = emptySituation()
-    const { result } = renderHook(() =>
-      useEfficiencyRound(situation, { ...BARE, deadWall: true }, true),
-    )
+    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, deadWall: true }))
     expect(result.current.doraIndicators).toHaveLength(1)
     // every seat is dealt a real hand now, opponents or not: 4 x 13, a 14-tile dead wall, and
     // the one tile drawn to start your turn
@@ -155,7 +153,7 @@ describe('useEfficiencyRound', () => {
     // fillSeed-backed so no opponent's random deal happens to hold a callable pair on the
     // discard below — an unset seed made this flaky the same way as the sanma opponents test
     situation.wall = completeWall(parseTenhou('123456789m1122z'), false, false, 'opp-seed')
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     // 123 unpinned - 39 hidden opponent hands - 1 user draw
     expect(result.current.liveWall.length).toBe(83)
     expect(result.current.rivers.every((r) => r.length === 0)).toBe(true)
@@ -176,7 +174,7 @@ describe('useEfficiencyRound', () => {
     wall[4 * INITIAL_HAND_SIZE + 1] = draws[1]
     situation.wall = wall
     situation.seat = 'S' // East tsumogiris before the user's first draw
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
     // East drew the wall prefix's first tile and has already discarded by the time it is your
     // turn; what it chose is its own business, but it acted, and you drew the tile after it
@@ -197,7 +195,7 @@ describe('useEfficiencyRound', () => {
     const wall = wallWithHand(0, hand, false, false, 'tedashi-seed')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('7z')[0]
     situation.wall = wall
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
     act(() => result.current.discard(0)) // 1m, out of the hand rather than off the draw
     expect(result.current.rivers[0]).toEqual([{ id: 0, red: false }])
@@ -213,7 +211,7 @@ describe('useEfficiencyRound', () => {
     situation.log = [
       { kind: 'discard', seat: 0, tile: discarded7z, fromDrawn: false, riichi: false },
     ]
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
     expect(result.current.turn).toBe(2)
     expect(result.current.rivers[0]).toEqual(parseTenhou('7z'))
@@ -232,25 +230,21 @@ describe('useEfficiencyRound', () => {
       showSeatWaits: false,
       showOpponentHands: false,
     }
-    const a = renderHook(() => useEfficiencyRound(situation, opts, true))
+    const a = renderHook(() => useEfficiencyRound(situation, opts))
     act(() => a.result.current.discard(0))
     act(() => a.result.current.discard(3))
 
     const decoded = decodeSituation(new URLSearchParams(a.result.current.situationQuery()))
     const b = renderHook(() =>
-      useEfficiencyRound(
-        decoded,
-        {
-          deadWall: decoded.deadWall ?? false,
-          aka: decoded.aka ?? false,
-          sanma: decoded.sanma ?? false,
-          seats: null,
-          claims: false,
-          showSeatWaits: false,
-          showOpponentHands: false,
-        },
-        true,
-      ),
+      useEfficiencyRound(decoded, {
+        deadWall: decoded.deadWall ?? false,
+        aka: decoded.aka ?? false,
+        sanma: decoded.sanma ?? false,
+        seats: null,
+        claims: false,
+        showSeatWaits: false,
+        showOpponentHands: false,
+      }),
     )
 
     expect(b.result.current.hand).toEqual(a.result.current.hand)
@@ -265,7 +259,7 @@ describe('useEfficiencyRound', () => {
     const situation = emptySituation()
     situation.wall = parseTenhou('123456789m1122z') // 13 tiles, deterministic starting hand
     const { result, rerender } = renderHook(
-      (props: { situation: Situation }) => useEfficiencyRound(props.situation, BARE, true),
+      (props: { situation: Situation }) => useEfficiencyRound(props.situation, BARE),
       { initialProps: { situation } },
     )
 
@@ -287,7 +281,7 @@ describe('useEfficiencyRound', () => {
     // simulate the rewind button: the page hands the same mounted hook a brand-new `situation`
     // object decoded straight from the URL, same as an EfficiencyPage remount would.
     act(() => rerender({ situation: decoded }))
-    const fresh = renderHook(() => useEfficiencyRound(decoded, BARE, true))
+    const fresh = renderHook(() => useEfficiencyRound(decoded, BARE))
     expect(result.current.hand).toEqual(fresh.result.current.hand)
     expect(result.current.drawn).toEqual(fresh.result.current.drawn)
     expect(result.current.turn).toBe(fresh.result.current.turn)
@@ -295,7 +289,7 @@ describe('useEfficiencyRound', () => {
 
   it('logs one rewindable entry per discard a shared river was replayed through', () => {
     const situation = emptySituation()
-    const played = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const played = renderHook(() => useEfficiencyRound(situation, BARE))
     act(() => played.result.current.discard(0))
     act(() => played.result.current.discard(0))
     const shared = decodeSituation(new URLSearchParams(played.result.current.situationQuery()))
@@ -307,7 +301,7 @@ describe('useEfficiencyRound', () => {
     // log, each rewinding to the round as it stood before it — so the first carries none of your
     // own discards yet and the second carries one
     useLog.getState().clear()
-    const link = renderHook(() => useEfficiencyRound(shared, BARE, true))
+    const link = renderHook(() => useEfficiencyRound(shared, BARE))
     const entries = useLog.getState().entries
     // the board as dealt gets its own leading row, ahead of the replayed discards (T2)
     expect(entries.map((e) => e.key)).toEqual(['log.dealt', 'log.replay', 'log.replay'])
@@ -324,7 +318,7 @@ describe('useEfficiencyRound', () => {
   it('sanma: never deals 2m-8m, and aka seeds only two red fives (no 5m)', () => {
     const situation = emptySituation()
     const { result } = renderHook(() =>
-      useEfficiencyRound(situation, { ...BARE, sanma: true, aka: true }, true),
+      useEfficiencyRound(situation, { ...BARE, sanma: true, aka: true }),
     )
     const everywhere = [
       ...result.current.hand,
@@ -341,9 +335,7 @@ describe('useEfficiencyRound', () => {
     // fillSeed-backed so an opponent's random deal never happens to hold a callable pair on the
     // discard below — an unset seed made this flaky the same way as the yonma opponents test
     situation.wall = completeWall(parseTenhou('123456789p1122z'), true, false, 'sanma-opp-seed')
-    const { result } = renderHook(() =>
-      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
-    )
+    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, sanma: true }))
     expect(result.current.rivers).toHaveLength(3)
     // 108 - 13 pinned - 26 dealt to the other two seats - 1 user draw
     expect(result.current.liveWall.length).toBe(108 - 13 - 26 - 1)
@@ -358,9 +350,7 @@ describe('useEfficiencyRound', () => {
   it('sanma clamps an out-of-range seat (e.g. yonma North) instead of indexing past rivers', () => {
     const situation = emptySituation()
     situation.seat = 'N'
-    const { result } = renderHook(() =>
-      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
-    )
+    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, sanma: true }))
     expect(result.current.seatIndex).toBe(2)
     expect(result.current.rivers).toHaveLength(3)
   })
@@ -372,9 +362,7 @@ describe('useEfficiencyRound', () => {
     wall[3 * INITIAL_HAND_SIZE] = parseTenhou('5z')[0] // turn 1's own draw — not North
     wall[3 * INITIAL_HAND_SIZE + 1] = parseTenhou('5p')[0] // what kita's replacement draw grabs
     situation.wall = wall
-    const { result } = renderHook(() =>
-      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
-    )
+    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, sanma: true }))
 
     expect(result.current.hand.some((t) => t.id === NORTH)).toBe(true)
     expect(result.current.nuki[result.current.seatIndex]).toHaveLength(0)
@@ -395,7 +383,7 @@ describe('useEfficiencyRound', () => {
   it('kita is a no-op outside sanma', () => {
     const situation = emptySituation()
     situation.wall = wallWithHand(0, parseTenhou('123456789p1224z'), false, false, 'kita-yonma')
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     act(() => result.current.kita())
     expect(result.current.nuki[result.current.seatIndex]).toHaveLength(0)
     expect(result.current.hand.some((t) => t.id === NORTH)).toBe(true)
@@ -407,9 +395,7 @@ describe('useEfficiencyRound', () => {
     const wall = wallWithHand(0, hand, true, false, 'useless-kita-seed')
     wall[3 * INITIAL_HAND_SIZE] = parseTenhou('4z')[0] // draws a useless North
     situation.wall = wall
-    const { result } = renderHook(() =>
-      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
-    )
+    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, sanma: true }))
 
     expect(result.current.drawn).toEqual(parseTenhou('4z')[0])
     act(() => result.current.kita())
@@ -426,9 +412,7 @@ describe('useEfficiencyRound', () => {
     const wall = wallWithHand(0, hand, true, false, 'north-pair-seed')
     wall[3 * INITIAL_HAND_SIZE] = parseTenhou('9s')[0] // draws an unrelated, genuinely discardable tile
     situation.wall = wall
-    const { result } = renderHook(() =>
-      useEfficiencyRound(situation, { ...BARE, sanma: true }, true),
-    )
+    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, sanma: true }))
 
     expect(result.current.drawn).toEqual(parseTenhou('9s')[0])
     act(() => result.current.kita())
@@ -444,9 +428,7 @@ describe('useEfficiencyRound', () => {
     const wall = wallWithHand(0, hand, false, false, 'kan-mech-seed')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('3z')[0] // the fourth 3z, drawn to complete the quad
     situation.wall = wall
-    const { result } = renderHook(() =>
-      useEfficiencyRound(situation, { ...BARE, deadWall: true }, true),
-    )
+    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, deadWall: true }))
     expect(result.current.doraIndicators).toHaveLength(1)
     // a wall can only name the draw, not skip it (see the "draws a tile after..." test above) —
     // the deal is 13 tiles and this fourth 3z is what completes the quad on the draw
@@ -471,7 +453,7 @@ describe('useEfficiencyRound', () => {
   it('kan is a no-op when the tile is not held four times', () => {
     const situation = emptySituation()
     situation.wall = wallWithHand(0, parseTenhou('123456789p1224z'), false, false, 'kita-yonma')
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     act(() => result.current.kan(HONOR + 3)) // only one North held
     expect(result.current.kans).toHaveLength(0)
   })
@@ -484,7 +466,7 @@ describe('useEfficiencyRound', () => {
     const wall = wallWithHand(0, hand, false, false, 'quad-error-seed')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('8s')[0] // the fourth 8s
     situation.wall = wall
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
     act(() => result.current.kan(SOU + 7)) // 8s
     expect(result.current.lastResult?.kind).toBe('kan')
@@ -502,7 +484,7 @@ describe('useEfficiencyRound', () => {
     const wall = wallWithHand(0, hand, false, false, 'warning-seed')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('3z')[0]
     situation.wall = wall
-    const { result } = renderHook(() => useEfficiencyRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     const index = result.current.hand.findIndex((t) => t.id === HONOR + 2)
 
     act(() => result.current.discard(index))

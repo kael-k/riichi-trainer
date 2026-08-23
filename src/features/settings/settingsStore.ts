@@ -9,13 +9,6 @@ export const LOCALES = ['en', 'ja', 'zh', 'it'] as const
 export type Locale = 'auto' | (typeof LOCALES)[number]
 
 export interface Settings {
-  efficiency: {
-    showShanten: boolean
-    timerEnabled: boolean
-    /** Show the improving tiles under discard feedback, not just the count. */
-    showUkeire: boolean
-  }
-  shanten: { timerEnabled: boolean }
   scoring: {
     timerEnabled: boolean
     /** Show the round context as a table (winds in position, melds on your side) instead of
@@ -136,12 +129,6 @@ interface SettingsState extends Settings {
 export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
-      efficiency: {
-        showShanten: true,
-        timerEnabled: true,
-        showUkeire: true,
-      },
-      shanten: { timerEnabled: true },
       scoring: {
         timerEnabled: true,
         table: true,
@@ -192,18 +179,22 @@ export const useSettings = create<SettingsState>()(
       // the same again — the table settings moved out of `efficiency`/`folding` and the old
       // top-level `showWall`/`showOpponentHands` into the new `table` section, so an old blob's
       // now-removed keys are dropped rather than merged into a schema that no longer has
-      // anywhere to put them
+      // anywhere to put them.
+      //
+      // Deliberately *not* bumped when the `efficiency` and `shanten` sections were removed: a
+      // bump drops the whole blob, which would cost every existing reader their theme, language
+      // and scoring settings to clear two keys that nothing reads any more. A stale
+      // `efficiency`/`shanten` object stays in the persisted JSON and is spread back onto state
+      // by the merge below, but it is off the `Settings` type and nothing reads it.
       version: 3,
-      // zustand's default merge is shallow at the top level, so a persisted `efficiency`/
-      // `shanten` object from an older schema would wholesale overwrite (not fill in
-      // defaults for) new fields added to those sections later — merge each section too
+      // zustand's default merge is shallow at the top level, so a persisted `scoring`/`folding`
+      // object from an older schema would wholesale overwrite (not fill in defaults for) new
+      // fields added to those sections later — merge each section too
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SettingsState>
         return {
           ...current,
           ...p,
-          efficiency: { ...current.efficiency, ...p.efficiency },
-          shanten: { ...current.shanten, ...p.shanten },
           scoring: { ...current.scoring, ...p.scoring },
           folding: { ...current.folding, ...p.folding },
           table: { ...current.table, ...p.table },

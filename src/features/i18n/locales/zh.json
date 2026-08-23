@@ -143,9 +143,6 @@
   },
   "efficiency": {
     "settings": {
-      "showShanten": "显示<term>上听数</term>",
-      "timer": "计时器",
-      "showUkeire": "显示<term>进张</term>",
       "deadWall": "死墙与宝牌"
     },
     "avgTime": "平均 {{time}}",
@@ -179,9 +176,6 @@
     "verdictError": "退向听"
   },
   "shanten": {
-    "settings": {
-      "timer": "计时器"
-    },
     "correctScore": "正确: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
     "guessHint": "点击按钮，或用键盘输入你的答案",

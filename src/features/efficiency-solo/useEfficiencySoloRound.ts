@@ -33,11 +33,7 @@ export interface SoloOptions {
  *  (`useEfficiencyRound`) mirrored with exactly three differences: one seat, no calls, no riichi.
  *  Grading and log-row shaping are imported from `features/efficiency/grade`, never re-implemented
  *  here, so a solitaire mistake and a table mistake score identically. */
-export function useEfficiencySoloRound(
-  situation: Situation,
-  options: SoloOptions,
-  timerEnabled: boolean,
-) {
+export function useEfficiencySoloRound(situation: Situation, options: SoloOptions) {
   const players = 1
   const seatIndex = 0
   const prevalentWind = HONOR + Math.max(0, WINDS.indexOf(situation.round))
@@ -219,7 +215,7 @@ export function useEfficiencySoloRound(
     cumulativeTotal,
     elapsedNow: stats.elapsedNow,
     /** Whether the clock is ticking: the hand is still in play and unpaused. */
-    running: !finished && !stats.paused && timerEnabled,
+    running: !finished && !stats.paused,
     paused: stats.paused,
     averageTime: stats.averageTime,
     /** Mean time per graded choice in *this* round alone, ms — what the round-complete panel

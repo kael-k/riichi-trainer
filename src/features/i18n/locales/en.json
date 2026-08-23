@@ -191,9 +191,6 @@
   },
   "efficiency": {
     "settings": {
-      "showShanten": "Show <term>shanten</term>",
-      "timer": "Timer",
-      "showUkeire": "Show <term>ukeire</term> tiles",
       "deadWall": "Dead wall & dora"
     },
     "avgTime": "avg {{time}}",
@@ -231,9 +228,6 @@
     "verdictError": "Back in shanten"
   },
   "shanten": {
-    "settings": {
-      "timer": "Timer"
-    },
     "correctScore": "Correct: {{correct}} / {{total}}",
     "avgTime": "avg {{time}}",
     "guessHint": "Click a button, or type your guess on your keyboard",

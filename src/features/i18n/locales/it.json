@@ -191,9 +191,6 @@
   },
   "efficiency": {
     "settings": {
-      "showShanten": "Mostra lo <term>shanten</term>",
-      "timer": "Timer",
-      "showUkeire": "Mostra tessere di <term>ukeire</term>",
       "deadWall": "Muro morto e dora"
     },
     "avgTime": "media {{time}}",
@@ -231,9 +228,6 @@
     "verdictError": "Shanten peggiorato"
   },
   "shanten": {
-    "settings": {
-      "timer": "Timer"
-    },
     "correctScore": "Corrette: {{correct}} / {{total}}",
     "avgTime": "media {{time}}",
     "guessHint": "Tocca un pulsante, oppure digita la tua risposta sulla tastiera",

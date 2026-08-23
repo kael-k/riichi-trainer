@@ -46,7 +46,7 @@ function computeBreakdown(hand: Hand): ShantenBreakdown {
 
 /** Drives a continuous stream of hands: reveal once, then guess after guess with
  *  the feedback for the last one alongside the hand already dealt. */
-export function useShantenRound(situation: Situation, timerEnabled: boolean, sanma: boolean) {
+export function useShantenRound(situation: Situation, sanma: boolean) {
   const [handIndex, setHandIndex] = useState(0)
   // handIndex counts hands dealt this mount, but a link (or a rewind out of the log) names one
   // exact hand, which only the index-0 deal below shows. Reset it whenever the situation changes
@@ -148,9 +148,9 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
       const correct = guess === actual.value
       const elapsed = stats.elapsedNow()
       // logged here rather than from a page effect, so entries stay in play order. Raw paths/
-      // correct/timerEnabled/elapsed go through as params (not formatted text) so a later
-      // language switch re-translates the line instead of leaving stale fragments — see
-      // formatLogEntry's special case for this key.
+      // correct/elapsed go through as params (not formatted text) so a later language switch
+      // re-translates the line instead of leaving stale fragments — see formatLogEntry's
+      // special case for this key.
       log(
         'log.shanten.result',
         {
@@ -159,7 +159,6 @@ export function useShantenRound(situation: Situation, timerEnabled: boolean, san
           actual: actual.value,
           paths: actual.paths,
           correct,
-          timerEnabled,
           elapsedMs: elapsed,
         },
         state.hand,

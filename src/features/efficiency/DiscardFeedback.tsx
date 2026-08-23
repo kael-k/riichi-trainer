@@ -5,50 +5,34 @@ import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { Tile, UkeireTiles } from '../../components/tiles/Tile'
 import { NORTH, type TurnResult } from './useEfficiencyRound'
 
-function FeedbackRow({
-  label,
-  option,
-  showShanten,
-  showUkeire,
-}: {
-  label: string
-  option: DiscardOption
-  showShanten: boolean
-  showUkeire: boolean
-}) {
+function FeedbackRow({ label, option }: { label: string; option: DiscardOption }) {
   const { t } = useTranslation()
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-medium">
         <span className="text-neutral-500">{label}</span>
         <Tile id={option.discard} />
-        {showShanten && (
-          <span className="text-neutral-500">
-            <Trans
-              i18nKey="discardFeedback.shantenLine"
-              values={{ count: option.shanten }}
-              components={{ term: <GlossaryTerm id="shanten" /> }}
-            />
-          </span>
-        )}
+        <span className="text-neutral-500">
+          <Trans
+            i18nKey="discardFeedback.shantenLine"
+            values={{ count: option.shanten }}
+            components={{ term: <GlossaryTerm id="shanten" /> }}
+          />
+        </span>
         <span className="text-neutral-500">
           {t('discardFeedback.tilesSuffix', { count: option.ukeireCount })}
         </span>
       </div>
-      {showUkeire && <UkeireTiles tiles={option.ukeireTiles} />}
+      <UkeireTiles tiles={option.ukeireTiles} />
     </div>
   )
 }
 
 export function DiscardFeedback({
   result,
-  showShanten,
-  showUkeire,
   sanma,
 }: {
   result: TurnResult
-  showShanten: boolean
-  showUkeire: boolean
   /** Whether "best" pointing at north should read as "Kita" rather than a plain discard —
    *  north is just an ordinary honor tile outside sanma, where kita doesn't exist. */
   sanma: boolean
@@ -73,12 +57,7 @@ export function DiscardFeedback({
   )
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <FeedbackRow
-        label={yoursLabel}
-        option={result.yours}
-        showShanten={showShanten}
-        showUkeire={showUkeire}
-      />
+      <FeedbackRow label={yoursLabel} option={result.yours} />
       {result.grade !== 'error' ? (
         <>
           <p className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
@@ -98,12 +77,7 @@ export function DiscardFeedback({
         </>
       ) : (
         <>
-          <FeedbackRow
-            label={bestLabel}
-            option={result.best}
-            showShanten={showShanten}
-            showUkeire={showUkeire}
-          />
+          <FeedbackRow label={bestLabel} option={result.best} />
           <p className="text-sm text-red-600 dark:text-red-400">
             {shantenGap > 0
               ? t('discardFeedback.shantenWorse', { count: shantenGap })

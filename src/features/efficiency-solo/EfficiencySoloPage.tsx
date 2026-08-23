@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties, type ReactNode } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
@@ -26,7 +26,6 @@ function accuracy(lost: number, total: number): number {
 export function EfficiencySoloPage() {
   const { t } = useTranslation()
   const situation = useUrlData(decodeSituation)
-  const settings = useSettings((s) => s.efficiency)
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
@@ -50,7 +49,7 @@ export function EfficiencySoloPage() {
     [situation, deadWall, aka, sanma],
   )
 
-  const round = useEfficiencySoloRound(situation, options, settings.timerEnabled)
+  const round = useEfficiencySoloRound(situation, options)
 
   // tiles held four times (hand + the separated drawn tile) can be closed-kanned
   const counts = new Map<number, number>()
@@ -58,49 +57,21 @@ export function EfficiencySoloPage() {
   if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
   const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
 
-  const toggle = (key: keyof typeof settings, label: ReactNode) => (
-    <SettingRow label={label}>
+  const settingsRows = (
+    <SettingRow label={t('efficiency.settings.deadWall')}>
       <input
         type="checkbox"
-        checked={settings[key]}
-        onChange={(e) => update('efficiency', { [key]: e.target.checked })}
+        checked={deadWall}
+        onChange={(e) => updateTable({ deadWall: e.target.checked })}
         className="size-5"
       />
     </SettingRow>
   )
 
-  const settingsRows = (
-    <>
-      {toggle(
-        'showShanten',
-        <Trans
-          i18nKey="efficiency.settings.showShanten"
-          components={{ term: <GlossaryTerm id="shanten" /> }}
-        />,
-      )}
-      {toggle('timerEnabled', t('efficiency.settings.timer'))}
-      {toggle(
-        'showUkeire',
-        <Trans
-          i18nKey="efficiency.settings.showUkeire"
-          components={{ term: <GlossaryTerm id="ukeire" /> }}
-        />,
-      )}
-      <SettingRow label={t('efficiency.settings.deadWall')}>
-        <input
-          type="checkbox"
-          checked={deadWall}
-          onChange={(e) => updateTable({ deadWall: e.target.checked })}
-          className="size-5"
-        />
-      </SettingRow>
-    </>
-  )
-
   const { canBack, back } = useLogBack()
 
   const toggles = {
-    showToggle: settings.timerEnabled,
+    showToggle: true,
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
@@ -125,9 +96,7 @@ export function EfficiencySoloPage() {
           components={{ term: <GlossaryTerm id="ukeire" /> }}
         />
       </span>
-      {settings.timerEnabled && (
-        <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-      )}
+      <span>{t('efficiency.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
     </>
   )
 
@@ -138,7 +107,7 @@ export function EfficiencySoloPage() {
       settings={settingsRows}
       status={
         <>
-          {settings.timerEnabled && <Timer elapsedNow={round.elapsedNow} running={round.running} />}
+          <Timer elapsedNow={round.elapsedNow} running={round.running} />
           {scoreLines}
         </>
       }
@@ -181,14 +150,7 @@ export function EfficiencySoloPage() {
       }
       noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
       notice={
-        round.lastResult && (
-          <DiscardFeedback
-            result={round.lastResult}
-            showShanten={settings.showShanten}
-            showUkeire={settings.showUkeire}
-            sanma={options.sanma}
-          />
-        )
+        round.lastResult && <DiscardFeedback result={round.lastResult} sanma={options.sanma} />
       }
       noticeCompact={
         round.lastResult && (
@@ -213,11 +175,9 @@ export function EfficiencySoloPage() {
                 accuracy: accuracy(round.cumulativeLost, round.cumulativeTotal),
               })}
             </p>
-            {settings.timerEnabled && (
-              <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                {t('efficiency.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
-              </p>
-            )}
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              {t('efficiency.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
+            </p>
             <button
               type="button"
               onClick={round.restart}

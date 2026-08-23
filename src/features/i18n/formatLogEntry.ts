@@ -9,7 +9,6 @@ interface ShantenResultParams {
   actual: number
   paths: string[]
   correct: boolean
-  timerEnabled: boolean
   elapsedMs: number
 }
 
@@ -30,9 +29,9 @@ interface FoldingDiscardParams {
   correct: boolean
 }
 
-/** Keys carrying a `shanten` param (every efficiency discard/kita/kan outcome) get an
- *  optional trailing clause here, gated on the live setting rather than baked in at log
- *  time — matches the discard feedback panel, which is the same toggle. */
+/** Keys carrying a `shanten` param (every efficiency discard/kita/kan outcome) get a trailing
+ *  clause naming the resulting shanten — composed here rather than baked in at log time, so a
+ *  language switch re-translates the whole line. */
 const EFFICIENCY_SHANTEN_KEYS = new Set([
   'log.efficiency.discardBest',
   'log.efficiency.discardBestDrew',
@@ -48,15 +47,15 @@ const EFFICIENCY_SHANTEN_KEYS = new Set([
  *  optional trailing clauses (path names, elapsed time) from raw data at render time, so
  *  switching language re-translates the whole line instead of leaving stale fragments
  *  from whatever language was active when the entry was logged. */
-export function formatLogEntry(entry: LogEntry, t: TFunction, showShanten: boolean): string {
+export function formatLogEntry(entry: LogEntry, t: TFunction): string {
   if (entry.key === 'log.shanten.result') {
-    const { hand, guess, actual, paths, correct, timerEnabled, elapsedMs } =
+    const { hand, guess, actual, paths, correct, elapsedMs } =
       entry.params as unknown as ShantenResultParams
     const showPaths = !(paths.length === 1 && paths[0] === 'standard')
     const via = showPaths
       ? ` ${t('shanten.via', { paths: paths.map((p) => t(`shanten.path.${p}`)).join(' / ') })}`
       : ''
-    const time = timerEnabled ? ` ${t('shanten.inTime', { time: formatElapsedMs(elapsedMs) })}` : ''
+    const time = ` ${t('shanten.inTime', { time: formatElapsedMs(elapsedMs) })}`
     return t('log.shanten.result', {
       hand,
       guess,
@@ -101,9 +100,7 @@ export function formatLogEntry(entry: LogEntry, t: TFunction, showShanten: boole
   if (EFFICIENCY_SHANTEN_KEYS.has(entry.key)) {
     const shanten = (entry.params as { shanten?: number } | undefined)?.shanten
     const shantenSuffix =
-      showShanten && shanten !== undefined
-        ? ` ${t('log.efficiency.shanten', { count: shanten })}`
-        : ''
+      shanten !== undefined ? ` ${t('log.efficiency.shanten', { count: shanten })}` : ''
     return t(entry.key, { ...entry.params, shantenSuffix })
   }
   return t(entry.key, entry.params)

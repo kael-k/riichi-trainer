@@ -23,7 +23,7 @@ const TABLE_BARE: TableRoundOptions = {
 describe('useEfficiencySoloRound', () => {
   it('deals exactly one seat', () => {
     const situation = emptySituation()
-    const { result } = renderHook(() => useEfficiencySoloRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencySoloRound(situation, BARE))
     expect(result.current.seatIndex).toBe(0)
     expect(result.current.rivers).toHaveLength(1)
     expect(result.current.hand).toHaveLength(13)
@@ -32,7 +32,7 @@ describe('useEfficiencySoloRound', () => {
   it('reserves a dead wall and flips a dora indicator when deadWall is on', () => {
     const situation = emptySituation()
     const { result } = renderHook(() =>
-      useEfficiencySoloRound(situation, { ...BARE, deadWall: true }, true),
+      useEfficiencySoloRound(situation, { ...BARE, deadWall: true }),
     )
     expect(result.current.doraIndicators).toHaveLength(1)
   })
@@ -41,8 +41,8 @@ describe('useEfficiencySoloRound', () => {
     const hand = parseTenhou('123456789m1122z')
     const wall = wallWithHand(0, hand, false, false, 'longer-wall-seed')
     const situation = { ...emptySituation(), wall }
-    const solo = renderHook(() => useEfficiencySoloRound(situation, BARE, true))
-    const table = renderHook(() => useEfficiencyRound(situation, TABLE_BARE, true))
+    const solo = renderHook(() => useEfficiencySoloRound(situation, BARE))
+    const table = renderHook(() => useEfficiencyRound(situation, TABLE_BARE))
     // one hand dealt off this wall (solo) leaves far more of it live than four hands (table)
     expect(solo.result.current.liveWall.length).toBeGreaterThan(
       table.result.current.liveWall.length,
@@ -62,8 +62,8 @@ describe('useEfficiencySoloRound', () => {
 
     const soloSituation = { ...emptySituation(), wall: soloWall }
     const tableSituation = { ...emptySituation(), wall: tableWall }
-    const solo = renderHook(() => useEfficiencySoloRound(soloSituation, BARE, true))
-    const table = renderHook(() => useEfficiencyRound(tableSituation, TABLE_BARE, true))
+    const solo = renderHook(() => useEfficiencySoloRound(soloSituation, BARE))
+    const table = renderHook(() => useEfficiencyRound(tableSituation, TABLE_BARE))
     expect(solo.result.current.drawn).toEqual(draw)
     expect(table.result.current.drawn).toEqual(draw)
 
@@ -78,7 +78,7 @@ describe('useEfficiencySoloRound', () => {
 
   it('ends the round as soon as a discard reaches tenpai, leaving 13 tiles', () => {
     const situation = { ...emptySituation(), wall: parseTenhou('123456789m11227z') }
-    const { result } = renderHook(() => useEfficiencySoloRound(situation, BARE, true))
+    const { result } = renderHook(() => useEfficiencySoloRound(situation, BARE))
     expect(result.current.finished).toBe(false)
 
     act(() => result.current.discard(13)) // the 7z -> shanpon tenpai on 1z/2z
@@ -93,9 +93,7 @@ describe('useEfficiencySoloRound', () => {
     const wall = wallWithHand(0, hand, true, false, 'solo-kan-seed', 1)
     wall[1 * INITIAL_HAND_SIZE] = parseTenhou('3z')[0] // the fourth 3z, completing the quad
     const situation = { ...emptySituation(), wall }
-    const { result } = renderHook(() =>
-      useEfficiencySoloRound(situation, { ...BARE, sanma: true }, true),
-    )
+    const { result } = renderHook(() => useEfficiencySoloRound(situation, { ...BARE, sanma: true }))
 
     act(() => result.current.kan(29)) // 3z
     expect(result.current.kans).toHaveLength(1)

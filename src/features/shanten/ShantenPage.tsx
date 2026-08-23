@@ -8,7 +8,6 @@ import { HandDisplay } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
-import { SettingRow } from '../settings/SettingsDialog'
 import { useSettings } from '../settings/settingsStore'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
@@ -36,11 +35,9 @@ function verdictText(result: RoundResult, t: TFunction): string {
 export function ShantenPage() {
   const { t } = useTranslation()
   const situation = useUrlData(decodeSituation)
-  const settings = useSettings((s) => s.shanten)
-  const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
 
-  const round = useShantenRound(situation, settings.timerEnabled, situation.sanma ?? sanma)
+  const round = useShantenRound(situation, situation.sanma ?? sanma)
 
   const submitGuess = (value: number) => {
     if (Number.isNaN(value) || value < 0) return
@@ -69,17 +66,6 @@ export function ShantenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.revealed, round.concealed, round.togglePause, round.reveal])
 
-  const settingsRows = (
-    <SettingRow label={t('shanten.settings.timer')}>
-      <input
-        type="checkbox"
-        checked={settings.timerEnabled}
-        onChange={(e) => update('shanten', { timerEnabled: e.target.checked })}
-        className="size-5"
-      />
-    </SettingRow>
-  )
-
   const { canBack, back } = useLogBack()
 
   const toggles = {
@@ -102,9 +88,7 @@ export function ShantenPage() {
       <span>
         {t('shanten.correctScore', { correct: round.correctCount, total: round.totalCount })}
       </span>
-      {settings.timerEnabled && (
-        <span>{t('shanten.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-      )}
+      <span>{t('shanten.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
     </>
   )
 
@@ -112,10 +96,9 @@ export function ShantenPage() {
     <BoardStage
       title={t('trainer.shanten.title')}
       intro={{ text: t('trainer.shanten.intro'), wikiUrl: TRAINER_WIKI.shanten }}
-      settings={settingsRows}
       status={
         <>
-          {settings.timerEnabled && <Timer elapsedNow={round.elapsedNow} running={round.running} />}
+          <Timer elapsedNow={round.elapsedNow} running={round.running} />
           {scoreLines}
         </>
       }

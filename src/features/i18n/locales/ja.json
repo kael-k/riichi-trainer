@@ -143,9 +143,6 @@
   },
   "efficiency": {
     "settings": {
-      "showShanten": "<term>シャンテン</term>数を表示",
-      "timer": "タイマー",
-      "showUkeire": "<term>受け入れ</term>牌を表示",
       "deadWall": "王牌とドラ"
     },
     "avgTime": "平均 {{time}}",
@@ -179,9 +176,6 @@
     "verdictError": "シャンテン後退"
   },
   "shanten": {
-    "settings": {
-      "timer": "タイマー"
-    },
     "correctScore": "正解数: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
     "guessHint": "ボタンをクリックするか、キーボードで数字を入力してください",
