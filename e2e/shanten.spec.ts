@@ -16,6 +16,14 @@ async function openPanel(page: Page) {
   await expect(page.getByTestId('log-drawer')).toBeVisible()
 }
 
+/** The session panel itself, whichever shape it is in. Feedback is on screen twice on a wide
+ *  viewport — `BoardStage` floats the compact verdict over the board *and* keeps the full notice
+ *  in the docked panel — so an assertion about the full breakdown has to say which one it means
+ *  or it resolves to both. */
+function panel(page: Page) {
+  return page.getByTestId('session-panel').or(page.getByTestId('log-drawer'))
+}
+
 async function closePanel(page: Page) {
   if (!(await page.getByTestId('log-drawer').count())) return
   await page.keyboard.press('Escape')
@@ -46,7 +54,7 @@ test('a pinned hand is posed, graded, and then the stream moves on', async ({ pa
 
   // the full verdict and the running score both live in the session panel
   await openPanel(page)
-  await expect(page.getByText('Correct', { exact: true })).toBeVisible()
+  await expect(panel(page).getByText('Correct', { exact: true })).toBeVisible()
   await expect(scoreLine(page, 'Correct: 1 / 1')).toHaveCount(1)
   await closePanel(page)
 
@@ -64,8 +72,8 @@ test('a wrong guess names both the guess and the real answer', async ({ page }) 
   await page.getByRole('button', { name: '3', exact: true }).click()
 
   await openPanel(page)
-  await expect(page.getByText('You said 3')).toBeVisible()
-  await expect(page.getByText(`actual shanten: ${PINNED_SHANTEN}`)).toBeVisible()
+  await expect(panel(page).getByText('You said 3')).toBeVisible()
+  await expect(panel(page).getByText(`actual shanten: ${PINNED_SHANTEN}`)).toBeVisible()
   await expect(scoreLine(page, 'Correct: 0 / 1')).toHaveCount(1)
 })
 
@@ -105,6 +113,6 @@ test('typing a digit on the keyboard submits the guess', async ({ page }) => {
   await page.keyboard.press(String(PINNED_SHANTEN))
 
   await openPanel(page)
-  await expect(page.getByText('Correct', { exact: true })).toBeVisible()
+  await expect(panel(page).getByText('Correct', { exact: true })).toBeVisible()
   await expect(scoreLine(page, 'Correct: 1 / 1')).toHaveCount(1)
 })
