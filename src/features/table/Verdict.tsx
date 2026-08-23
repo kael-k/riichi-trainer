@@ -12,8 +12,8 @@ const COLOR = {
 /**
  * One compact feedback line — icon, colour, short text, nothing else. No numbers, no tile lists:
  * that detail stays in the full `DiscardFeedback`/`FoldFeedback` panel, which is what the session
- * panel shows. This is what floats over the board instead while that panel is shut, so a phone
- * mid-drill still hears the verdict without losing the tiles to a wall of text. `BoardStage`'s two
+ * panel shows. This is what floats over the board instead, at every viewport, so a reader hears the
+ * verdict without losing the tiles to a wall of text. `BoardStage`'s two
  * notice slots (`notice`/`noticeCompact`) pick between them — this component draws only the
  * compact one.
  */

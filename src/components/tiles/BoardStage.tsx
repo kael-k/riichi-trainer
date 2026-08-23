@@ -413,7 +413,7 @@ export function BoardStage({
                 </div>
               </div>
             )}
-            {!logOpen && (noticeCompact ?? notice) && noticeShown && (
+            {!drawerOpen && (noticeCompact ?? notice) && noticeShown && (
               // pointer-events-none: a notice must never sit between the reader and a tile they are
               // about to click, which is the whole difference between this and a dialog. Held
               // sideways it stops floating over the board at all and stands in the right-hand
@@ -421,9 +421,10 @@ export function BoardStage({
               // there, centred in what is left after the chrome column), because feedback that
               // covers the tiles it is talking about is feedback you have to wait out. Compact here:
               // a phone mid-drill has no room for `notice`'s tile lists and ukeire counts, and the
-              // full breakdown is a tap away in the panel. With the panel open in either shape it
-              // does not render at all: the full feedback is already on screen, and saying the same
-              // thing twice is how a reader ends up looking for a difference that isn't there
+              // full breakdown is a tap away in the panel. Gated on the *drawer* alone: that shape
+              // is over the top of the board, so a float under it is one nobody can see. A docked
+              // panel covers nothing, and a verdict that only ever appeared on phones was one a
+              // desktop reader had to go looking for in the log
               // `flow` moves it to the foot of the board area instead: that content is anchored to
               // the top and starts with the wall count and the dora indicator, which is exactly
               // what a notice at the top covers — and dora is something you read *while* deciding.

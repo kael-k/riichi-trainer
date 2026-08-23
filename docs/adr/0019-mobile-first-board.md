@@ -43,7 +43,8 @@ the difference. This is also the single most bug-prone area of the codebase.
 - **Feedback must not cover the tiles it is talking about.** Two densities: `notice` (full) and
   `noticeCompact` (one line, icon, colour) floating over the board — and in the right-hand gutter
   instead once `short:`. _Under [ADR-0025](0025-one-interface.md) the full one lives in the session
-  panel and the compact one floats only while that panel is shut._
+  panel and the compact one floats at every viewport, hidden only by the panel's drawer shape,
+  which is over the board anyway._
 
 ## Consequences
 
