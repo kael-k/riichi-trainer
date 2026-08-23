@@ -76,7 +76,7 @@ Shared:
 | `tiles/BoardStage.tsx`  | **The trainer page**: chrome row, board, hand, session panel ([ADR-0025](adr/0025-one-interface.md)) |
 | `tiles/useMobileFullscreen.ts` | Asks the browser for real fullscreen on a phone, once per session       |
 | `tiles/Tile.tsx`        | One tile as a `<use>` into the build-time sprite                               |
-| `LogList.tsx`           | The log's rows, with rewind/share/copy per entry                               |
+| `LogList.tsx`           | The log menu: the session's decisions, each expanding to its own feedback           |
 | `TrainerControls.tsx`   | `TrainerToggles` — start/pause, undo, reset — plus the chrome row's button style |
 | `InfoPopover.tsx`       | Portalled popover behind both `GlossaryTerm` and the trainer info button       |
 | `AppShell.tsx`          | Theme class, sprite injection, router outlet                                    |

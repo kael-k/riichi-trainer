@@ -13,7 +13,7 @@ const COLOR = {
 /**
  * One compact feedback line — icon, colour, short text, nothing else. No numbers, no tile lists:
  * that detail stays on the action's own log row, one tap away, for every turn of the session
- * rather than the last one (ADR-0027). This is what floats over the board, at every viewport, so a
+ * rather than the last one. This is what floats over the board, at every viewport, so a
  * reader hears the verdict without losing the tiles to a wall of text — the only feedback density
  * `BoardStage` has left (`noticeCompact`).
  */

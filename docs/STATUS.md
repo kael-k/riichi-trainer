@@ -1,6 +1,6 @@
 # Status
 
-_Last synthesised: 2026-08-18, against the git history through the stats-on-the-board wave._
+_Last synthesised: 2026-08-23, against the git history through the log-menu wave._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
@@ -26,7 +26,7 @@ board-first layout on every trainer at every viewport.
 The **table-architecture centralization** work is complete: explicit walls, `core/table.ts`,
 `useRound`, the efficiency split, the table-settings schema, the lab.
 
-**Six waves landed after it:**
+**Eight waves landed after it:**
 
 1. **Seat algorithms** — the `humans`/`policy` merge, live algorithm changes, the `ALGORITHMS`
    decision seam, efficiency's riichi removal. ADRs
@@ -72,6 +72,14 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    board exists, so the log's own rewind/share buttons cover the board as freshly dealt too; the
    page-level `CopyLinkButton` share pill is deleted. The session panel is left holding full
    feedback, the lab's own rankings/wall authoring, and the log.
+8. **The log is the feedback** — the session
+   panel's feedback half is deleted (`DiscardFeedback`, `FoldFeedback`, shanten's inline card,
+   `BoardStage`'s `notice` prop) and what it uniquely carried moves into the log rows themselves,
+   behind a chevron, for every turn of the session rather than the last one. `LogEntry` gains
+   `severity`, `detail` (i18n keys, never text) and `seam`; rows lead with tiles, carry a verdict
+   spine read as the session's accuracy record, and the header grows an `All | Mistakes` filter. Folding's
+   `feedbackAtEnd` end card no longer repeats each turn — those are the log rows `flushLog` writes.
+   One feedback density is left: the float.
 
 ## In flight
 

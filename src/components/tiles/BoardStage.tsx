@@ -45,7 +45,7 @@ interface BoardStageProps {
   status?: ReactNode
   /** Per-action feedback, one `Verdict` line (icon, colour, short text,
    *  `features/table/Verdict.tsx`) — what floats over the board. The only density there is: the
-   *  full breakdown, tile lists and all, is a tap away on the action's own log row (ADR-0027). */
+   *  full breakdown, tile lists and all, is a tap away on the action's own log row. */
   noticeCompact?: ReactNode
   /** Bumped whenever `noticeCompact` is a *new* one — that is what re-shows a faded
    *  floating notice. A notice whose key has not moved stays hidden, so re-renders do not
@@ -144,7 +144,7 @@ function StatusCard({ children }: { children: ReactNode }) {
 /**
  * Everything that is not the board or the hand: whatever the trainer wants to say about the board
  * (the lab's rankings and wall authoring, the one remaining consumer), and the log menu — which is
- * now the feedback surface too, every turn of it rather than the last one (ADR-0027). One renderer
+ * now the feedback surface too, every turn of it rather than the last one. One renderer
  * for both surfaces it appears on — docked beside the board from `lg` up, pulled over the top in a
  * drawer below that — so the two cannot drift apart.
  */
