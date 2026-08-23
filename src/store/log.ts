@@ -1,5 +1,19 @@
 import { create } from 'zustand'
 import type { ParsedTile } from '../core/tiles'
+import type { UkeireTile } from '../core/ukeire'
+
+export type LogSeverity = 'ok' | 'warning' | 'error'
+
+/** One indented line under an expanded row — what the deleted feedback panels drew. Stored as an
+ *  i18n key plus params, never as text, for the same reason the entry itself is: a language switch
+ *  must re-translate it (see `formatLogEntry`). */
+export interface LogDetail {
+  key: string
+  params?: Record<string, unknown>
+  tiles?: ParsedTile[]
+  /** Rendered through the existing `UkeireTiles` (per-tile remaining counts). */
+  ukeire?: UkeireTile[]
+}
 
 export interface LogEntry {
   id: number
@@ -15,6 +29,12 @@ export interface LogEntry {
    *  Every trainer passes one; the shanten stream pins its hand by tiles rather than by a
    *  decision point, since there is no board to rewind. */
   situation?: string
+  /** Colours the row's verdict spine. Absent (or `'ok'`) draws no colour at all — only mistakes
+   *  are marked, since the log's job is review and the floating verdict already said "well done"
+   *  at the time. */
+  severity?: LogSeverity
+  /** What the deleted feedback panels drew, collapsed behind the row's own chevron. */
+  detail?: LogDetail[]
 }
 
 interface LogState {

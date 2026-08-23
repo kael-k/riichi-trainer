@@ -1,6 +1,7 @@
 import { CheckCircle2, TriangleAlert, XCircle } from 'lucide-react'
+import type { LogSeverity } from '../../store/log'
 
-export type VerdictSeverity = 'ok' | 'warning' | 'error'
+export type VerdictSeverity = LogSeverity
 
 const ICON = { ok: CheckCircle2, warning: TriangleAlert, error: XCircle }
 const COLOR = {
