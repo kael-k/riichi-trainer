@@ -563,13 +563,42 @@ test('on an ultrawide screen the panel and the settings sheet sit near the board
   // than half the board's own width
   expect(panel.x - (board.x + board.width)).toBeLessThan(board.width / 2)
 
-  // the settings sheet, portalled to <body>, lands beside the same gap rather than at the
-  // screen's own right edge
+  // the settings sheet mounts inside the stage, so it lands on the same capped right edge and
+  // takes the same column the panel it covers does — both edges, not just the one it hangs off
   await page.getByRole('button', { name: 'Settings' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   const sheet = (await dialog.locator('> div').first().boundingBox())!
   expect(Math.abs(sheet.x + sheet.width - (panel.x + panel.width))).toBeLessThanOrEqual(2)
+  expect(Math.abs(sheet.x - panel.x)).toBeLessThanOrEqual(2)
+
+  // and its scrim stops at the stage rather than dimming the surround: the element carrying
+  // role=dialog is the scrim itself, so its own box is the assertion
+  const scrim = (await dialog.boundingBox())!
+  expect(scrim.x).toBeGreaterThan(100)
+  expect(Math.abs(scrim.x + scrim.width - (panel.x + panel.width))).toBeLessThanOrEqual(2)
+})
+
+test('on an ultrawide screen the home page docks its settings sheet where the app stops', async ({
+  page,
+  viewport,
+}) => {
+  test.skip(!viewport || viewport.width < 2000, 'not an ultrawide viewport')
+  await page.goto('/')
+
+  // home has no board to cap the box against, so it takes the same `--stage-max` a trainer does:
+  // the sheet lands on the menu's own right-hand edge rather than a monitor's
+  const menu = (await page.getByRole('navigation').boundingBox())!
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  const sheet = (await dialog.locator('> div').first().boundingBox())!
+
+  expect(viewport!.width - (sheet.x + sheet.width)).toBeGreaterThan(100)
+  // reachability, the same measure the panel gets above: the sheet opens against the menu it was
+  // opened from rather than half a screen away. It may sit over the menu's right-hand margin —
+  // that is what a sheet does — so this is a distance, not a non-overlap
+  expect(sheet.x - (menu.x + menu.width)).toBeLessThan(menu.width / 2)
 })
 
 test('efficiency-solo: your river is on screen', async ({ page }) => {

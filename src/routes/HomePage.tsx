@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { IOSInstallHint } from '../components/IOSInstallHint'
@@ -83,39 +84,58 @@ function ModeCard({ mode }: { mode: Mode }) {
 
 export function HomePage() {
   const { t } = useTranslation()
+  // the same box `BoardStage` puts round a trainer, for the same reason: the settings sheet mounts
+  // inside it, so on a 21:9 screen it docks to where the app stops rather than to the monitor's
+  // own right edge, a menu's width away from the gear that opened it. One cap for both, so the app
+  // box does not change size between the home screen and a trainer.
+  const [stage, setStage] = useState<HTMLElement | null>(null)
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-4">
-      <IOSInstallHint />
-      <div className="flex justify-end">
-        <SettingsButton />
-      </div>
-      <header className="flex flex-col items-center gap-3">
-        <div className="flex [--tile-w:calc(var(--tile-w-base)*0.7)]">
-          {parseTenhou('19m19p19s1234567z').map((tile, i) => (
-            <Tile key={i} id={tile.id} />
-          ))}
+    <div className="flex h-svh w-full justify-center ultrawide:bg-neutral-100 ultrawide:dark:bg-black">
+      <div
+        ref={setStage}
+        // `h-svh` + `overflow-hidden` so the scrim portalled in here is a viewport, not a page:
+        // the menu scrolls in the column below instead of the box growing under it, which would
+        // stretch a full-height sheet past the bottom of the screen
+        className="relative flex h-svh w-full flex-col overflow-hidden bg-white ultrawide:max-w-[var(--stage-max)] dark:bg-neutral-950"
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 p-4">
+            <IOSInstallHint />
+            <div className="flex justify-end">
+              <SettingsButton container={stage} />
+            </div>
+            <header className="flex flex-col items-center gap-3">
+              <div className="flex [--tile-w:calc(var(--tile-w-base)*0.7)]">
+                {parseTenhou('19m19p19s1234567z').map((tile, i) => (
+                  <Tile key={i} id={tile.id} />
+                ))}
+              </div>
+              <h1 className="text-2xl font-bold">{t('home.title')}</h1>
+            </header>
+            <nav className="flex flex-col gap-3">
+              {MODES.map((mode) => (
+                <ModeCard key={mode.to} mode={mode} />
+              ))}
+            </nav>
+            <footer className="mt-auto flex flex-col items-center gap-1 text-center text-xs text-neutral-400">
+              <p>
+                {t('home.license')}{' '}
+                <a
+                  href={REPO_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2 hover:text-neutral-600 dark:hover:text-neutral-200"
+                >
+                  {t('home.sourceLink')}
+                </a>
+              </p>
+              <p className="font-mono break-all">
+                {t('home.buildCommit', { sha: __COMMIT_SHA__ })}
+              </p>
+            </footer>
+          </div>
         </div>
-        <h1 className="text-2xl font-bold">{t('home.title')}</h1>
-      </header>
-      <nav className="flex flex-col gap-3">
-        {MODES.map((mode) => (
-          <ModeCard key={mode.to} mode={mode} />
-        ))}
-      </nav>
-      <footer className="mt-auto flex flex-col items-center gap-1 text-center text-xs text-neutral-400">
-        <p>
-          {t('home.license')}{' '}
-          <a
-            href={REPO_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2 hover:text-neutral-600 dark:hover:text-neutral-200"
-          >
-            {t('home.sourceLink')}
-          </a>
-        </p>
-        <p className="font-mono break-all">{t('home.buildCommit', { sha: __COMMIT_SHA__ })}</p>
-      </footer>
+      </div>
     </div>
   )
 }

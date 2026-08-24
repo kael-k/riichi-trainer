@@ -208,6 +208,9 @@ export function BoardStage({
   const wide = useMediaQuery(WIDE_QUERY)
   const [logOpen, setLogOpen] = useState(wide)
   const [noticeShown, setNoticeShown] = useState(false)
+  // the stage element itself, so the settings sheet can mount inside it rather than on <body> and
+  // inherit the `ultrawide:` cap the way the docked panel and the log drawer already do
+  const [stage, setStage] = useState<HTMLElement | null>(null)
   // the same panel in its two shapes: docked beside the board it covers nothing, so it is open by
   // default and the full feedback lives there; as a drawer it is over the top of the board, so it
   // is shut by default and pauses the clock for as long as it is open
@@ -281,8 +284,12 @@ export function BoardStage({
         // `ultrawide:max-w-[var(--stage-max)]` stops the stage — and everything docked to its right
         // edge (the session panel) — before it reaches a 21:9 screen's physical edge. `--stage-max`
         // is the square's own height budget plus the panel plus a HUD gutter, so it can never come
-        // out narrower than the board needs (see ADR-0033); the board, the chrome row and the hand
+        // out narrower than the board needs; the board, the chrome row and the hand
         // are all already centred inside this box, so capping it moves nothing but the panel.
+        // the settings sheet portals in here, not onto <body>: this is the box the `ultrawide:` cap
+        // is on, so the sheet lands on the same right edge as the panel and its scrim stops at the
+        // stage rather than dimming the surround. The wrapper above is uncapped — not that one.
+        ref={setStage}
         className="relative flex h-svh w-full bg-white [--board-scale:1] [--tile-scale:var(--tile-scale-default)] sizable:[--board-scale:var(--board-scale-pref)] sizable:[--tile-scale:var(--tile-scale-pref)] ultrawide:max-w-[var(--stage-max)] dark:bg-neutral-950"
         style={
           {
@@ -335,7 +342,7 @@ export function BoardStage({
             </button>
             {/* right-hand end of the row, the corner it keeps on the home page too */}
             <div className="ml-auto short:ml-0">
-              <SettingsButton title={title} app={app} labelled>
+              <SettingsButton title={title} app={app} labelled container={stage}>
                 {settings}
               </SettingsButton>
             </div>

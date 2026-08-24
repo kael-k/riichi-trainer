@@ -357,13 +357,17 @@ interface SettingsButtonProps {
    *  chrome row asks for it, since a row of bare icons needs telling apart; the home page's lone
    *  gear does not. */
   labelled?: boolean
+  /** The stage to mount the sheet inside (`BoardStage`), so it inherits the `ultrawide:` cap the
+   *  same way the docked panel and the log drawer do rather than re-deriving it by hand. Every
+   *  screen has one (`HomePage` puts the same box round the menu); `<body>` is the fallback. */
+  container?: HTMLElement | null
 }
 
 /** Gear button + dialog: an app-specific section (if any), then Table (if the app draws one), then
  *  Ruleset, UI and Misc — the one settings surface shared by every screen, including home. The
  *  dialog's own title never changes ("Settings"); the section headings say what a setting is
  *  about, not the dialog. */
-export function SettingsButton({ title, children, app, labelled }: SettingsButtonProps) {
+export function SettingsButton({ title, children, app, labelled, container }: SettingsButtonProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -395,8 +399,12 @@ export function SettingsButton({ title, children, app, labelled }: SettingsButto
         <Settings className="size-5" />
         {labelled && <ChromeLabel>{t('settings.button')}</ChromeLabel>}
       </button>
-      {/* portalled to <body>: the trainer header this button sits in uses backdrop-blur, which
-          on WebKit becomes the containing block for anything fixed inside it */}
+      {/* portalled into the stage where there is one, so the sheet lands on the capped stage's
+          right edge and its scrim stops there too — the same thing the log drawer gets for free by
+          being a stage child. Falling back to <body> (the home page, which has no stage) it is
+          `fixed` instead: the trainer header this button sits in uses backdrop-blur, which on
+          WebKit becomes the containing block for anything fixed inside it, so it cannot be the
+          portal target either way. */}
       {open &&
         createPortal(
           <div
@@ -407,14 +415,18 @@ export function SettingsButton({ title, children, app, labelled }: SettingsButto
               // only an "outside" click, i.e. one that landed on the scrim itself
               if (e.target === e.currentTarget) setOpen(false)
             }}
-            // `ultrawide:` padding, not a cap on the scrim itself: the scrim stays full-bleed (a
-            // click anywhere outside the sheet still closes it), but the sheet it justifies against
-            // lands on the capped stage's right edge (`--stage-max`, `BoardStage`) instead of the
-            // screen's — this dialog is portalled to <body>, so it cannot see the stage's own cap
-            // and has to be pushed in by hand off the same variable.
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 md:items-stretch md:justify-end md:p-0 ultrawide:pr-[max(0px,calc((100vw-var(--stage-max))/2))]"
+            // `absolute` against the stage (which is `relative`), so `inset-0` is the stage's own
+            // box: on an ultrawide the sheet justifies against the capped right edge and the scrim
+            // dims the stage alone, leaving the tint outside it as the seam the sheet ends on.
+            // `fixed` is the no-stage fallback, where the viewport *is* the box.
+            className={`${container ? 'absolute' : 'fixed'} inset-0 z-50 flex items-center justify-center bg-black/40 p-3 md:items-stretch md:justify-end md:p-0`}
           >
-            <div className="flex max-h-full w-[min(90vw,24rem)] flex-col overflow-hidden rounded-xl bg-white text-neutral-900 md:h-full md:w-96 md:max-w-[90vw] md:rounded-none md:rounded-l-2xl dark:bg-neutral-900 dark:text-neutral-100">
+            {/* a centred card below `md`; from there up the same column the session panel docks
+                into — `clamp(24rem,26vw,28rem)` is the panel's own ramp with today's 24rem as the
+                floor, so the two line up exactly wherever the panel is at its widest and the sheet
+                never narrows on the way there. Flush and bordered like the panel and the drawer,
+                not rounded: it ends on the stage's edge, which is a real one. */}
+            <div className="flex max-h-full w-[min(90vw,24rem)] flex-col overflow-hidden rounded-xl bg-white text-neutral-900 md:h-full md:w-[clamp(24rem,26vw,28rem)] md:max-w-[90vw] md:rounded-none md:border-l md:border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:md:border-neutral-800">
               <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
                 <h2 className="font-semibold">{t('settings.button')}</h2>
                 <button
@@ -452,7 +464,7 @@ export function SettingsButton({ title, children, app, labelled }: SettingsButto
               </div>
             </div>
           </div>,
-          document.body,
+          container ?? document.body,
         )}
     </>
   )

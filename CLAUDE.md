@@ -606,9 +606,19 @@ drawn through the same props.
   a fixed `h-11` ran a phone-sized board's plate off the felt.
 - **The stage itself is capped from `ultrawide:` up** (`min-height: 800px` and `min-aspect-ratio:
   2/1`) at `--stage-max` (`index.css`), so the docked session panel stops well short of a 21:9
-  screen's physical edge; the portalled settings dialog is pushed in by hand off the same variable,
-  since it cannot see the stage's own cap. The board's own sizing is untouched — `--stage-max` is
+  screen's physical edge. **Everything docked to that right edge is a child of the capped box and
+  inherits the cap — nothing re-derives the number for itself.** The settings sheet included: it
+  portals into the stage element (`BoardStage`'s own ref, threaded as `SettingsButton`'s
+  `container`) and is `absolute inset-0` there, so its scrim dims the stage alone and leaves the
+  tint outside it as the seam the sheet ends on. From `md:` up it takes the docked panel's own
+  column (`clamp(24rem,26vw,28rem)`) flush and bordered, so the two line up rather than leaving a
+  strip of one showing past the other. The board's own sizing is untouched — `--stage-max` is
   built so the board column always stays wider than the square can be tall.
+- **`HomePage` puts that same capped box round the menu**, off the same variable, so the app box
+  does not change width between home and a trainer and the gear's sheet docks where the app stops.
+  Its box is `h-svh overflow-hidden` with the menu scrolling in a column inside — a page taller
+  than the viewport would otherwise stretch a full-height sheet past the bottom of the screen.
+  `<body>` and `fixed` remain `SettingsButton`'s fallback when no `container` is passed.
 - **`flow`'s board area is `container-type: inline-size`, not `size`** — size containment collapses
   a box that sizes itself to its own content. Content that rides up must be a **fixed size whatever
   it holds, and that is the page's job**: a river growing into its space walks the hand down the
