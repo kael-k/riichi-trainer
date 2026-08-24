@@ -87,9 +87,9 @@ export function LogList({ className = 'max-h-48 short:max-h-none' }: { className
           </button>
         )}
       </div>
-      <ol className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 [--tile-w:calc(var(--tile-w-base)*0.6)]">
+      <ol className="min-h-0 flex-1 overflow-y-auto pb-2 [--tile-w:calc(var(--tile-w-base)*0.6)]">
         {rows.length === 0 && (
-          <li className="py-1 text-sm text-neutral-400">
+          <li className="px-3 py-1 text-sm text-neutral-400">
             {t(mistakesOnly ? 'common.noMistakes' : 'common.noActions')}
           </li>
         )}
@@ -208,50 +208,55 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
   const tiles = entry.tiles ?? []
   const seam = entry.seam ?? tiles.length
   return (
-    <li className="flex gap-2">
-      <span className="w-5 shrink-0 pt-1.5 text-right text-[10px] text-neutral-400 tabular-nums">
-        {number}
-      </span>
-      <div
-        className={`shrink-0 rounded-full ${entry.severity ? SPINE[entry.severity] : NO_VERDICT}`}
+    <li className="relative py-1 pr-1 pl-3">
+      {/* the rail, on the list's own left edge rather than a column indented past the ordinal:
+          rows are adjacent, so the segments meet and read top to bottom as one record */}
+      <span
+        aria-hidden
+        className={`absolute inset-y-0 left-0 rounded-full ${entry.severity ? SPINE[entry.severity] : NO_VERDICT}`}
       />
-      <div className="min-w-0 flex-1 py-1">
-        <div className="flex items-center gap-1">
-          <div className="flex min-w-0 flex-wrap items-center">
-            <Tiles tiles={tiles.slice(0, seam)} />
-            {/* two tiles either side of a rule is the diff — no arrow glyph needed to say it */}
-            {seam < tiles.length && (
-              <span className="ml-1.5 flex items-center border-l border-neutral-200 pl-1.5 dark:border-neutral-700">
-                <Tiles tiles={tiles.slice(seam)} />
-              </span>
-            )}
-          </div>
-          <div className="ml-auto flex items-center">
-            <RowActions entry={entry} number={number} />
-            {detail && detail.length > 0 && (
-              <button
-                type="button"
-                aria-label={t('common.showDetail')}
-                aria-expanded={expanded}
-                onClick={() => setExpanded(!expanded)}
-                className={ICON_BUTTON}
-              >
-                <ChevronDown className={`size-3.5 ${expanded ? 'rotate-180' : ''}`} />
-              </button>
-            )}
-          </div>
+      {tiles.length > 0 && (
+        // the tiles get the row's whole width: no ordinal gutter ahead of them and no action
+        // cluster beside them, which is what lets a full hand read on one line
+        <div className="flex flex-wrap items-center">
+          <Tiles tiles={tiles.slice(0, seam)} />
+          {/* two tiles either side of a rule is the diff — no arrow glyph needed to say it */}
+          {seam < tiles.length && (
+            <span className="ml-1.5 flex items-center border-l border-neutral-200 pl-1.5 dark:border-neutral-700">
+              <Tiles tiles={tiles.slice(seam)} />
+            </span>
+          )}
         </div>
-        <p className="text-xs leading-snug text-neutral-500 tabular-nums">
+      )}
+      <div className="flex items-start gap-1">
+        <p className="min-w-0 flex-1 pt-0.5 text-xs leading-snug text-neutral-500 tabular-nums">
+          {/* the ordinal leads the sentence instead of holding a column of its own — it is only
+              ever read against `log.rewound`'s "Rewound to entry {{number}}" */}
+          <span className="mr-1.5 text-[10px] text-neutral-400">{number}</span>
           {formatLogEntry(entry, t)}
         </p>
-        {expanded && detail && (
-          <div className="mt-1 flex flex-col gap-1">
-            {detail.map((line, i) => (
-              <DetailLine key={i} detail={line} />
-            ))}
-          </div>
-        )}
+        <div className="flex shrink-0 items-center">
+          <RowActions entry={entry} number={number} />
+          {detail && detail.length > 0 && (
+            <button
+              type="button"
+              aria-label={t('common.showDetail')}
+              aria-expanded={expanded}
+              onClick={() => setExpanded(!expanded)}
+              className={ICON_BUTTON}
+            >
+              <ChevronDown className={`size-3.5 ${expanded ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+        </div>
       </div>
+      {expanded && detail && (
+        <div className="mt-1 flex flex-col gap-1">
+          {detail.map((line, i) => (
+            <DetailLine key={i} detail={line} />
+          ))}
+        </div>
+      )}
     </li>
   )
 }
@@ -261,7 +266,7 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
 function DealSeparator({ entry, number }: { entry: LogEntry; number: number }) {
   const { t } = useTranslation()
   return (
-    <li className="py-2">
+    <li className="px-3 py-2">
       <div className="flex items-center gap-2">
         <div className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
         <span className="text-[10px] tracking-wider text-neutral-400 uppercase">
