@@ -57,7 +57,11 @@ export function LogList({ className = 'max-h-48 short:max-h-none' }: { className
       ({ entry }) => !mistakesOnly || entry.severity === 'warning' || entry.severity === 'error',
     )
   return (
-    <div className={`flex min-h-0 flex-col ${className}`}>
+    // an inline-size container so the tile row below can cap itself against the column it is
+    // actually in — the panel is 320px on a laptop and up to 448px on a desktop, and a hand has
+    // to read on one line in both. Declared here rather than on the `<ol>` itself: a container
+    // query unit resolves against an *ancestor* container, never the element declaring it
+    <div className={`flex min-h-0 flex-col [container-type:inline-size] ${className}`}>
       <div className="flex min-h-11 items-center gap-2 px-3 text-sm font-medium text-neutral-600 dark:text-neutral-400">
         {t('common.log', { count: entries.length })}
         <div className="ml-auto flex overflow-hidden rounded border border-neutral-200 text-xs dark:border-neutral-700">
@@ -87,7 +91,14 @@ export function LogList({ className = 'max-h-48 short:max-h-none' }: { className
           </button>
         )}
       </div>
-      <ol className="min-h-0 flex-1 overflow-y-auto pb-2 [--tile-w:calc(var(--tile-w-base)*0.6)]">
+      {/* the log's own tile size: 0.6 of the hand's, capped so fourteen still fit the column's
+          width (`2rem` is the widest indent any row here has — the separator's `px-3` both sides,
+          plus slack, since an exact fit wraps anyway on fractional widths) and floored at 20px,
+          below which the tile art stops reading. `--tile-w-base` rather
+          than `--tile-w` alone, so a nested override composes with it instead of ignoring it —
+          `UkeireTiles`' own 0.8 is measured off the base, and used to come out *larger* than the
+          tiles above it. Written from `--tile-w-raw`, since a declaration cannot read itself. */}
+      <ol className="min-h-0 flex-1 overflow-y-auto pb-2 [--tile-w-base:clamp(1.25rem,(100cqw_-_2rem)/14,calc(var(--tile-w-raw)*var(--tile-scale,1)*0.6))] [--tile-w:var(--tile-w-base)]">
         {rows.length === 0 && (
           <li className="px-3 py-1 text-sm text-neutral-400">
             {t(mistakesOnly ? 'common.noMistakes' : 'common.noActions')}

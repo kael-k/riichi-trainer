@@ -155,9 +155,11 @@ function SessionPanel({ panel }: Pick<BoardStageProps, 'panel'>) {
         // `flex-auto` on both halves rather than a fixed share: each is based on its own content
         // and only gives ground in proportion to it, so a long ranking gets the room an empty log
         // is not using, and a log that has run all game still keeps its own.
-        // Tiles here are read, not played, and the column is 320px wide: at the hand's own size a
-        // single ukeire list filled the panel on its own, so they draw at the log's scale instead
-        <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto [--tile-w:calc(var(--tile-w-base)*0.6)]">
+        // Tiles here are read, not played, and the column is 320px on a laptop: at the hand's own
+        // size a single ukeire list filled the panel on its own, so they draw at the log's scale
+        // instead. `--tile-w-base`, not `--tile-w` alone, so a nested override (`UkeireTiles`
+        // scales 0.8 off the base) composes with this one rather than ignoring it
+        <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto [--tile-w-base:calc(var(--tile-w-raw)*var(--tile-scale,1)*0.6)] [--tile-w:var(--tile-w-base)]">
           {panel}
         </div>
       )}
