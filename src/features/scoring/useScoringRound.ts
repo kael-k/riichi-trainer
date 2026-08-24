@@ -91,21 +91,17 @@ function roundOptions(wall: ParsedTile[], options: ScoringOptions): RoundOptions
     // the round wind is part of the drill (it decides which wind pairs are yakuhai), so it
     // varies per hand — derived from the wall itself, like everything else about the round
     match: createMatch(options.sanma, { prevalentWind: HONOR + Math.floor(rng() * 4) }),
-    calls: options.openHands,
+    calls: true,
     riichi: true,
     wins: true,
   }
 }
 
-function situationFromWin(
-  win: WinRecord,
-  wall: ParsedTile[],
-  options: ScoringOptions,
-): ScoringSituation {
+function situationFromWin(win: WinRecord, wall: ParsedTile[]): ScoringSituation {
   // matches play a single hand, so there is no honba to inherit — it stays a wall-seeded extra
-  // the setting adds on top, exactly as the constructive generator did
+  // on top, exactly as the constructive generator did
   const rng = mulberry32(`${wallKey(wall)}:honba`)
-  const honba = options.honba && rng() < 0.3 ? Math.floor(rng() * 3) + 1 : 0
+  const honba = rng() < 0.3 ? Math.floor(rng() * 3) + 1 : 0
   return {
     concealed: win.concealed,
     melds: win.melds,
@@ -271,7 +267,9 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
   }
 
   function fallbackHand(seed: string, invalidLink: boolean): State {
-    const situation = generateHand(seed, options)
+    // `GenOptions` keeps `openHands`/`honba` as engine knobs (their own tests exercise both off);
+    // the trainer just pins them on now that neither is a setting any more
+    const situation = generateHand(seed, { ...options, openHands: true, honba: true })
     return {
       situation,
       round: null,
@@ -292,7 +290,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
   // This is its single entry point; nothing else in this hook reads `outcome.state.win` directly.
   const onAgariCall = (win: WinRecord) => {
     const { wall, round, invalidLink } = pending.current
-    const situation = situationFromWin(win, wall, options)
+    const situation = situationFromWin(win, wall)
     setState((prev) => ({
       situation,
       round,
@@ -368,8 +366,6 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
     handIndex,
     options.sanma,
     options.aka,
-    options.openHands,
-    options.honba,
     options.kiriageMangan,
   ])
 

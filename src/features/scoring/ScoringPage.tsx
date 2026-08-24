@@ -118,8 +118,6 @@ export function ScoringPage() {
       kiriageMangan,
       sanma: urlData.sanma ?? sanma,
       aka: urlData.aka ?? aka,
-      openHands: urlData.calls ?? settings.openHands,
-      honba: urlData.honba ?? settings.honba,
     }),
     [urlData, sanma, aka, exactFu, kiriageMangan, settings],
   )
@@ -247,11 +245,7 @@ export function ScoringPage() {
       {toggle('testPoints', 'scoring.settings.testPoints', true)}
       {toggle('table', 'scoring.settings.table')}
       {advanced && toggle('exactFu', 'scoring.settings.exactFu')}
-      {toggle('showYaku', 'scoring.settings.showYaku')}
-      {toggle('showFu', 'scoring.settings.showFu')}
-      {toggle('honba', 'scoring.settings.honba')}
       {toggle('ignoreFuOnLimit', 'scoring.settings.ignoreFuOnLimit')}
-      {toggle('openHands', 'scoring.settings.openHands')}
     </>
   )
 

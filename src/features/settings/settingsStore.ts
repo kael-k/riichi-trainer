@@ -22,14 +22,6 @@ export interface Settings {
     /** Stop grading fu once the hand reaches a limit, where fu no longer moves the payment.
      *  On by default: asking for a number that cannot change the answer teaches nothing. */
     ignoreFuOnLimit: boolean
-    /** Show the itemized yaku list on reveal, instead of just the han total. */
-    showYaku: boolean
-    /** Show the fu itemization on reveal, instead of just the fu total. */
-    showFu: boolean
-    /** Add random honba sticks to generated hands and require them in the points total. */
-    honba: boolean
-    /** Generate hands with called melds, not just closed ones. */
-    openHands: boolean
   }
   folding: {
     /** Hold every graded turn back until the hand is over — feedback, running score and the log
@@ -133,11 +125,7 @@ export const useSettings = create<SettingsState>()(
         testFu: true,
         testPoints: true,
         exactFu: false,
-        showYaku: false,
-        showFu: false,
-        honba: false,
         ignoreFuOnLimit: true,
-        openHands: true,
       },
       folding: {
         feedbackAtEnd: false,

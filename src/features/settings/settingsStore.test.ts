@@ -42,13 +42,13 @@ describe('settingsStore table section', () => {
     localStorage.setItem(
       'riichi-trainer-settings',
       JSON.stringify({
-        state: { scoring: { showYaku: true } },
+        state: { scoring: { exactFu: true } },
         version: 3,
       }),
     )
     const { useSettings } = await import('./settingsStore')
     const state = useSettings.getState()
-    expect(state.scoring.showYaku).toBe(true)
+    expect(state.scoring.exactFu).toBe(true)
     // a field the persisted blob omitted still comes from the fresh default, not `undefined`
     expect(state.scoring.testHan).toBe(true)
     expect(state.table).toEqual({ global: {}, apps: {} })
@@ -61,7 +61,7 @@ describe('settingsStore table section', () => {
         state: {
           efficiency: { showShanten: false, timerEnabled: false, showUkeire: false },
           shanten: { timerEnabled: false },
-          scoring: { showYaku: true },
+          scoring: { exactFu: true },
           locale: 'ja',
         },
         version: 3,
@@ -72,7 +72,7 @@ describe('settingsStore table section', () => {
     // discard the whole blob, costing every existing reader the settings they did choose. The
     // stale keys ride along on the state object (the merge spreads the blob wholesale) but are
     // off the `Settings` type and unread — what matters is that everything else still loads
-    expect(useSettings.getState().scoring.showYaku).toBe(true)
+    expect(useSettings.getState().scoring.exactFu).toBe(true)
     expect(useSettings.getState().locale).toBe('ja')
     expect(useSettings.getState().scoring.testHan).toBe(true)
   })

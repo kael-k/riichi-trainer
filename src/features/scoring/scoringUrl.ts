@@ -54,24 +54,18 @@ export interface ScoringUrl {
    *  match was simulated under come with it, so these travel alongside it. */
   sanma?: boolean
   aka?: boolean
-  calls?: boolean
-  honba?: boolean
 }
 
 /** A match reproduces from its wall, so a link to one needs the wall plus the rules it was
  *  played under — the receiver replays the whole hand, rivers included, from `playWall`. */
 export function encodeScoringWallUrl(
   wall: ParsedTile[],
-  options: { sanma: boolean; aka: boolean; openHands: boolean; honba: boolean },
+  options: { sanma: boolean; aka: boolean },
 ): string {
   const params = new URLSearchParams()
   params.set('wall', serializeTenhouOrdered(wall))
   params.set('sanma', options.sanma ? '1' : '0')
   params.set('aka', options.aka ? '1' : '0')
-  params.set('calls', options.openHands ? '1' : '0')
-  // not `honba`: on a pinned-hand link that param carries the actual honba count, and the two
-  // meanings must not share a name
-  params.set('honbaOn', options.honba ? '1' : '0')
   return params.toString()
 }
 
@@ -106,8 +100,6 @@ export function decodeScoringUrl(params: URLSearchParams): ScoringUrl {
       situation: null,
       sanma,
       aka: flag('aka'),
-      calls: flag('calls'),
-      honba: flag('honbaOn'),
     }
   }
 

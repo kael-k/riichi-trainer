@@ -26,7 +26,7 @@ const SITUATION: ScoringSituation = {
   honba: 1,
 }
 
-const WALL_OPTIONS = { sanma: false, aka: true, openHands: true, honba: true }
+const WALL_OPTIONS = { sanma: false, aka: true }
 
 describe('scoringUrl', () => {
   it('round-trips a full situation through the query string', () => {
@@ -56,8 +56,6 @@ describe('scoringUrl', () => {
     expect(decoded.wallError).toBeUndefined()
     expect(decoded.sanma).toBe(false)
     expect(decoded.aka).toBe(true)
-    expect(decoded.calls).toBe(true)
-    expect(decoded.honba).toBe(true)
   })
 
   it('surfaces a wallError and empties wall on an invalid wall= (five copies of a kind)', () => {
