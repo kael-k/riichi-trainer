@@ -27,6 +27,7 @@ import { inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, SOU, type ParsedTile } fro
 import {
   completeWall,
   dealtSeat,
+  DEAD_WALL_SIZE,
   INITIAL_HAND_SIZE,
   TILES_PER_KIND,
   wallWithHand,
@@ -407,6 +408,20 @@ describe('createRound', () => {
     expect(reds({ ...YONMA, aka: false }, 4)).toBe(0)
     // sanma has no 5m at all, so it can only seed two
     expect(reds(SANMA, 3)).toBe(2)
+  })
+
+  it('pairs each dora indicator with the ura tile beside it in the dead wall', () => {
+    const state = createRound([], 4, YONMA, 'dead-wall-pairs')
+    const dead = state.deadWallSnapshot
+    expect(dead.length).toBe(DEAD_WALL_SIZE)
+    // [d1, u1, d2, u2, …] then the four rinshan tiles; doraIndicators already holds d1
+    const indicators = [...state.doraIndicators, ...state.doraStack]
+    expect(indicators.length).toBe(5)
+    for (let n = 0; n < indicators.length; n++) {
+      expect(indicators[n]).toBe(dead[n * 2])
+      expect(state.uraStack[n]).toBe(dead[n * 2 + 1])
+    }
+    expect(state.deadWall).toEqual(dead.slice(10))
   })
 
   it('honours a wall pinning one seat, filling the rest of the wall itself', () => {

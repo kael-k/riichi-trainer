@@ -188,9 +188,10 @@ export interface RoundState {
    *  can show the whole wall, greying what's gone. See `wallDrawnCount`. */
   liveWallSnapshot: ParsedTile[]
   deadWall: ParsedTile[]
-  /** All 14 dead-wall tiles in build order — the flipped dora indicator, the rest of the dora
-   *  stack, the whole ura stack, then the four rinshan tiles — captured once alongside `deadWall`
-   *  and never touched again. Empty when `options.deadWall` is off. */
+  /** All 14 dead-wall tiles in build order — five dora-indicator/ura-dora pairs (the flipped
+   *  indicator first, each indicator immediately followed by the ura under it), then the four
+   *  rinshan tiles — captured once alongside `deadWall` and never touched again. Empty when
+   *  `options.deadWall` is off. */
   deadWallSnapshot: ParsedTile[]
   doraStack: ParsedTile[]
   uraStack: ParsedTile[]
@@ -264,8 +265,11 @@ export function createRound(
     // build order, before doraStack.shift() below peels its first tile off into doraIndicators
     deadWallSnapshot = chunk
     const indicators = Math.min(MAX_DORA_INDICATORS, Math.floor(dead / 2))
-    doraStack = chunk.slice(0, indicators)
-    uraStack = chunk.slice(indicators, indicators * 2)
+    // a dora indicator and its ura are the two halves of one stack, so they are adjacent in the
+    // flat wall: [d1, u1, d2, u2, …]. Splitting the chunk into a block of indicators followed by
+    // a block of ura would pair each indicator with the wrong tile's underside.
+    doraStack = chunk.filter((_, i) => i < indicators * 2 && i % 2 === 0)
+    uraStack = chunk.filter((_, i) => i < indicators * 2 && i % 2 === 1)
     deadWall = chunk.slice(indicators * 2)
     const first = doraStack.shift()
     if (first) doraIndicators.push(first)
