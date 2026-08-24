@@ -6,11 +6,9 @@ import { useLog } from '../../store/log'
 import { decodeSituation, emptySituation, type Situation } from '../situation/urlCodec'
 import { NORTH, useEfficiencyRound, type EfficiencyOptions } from './useEfficiencyRound'
 
-/** Bare-table options: no dead wall, no aka, no sanma — real opponents are always dealt in and
- *  always play now (calls/riichi are hardcoded in the hook), so there is no off switch left to
- *  test here. */
+/** Bare-table options: no aka, no sanma — real opponents are always dealt in and always play now
+ *  (calls/riichi are hardcoded in the hook), so there is no off switch left to test here. */
 const BARE: EfficiencyOptions = {
-  deadWall: false,
   aka: false,
   sanma: false,
   seats: null,
@@ -59,12 +57,12 @@ describe('useEfficiencyRound', () => {
     const situation = emptySituation()
     // fillSeed-backed for a deterministic board: "always discard the smallest id" isn't
     // guaranteed to reach tenpai before the wall runs dry on an arbitrary random deal — real
-    // opponents now always play too, draining roughly 4 tiles per turn instead of 1, so only
-    // ~30 of the user's own turns are available rather than the ~120 this used to allow
-    situation.wall = completeWall([], false, false, 'seed-1')
+    // opponents now always play too, and the dead wall is always reserved, so only ~18 of the
+    // user's own turns are available rather than the ~120 a wide-open wall used to allow
+    situation.wall = completeWall([], false, false, 'probe-231')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
-    for (let i = 0; i < 40 && !result.current.finished; i++) {
+    for (let i = 0; i < 20 && !result.current.finished; i++) {
       act(() => result.current.discard(0))
     }
     expect(result.current.finished).toBe(true)
@@ -141,7 +139,7 @@ describe('useEfficiencyRound', () => {
 
   it('reserves a dead wall and exposes its dora indicator', () => {
     const situation = emptySituation()
-    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, deadWall: true }))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     expect(result.current.doraIndicators).toHaveLength(1)
     // every seat is dealt a real hand now, opponents or not: 4 x 13, a 14-tile dead wall, and
     // the one tile drawn to start your turn
@@ -154,12 +152,12 @@ describe('useEfficiencyRound', () => {
     // discard below — an unset seed made this flaky the same way as the sanma opponents test
     situation.wall = completeWall(parseTenhou('123456789m1122z'), false, false, 'opp-seed')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
-    // 123 unpinned - 39 hidden opponent hands - 1 user draw
-    expect(result.current.liveWall.length).toBe(83)
+    // 123 unpinned - 14-tile dead wall - 39 hidden opponent hands - 1 user draw
+    expect(result.current.liveWall.length).toBe(69)
     expect(result.current.rivers.every((r) => r.length === 0)).toBe(true)
 
     act(() => result.current.discard(0))
-    expect(result.current.liveWall.length).toBe(79)
+    expect(result.current.liveWall.length).toBe(65)
     expect(result.current.rivers.map((r) => r.length)).toEqual([1, 1, 1, 1])
   })
 
@@ -222,7 +220,6 @@ describe('useEfficiencyRound', () => {
   it('situationQuery round-trips the exact round state', () => {
     const situation = emptySituation()
     const opts: EfficiencyOptions = {
-      deadWall: true,
       aka: true,
       sanma: false,
       seats: null,
@@ -237,7 +234,6 @@ describe('useEfficiencyRound', () => {
     const decoded = decodeSituation(new URLSearchParams(a.result.current.situationQuery()))
     const b = renderHook(() =>
       useEfficiencyRound(decoded, {
-        deadWall: decoded.deadWall ?? false,
         aka: decoded.aka ?? false,
         sanma: decoded.sanma ?? false,
         seats: null,
@@ -347,8 +343,8 @@ describe('useEfficiencyRound', () => {
     situation.wall = completeWall(parseTenhou('123456789p1122z'), true, false, 'sanma-opp-seed')
     const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, sanma: true }))
     expect(result.current.rivers).toHaveLength(3)
-    // 108 - 13 pinned - 26 dealt to the other two seats - 1 user draw
-    expect(result.current.liveWall.length).toBe(108 - 13 - 26 - 1)
+    // 108 - 13 pinned - 14-tile dead wall - 26 dealt to the other two seats - 1 user draw
+    expect(result.current.liveWall.length).toBe(108 - 13 - 14 - 26 - 1)
 
     const before = result.current.liveWall.length
     act(() => result.current.discard(0))
@@ -370,7 +366,7 @@ describe('useEfficiencyRound', () => {
     const hand = parseTenhou('123456789p1224z') // includes one North (4z), 13 tiles
     const wall = wallWithHand(0, hand, true, false, 'kita-seed')
     wall[3 * INITIAL_HAND_SIZE] = parseTenhou('5z')[0] // turn 1's own draw — not North
-    wall[3 * INITIAL_HAND_SIZE + 1] = parseTenhou('5p')[0] // what kita's replacement draw grabs
+    wall[wall.length - 1] = parseTenhou('5p')[0] // the first rinshan tile kita's replacement grabs
     situation.wall = wall
     const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, sanma: true }))
 
@@ -438,7 +434,7 @@ describe('useEfficiencyRound', () => {
     const wall = wallWithHand(0, hand, false, false, 'kan-mech-seed')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('3z')[0] // the fourth 3z, drawn to complete the quad
     situation.wall = wall
-    const { result } = renderHook(() => useEfficiencyRound(situation, { ...BARE, deadWall: true }))
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
     expect(result.current.doraIndicators).toHaveLength(1)
     // a wall can only name the draw, not skip it (see the "draws a tile after..." test above) —
     // the deal is 13 tiles and this fourth 3z is what completes the quad on the draw

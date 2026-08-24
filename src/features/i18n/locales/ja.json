@@ -146,9 +146,6 @@
     }
   },
   "efficiency": {
-    "settings": {
-      "deadWall": "王牌とドラ"
-    },
     "avgTime": "平均 {{time}}",
     "wallStatus_other": "山: 残り{{count}}枚",
     "doraIndicator": "ドラ表示牌",
@@ -195,7 +192,6 @@
       "testHan": "翻をテスト",
       "testFu": "符をテスト",
       "testPoints": "点数をテスト",
-      "timer": "タイマー",
       "table": "卓を表示",
       "exactFu": "正確な符(切り上げなし)",
       "showYaku": "役の内訳を表示",
@@ -352,7 +348,6 @@
     "sessionLine": "最安全の牌を{{total}}回中{{correct}}回選択。",
     "newSituation": "次の局面",
     "settings": {
-      "timer": "タイマー",
       "opponentWins": "相手の和了を有効にする",
       "showEquallySafe": "同じ安全度の牌も表示",
       "feedbackAtEnd": "答えは局の終わりにまとめて表示",

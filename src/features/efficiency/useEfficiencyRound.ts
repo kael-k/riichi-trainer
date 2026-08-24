@@ -24,7 +24,6 @@ export type { TurnResult } from './grade'
 /** Options that change how a round plays out; resolved from settings with per-situation
  *  overrides so shared links reproduce exactly. */
 export interface EfficiencyOptions {
-  deadWall: boolean
   aka: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma: boolean
@@ -65,7 +64,6 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     sanma: options.sanma,
     aka: options.aka,
     match: createMatch(options.sanma, { prevalentWind, ...matchOverrides(situation) }),
-    deadWall: options.deadWall,
     // opponents may open their hands and call, but nobody wins: a hand that ended on someone
     // else's tsumo would cut this per-turn drill short on a result the player did not cause
     calls: true,

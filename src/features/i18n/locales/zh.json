@@ -146,9 +146,6 @@
     }
   },
   "efficiency": {
-    "settings": {
-      "deadWall": "死墙与宝牌"
-    },
     "avgTime": "平均 {{time}}",
     "wallStatus_other": "牌山: 剩余{{count}}张",
     "doraIndicator": "宝牌指示牌",
@@ -195,7 +192,6 @@
       "testHan": "测试番数",
       "testFu": "测试符数",
       "testPoints": "测试点数",
-      "timer": "计时器",
       "table": "显示牌桌",
       "exactFu": "精确符数(不四舍五入)",
       "showYaku": "显示役种明细",
@@ -352,7 +348,6 @@
     "sessionLine": "{{total}} 次中有 {{correct}} 次选中最安全的牌。",
     "newSituation": "新牌局",
     "settings": {
-      "timer": "计时器",
       "opponentWins": "允许对手和牌",
       "showEquallySafe": "显示同样安全的其他牌",
       "feedbackAtEnd": "仅在牌局结束后显示答案",

@@ -22,13 +22,12 @@ vi.mock('../../core/danger', async (importOriginal) => {
   return { ...actual, assessDiscards: vi.fn(actual.assessDiscards) }
 })
 
-/** Bare yonma options: no opponents/riichi/calls/dead wall, wins off — fully deterministic given a
- *  seeded wall. */
+/** Bare yonma options: no opponents/riichi/calls, wins off — fully deterministic given a seeded
+ *  wall. */
 const BARE: RoundOptions = {
   sanma: false,
   aka: false,
   match: createMatch(false),
-  deadWall: false,
   calls: false,
   riichi: false,
   wins: false,

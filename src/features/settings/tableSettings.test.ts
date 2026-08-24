@@ -32,7 +32,6 @@ describe('resolveTableSettings', () => {
       global: { showOpponentHands: true },
       apps: {},
     })
-    expect(resolved.deadWall).toBe(TABLE_DEFAULTS.efficiency.deadWall)
     expect(resolved.showOpponentHands).toBe(true)
   })
 
@@ -40,7 +39,6 @@ describe('resolveTableSettings', () => {
     for (const app of APPS) {
       const resolved = resolveTableSettings(app, { global: {}, apps: {} })
       expect(resolved.opponentWins).toBeDefined()
-      expect(resolved.deadWall).toBeDefined()
       expect(resolved.threats).toBeDefined()
       expect(resolved.showOpponentHands).toBeDefined()
     }
@@ -49,11 +47,6 @@ describe('resolveTableSettings', () => {
   it('matches the shipped folding defaults', () => {
     expect(TABLE_DEFAULTS.folding.threats).toBe(1)
     expect(TABLE_DEFAULTS.folding.opponentWins).toBe(true)
-  })
-
-  it('defaults deadWall to true for both efficiency apps', () => {
-    expect(TABLE_DEFAULTS.efficiency.deadWall).toBe(true)
-    expect(TABLE_DEFAULTS.efficiencySolo.deadWall).toBe(true)
   })
 
   it('does not let an app override leak into a sibling app', () => {

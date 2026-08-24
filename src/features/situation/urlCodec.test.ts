@@ -17,7 +17,6 @@ const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
   match: createMatch(false),
-  deadWall: true,
   calls: true,
   riichi: true,
   wins: true,
@@ -57,7 +56,6 @@ describe('urlCodec', () => {
     ] satisfies LogEntry[]
     s.round = 'S'
     s.seat = 'W'
-    s.deadWall = false
     s.aka = true
     s.sanma = true
     s.kyoku = 3

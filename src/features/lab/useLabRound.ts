@@ -20,7 +20,6 @@ import { useRound, type RoundEventContext } from '../table/useRound'
  */
 
 export interface LabOptions {
-  deadWall: boolean
   aka: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma: boolean
@@ -67,7 +66,6 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     sanma: options.sanma,
     aka: options.aka,
     match: createMatch(options.sanma, { prevalentWind, ...matchOverrides(situation) }),
-    deadWall: options.deadWall,
     calls: true,
     riichi: true,
     wins: options.opponentWins,

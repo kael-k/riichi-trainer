@@ -7,11 +7,9 @@ import { HandDisplay, River, Tile, WallDetails } from '../../components/tiles/Ti
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
-import { SettingRow } from '../settings/SettingsDialog'
 import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
-import { useTableSettings, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation, WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { EFFICIENCY_VERDICT_TEXT_KEY, efficiencyVerdictSeverity } from '../efficiency/grade'
@@ -25,27 +23,16 @@ function accuracy(lost: number, total: number): number {
 export function EfficiencySoloPage() {
   const { t } = useTranslation()
   const situation = useUrlData(decodeSituation)
-  const rawTable = useSettings((s) => s.table)
-  const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const { aka } = useAdvancedSettings()
-  const { deadWall } = useTableSettings('efficiencySolo')
-  // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
-  // replace the whole apps layer instead of adding one app's key to it — merge the existing
-  // `apps.efficiencySolo` slice in first.
-  const updateTable = (patch: Partial<TableSettings>) =>
-    update('table', {
-      apps: { ...rawTable.apps, efficiencySolo: { ...rawTable.apps.efficiencySolo, ...patch } },
-    })
 
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<SoloOptions>(
     () => ({
-      deadWall: situation.deadWall ?? deadWall,
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
     }),
-    [situation, deadWall, aka, sanma],
+    [situation, aka, sanma],
   )
 
   const round = useEfficiencySoloRound(situation, options)
@@ -56,21 +43,9 @@ export function EfficiencySoloPage() {
   if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
   const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
 
-  const settingsRows = (
-    <SettingRow label={t('efficiency.settings.deadWall')}>
-      <input
-        type="checkbox"
-        checked={deadWall}
-        onChange={(e) => updateTable({ deadWall: e.target.checked })}
-        className="size-5"
-      />
-    </SettingRow>
-  )
-
   const { canBack, back } = useLogBack()
 
   const toggles = {
-    showToggle: true,
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
@@ -103,7 +78,6 @@ export function EfficiencySoloPage() {
     <BoardStage
       title={t('trainer.efficiencySolo.title')}
       intro={{ text: t('trainer.efficiencySolo.intro'), wikiUrl: TRAINER_WIKI.efficiencySolo }}
-      settings={settingsRows}
       status={
         <>
           <Timer elapsedNow={round.elapsedNow} running={round.running} />

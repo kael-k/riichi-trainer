@@ -18,8 +18,8 @@ The test is **what the value is about**, not where its control lives.
 - Global settings: theme, tile size, language, tile numbers, `sanma`, `aka`, advanced mode,
   per-trainer timer/display preferences. (`mobileFullscreen` was one of these until
   [ADR-0025](0025-one-interface.md) removed the mode it switched.)
-- `TableSettings` — `opponentWins`, `deadWall`, `threats`, `showOpponentHands`, `showSeatWaits`,
-  `showWall`, `claims` — resolved per app as `{ ...TABLE_DEFAULTS[app], ...global, ...appOverride }`.
+- `TableSettings` — `opponentWins`, `threats`, `showOpponentHands`, `showSeatWaits`, `claims` —
+  resolved per app as `{ ...TABLE_DEFAULTS[app], ...global, ...appOverride }`.
   Both override layers are `Partial`: absent-key-means-inherit is plain object-spread semantics,
   which is exactly why no three-state inherit/on/off control is needed.
 - `claims` specifically stays here and stays match-wide: it answers "do I want to be offered

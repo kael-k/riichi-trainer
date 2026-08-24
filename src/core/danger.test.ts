@@ -273,7 +273,6 @@ const YONMA: RoundOptions = {
   sanma: false,
   aka: true,
   match: createMatch(false),
-  deadWall: true,
   calls: true,
   riichi: true,
   wins: true,

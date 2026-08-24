@@ -24,7 +24,6 @@ const LONG = WALLS.find((wall) => wall.length > INITIAL_HAND_SIZE)!
 const OPTIONS = {
   sanma: false,
   aka: false,
-  deadWall: true,
   calls: false,
   riichi: false,
   wins: false,

@@ -10,7 +10,6 @@ export type Locale = 'auto' | (typeof LOCALES)[number]
 
 export interface Settings {
   scoring: {
-    timerEnabled: boolean
     /** Show the round context as a table (winds in position, melds on your side) instead of
      *  a flat text bar. */
     table: boolean
@@ -34,7 +33,6 @@ export interface Settings {
     openHands: boolean
   }
   folding: {
-    timerEnabled: boolean
     /** After a correct discard, also list the other tiles that tied it. Off by default: the
      *  answer was already right, and naming the alternatives hands over part of next turn's
      *  reading for free. */
@@ -45,7 +43,7 @@ export interface Settings {
      *  next turn, so the whole fold is read from the board. */
     feedbackAtEnd: boolean
   }
-  /** The six table settings shared by every board-rendering app (ADR-0015, ADR-0015): a global default
+  /** The five table settings shared by every board-rendering app (ADR-0015, ADR-0015): a global default
    *  layer plus a per-app override layer, both `Partial` since an absent key means inherit —
    *  resolved by `resolveTableSettings`/`useTableSettings` (`tableSettings.ts`), never read
    *  straight off this section. */
@@ -130,7 +128,6 @@ export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
       scoring: {
-        timerEnabled: true,
         table: true,
         testHan: true,
         testFu: true,
@@ -144,7 +141,6 @@ export const useSettings = create<SettingsState>()(
         openHands: true,
       },
       folding: {
-        timerEnabled: true,
         showEquallySafe: false,
         feedbackAtEnd: false,
       },

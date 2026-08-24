@@ -10,7 +10,6 @@ import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
-import { SettingRow } from '../settings/SettingsDialog'
 import { ManualControls } from '../table/ManualControls'
 import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
@@ -33,8 +32,7 @@ export function EfficiencyPage() {
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const { aka } = useAdvancedSettings()
-  const { deadWall, showOpponentHands, showSeatWaits, claims, seatsEnabled } =
-    useTableSettings('efficiency')
+  const { showOpponentHands, showSeatWaits, claims, seatsEnabled } = useTableSettings('efficiency')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
   // `apps.efficiency` slice in first.
@@ -52,7 +50,6 @@ export function EfficiencyPage() {
   // situation overrides pin round behavior so shared links reproduce exactly
   const options = useMemo<EfficiencyOptions>(
     () => ({
-      deadWall: situation.deadWall ?? deadWall,
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
       seats: seatConfig,
@@ -60,7 +57,7 @@ export function EfficiencyPage() {
       showSeatWaits,
       showOpponentHands,
     }),
-    [situation, deadWall, aka, sanma, seatConfig, claims, showSeatWaits, showOpponentHands],
+    [situation, aka, sanma, seatConfig, claims, showSeatWaits, showOpponentHands],
   )
 
   const round = useEfficiencyRound(situation, options)
@@ -130,21 +127,9 @@ export function EfficiencyPage() {
     }
   })
 
-  const settingsRows = (
-    <SettingRow label={t('efficiency.settings.deadWall')}>
-      <input
-        type="checkbox"
-        checked={deadWall}
-        onChange={(e) => updateTable({ deadWall: e.target.checked })}
-        className="size-5"
-      />
-    </SettingRow>
-  )
-
   const { canBack, back } = useLogBack()
 
   const toggles = {
-    showToggle: true,
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
@@ -177,7 +162,6 @@ export function EfficiencyPage() {
     <BoardStage
       title={t('trainer.efficiency.title')}
       intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
-      settings={settingsRows}
       onLogOpen={(open) => open !== round.paused && round.togglePause()}
       status={
         <>

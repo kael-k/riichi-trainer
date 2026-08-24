@@ -16,7 +16,6 @@ interface ScoringResultParams {
   hand: number
   han: number
   correct: boolean
-  timerEnabled: boolean
   elapsedMs: number
 }
 
@@ -66,9 +65,8 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
     })
   }
   if (entry.key === 'log.scoring.result') {
-    const { hand, han, correct, timerEnabled, elapsedMs } =
-      entry.params as unknown as ScoringResultParams
-    const time = timerEnabled ? ` ${t('scoring.inTime', { time: formatElapsedMs(elapsedMs) })}` : ''
+    const { hand, han, correct, elapsedMs } = entry.params as unknown as ScoringResultParams
+    const time = ` ${t('scoring.inTime', { time: formatElapsedMs(elapsedMs) })}`
     return t('log.scoring.result', {
       hand,
       han,

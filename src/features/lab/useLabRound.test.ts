@@ -5,10 +5,9 @@ import { completeWall, INITIAL_HAND_SIZE, wallWithHand } from '../../core/wall'
 import { emptySituation, type Situation } from '../situation/urlCodec'
 import { useLabRound, type LabOptions } from './useLabRound'
 
-/** Bare-table options: no dead wall, no aka, no sanma, opponents never win — a rehearsal board so
- *  a hand doesn't end on someone else's tsumo out from under a test. */
+/** Bare-table options: no aka, no sanma, opponents never win — a rehearsal board so a hand doesn't
+ *  end on someone else's tsumo out from under a test. */
 const BARE: LabOptions = {
-  deadWall: false,
   aka: false,
   sanma: false,
   opponentWins: false,

@@ -85,7 +85,6 @@ function roundOptions(wall: ParsedTile[], options: ScoringOptions): RoundOptions
     // the round wind is part of the drill (it decides which wind pairs are yakuhai), so it
     // varies per hand — derived from the wall itself, like everything else about the round
     match: createMatch(options.sanma, { prevalentWind: HONOR + Math.floor(rng() * 4) }),
-    deadWall: true,
     calls: options.openHands,
     riichi: true,
     wins: true,
@@ -317,7 +316,6 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
         hand: stats.totalCount + 1,
         correct,
         han: actual.han,
-        timerEnabled: options.timerEnabled,
         elapsedMs: elapsed,
       },
       tiles: state.situation.concealed,

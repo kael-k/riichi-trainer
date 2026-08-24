@@ -223,7 +223,7 @@ function boardHandsOf(match: RoundState, reveal: boolean): ParsedTile[][] {
 
 /** Rules the drill is always simulated under. Fixed rather than settings, so a link carries as
  *  little as possible — change one of these and old links change meaning. */
-const RULES = { aka: true, deadWall: true, calls: true, riichi: true } as const
+const RULES = { aka: true, calls: true, riichi: true } as const
 
 /** What a board is built from: everything that changes what a given wall deals, and so everything
  *  a link has to carry alongside the wall. */

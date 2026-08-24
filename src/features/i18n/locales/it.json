@@ -194,9 +194,6 @@
     }
   },
   "efficiency": {
-    "settings": {
-      "deadWall": "Muro morto e dora"
-    },
     "avgTime": "media {{time}}",
     "wallStatus_one": "Muro: {{count}} tessera",
     "wallStatus_other": "Muro: {{count}} tessere",
@@ -246,7 +243,6 @@
       "testHan": "Testa han",
       "testFu": "Testa fu",
       "testPoints": "Testa punti",
-      "timer": "Timer",
       "table": "Mostra tavolo",
       "exactFu": "Fu esatto (non arrotondato)",
       "showYaku": "Mostra dettaglio yaku",
@@ -453,7 +449,6 @@
     "sessionLine": "Tile più sicuro scelto {{correct}} volte su {{total}}.",
     "newSituation": "Nuova situazione",
     "settings": {
-      "timer": "Timer",
       "opponentWins": "Gli avversari possono vincere",
       "showEquallySafe": "Mostra gli altri scarti altrettanto sicuri",
       "feedbackAtEnd": "Mostra le risposte solo a fine mano",

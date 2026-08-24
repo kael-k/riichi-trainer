@@ -63,8 +63,6 @@ export interface TableSettings {
    *  same grading, but the hand plays to the wall instead of ending on a deal-in. On by
    *  default: a fold you can't lose teaches the tiles but not the stakes. */
   opponentWins: boolean
-  /** Reserve a dead wall and show its dora indicator. */
-  deadWall: boolean
   /** Seats that must already be in riichi when the drill starts. Capped at one fewer than the
    *  player count; generation falls back to fewer rather than failing when a seed search cannot
    *  find that many. */
@@ -99,7 +97,6 @@ export type TableApp = 'efficiency' | 'efficiencySolo' | 'folding' | 'scoring' |
 export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
   efficiency: {
     opponentWins: false,
-    deadWall: true,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
@@ -107,7 +104,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
   },
   efficiencySolo: {
     opponentWins: false,
-    deadWall: true,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
@@ -115,7 +111,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
   },
   folding: {
     opponentWins: true,
-    deadWall: true,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
@@ -123,7 +118,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
   },
   scoring: {
     opponentWins: true,
-    deadWall: true,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
@@ -131,7 +125,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
   },
   lab: {
     opponentWins: false,
-    deadWall: true,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,

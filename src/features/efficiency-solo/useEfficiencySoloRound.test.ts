@@ -10,9 +10,8 @@ import { useLog } from '../../store/log'
 import { emptySituation } from '../situation/urlCodec'
 import { useEfficiencySoloRound, type SoloOptions } from './useEfficiencySoloRound'
 
-const BARE: SoloOptions = { deadWall: false, aka: false, sanma: false }
+const BARE: SoloOptions = { aka: false, sanma: false }
 const TABLE_BARE: TableRoundOptions = {
-  deadWall: false,
   aka: false,
   sanma: false,
   seats: null,
@@ -30,11 +29,9 @@ describe('useEfficiencySoloRound', () => {
     expect(result.current.hand).toHaveLength(13)
   })
 
-  it('reserves a dead wall and flips a dora indicator when deadWall is on', () => {
+  it('reserves a dead wall and flips a dora indicator', () => {
     const situation = emptySituation()
-    const { result } = renderHook(() =>
-      useEfficiencySoloRound(situation, { ...BARE, deadWall: true }),
-    )
+    const { result } = renderHook(() => useEfficiencySoloRound(situation, BARE))
     expect(result.current.doraIndicators).toHaveLength(1)
   })
 

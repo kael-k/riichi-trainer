@@ -194,9 +194,6 @@
     }
   },
   "efficiency": {
-    "settings": {
-      "deadWall": "Dead wall & dora"
-    },
     "avgTime": "avg {{time}}",
     "wallStatus_one": "Wall: {{count}} tile",
     "wallStatus_other": "Wall: {{count}} tiles",
@@ -246,7 +243,6 @@
       "testHan": "Test han",
       "testFu": "Test fu",
       "testPoints": "Test points",
-      "timer": "Timer",
       "table": "Show table",
       "exactFu": "Exact fu (not rounded)",
       "showYaku": "Show yaku breakdown",
@@ -453,7 +449,6 @@
     "sessionLine": "Safest tile chosen {{correct}} of {{total}} times.",
     "newSituation": "New situation",
     "settings": {
-      "timer": "Timer",
       "opponentWins": "Opponents can win",
       "showEquallySafe": "Show other equally safe tiles",
       "feedbackAtEnd": "Show answers only at the end of the hand",

@@ -142,14 +142,6 @@ export function FoldingPage() {
 
   const settingsRows = (
     <>
-      <SettingRow label={t('folding.settings.timer')}>
-        <input
-          type="checkbox"
-          checked={settings.timerEnabled}
-          onChange={(e) => update('folding', { timerEnabled: e.target.checked })}
-          className="size-5"
-        />
-      </SettingRow>
       <SettingRow label={t('folding.settings.feedbackAtEnd')}>
         <input
           type="checkbox"
@@ -212,7 +204,6 @@ export function FoldingPage() {
   }
 
   const toggles = {
-    showToggle: settings.timerEnabled,
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
@@ -286,9 +277,7 @@ export function FoldingPage() {
           )}
         </>
       )}
-      {settings.timerEnabled && (
-        <span>{t('folding.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-      )}
+      <span>{t('folding.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
     </>
   )
 
@@ -300,7 +289,7 @@ export function FoldingPage() {
       onLogOpen={(open) => open !== round.paused && round.togglePause()}
       status={
         <>
-          {settings.timerEnabled && <Timer elapsedNow={round.elapsedNow} running={round.running} />}
+          <Timer elapsedNow={round.elapsedNow} running={round.running} />
           {scoreLines}
         </>
       }
@@ -393,11 +382,9 @@ export function FoldingPage() {
                   total: round.totalCount,
                 })}
               </p>
-              {settings.timerEnabled && (
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  {t('folding.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
-                </p>
-              )}
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t('folding.avgTime', { time: formatElapsedMs(round.roundAverageTime) })}
+              </p>
             </div>
             {round.end.threats.map((threat) => (
               <Reveal key={threat.seat} threat={threat} seats={round.end!.threats.length} />

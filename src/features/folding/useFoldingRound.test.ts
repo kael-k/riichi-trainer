@@ -19,7 +19,6 @@ import {
 
 const OPTIONS: FoldingOptions = {
   sanma: false,
-  timerEnabled: true,
   threats: 1,
   opponentWins: true,
   showEquallySafe: false,

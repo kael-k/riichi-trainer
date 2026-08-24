@@ -254,7 +254,6 @@ export function ScoringPage() {
       {toggle('testHan', 'scoring.settings.testHan', true)}
       {toggle('testFu', 'scoring.settings.testFu', true)}
       {toggle('testPoints', 'scoring.settings.testPoints', true)}
-      {toggle('timerEnabled', 'scoring.settings.timer')}
       {toggle('table', 'scoring.settings.table')}
       {advanced && toggle('exactFu', 'scoring.settings.exactFu')}
       {toggle('showYaku', 'scoring.settings.showYaku')}
@@ -267,7 +266,6 @@ export function ScoringPage() {
   )
 
   const toggles = {
-    showToggle: settings.timerEnabled,
     paused: round.paused,
     onToggle: round.togglePause,
     toggleLabel: t(round.paused ? 'common.resumeTimer' : 'common.pauseTimer'),
@@ -284,9 +282,7 @@ export function ScoringPage() {
       <span>
         {t('scoring.correctScore', { correct: round.correctCount, total: round.totalCount })}
       </span>
-      {settings.timerEnabled && (
-        <span>{t('scoring.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
-      )}
+      <span>{t('scoring.avgTime', { time: formatElapsedMs(round.averageTime) })}</span>
     </>
   )
 
@@ -298,7 +294,7 @@ export function ScoringPage() {
       onLogOpen={(open) => open !== round.paused && round.togglePause()}
       status={
         <>
-          {settings.timerEnabled && <Timer elapsedNow={round.elapsedNow} running={round.running} />}
+          <Timer elapsedNow={round.elapsedNow} running={round.running} />
           {scoreLines}
         </>
       }

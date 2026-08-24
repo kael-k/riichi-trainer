@@ -11,7 +11,6 @@ import { useScoringRound, type ScoringOptions } from './useScoringRound'
 
 const FULL: ScoringOptions = {
   sanma: false,
-  timerEnabled: true,
   table: true,
   showYaku: false,
   showFu: false,
@@ -279,7 +278,6 @@ function hasWin(wall: ParsedTile[]): boolean {
     sanma: FULL.sanma,
     aka: FULL.aka,
     match: createMatch(FULL.sanma, { prevalentWind }),
-    deadWall: true,
     calls: FULL.openHands,
     riichi: true,
     wins: true,

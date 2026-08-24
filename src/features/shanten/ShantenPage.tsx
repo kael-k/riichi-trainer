@@ -68,7 +68,6 @@ export function ShantenPage() {
   const { canBack, back } = useLogBack()
 
   const toggles = {
-    showToggle: true,
     paused: !round.revealed || round.paused,
     onToggle: round.revealed ? round.togglePause : round.reveal,
     toggleLabel: !round.revealed

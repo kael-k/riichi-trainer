@@ -23,7 +23,6 @@ export type { TurnResult } from '../efficiency/grade'
 /** Options that change how a round plays out; resolved from settings with per-situation
  *  overrides so shared links reproduce exactly. */
 export interface SoloOptions {
-  deadWall: boolean
   aka: boolean
   /** Three-player rules: 108-tile wall (no 2m-8m), nukidora. Solo is always one seat regardless. */
   sanma: boolean
@@ -41,7 +40,6 @@ export function useEfficiencySoloRound(situation: Situation, options: SoloOption
     sanma: options.sanma,
     aka: options.aka,
     match: createMatch(options.sanma, { prevalentWind, ...matchOverrides(situation) }),
-    deadWall: options.deadWall,
     // nobody else is dealt in, so there is nobody to call or declare from
     calls: false,
     riichi: false,

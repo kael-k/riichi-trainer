@@ -130,14 +130,8 @@ export function LabPage() {
   const { aka } = useAdvancedSettings()
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
-  const {
-    deadWall,
-    opponentWins,
-    showOpponentHands,
-    showSeatWaits,
-    claims,
-    seatsEnabled,
-  } = useTableSettings('lab')
+  const { opponentWins, showOpponentHands, showSeatWaits, claims, seatsEnabled } =
+    useTableSettings('lab')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
   // `apps.lab` slice in first.
@@ -194,7 +188,6 @@ export function LabPage() {
 
   const options = useMemo<LabOptions>(
     () => ({
-      deadWall: situation.deadWall ?? deadWall,
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
       opponentWins,
@@ -203,17 +196,7 @@ export function LabPage() {
       seats: seatConfig,
       claims,
     }),
-    [
-      situation,
-      deadWall,
-      aka,
-      sanma,
-      opponentWins,
-      showOpponentHands,
-      showSeatWaits,
-      seatConfig,
-      claims,
-    ],
+    [situation, aka, sanma, opponentWins, showOpponentHands, showSeatWaits, seatConfig, claims],
   )
 
   const round = useLabRound(situation, options)
@@ -271,14 +254,6 @@ export function LabPage() {
           type="checkbox"
           checked={opponentWins}
           onChange={(e) => updateTable({ opponentWins: e.target.checked })}
-          className="size-5"
-        />
-      </SettingRow>
-      <SettingRow label={t('efficiency.settings.deadWall')}>
-        <input
-          type="checkbox"
-          checked={deadWall}
-          onChange={(e) => updateTable({ deadWall: e.target.checked })}
           className="size-5"
         />
       </SettingRow>

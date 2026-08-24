@@ -42,19 +42,13 @@ export function Timer({ elapsedNow, running }: { elapsedNow: () => number; runni
 }
 
 interface PauseToggleProps {
-  /** Whether this button (and, when `timerEnabled`, the clock) is shown at all. Every trainer
-   *  but shanten ties this straight to its own timer setting — pausing a clock nobody is showing
-   *  has nothing to do. Shanten's toggle is also its reveal control, so it stays on regardless of
-   *  the timer setting: reveal is a core mechanic, not a timer convenience. */
-  showToggle: boolean
   paused: boolean
   onToggle: () => void
   toggleLabel: string
 }
 
 /** Start/pause (or, for shanten, reveal/pause). */
-export function PauseToggle({ showToggle, paused, onToggle, toggleLabel }: PauseToggleProps) {
-  if (!showToggle) return null
+export function PauseToggle({ paused, onToggle, toggleLabel }: PauseToggleProps) {
   return (
     <button type="button" onClick={onToggle} aria-label={toggleLabel} className={CHROME_BUTTON}>
       {paused ? (
