@@ -9,10 +9,9 @@ import { SettingsButton } from '../features/settings/SettingsDialog'
 
 const REPO_URL = 'https://github.com/kael-k/riichi-trainer'
 
-/** Solitaire: one seat, no board — a phone-sized drill. Table: a full board with real seats.
- *  The route is the only thing that decides which drill a card opens (ADR-0013) — the section a card
- *  sits under is purely a home-page grouping, not a hidden setting. */
-const SOLITAIRE_MODES = [
+/** The route is the only thing that decides which drill a card opens (ADR-0013) — order here is
+ *  purely a home-page display choice, not a hidden setting. */
+const MODES = [
   {
     to: '/efficiency-solo',
     titleKey: 'trainer.efficiencySolo.title',
@@ -21,21 +20,18 @@ const SOLITAIRE_MODES = [
     wikiUrl: TRAINER_WIKI.efficiencySolo,
   },
   {
-    to: '/shanten',
-    titleKey: 'trainer.shanten.title',
-    descKey: 'trainer.shanten.desc',
-    introKey: 'trainer.shanten.intro',
-    wikiUrl: TRAINER_WIKI.shanten,
-  },
-] as const
-
-const TABLE_MODES = [
-  {
     to: '/efficiency',
     titleKey: 'trainer.efficiency.title',
     descKey: 'trainer.efficiency.desc',
     introKey: 'trainer.efficiency.intro',
     wikiUrl: TRAINER_WIKI.efficiency,
+  },
+  {
+    to: '/shanten',
+    titleKey: 'trainer.shanten.title',
+    descKey: 'trainer.shanten.desc',
+    introKey: 'trainer.shanten.intro',
+    wikiUrl: TRAINER_WIKI.shanten,
   },
   {
     to: '/folding',
@@ -61,7 +57,7 @@ const TABLE_MODES = [
   // },
 ] as const
 
-type Mode = (typeof SOLITAIRE_MODES)[number] | (typeof TABLE_MODES)[number]
+type Mode = (typeof MODES)[number]
 
 /** One home-page card: a stretched tap target over the whole row (title/desc sit visually on top,
  *  `pointer-events-none` lets clicks fall through to it) plus an independent info-button tap
@@ -101,22 +97,11 @@ export function HomePage() {
         </div>
         <h1 className="text-2xl font-bold">{t('home.title')}</h1>
       </header>
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium text-neutral-500">{t('home.section.solitaire')}</span>
-        <nav className="flex flex-col gap-3">
-          {SOLITAIRE_MODES.map((mode) => (
-            <ModeCard key={mode.to} mode={mode} />
-          ))}
-        </nav>
-      </div>
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium text-neutral-500">{t('home.section.table')}</span>
-        <nav className="flex flex-col gap-3">
-          {TABLE_MODES.map((mode) => (
-            <ModeCard key={mode.to} mode={mode} />
-          ))}
-        </nav>
-      </div>
+      <nav className="flex flex-col gap-3">
+        {MODES.map((mode) => (
+          <ModeCard key={mode.to} mode={mode} />
+        ))}
+      </nav>
       <footer className="mt-auto flex flex-col items-center gap-1 text-center text-xs text-neutral-400">
         <p>
           {t('home.license')}{' '}

@@ -113,11 +113,7 @@
     "title": "立直训练器",
     "license": "自由开源软件，以 GPLv3 许可证发布。",
     "sourceLink": "GitHub 源代码",
-    "buildCommit": "构建提交: {{sha}}",
-    "section": {
-      "solitaire": "单人",
-      "table": "对局"
-    }
+    "buildCommit": "构建提交: {{sha}}"
   },
   "trainer": {
     "efficiency": {

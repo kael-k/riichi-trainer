@@ -156,11 +156,7 @@
     "title": "Riichi Trainer",
     "license": "Free and open-source software, released under the GPLv3.",
     "sourceLink": "Source on GitHub",
-    "buildCommit": "build commit: {{sha}}",
-    "section": {
-      "solitaire": "Solitaire",
-      "table": "Table"
-    }
+    "buildCommit": "build commit: {{sha}}"
   },
   "trainer": {
     "efficiency": {

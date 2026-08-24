@@ -113,11 +113,7 @@
     "title": "リーチトレーナー",
     "license": "GPLv3 で公開されているフリー・オープンソースソフトウェアです。",
     "sourceLink": "GitHub のソースコード",
-    "buildCommit": "ビルドコミット: {{sha}}",
-    "section": {
-      "solitaire": "ソロ",
-      "table": "対戦卓"
-    }
+    "buildCommit": "ビルドコミット: {{sha}}"
   },
   "trainer": {
     "efficiency": {
