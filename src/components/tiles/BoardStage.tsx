@@ -285,8 +285,14 @@ export function BoardStage({
             that outranks it (`z-50`), since a drawer is a dialog and dismisses on its own scrim
             rather than through the button it covers.
             Settings is last, after the page's own controls and the log toggle: it is the one
-            button here that is about the app rather than about this hand. */}
-        <div className="z-40 flex shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] dark:bg-neutral-950 short:absolute short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
+            button here that is about the app rather than about this hand — and it is pushed to
+            the row's right-hand end (`ml-auto`), the corner it keeps on the home page.
+            Centred in a capped width like the home page's own column rather than run edge to
+            edge: on an ultrawide the buttons would otherwise sit a screen's width away from the
+            board they act on. The cap grows for `labelled:`, where every button carries its name
+            beside it and the row genuinely needs more than 48rem. Neither applies `short:`, where
+            the row is a 44px gutter column instead. */}
+        <div className="z-40 mx-auto flex w-full max-w-3xl shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] dark:bg-neutral-950 short:absolute labelled:max-w-5xl short:mx-0 short:max-w-none short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
           <Link to="/" aria-label={t('common.back')} className={CHROME_BUTTON}>
             <ArrowLeft className="size-5" />
             <ChromeLabel>{t('common.back')}</ChromeLabel>
@@ -304,9 +310,12 @@ export function BoardStage({
             <ScrollText className="size-5" />
             <ChromeLabel>{t('table.logDrawer')}</ChromeLabel>
           </button>
-          <SettingsButton title={title} labelled>
-            {settings}
-          </SettingsButton>
+          {/* right-hand end of the row, the corner it keeps on the home page too */}
+          <div className="ml-auto short:ml-0">
+            <SettingsButton title={title} labelled>
+              {settings}
+            </SettingsButton>
+          </div>
         </div>
 
         {/* the gutter offset lives on this outer column, so both the HUD row below and the
