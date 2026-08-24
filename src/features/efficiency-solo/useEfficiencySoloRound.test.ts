@@ -6,6 +6,7 @@ import {
   useEfficiencyRound,
   type EfficiencyOptions as TableRoundOptions,
 } from '../efficiency/useEfficiencyRound'
+import { useLog } from '../../store/log'
 import { emptySituation } from '../situation/urlCodec'
 import { useEfficiencySoloRound, type SoloOptions } from './useEfficiencySoloRound'
 
@@ -99,5 +100,14 @@ describe('useEfficiencySoloRound', () => {
     expect(result.current.kans).toHaveLength(1)
     expect(result.current.lastResult?.kind).toBe('kan')
     expect(result.current.lastResult?.grade).toBe('ok')
+  })
+
+  it('a restart writes its own dealt row', () => {
+    // the same guard, and the same fix, as the table hook this one mirrors
+    useLog.getState().clear()
+    const situation = emptySituation()
+    const { result } = renderHook(() => useEfficiencySoloRound(situation, BARE))
+    act(() => result.current.restart())
+    expect(useLog.getState().entries.filter((e) => e.key === 'log.dealt')).toHaveLength(2)
   })
 })

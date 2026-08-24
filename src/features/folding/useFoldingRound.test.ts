@@ -315,6 +315,18 @@ describe('useFoldingRound', () => {
     expect(result.current.lastResult).toBeNull()
   })
 
+  it('next() writes its own dealt row', async () => {
+    // keyed on the board, not the link: a new hand arrives under a link that never moved, and
+    // used to leave the log with no row to rewind or share it from
+    const result = await deal({ wall: wall('dealt-row-seed') })
+    act(() => useLog.getState().clear())
+    act(() => result.current.next())
+    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 })
+    await waitFor(() =>
+      expect(useLog.getState().entries.filter((e) => e.key === 'log.dealt')).toHaveLength(1),
+    )
+  })
+
   it('clearing the log resets the session score', async () => {
     const result = await deal({ wall: wall('log-seed') })
     const safe = result.current.ranked()[0]

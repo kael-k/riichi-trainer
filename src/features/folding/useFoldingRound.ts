@@ -507,8 +507,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
   const log = useLog((s) => s.log)
   // a round that resolves after the seed moved on belongs to a hand nobody is looking at
   const request = useRef(0)
-  // the link whose replayed discards are already on the log; see `logReplay`
-  const loggedReplay = useRef<FoldingUrl>(undefined)
+  // the board whose replayed discards are already on the log; see `logReplay`
+  const loggedReplay = useRef<RoundBoard>(undefined)
   // rows waiting for the hand to end, under `feedbackAtEnd`; see `writeLog`
   const held = useRef<Omit<UiLogEntry, 'id'>[]>([])
   // graded discards made in *this* hand, for the end-of-hand panel's own average — distinct from
@@ -684,11 +684,12 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
    *  link (or a rewind) arrives with the turns behind it on the record instead of a blank log —
    *  each row's rewind link is the full since-handover log truncated to that discard's actual
    *  position: a mid-hand rewind has to reproduce a threat's own melds and discards exactly as
-   *  they were. Keyed on the link's identity, since the build effect runs several times per mount
-   *  for one and the same board. */
+   *  they were. Keyed on the *board's* identity, not the link's: the build effect runs several
+   *  times per mount for one and the same board, and a new hand is a new board under a link that
+   *  never moved — keying on the link left every hand after the first with no deal row at all. */
   function logReplay(built: RoundBoard) {
-    if (loggedReplay.current === urlData) return
-    loggedReplay.current = urlData
+    if (loggedReplay.current === built) return
+    loggedReplay.current = built
     // the board as handed over, as its own row — see the table hook's own `logReplay` for why
     // every deal needs one now that the page's own share pill is gone (T3)
     log({ key: 'log.dealt', situation: encodeFoldingUrl(built.wall, built.board, []) })

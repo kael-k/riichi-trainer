@@ -110,7 +110,9 @@ export function useLabRound(situation: Situation, options: LabOptions) {
 
   /** The deal itself, as its own row — see the table hook's own `logReplay` for why every deal
    *  needs one now that the page's own share pill is gone (T3). Keyed on the situation's identity
-   *  the same way, since this effect runs more than once per mount for one and the same round. */
+   *  the same way, since this effect runs more than once per mount for one and the same round.
+   *  The lab has no restart control of its own, so unlike the graded trainers there is no second
+   *  half to this key. */
   function logDealt() {
     if (loggedDeal.current === situation) return
     loggedDeal.current = situation

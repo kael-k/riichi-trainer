@@ -93,8 +93,8 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
   const pending = useRef<
     { result: TurnResult; tile: ParsedTile; situationBefore: string } | undefined
   >(undefined)
-  // the situation whose replayed river is already on the log; see `logReplay`
-  const loggedReplay = useRef<Situation>(undefined)
+  // the round whose deal (and replayed river) is already on the log; see `logReplay`
+  const loggedReplay = useRef<{ situation: Situation; restartCount: number }>(undefined)
   // graded choices made in *this* round, for the round-complete panel's own average — distinct
   // from `stats.averageTime`, which keeps running across every round until the log is cleared
   const roundActionCount = useRef(0)
@@ -206,11 +206,20 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
    *  own discards for the row itself, but each row's rewind link is the *full* log truncated to
    *  that discard's actual position, not just "your discards so far": a mid-hand rewind has to
    *  reproduce the opponents' own melds and discards exactly as they were, not re-simulate them.
-   *  Keyed on the situation's identity: this effect runs twice per mount (initial state, then
-   *  mount) and four times under StrictMode, all for the same round. */
+   *  Keyed on the same pair the effect below is: this runs twice per mount (initial state, then
+   *  mount) and four times under StrictMode, all for one round, so the guard has to absorb that —
+   *  but a restart is a *new* board under a link that never moved, and keying on the situation
+   *  alone left every board after the first with no row to rewind or share it from. Not the
+   *  `TableCore` itself, tempting as it looks: `useRound` rebuilds in its own effect, so the one
+   *  this render captured is still the outgoing board by the time this runs. */
   function logReplay() {
-    if (loggedReplay.current === situation) return
-    loggedReplay.current = situation
+    if (
+      loggedReplay.current?.situation === situation &&
+      loggedReplay.current?.restartCount === restartCount
+    ) {
+      return
+    }
+    loggedReplay.current = { situation, restartCount }
     const base = table.situation(seatIndex, [])
     // the deal itself, as its own row: its rewind link is the board as dealt, and its share
     // button is the one surface left for sending a fresh board — the page's own share pill is

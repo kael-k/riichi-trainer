@@ -62,7 +62,8 @@ export function useEfficiencySoloRound(situation: Situation, options: SoloOption
   const pending = useRef<
     { result: TurnResult; tile: ParsedTile; situationBefore: string } | undefined
   >(undefined)
-  const loggedReplay = useRef<Situation>(undefined)
+  // the round whose deal is already on the log; see `logReplay`
+  const loggedReplay = useRef<{ situation: Situation; restartCount: number }>(undefined)
   // graded choices made in *this* round, for the round-complete panel's own average — distinct
   // from `stats.averageTime`, which keeps running across every round until the log is cleared
   const roundActionCount = useRef(0)
@@ -157,8 +158,15 @@ export function useEfficiencySoloRound(situation: Situation, options: SoloOption
   // one seat, so every replayed discard is already this seat's own — see the table hook's own
   // `logReplay` for why the rewind link is the full log truncated to that discard's position
   function logReplay() {
-    if (loggedReplay.current === situation) return
-    loggedReplay.current = situation
+    // keyed on the link *and* the restart count — see the table hook's own `logReplay` for why a
+    // restart has to get past this guard
+    if (
+      loggedReplay.current?.situation === situation &&
+      loggedReplay.current?.restartCount === restartCount
+    ) {
+      return
+    }
+    loggedReplay.current = { situation, restartCount }
     const base = table.situation(seatIndex)
     // the deal itself, as its own row — see the table hook's own `logReplay` for why every deal
     // needs one now that the page's own share pill is gone (T3)

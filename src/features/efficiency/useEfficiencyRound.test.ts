@@ -315,6 +315,16 @@ describe('useEfficiencyRound', () => {
     expect(link.result.current.turn).toBe(played.result.current.turn)
   })
 
+  it('a restart writes its own dealt row', () => {
+    // the guard used to key on the link, which a local restart never moves — so every board after
+    // the first had no row of its own, and nothing left to rewind or share it from
+    const situation = emptySituation()
+    useLog.getState().clear()
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
+    act(() => result.current.restart())
+    expect(useLog.getState().entries.filter((e) => e.key === 'log.dealt')).toHaveLength(2)
+  })
+
   it('sanma: never deals 2m-8m, and aka seeds only two red fives (no 5m)', () => {
     const situation = emptySituation()
     const { result } = renderHook(() =>
