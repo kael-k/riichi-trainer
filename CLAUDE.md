@@ -596,6 +596,11 @@ drawn through the same props.
   (`settingsStore.ts`) is that variant as a query — **keep the two in step**.
 - **A ≥44px target on the felt comes from an `after:size-11` pseudo-element**, never a pixel height:
   a fixed `h-11` ran a phone-sized board's plate off the felt.
+- **The stage itself is capped from `ultrawide:` up** (`min-height: 800px` and `min-aspect-ratio:
+  2/1`) at `--stage-max` (`index.css`), so the docked session panel stops well short of a 21:9
+  screen's physical edge; the portalled settings dialog is pushed in by hand off the same variable,
+  since it cannot see the stage's own cap. The board's own sizing is untouched — `--stage-max` is
+  built so the board column always stays wider than the square can be tall.
 - **`flow`'s board area is `container-type: inline-size`, not `size`** — size containment collapses
   a box that sizes itself to its own content. Content that rides up must be a **fixed size whatever
   it holds, and that is the page's job**: a river growing into its space walks the hand down the

@@ -543,6 +543,35 @@ test('the session panel is docked and open on a wide screen, a drawer below that
   await expect(page.getByTestId('log-drawer')).toBeVisible()
 })
 
+test('on an ultrawide screen the panel and the settings sheet sit near the board, not the screen edge', async ({
+  page,
+  viewport,
+}) => {
+  // the `ultrawide:` gate is the point of this test; on anything narrower there is nothing to
+  // assert that the panel test above does not already cover
+  test.skip(!viewport || viewport.width < 2000, 'not an ultrawide viewport')
+  await page.goto('/efficiency')
+  await waitForStage(page)
+
+  const viewportWidth = viewport!.width
+  const board = (await page.getByTestId('board').first().boundingBox())!
+  const panel = (await page.getByTestId('session-panel').boundingBox())!
+
+  // a real gutter exists between the panel and the physical screen edge
+  expect(viewportWidth - (panel.x + panel.width)).toBeGreaterThan(100)
+  // reachability, not a pixel count that will rot: the gap from the board to the panel is less
+  // than half the board's own width
+  expect(panel.x - (board.x + board.width)).toBeLessThan(board.width / 2)
+
+  // the settings sheet, portalled to <body>, lands beside the same gap rather than at the
+  // screen's own right edge
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  const sheet = (await dialog.locator('> div').first().boundingBox())!
+  expect(Math.abs(sheet.x + sheet.width - (panel.x + panel.width))).toBeLessThanOrEqual(2)
+})
+
 test('efficiency-solo: your river is on screen', async ({ page }) => {
   await page.goto('/efficiency-solo')
   await waitForStage(page)

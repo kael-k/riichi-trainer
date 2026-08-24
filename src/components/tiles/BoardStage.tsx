@@ -255,32 +255,44 @@ export function BoardStage({
   }, [drawerOpen])
 
   return (
-    <div
-      // the board claims the viewport rather than sharing it with a header, a status bar and a log
-      // panel. The strips this layout keeps for itself are not reserved by a `100svh`-minus-chrome
-      // estimate any more: the board area below declares itself a size container, so `100cqh` is
-      // the room genuinely left over and the square measures itself against that alone
-      // Both halves of the size setting are gated by the *variant*, not by JS: the preference is
-      // always declared, and only a `sizable:` screen resolves it into the variable the board and
-      // the tiles read. Below that the board fills its room and the tiles stay at the default,
-      // which on a phone is the only size that fits either way up — the setting says so itself
-      // (`SIZABLE_QUERY`, `SettingsDialog`) rather than leaving four dead buttons.
-      className="relative flex h-svh w-full bg-white [--board-scale:1] [--tile-scale:var(--tile-scale-default)] sizable:[--board-scale:var(--board-scale-pref)] sizable:[--tile-scale:var(--tile-scale-pref)] dark:bg-neutral-950"
-      style={
-        {
-          '--tile-w-base': 'calc(var(--tile-w-raw) * var(--tile-scale))',
-          '--tile-scale-pref': tileScale,
-          '--tile-scale-default': DEFAULT_TILE_SCALE,
-          '--board-scale-pref': boardScale,
-          // re-declared here (not just --tile-w-base) so plain, non-overriding tile usages (the
-          // hand itself) actually pick up the scale: --tile-w's var() reference resolves once at
-          // whichever element declares it, not freshly per inheriting descendant
-          '--tile-w': 'var(--tile-w-base)',
-        } as CSSProperties
-      }
-    >
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* a row above the board normally; standing in the left gutter held sideways, where it
+    // `ultrawide:` only, a wrapper around the stage rather than a class on it: the stage's own
+    // `relative` is load-bearing (the log drawer and the `end` card are `absolute inset-0` against
+    // it), so the cap has to live one level out. The tint is here rather than on `body` — `body`
+    // is shared with the home page, which has no stage and must not be tinted — one step off the
+    // stage's own bg-white/dark:bg-neutral-950, so the seam reads without a border in either theme.
+    <div className="flex h-svh w-full justify-center ultrawide:bg-neutral-100 ultrawide:dark:bg-black">
+      <div
+        // the board claims the viewport rather than sharing it with a header, a status bar and a
+        // log panel. The strips this layout keeps for itself are not reserved by a
+        // `100svh`-minus-chrome estimate any more: the board area below declares itself a size
+        // container, so `100cqh` is the room genuinely left over and the square measures itself
+        // against that alone
+        // Both halves of the size setting are gated by the *variant*, not by JS: the preference is
+        // always declared, and only a `sizable:` screen resolves it into the variable the board and
+        // the tiles read. Below that the board fills its room and the tiles stay at the default,
+        // which on a phone is the only size that fits either way up — the setting says so itself
+        // (`SIZABLE_QUERY`, `SettingsDialog`) rather than leaving four dead buttons.
+        // `ultrawide:max-w-[var(--stage-max)]` stops the stage — and everything docked to its right
+        // edge (the session panel) — before it reaches a 21:9 screen's physical edge. `--stage-max`
+        // is the square's own height budget plus the panel plus a HUD gutter, so it can never come
+        // out narrower than the board needs (see ADR-0033); the board, the chrome row and the hand
+        // are all already centred inside this box, so capping it moves nothing but the panel.
+        className="relative flex h-svh w-full bg-white [--board-scale:1] [--tile-scale:var(--tile-scale-default)] sizable:[--board-scale:var(--board-scale-pref)] sizable:[--tile-scale:var(--tile-scale-pref)] ultrawide:max-w-[var(--stage-max)] dark:bg-neutral-950"
+        style={
+          {
+            '--tile-w-base': 'calc(var(--tile-w-raw) * var(--tile-scale))',
+            '--tile-scale-pref': tileScale,
+            '--tile-scale-default': DEFAULT_TILE_SCALE,
+            '--board-scale-pref': boardScale,
+            // re-declared here (not just --tile-w-base) so plain, non-overriding tile usages (the
+            // hand itself) actually pick up the scale: --tile-w's var() reference resolves once at
+            // whichever element declares it, not freshly per inheriting descendant
+            '--tile-w': 'var(--tile-w-base)',
+          } as CSSProperties
+        }
+      >
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* a row above the board normally; standing in the left gutter held sideways, where it
             costs the square no height at all. Everything a hand needs mid-drill is here.
             `viewport-fit=cover` (index.html) puts the whole page under Safari's bars, so this —
             the topmost row either way — pads itself clear of them: the status bar/notch above in
@@ -297,159 +309,159 @@ export function BoardStage({
             board they act on. The cap grows for `labelled:`, where every button carries its name
             beside it and the row genuinely needs more than 48rem. Neither applies `short:`, where
             the row is a 44px gutter column instead. */}
-        <div className="z-40 mx-auto flex w-full max-w-3xl shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] dark:bg-neutral-950 short:absolute labelled:max-w-5xl short:mx-0 short:max-w-none short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
-          <Link to="/" aria-label={t('common.back')} className={CHROME_BUTTON}>
-            <ArrowLeft className="size-5" />
-            <ChromeLabel>{t('common.back')}</ChromeLabel>
-          </Link>
-          {intro && <InfoButton title={title} intro={intro} labelled />}
-          {chrome}
-          {wall}
-          <button
-            type="button"
-            aria-label={t('table.logDrawer')}
-            aria-expanded={logOpen}
-            onClick={() => setLogOpen(!logOpen)}
-            className={CHROME_BUTTON}
-          >
-            <ScrollText className="size-5" />
-            <ChromeLabel>{t('table.logDrawer')}</ChromeLabel>
-          </button>
-          {/* right-hand end of the row, the corner it keeps on the home page too */}
-          <div className="ml-auto short:ml-0">
-            <SettingsButton title={title} labelled>
-              {settings}
-            </SettingsButton>
+          <div className="z-40 mx-auto flex w-full max-w-3xl shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] dark:bg-neutral-950 short:absolute labelled:max-w-5xl short:mx-0 short:max-w-none short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
+            <Link to="/" aria-label={t('common.back')} className={CHROME_BUTTON}>
+              <ArrowLeft className="size-5" />
+              <ChromeLabel>{t('common.back')}</ChromeLabel>
+            </Link>
+            {intro && <InfoButton title={title} intro={intro} labelled />}
+            {chrome}
+            {wall}
+            <button
+              type="button"
+              aria-label={t('table.logDrawer')}
+              aria-expanded={logOpen}
+              onClick={() => setLogOpen(!logOpen)}
+              className={CHROME_BUTTON}
+            >
+              <ScrollText className="size-5" />
+              <ChromeLabel>{t('table.logDrawer')}</ChromeLabel>
+            </button>
+            {/* right-hand end of the row, the corner it keeps on the home page too */}
+            <div className="ml-auto short:ml-0">
+              <SettingsButton title={title} labelled>
+                {settings}
+              </SettingsButton>
+            </div>
           </div>
-        </div>
 
-        {/* the gutter offset lives on this outer column, so both the HUD row below and the
+          {/* the gutter offset lives on this outer column, so both the HUD row below and the
             centring row under it stay clear of the chrome column held sideways */}
-        {/* `flow` hands the leftover height back here as well as in the board area below: this
+          {/* `flow` hands the leftover height back here as well as in the board area below: this
             column is what actually reserves it, so a board area that has stopped growing past its
             content only moves the hand up once this one stops too */}
-        <div
-          className={`flex min-h-0 flex-1 flex-col short:pl-[calc(2.75rem+env(safe-area-inset-left))] ${flow && !board ? 'roomy:flex-initial' : ''}`}
-        >
-          {status && (
-            // Portrait: a row of its own, full width, above the board — upright there is no gutter
-            // beside the square to stand in (the board fills the width), and the room left over is
-            // all above and below it. Reserved rather than floating, so it can never sit on
-            // toimen's plate. It costs the square nothing: upright the square is limited by the
-            // width, not by the height this row takes. Hidden in the two shapes that *do* have a
-            // gutter (`short:`, `roomy:`), where the block inside the board area below stands in it.
-            <div className="shrink-0 p-2 pt-3 short:hidden roomy:hidden">
-              <StatusCard>{status}</StatusCard>
-            </div>
-          )}
-          {/* `container-type: size` is what makes the square actually fit: `Table` caps itself at
+          <div
+            className={`flex min-h-0 flex-1 flex-col short:pl-[calc(2.75rem+env(safe-area-inset-left))] ${flow && !board ? 'roomy:flex-initial' : ''}`}
+          >
+            {status && (
+              // Portrait: a row of its own, full width, above the board — upright there is no gutter
+              // beside the square to stand in (the board fills the width), and the room left over is
+              // all above and below it. Reserved rather than floating, so it can never sit on
+              // toimen's plate. It costs the square nothing: upright the square is limited by the
+              // width, not by the height this row takes. Hidden in the two shapes that *do* have a
+              // gutter (`short:`, `roomy:`), where the block inside the board area below stands in it.
+              <div className="shrink-0 p-2 pt-3 short:hidden roomy:hidden">
+                <StatusCard>{status}</StatusCard>
+              </div>
+            )}
+            {/* `container-type: size` is what makes the square actually fit: `Table` caps itself at
               `100cqh` of *this* row, which is the height genuinely left over once the chrome row,
               the hand strip and (upright) the HUD row have taken theirs. The margin is `roomy:`,
               not `lg:`: a window with room on both axes can spend 1rem on air around the board,
               while a phone (either way up) and a wide-but-shallow window cannot — there every
               pixel of it is the square's. Padding on the size container itself, so `100cqh` is the
               room inside it and the square shrinks to fit rather than overflowing by that much. */}
-          <div
-            data-testid="board-area"
-            className={
-              flow && !board
-                ? // `flow`: the content is a river that grows, not a board that is posed. Anchored
-                  // to the top (`items-start`), and from `sizable:` up `flex-initial` hands back
-                  // the height it is not using so the hand strip below rides up under it — the
-                  // stage stops reserving a screenful for six discards. It still shrinks when the
-                  // content outgrows the room (`flex: 0 1 auto` plus `min-h-0`), which is the
-                  // whole-wall case: the area fills, the wrapper scrolls, and `pb-6` is the gap
-                  // that keeps the last river row off the hand. `min-h-36` is for the floating HUD
-                  // that is absolutely positioned in here — a board area shorter than that card
-                  // would let it hang out over the hand. `container-type` drops to `inline-size`:
-                  // size containment would make this box ignore its own content and collapse, and
-                  // `100cqh` belongs to `Table`'s square, which a flow page does not have.
-                  'relative flex min-h-0 flex-1 items-start justify-center px-2 pt-2 pb-16 [container-type:inline-size] roomy:min-h-36 roomy:flex-initial roomy:px-4 roomy:pt-4'
-                : 'relative flex min-h-0 flex-1 items-center justify-center [container-type:size] roomy:p-4'
-            }
-          >
-            {board ? (
-              board
-            ) : (
-              // a boardless trainer (shanten, solo) has nothing to put in the middle of the stage,
-              // and neither has one that has not dealt yet — solo's river lives in here, and a table
-              // where you cannot see your own discards is not a table
-              <div className={`max-h-full overflow-auto ${flow ? 'w-full' : 'px-2'}`}>
-                {children}
-              </div>
-            )}
-            {status && (
-              // Held sideways and on a window with room to spare, the square is limited by its
-              // height, so what is left over is a gutter down each side of it — the HUD stands in
-              // the left one rather than over the felt (a 338px board cannot spare its top-left
-              // corner: that is a seat's plate and a third of its river). Which edge of that
-              // gutter it hugs is the difference between the two:
-              //  - held sideways it tucks against the chrome column, `left-2`/`top-2` — the same
-              //    inset off the bar and off the screen's own top edge;
-              //  - `roomy:` it hangs off the square instead, its top-left corner on the square's
-              //    own top-left: `left: gutter - width` puts its right edge exactly on the board's
-              //    left edge (the gutter being how far the square starts from this box's left
-              //    edge), and `top-0` sits on the board's top edge, the area's own margin having
-              //    already pushed both clear of the chrome row above. Positioned from the left
-              //    with a `max(0px, …)` rather than anchored with `right`, so a window tall enough
-              //    to leave a gutter narrower than the card (a 4:3 desktop, or a tall window with
-              //    the panel docked) has it overlap the square's edge rather than slide off screen.
-              // Capped either way rather than filling the gutter it stands in: a card the width of
-              // the gutter beside a 338px felt is a HUD the size of the board, which reads as the
-              // board being small. `--gutter` is measured off the same container the square
-              // measures itself against, and `roomy:inset-4` matches the board area's own margin
-              // so that both stay in the same coordinates.
-              <div className="pointer-events-none absolute inset-0 hidden [--gutter:calc((100cqw-min(100cqw,100cqh)*var(--board-scale,1))/2)] [--hud-w:clamp(7rem,calc(var(--gutter)-1rem),8rem)] short:block roomy:inset-4 roomy:block roomy:[--hud-w:clamp(7rem,calc(var(--gutter)-0.5rem),10rem)]">
-                <div className="pointer-events-auto absolute top-2 left-2 w-[var(--hud-w)] roomy:top-0 roomy:left-[max(0px,calc(var(--gutter)-var(--hud-w)))]">
-                  <StatusCard>{status}</StatusCard>
+            <div
+              data-testid="board-area"
+              className={
+                flow && !board
+                  ? // `flow`: the content is a river that grows, not a board that is posed. Anchored
+                    // to the top (`items-start`), and from `sizable:` up `flex-initial` hands back
+                    // the height it is not using so the hand strip below rides up under it — the
+                    // stage stops reserving a screenful for six discards. It still shrinks when the
+                    // content outgrows the room (`flex: 0 1 auto` plus `min-h-0`), which is the
+                    // whole-wall case: the area fills, the wrapper scrolls, and `pb-6` is the gap
+                    // that keeps the last river row off the hand. `min-h-36` is for the floating HUD
+                    // that is absolutely positioned in here — a board area shorter than that card
+                    // would let it hang out over the hand. `container-type` drops to `inline-size`:
+                    // size containment would make this box ignore its own content and collapse, and
+                    // `100cqh` belongs to `Table`'s square, which a flow page does not have.
+                    'relative flex min-h-0 flex-1 items-start justify-center px-2 pt-2 pb-16 [container-type:inline-size] roomy:min-h-36 roomy:flex-initial roomy:px-4 roomy:pt-4'
+                  : 'relative flex min-h-0 flex-1 items-center justify-center [container-type:size] roomy:p-4'
+              }
+            >
+              {board ? (
+                board
+              ) : (
+                // a boardless trainer (shanten, solo) has nothing to put in the middle of the stage,
+                // and neither has one that has not dealt yet — solo's river lives in here, and a table
+                // where you cannot see your own discards is not a table
+                <div className={`max-h-full overflow-auto ${flow ? 'w-full' : 'px-2'}`}>
+                  {children}
                 </div>
-              </div>
-            )}
-            {!drawerOpen && noticeCompact && noticeShown && (
-              // pointer-events-none: a notice must never sit between the reader and a tile they are
-              // about to click, which is the whole difference between this and a dialog. Held
-              // sideways it stops floating over the board at all and stands in the right-hand
-              // gutter instead — sized so it cannot reach the square (the board is `100cqh` wide
-              // there, centred in what is left after the chrome column), because feedback that
-              // covers the tiles it is talking about is feedback you have to wait out. Compact here:
-              // a phone mid-drill has no room for `notice`'s tile lists and ukeire counts, and the
-              // full breakdown is a tap away in the panel. Gated on the *drawer* alone: that shape
-              // is over the top of the board, so a float under it is one nobody can see. A docked
-              // panel covers nothing, and a verdict that only ever appeared on phones was one a
-              // desktop reader had to go looking for in the log
-              // `flow` moves it to the foot of the board area instead: that content is anchored to
-              // the top and starts with the wall count and the dora indicator, which is exactly
-              // what a notice at the top covers — and dora is something you read *while* deciding.
-              // The `pb-16` the flow area carries is the strip it lands in, so it never reaches
-              // the river above it either
-              <div
-                className={`pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:right-2 short:bottom-2 short:items-center ${flow && !board ? 'top-auto bottom-2' : ''}`}
-              >
-                <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 short:max-h-full short:max-w-[calc((100svw-2.75rem-100cqh)/2-0.5rem)] dark:bg-neutral-900/95 dark:ring-white/10">
-                  {noticeCompact}
+              )}
+              {status && (
+                // Held sideways and on a window with room to spare, the square is limited by its
+                // height, so what is left over is a gutter down each side of it — the HUD stands in
+                // the left one rather than over the felt (a 338px board cannot spare its top-left
+                // corner: that is a seat's plate and a third of its river). Which edge of that
+                // gutter it hugs is the difference between the two:
+                //  - held sideways it tucks against the chrome column, `left-2`/`top-2` — the same
+                //    inset off the bar and off the screen's own top edge;
+                //  - `roomy:` it hangs off the square instead, its top-left corner on the square's
+                //    own top-left: `left: gutter - width` puts its right edge exactly on the board's
+                //    left edge (the gutter being how far the square starts from this box's left
+                //    edge), and `top-0` sits on the board's top edge, the area's own margin having
+                //    already pushed both clear of the chrome row above. Positioned from the left
+                //    with a `max(0px, …)` rather than anchored with `right`, so a window tall enough
+                //    to leave a gutter narrower than the card (a 4:3 desktop, or a tall window with
+                //    the panel docked) has it overlap the square's edge rather than slide off screen.
+                // Capped either way rather than filling the gutter it stands in: a card the width of
+                // the gutter beside a 338px felt is a HUD the size of the board, which reads as the
+                // board being small. `--gutter` is measured off the same container the square
+                // measures itself against, and `roomy:inset-4` matches the board area's own margin
+                // so that both stay in the same coordinates.
+                <div className="pointer-events-none absolute inset-0 hidden [--gutter:calc((100cqw-min(100cqw,100cqh)*var(--board-scale,1))/2)] [--hud-w:clamp(7rem,calc(var(--gutter)-1rem),8rem)] short:block roomy:inset-4 roomy:block roomy:[--hud-w:clamp(7rem,calc(var(--gutter)-0.5rem),10rem)]">
+                  <div className="pointer-events-auto absolute top-2 left-2 w-[var(--hud-w)] roomy:top-0 roomy:left-[max(0px,calc(var(--gutter)-var(--hud-w)))]">
+                    <StatusCard>{status}</StatusCard>
+                  </div>
                 </div>
-              </div>
-            )}
-            {end && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40 p-3">
-                <div className="max-h-full w-[min(92vw,28rem)] overflow-y-auto rounded-xl bg-white p-4 shadow-xl dark:bg-neutral-900">
-                  {end}
+              )}
+              {!drawerOpen && noticeCompact && noticeShown && (
+                // pointer-events-none: a notice must never sit between the reader and a tile they are
+                // about to click, which is the whole difference between this and a dialog. Held
+                // sideways it stops floating over the board at all and stands in the right-hand
+                // gutter instead — sized so it cannot reach the square (the board is `100cqh` wide
+                // there, centred in what is left after the chrome column), because feedback that
+                // covers the tiles it is talking about is feedback you have to wait out. Compact here:
+                // a phone mid-drill has no room for `notice`'s tile lists and ukeire counts, and the
+                // full breakdown is a tap away in the panel. Gated on the *drawer* alone: that shape
+                // is over the top of the board, so a float under it is one nobody can see. A docked
+                // panel covers nothing, and a verdict that only ever appeared on phones was one a
+                // desktop reader had to go looking for in the log
+                // `flow` moves it to the foot of the board area instead: that content is anchored to
+                // the top and starts with the wall count and the dora indicator, which is exactly
+                // what a notice at the top covers — and dora is something you read *while* deciding.
+                // The `pb-16` the flow area carries is the strip it lands in, so it never reaches
+                // the river above it either
+                <div
+                  className={`pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:right-2 short:bottom-2 short:items-center ${flow && !board ? 'top-auto bottom-2' : ''}`}
+                >
+                  <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 short:max-h-full short:max-w-[calc((100svw-2.75rem-100cqh)/2-0.5rem)] dark:bg-neutral-900/95 dark:ring-white/10">
+                    {noticeCompact}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              {end && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 p-3">
+                  <div className="max-h-full w-[min(92vw,28rem)] overflow-y-auto rounded-xl bg-white p-4 shadow-xl dark:bg-neutral-900">
+                    {end}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* capped: the claim prompt and the kita/kan row make this strip taller some turns, and it
+          {/* capped: the claim prompt and the kita/kan row make this strip taller some turns, and it
             must take that out of its own scroll rather than out of the board. Always the bottom-
             most (and, held sideways, still the full-width) row regardless of orientation, so it
             carries the bottom inset (the home indicator) plus the side ones (a landscape notch)
             rather than the chrome row above, which only ever owns one edge at a time */}
-        <div
-          data-testid="hand-strip"
-          className="flex max-h-[35svh] shrink-0 justify-center overflow-auto pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] [container-type:inline-size]"
-        >
-          {/* the hand is 14 tiles wide and cannot exceed the room under the board without
+          <div
+            data-testid="hand-strip"
+            className="flex max-h-[35svh] shrink-0 justify-center overflow-auto pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] [container-type:inline-size]"
+          >
+            {/* the hand is 14 tiles wide and cannot exceed the room under the board without
               wrapping, and a wrapped hand costs the board a tile row of height wherever the board
               is limited by height (a tablet held sideways, a desktop) — which is how asking for
               bigger tiles used to make the *table* smaller. So on the same screens the size
@@ -464,49 +476,50 @@ export function BoardStage({
               fit wrapping anyway with fractional widths. Re-declaring `--tile-w` is not optional:
               its `var()` resolved once at the stage root, so overriding only the base would leave
               every plain tile uncapped */}
-          <div className="sizable:[--tile-w-base:min(calc(var(--tile-w-raw)*var(--tile-scale)),calc((100cqw-4.5rem)/14))] sizable:[--tile-w:var(--tile-w-base)]">
-            {hand}
+            <div className="sizable:[--tile-w-base:min(calc(var(--tile-w-raw)*var(--tile-scale)),calc((100cqw-4.5rem)/14))] sizable:[--tile-w:var(--tile-w-base)]">
+              {hand}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* wide enough to hold both: the panel is a column of its own beside the board rather than
+        {/* wide enough to hold both: the panel is a column of its own beside the board rather than
           something you open over it, so the full feedback, the score and the log are all readable
           without ever hiding a tile. Its width is a ramp rather than one number: 320px where the
           board still wants every pixel (1024px, where it docks at all), growing to 448px on a
           desktop, where a 16:9 board is limited by its height and the width is spare. What the
           extra buys is the log's own tiles — a full hand reads on one line either way, at the
           size the column can afford (`LogList`'s own cap) */}
-      {docked && (
-        <aside
-          data-testid="session-panel"
-          className="flex w-[clamp(20rem,26vw,28rem)] shrink-0 flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
-        >
-          <SessionPanel panel={panel} />
-        </aside>
-      )}
+        {docked && (
+          <aside
+            data-testid="session-panel"
+            className="flex w-[clamp(20rem,26vw,28rem)] shrink-0 flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
+          >
+            <SessionPanel panel={panel} />
+          </aside>
+        )}
 
-      {/* below `lg` the same panel is a drawer spanning the whole stage, so it covers the hand
+        {/* below `lg` the same panel is a drawer spanning the whole stage, so it covers the hand
           strip too. Opened from a row that sits above the hand, a panel that stopped at the
           board's bottom edge left the tiles it was meant to be read over showing underneath it.
           It sits *above* the chrome row (`z-50` against its `z-40`) and brings a scrim with it,
           the same shape every dialog in the app has: pressing outside closes it, so covering the
           button that opened it costs nothing */}
-      {drawerOpen && (
-        <div
-          onClick={(e) => e.target === e.currentTarget && setLogOpen(false)}
-          className="absolute inset-0 z-50 bg-black/40"
-        >
+        {drawerOpen && (
           <div
-            data-testid="log-drawer"
-            // it reaches the top of the stage, so it owns the top inset too — under Safari's bars
-            // the first log row would otherwise start beneath the notch
-            className="absolute inset-y-0 right-0 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
+            onClick={(e) => e.target === e.currentTarget && setLogOpen(false)}
+            className="absolute inset-0 z-50 bg-black/40"
           >
-            <SessionPanel panel={panel} />
+            <div
+              data-testid="log-drawer"
+              // it reaches the top of the stage, so it owns the top inset too — under Safari's bars
+              // the first log row would otherwise start beneath the notch
+              className="absolute inset-y-0 right-0 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
+            >
+              <SessionPanel panel={panel} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

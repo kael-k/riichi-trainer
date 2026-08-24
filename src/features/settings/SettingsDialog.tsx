@@ -354,7 +354,12 @@ export function SettingsButton({ title, children, labelled }: SettingsButtonProp
               // only an "outside" click, i.e. one that landed on the scrim itself
               if (e.target === e.currentTarget) setOpen(false)
             }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 md:items-stretch md:justify-end md:p-0"
+            // `ultrawide:` padding, not a cap on the scrim itself: the scrim stays full-bleed (a
+            // click anywhere outside the sheet still closes it), but the sheet it justifies against
+            // lands on the capped stage's right edge (`--stage-max`, `BoardStage`) instead of the
+            // screen's — this dialog is portalled to <body>, so it cannot see the stage's own cap
+            // and has to be pushed in by hand off the same variable.
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 md:items-stretch md:justify-end md:p-0 ultrawide:pr-[max(0px,calc((100vw-var(--stage-max))/2))]"
           >
             <div className="flex max-h-full w-[min(90vw,24rem)] flex-col overflow-hidden rounded-xl bg-white text-neutral-900 md:h-full md:w-96 md:max-w-[90vw] md:rounded-none md:rounded-l-2xl dark:bg-neutral-900 dark:text-neutral-100">
               <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
