@@ -45,9 +45,12 @@ in the same wave** — with the *rule*. Its *reason* goes to an ADR in the same 
 
 ## Consequences
 
-- A soft budget: a `###` section past ~6KB is carrying rationale, and that is the signal to check
-  what belongs in an ADR. The whole file lands around 25KB.
-- Sessions start ~16,000 tokens lighter, and the reasoning is still one link away for the sessions
+- A soft budget: a `###` section past ~10KB is carrying rationale, and that is the signal to check
+  what belongs in an ADR. Applying the rule took the file from 87KB to 50KB — less than the 25KB
+  first estimated, because the invariants alone have a floor: this codebase holds roughly 120 of
+  them and each costs 150–200 bytes to state. The cut came almost entirely out of rationale and
+  description; nothing that warns was dropped to hit a number.
+- Sessions start ~9,000 tokens lighter, and the reasoning is still one link away for the sessions
   that need it — which is the same trade the ADR directory was created to make.
 - The trail gets **better**, not worse: rationale that was buried mid-paragraph in a 29KB section
   now sits under a Rejected heading where the supersession rule can reach it.
