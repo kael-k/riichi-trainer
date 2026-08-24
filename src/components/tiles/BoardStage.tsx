@@ -163,7 +163,10 @@ function SessionPanel({ panel }: Pick<BoardStageProps, 'panel'>) {
           {panel}
         </div>
       )}
-      <LogList className="flex-auto border-t border-neutral-200 dark:border-neutral-800" />
+      {/* `-mx-2` spends the panel's own padding: the log's verdict rail then starts on the
+          panel's border rather than 8px short of it, and the rule above it reads as a divider
+          across the column instead of a line floating inside it */}
+      <LogList className="-mx-2 flex-auto border-t border-neutral-200 dark:border-neutral-800" />
     </div>
   )
 }
@@ -469,11 +472,15 @@ export function BoardStage({
 
       {/* wide enough to hold both: the panel is a column of its own beside the board rather than
           something you open over it, so the full feedback, the score and the log are all readable
-          without ever hiding a tile */}
+          without ever hiding a tile. Its width is a ramp rather than one number: 320px where the
+          board still wants every pixel (1024px, where it docks at all), growing to 448px on a
+          desktop, where a 16:9 board is limited by its height and the width is spare. What the
+          extra buys is the log's own tiles — a full hand reads on one line either way, at the
+          size the column can afford (`LogList`'s own cap) */}
       {docked && (
         <aside
           data-testid="session-panel"
-          className="flex w-80 shrink-0 flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
+          className="flex w-[clamp(20rem,26vw,28rem)] shrink-0 flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
         >
           <SessionPanel panel={panel} />
         </aside>
