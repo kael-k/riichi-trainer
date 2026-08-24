@@ -9,14 +9,14 @@ to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
 
 Six trainers, each its own route ([ADR-0013](adr/0013-efficiency-split.md)):
 
-| Route              | State                                                                    |
-| ------------------ | ------------------------------------------------------------------------ |
-| `/shanten`         | Stable. Continuous hand stream, works well on phone and desktop          |
-| `/efficiency-solo` | Stable. One seat, boardless                                              |
-| `/efficiency`      | Stable. Board, opponents, graded per discard                             |
-| `/folding`         | Stable. Ordinal danger, full betaori grading, partial credit             |
-| `/scoring`         | **Alpha** — yaku detection still being verified                          |
-| `/lab`             | Free play, no grading. Wall authoring exists; the flow is still thin     |
+| Route              | State                                                                |
+| ------------------ | -------------------------------------------------------------------- |
+| `/shanten`         | Stable. Continuous hand stream, works well on phone and desktop      |
+| `/efficiency-solo` | Stable. One seat, boardless                                          |
+| `/efficiency`      | Stable. Board, opponents, graded per discard                         |
+| `/folding`         | Stable. Ordinal danger, full betaori grading, partial credit         |
+| `/scoring`         | **Alpha** — yaku detection still being verified                      |
+| `/lab`             | Free play, no grading. Wall authoring exists; the flow is still thin |
 
 Also shipped: situation URLs, i18n (en/ja/zh/it), glossary popovers, beginner/advanced split,
 dark mode, PWA + GitHub Pages deploy, sanma throughout, per-seat algorithms with a live decision
@@ -90,6 +90,13 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    it: a local "New hand" wrote no deal row at all (the dedup keyed on the link, which a restart
    never moves), and shanten drew its thirteen tiles twice per hand.
 
+9. **The dead wall is seven stacks** ([ADR-0028](adr/0028-dead-wall-stacks.md)) — `createRound`
+   cut the trailing 14 into a block of indicators, a block of ura and the rinshan tiles, so a
+   riichi win's ura dora came off tiles that were never under the indicators showing. It is now
+   read as real stacks: an indicator over its own ura, the deal's own indicator the third stack
+   from the rinshan end, kan dora walking back toward the live wall. A `?wall=` link's flipped
+   indicator is the 9th of those 14 rather than the 1st.
+
 ## In flight
 
 - Nothing. `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per
@@ -129,7 +136,7 @@ Both re-verified present in the current tree:
   and restart count). Replayed events are queued by the build and drained by the effect, so
   nothing grades or logs mid-render.
 - **`wallWithHands`/`wallWithHand` silently eat the promised red five** (`core/wall.ts:187-226`). It filters
-  padding by id only, and since `completeWall` marks the *first* occurrence of each red-eligible
+  padding by id only, and since `completeWall` marks the _first_ occurrence of each red-eligible
   kind red, a plain 5m/5p/5s in `hand` strips the padding's red copy. `aka: true` with a hand
   holding a plain five yields a wall with no red for that suit. Not reachable today — the one
   production call site (`LabPage`) always passes `hand: []` — but it is a trap for exactly the
@@ -142,7 +149,7 @@ Both re-verified present in the current tree:
 - **`useFoldingRound.test.ts`'s "next() deals a different hand" is flaky** — seen failing roughly
   once in six full runs, green on ~10 consecutive runs of the file alone. `loading` is
   `!failed && (searching || …)`, so a generation that exhausts its attempt budget clears `loading`
-  while leaving the *previous* round in state; the test's `waitFor(loading === false)` then
+  while leaving the _previous_ round in state; the test's `waitFor(loading === false)` then
   compares an unchanged hand against itself. The product path is fine — `FoldingPage` renders
   `folding.noHand` on `failed` — so this is a test that reads one signal for two states, not a bug
   in the trainer. Fix by asserting on `failed` as well, if it becomes annoying.

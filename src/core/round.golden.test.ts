@@ -66,29 +66,29 @@ declare const process: { env: Record<string, string | undefined> }
  *  src/core/round.golden.test.ts --disable-console-intercept` and paste the printed table back in
  *  here — a change that has to move these says so in its own commit. Three have: T3 of the
  *  seat-algorithm refactor (it changed what `defense`/`efficiency` decide), the move to real
- *  4/4/4+1 dealing (every seat is dealt different tiles off the same wall), and pairing each dora
- *  indicator with the ura tile beside it (which moves which tiles are dora). */
+ *  4/4/4+1 dealing (every seat is dealt different tiles off the same wall), and cutting the dead wall
+ *  into real stacks (ADR-0028, which moves which tiles are dora and which ura pays out). */
 const GOLDEN: Record<string, [yonma: string, sanma: string]> = {
-  'golden-0': ['ad25f22625249718', 'fb5c433711f251e4'],
-  'golden-1': ['b2ba6983ea6c034a', 'd94f25f6c80ea4a3'],
-  'golden-2': ['2a86d74f06add38b', 'dd45f5aae9669696'],
+  'golden-0': ['1771f2e19c0e5bf8', 'f8f21d751959f3d1'],
+  'golden-1': ['4047a43d61d584f0', '66d6d8dde8f00eaa'],
+  'golden-2': ['41b64dafd8de6987', 'b2b1a21d8d9e1e52'],
   'golden-3': ['bb468b2afb281212', '093d886952bc7b19'],
-  'golden-4': ['6c60362099cc80ca', 'e3e73a8bb3ac9981'],
-  'golden-5': ['bcd5dc36d0a1baec', '98501630946a38f7'],
-  'golden-6': ['01eed891412b24b5', '529013ca19470bea'],
-  'golden-7': ['ac46758200213b3c', '0c18e1cc5162567e'],
-  'golden-8': ['d1f70a12bda48ee3', '26e8510f336618f0'],
-  'golden-9': ['f0910076e355f897', '1090adc959b82c18'],
-  'golden-10': ['939714d757dc4101', '525d3cba4678912b'],
-  'golden-11': ['1d199abe707275f6', '5749ea4901bfa9f2'],
-  'golden-12': ['e88fd3ecdce1d896', '5d42a1da5467eb4e'],
-  'golden-13': ['a6457705cb9ab576', 'e3e6ef10c6a82b36'],
-  'golden-14': ['251457dcf37e308c', '4d894a20482a4b67'],
-  'golden-15': ['b7f1cb42785151bb', '9eca48e3df0ce15e'],
-  'golden-16': ['4483861fa6c0305b', '130be4521474b584'],
-  'golden-17': ['88b46cc599173fda', 'cd4c9fb19b268e1b'],
-  'golden-18': ['098ff6ac78118d20', '4ead3e2b1ab69ba6'],
-  'golden-19': ['62be2ff8e1e0537f', '4ccbe11cbe1e4f00'],
+  'golden-4': ['afc54c91dc9d069a', '2a852d9026a370d5'],
+  'golden-5': ['2a79119f8bea1b22', '427c24dfbe769e35'],
+  'golden-6': ['3173e588cf15f213', '229f61d5553ffa7b'],
+  'golden-7': ['eca7cd5f289ec8ab', '0c18e1cc5162567e'],
+  'golden-8': ['37046f5637bdbdff', 'f0caa9459c793f57'],
+  'golden-9': ['d4813c6b02bcfeff', '05b752de4cbfb3c2'],
+  'golden-10': ['939714d757dc4101', '0fb2bd027169bd11'],
+  'golden-11': ['1d199abe707275f6', '867993f028ccac47'],
+  'golden-12': ['664af11d0925dde4', '3ec4629f54071bd0'],
+  'golden-13': ['d16d65d947b9955d', 'e3e6ef10c6a82b36'],
+  'golden-14': ['95b5ade0a11929f6', '01ed69f34db9fbde'],
+  'golden-15': ['5cac3039e5faffab', '9f33c6ed50ab298c'],
+  'golden-16': ['d9ad2a6b42c5f843', '4a34f4e9728fe8e3'],
+  'golden-17': ['e387e2fcea924abf', 'cd9b62651ad55b5f'],
+  'golden-18': ['098ff6ac78118d20', 'a48703b94847bfad'],
+  'golden-19': ['62be2ff8e1e0537f', 'f98026bd1740656d'],
 }
 
 describe('match golden determinism', () => {

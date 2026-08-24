@@ -7,7 +7,7 @@
 ## Context
 
 A seed reproduces a board only as long as the generator never changes, and it cannot express a
-board somebody *authored*. The statistical lab's whole premise is authoring or editing a wall and
+board somebody _authored_. The statistical lab's whole premise is authoring or editing a wall and
 opening it elsewhere, which a seed cannot carry.
 
 ## Decision
@@ -17,7 +17,9 @@ opening it elsewhere, which a seed cannot carry.
 - **Format:** one flat `wall` param in draw order — the whole deal (`players * 13`), then the live
   draws, then the last 14 tiles as the dead wall (dora indicator first). How that leading block is
   handed out moved in [ADR-0024](0024-real-dealing-order.md): four tiles at a time round the seats,
-  three times, then one each, rather than one contiguous thirteen per seat.
+  three times, then one each, rather than one contiguous thirteen per seat. How that trailing 14 is
+  cut moved in [ADR-0028](0028-dead-wall-stacks.md): seven indicator-over-ura stacks with the
+  rinshan tiles at the tail, so the flipped indicator is the 9th of the 14, not the 1st.
 - **A short wall is a prefix:** given tiles are used in order and the remainder is completed at
   random from the copies they leave, which is what makes partial hand-authoring usable.
 - **Length implies the ruleset** (108 = sanma), and a loaded wall's length wins over the global

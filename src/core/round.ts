@@ -177,7 +177,8 @@ export interface RoundState {
   match: MatchState
   players: PlayerState[]
   /** The complete wall this match dealt from, in draw order: each seat's 13 starting tiles, then
-   *  the live draws, then the trailing 14 tiles the dead wall is cut from (dora indicator first).
+   *  the live draws, then the trailing 14 tiles the dead wall is cut from (rinshan last, the
+   *  flipped dora indicator the 9th of the 14 — see `deadWallSnapshot`).
    *  Captured once in `createRound` and never touched again — unlike `liveWall`, which shrinks as
    *  the hand is played. */
   wall: ParsedTile[]
@@ -188,10 +189,10 @@ export interface RoundState {
    *  can show the whole wall, greying what's gone. See `wallDrawnCount`. */
   liveWallSnapshot: ParsedTile[]
   deadWall: ParsedTile[]
-  /** All 14 dead-wall tiles in build order — five dora-indicator/ura-dora pairs (the flipped
-   *  indicator first, each indicator immediately followed by the ura under it), then the four
-   *  rinshan tiles — captured once alongside `deadWall` and never touched again. Empty when
-   *  `options.deadWall` is off. */
+  /** All 14 dead-wall tiles in draw order — five dora stacks (each an indicator over the ura dora
+   *  under it, the deal's own indicator being the *last* of the five) then the four rinshan tiles,
+   *  which is where `drawReplacement` pops from. Captured once alongside `deadWall` and never
+   *  touched again. Empty when `options.deadWall` is off. */
   deadWallSnapshot: ParsedTile[]
   doraStack: ParsedTile[]
   uraStack: ParsedTile[]
@@ -254,8 +255,8 @@ export function createRound(
 
   let deadWall: ParsedTile[] = []
   let deadWallSnapshot: ParsedTile[] = []
-  let doraStack: ParsedTile[] = []
-  let uraStack: ParsedTile[] = []
+  const doraStack: ParsedTile[] = []
+  const uraStack: ParsedTile[] = []
   const doraIndicators: ParsedTile[] = []
   let reserved = 0
   const pool = full.slice(players * INITIAL_HAND_SIZE)
@@ -265,12 +266,17 @@ export function createRound(
     // build order, before doraStack.shift() below peels its first tile off into doraIndicators
     deadWallSnapshot = chunk
     const indicators = Math.min(MAX_DORA_INDICATORS, Math.floor(dead / 2))
-    // a dora indicator and its ura are the two halves of one stack, so they are adjacent in the
-    // flat wall: [d1, u1, d2, u2, …]. Splitting the chunk into a block of indicators followed by
-    // a block of ura would pair each indicator with the wrong tile's underside.
-    doraStack = chunk.filter((_, i) => i < indicators * 2 && i % 2 === 0)
-    uraStack = chunk.filter((_, i) => i < indicators * 2 && i % 2 === 1)
+    // The dead wall's seven stacks, laid flat in draw order. The two stacks nearest the break —
+    // the chunk's *tail*, which `drawReplacement` pops — are the four rinshan tiles; the five
+    // before them are the dora stacks, each an indicator (the stack's top tile, drawn first) over
+    // the ura dora under it. The stack nearest the rinshan is the one flipped at the deal, and
+    // each kan dora walks back from there toward the live wall, so the indicators are read off
+    // the pair block backwards while the pair itself stays in draw order.
     deadWall = chunk.slice(indicators * 2)
+    for (let stack = indicators - 1; stack >= 0; stack--) {
+      doraStack.push(chunk[stack * 2])
+      uraStack.push(chunk[stack * 2 + 1])
+    }
     const first = doraStack.shift()
     if (first) doraIndicators.push(first)
     // uraStack stays whole and parallel: the ura for the Nth flipped indicator is uraStack[N-1],

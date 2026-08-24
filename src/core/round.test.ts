@@ -410,18 +410,21 @@ describe('createRound', () => {
     expect(reds(SANMA, 3)).toBe(2)
   })
 
-  it('pairs each dora indicator with the ura tile beside it in the dead wall', () => {
-    const state = createRound([], 4, YONMA, 'dead-wall-pairs')
+  it('cuts the dead wall the way a table does — five dora stacks, then the rinshan tiles', () => {
+    const state = createRound([], 4, YONMA, 'dead-wall-stacks')
     const dead = state.deadWallSnapshot
     expect(dead.length).toBe(DEAD_WALL_SIZE)
-    // [d1, u1, d2, u2, …] then the four rinshan tiles; doraIndicators already holds d1
+    // the four tiles nearest the break are the rinshan, and `drawReplacement` pops from that end
+    expect(state.deadWall).toEqual(dead.slice(10))
+    // the five stacks before them are indicator-over-ura pairs, flipped from the rinshan end back
+    // toward the live wall: the deal's own indicator is dead[8], the last kan dora would be dead[0]
     const indicators = [...state.doraIndicators, ...state.doraStack]
     expect(indicators.length).toBe(5)
     for (let n = 0; n < indicators.length; n++) {
-      expect(indicators[n]).toBe(dead[n * 2])
-      expect(state.uraStack[n]).toBe(dead[n * 2 + 1])
+      const stack = 4 - n
+      expect(indicators[n]).toBe(dead[stack * 2])
+      expect(state.uraStack[n]).toBe(dead[stack * 2 + 1])
     }
-    expect(state.deadWall).toEqual(dead.slice(10))
   })
 
   it('honours a wall pinning one seat, filling the rest of the wall itself', () => {

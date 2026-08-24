@@ -1,9 +1,5 @@
 import { decodeLog, encodeLog } from '../../core/actionLog'
-import {
-  STARTING_POINTS_SANMA,
-  STARTING_POINTS_YONMA,
-  type MatchState,
-} from '../../core/match'
+import { STARTING_POINTS_SANMA, STARTING_POINTS_YONMA, type MatchState } from '../../core/match'
 import type { LogEntry } from '../../core/round'
 import { parseTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
 import { validateWall, type WallError } from '../../core/wall'
@@ -20,7 +16,8 @@ export interface Situation {
   seed?: string
   hand?: ParsedTile[]
   /** Explicit wall in draw order for wall-based trainers: seat 0's 13 tiles, seat 1's 13, …,
-   *  then the live draws, then the last 14 tiles as the dead wall (dora indicator first). A
+   *  then the live draws, then the last 14 tiles as the dead wall — five indicator-over-ura stacks
+   *  then the four rinshan tiles, so the flipped indicator is the 9th of the 14 (ADR-0028). A
    *  short wall is a prefix — the remainder is completed at random from the copies it leaves
    *  (ADR-0005). This is the deal itself, not a "prefix consumed on next draw" the way `wall` used
    *  to mean before this phase (ADR-0005). */
@@ -146,7 +143,9 @@ function pointsAtDefault(points: number[], sanma: boolean): boolean {
  *  merge), which is why this builds the object key-by-key instead of a blanket spread. */
 export function matchOverrides(
   s: Situation,
-): Partial<Pick<MatchState, 'round' | 'honba' | 'dealerRepeat' | 'dealer' | 'riichiSticks' | 'points'>> {
+): Partial<
+  Pick<MatchState, 'round' | 'honba' | 'dealerRepeat' | 'dealer' | 'riichiSticks' | 'points'>
+> {
   const out: ReturnType<typeof matchOverrides> = {}
   if (s.kyoku !== undefined) out.round = s.kyoku
   if (s.honba !== undefined) out.honba = s.honba
