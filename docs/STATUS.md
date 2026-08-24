@@ -1,6 +1,6 @@
 # Status
 
-_Last synthesised: 2026-08-23, against the git history through the log-menu wave._
+_Last synthesised: 2026-08-24, against the git history through the log-menu wave and the pass that sized it._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
@@ -80,6 +80,15 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    spine read as the session's accuracy record, and the header grows an `All | Mistakes` filter. Folding's
    `feedbackAtEnd` end card no longer repeats each turn — those are the log rows `flushLog` writes.
    One feedback density is left: the float.
+
+   A follow-up pass sized the column for the reading it now asks for
+   ([ADR-0027](adr/0027-the-log-is-the-feedback.md), which also records wave 8 itself — the
+   decision the wave shipped without): the row gives its whole width to the tiles (the ordinal
+   leads the sentence, the action cluster follows it), the verdict spine becomes a rail on the
+   panel's own border, the tiles shrink to fit rather than wrap so a full hand reads on one line,
+   and the docked panel grows from a fixed 320px to `clamp(20rem,26vw,28rem)`. Two bugs went with
+   it: a local "New hand" wrote no deal row at all (the dedup keyed on the link, which a restart
+   never moves), and shanten drew its thirteen tiles twice per hand.
 
 ## In flight
 

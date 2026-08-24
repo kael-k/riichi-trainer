@@ -34,7 +34,8 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0005](0005-walls-not-seeds.md)                             | Boards are shared as explicit validated walls, not seeds     | Accepted  |
 | [0024](0024-real-dealing-order.md)                          | The wall's leading block is a real deal: 4/4/4+1             | Accepted  |
 | [0025](0025-one-interface.md)                               | One interface: the board *is* the page                       | Amended by [0026](0026-stats-on-the-board.md) |
-| [0026](0026-stats-on-the-board.md)                          | Session stats float on the board; the log carries its own share | Accepted  |
+| [0026](0026-stats-on-the-board.md)                          | Session stats float on the board; the log carries its own share | Amended by [0027](0027-the-log-is-the-feedback.md) |
+| [0027](0027-the-log-is-the-feedback.md)                     | The log is the feedback surface                              | Accepted  |
 | [0021](0021-action-log-replay.md)                           | Shared links replay a full action log, not your own river    | Accepted  |
 | [0006](0006-one-match-engine.md)                            | One match engine; trainers differ only by stop condition     | Accepted  |
 | [0023](0023-round-inside-match.md)                          | A round is one deal; a match is the game it sits inside      | Accepted  |
@@ -68,7 +69,7 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0019](0019-mobile-first-board.md)                          | Mobile-first: a square board and fullscreen as a place       | Amended by [0025](0025-one-interface.md) |
 | [0020](0020-no-back-compat-pre-release.md)                  | No backward compatibility while pre-release                  | Accepted  |
 
-Numbering runs 0001–0026 with no gaps. Take the next free number, and never reuse one — not even
+Numbering runs 0001–0027 with no gaps. Take the next free number, and never reuse one — not even
 if an ADR is later withdrawn.
 
 Vocabulary note: every ADR up to 0021 was written when the engine called one deal a "match". Since
