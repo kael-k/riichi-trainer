@@ -1,6 +1,6 @@
 # ADR-0019 — Mobile-first: a square board, and fullscreen as a place
 
-**Status:** Amended by [ADR-0025](0025-one-interface.md) · **Date:** 2026-08-14
+**Status:** Amended by [ADR-0025](0025-one-interface.md) and [ADR-0030](0030-the-felt-sizes-itself.md) · **Date:** 2026-08-14
 **Source:** CLAUDE.md UI section; the `UX(mobile)` commit run of 2026-08-13/14
 
 ## Context

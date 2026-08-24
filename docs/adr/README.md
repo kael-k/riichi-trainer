@@ -33,6 +33,7 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0004](0004-ordinal-danger.md)                              | Danger is ordinal — no EV, deal-in rates, or push/fold grading | **TO REVIEW** |
 | [0005](0005-walls-not-seeds.md)                             | Boards are shared as explicit validated walls, not seeds     | Accepted  |
 | [0024](0024-real-dealing-order.md)                          | The wall's leading block is a real deal: 4/4/4+1             | Accepted  |
+| [0028](0028-dead-wall-stacks.md)                            | The dead wall is seven stacks, not three blocks              | Accepted  |
 | [0025](0025-one-interface.md)                               | One interface: the board *is* the page                       | Amended by [0026](0026-stats-on-the-board.md) |
 | [0026](0026-stats-on-the-board.md)                          | Session stats float on the board; the log carries its own share | Amended by [0027](0027-the-log-is-the-feedback.md) |
 | [0027](0027-the-log-is-the-feedback.md)                     | The log is the feedback surface                              | Accepted  |
@@ -59,6 +60,8 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0014](0014-table-is-a-pure-view.md)                        | `<Table>` is a pure view with no player concept              | Accepted   |
 | [0015](0015-what-persists.md)                               | Reader preferences persist; board state does not             | Accepted   |
 | [0017](0017-imperative-log-rows.md)                         | Log rows are written imperatively, never from effects        | Accepted   |
+| [0029](0029-calls-on-the-hand-ring.md)                      | A seat's calls ride on its hand ring, not on the felt        | Accepted   |
+| [0030](0030-the-felt-sizes-itself.md)                       | The felt sizes itself: container units, and a scale only where there is room | Accepted   |
 
 ### Process and product
 
@@ -66,10 +69,11 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | ----------------------------------------------------------- | ------------------------------------------------------------ | --------- |
 | [0016](0016-testing-strategy.md)                            | Testing: a reference implementation, a census, a golden hash | Accepted  |
 | [0018](0018-beginner-defaults-advanced-depth.md)            | Beginner-safe defaults, advanced depth behind settings       | Accepted  |
-| [0019](0019-mobile-first-board.md)                          | Mobile-first: a square board and fullscreen as a place       | Amended by [0025](0025-one-interface.md) |
+| [0019](0019-mobile-first-board.md)                          | Mobile-first: a square board and fullscreen as a place       | Amended by [0025](0025-one-interface.md), [0030](0030-the-felt-sizes-itself.md) |
 | [0020](0020-no-back-compat-pre-release.md)                  | No backward compatibility while pre-release                  | Accepted  |
+| [0031](0031-claude-md-carries-how-not-why.md)               | `CLAUDE.md` carries how, not why                             | Accepted  |
 
-Numbering runs 0001–0027 with no gaps. Take the next free number, and never reuse one — not even
+Numbering runs 0001–0031 with no gaps. Take the next free number, and never reuse one — not even
 if an ADR is later withdrawn.
 
 Vocabulary note: every ADR up to 0021 was written when the engine called one deal a "match". Since
