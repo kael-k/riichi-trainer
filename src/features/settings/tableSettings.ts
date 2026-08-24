@@ -60,8 +60,9 @@ export function withSeatMode(
  *  own copy of the same questions (ADR-0015, ADR-0015). */
 export interface TableSettings {
   /** Let the threats ron and tsumo. Off makes the drill a rehearsal — the same ranking and the
-   *  same grading, but the hand plays to the wall instead of ending on a deal-in. On by
-   *  default: a fold you can't lose teaches the tiles but not the stakes. */
+   *  same grading, but the hand plays to the wall instead of ending on a deal-in. Off by
+   *  default in folding: a fold you can't lose still teaches the tiles, without a deal-in
+   *  cutting the drill short before every turn is graded. */
   opponentWins: boolean
   /** Seats that must already be in riichi when the drill starts. Capped at one fewer than the
    *  player count; generation falls back to fewer rather than failing when a seed search cannot
@@ -110,7 +111,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     claims: false,
   },
   folding: {
-    opponentWins: true,
+    opponentWins: false,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,

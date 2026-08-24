@@ -124,9 +124,7 @@ function reasonLines(entry: TileDanger, seats: number[]): LogDetail[] {
 
 /** The detail lines a graded folding row expands to: why your own tile sits at its tier, then
  *  — only when it was a mistake — the safest tile and why it sits at its own. The equally-safe
- *  tie list is logged unconditionally alongside them (when correct and one exists) and gated at
- *  *render* on `settings.folding.showEquallySafe`, exactly as `FoldFeedback` gated it, so toggling
- *  the setting takes effect on already-logged rows without re-grading them. */
+ *  tie list is logged alongside them whenever one exists, unconditionally. */
 function foldingDetail(result: TurnResult, seats: number[]): LogDetail[] {
   const { yours, safest, correct } = result
   const detail = reasonLines(yours, seats)

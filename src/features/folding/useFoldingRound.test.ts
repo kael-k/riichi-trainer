@@ -21,7 +21,6 @@ const OPTIONS: FoldingOptions = {
   sanma: false,
   threats: 1,
   opponentWins: true,
-  showEquallySafe: false,
   feedbackAtEnd: false,
   showOpponentHands: false,
   showSeatWaits: false,

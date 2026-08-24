@@ -32,10 +32,6 @@ export interface Settings {
     openHands: boolean
   }
   folding: {
-    /** After a correct discard, also list the other tiles that tied it. Off by default: the
-     *  answer was already right, and naming the alternatives hands over part of next turn's
-     *  reading for free. */
-    showEquallySafe: boolean
     /** Hold every graded turn back until the hand is over — feedback, running score and the log
      *  rows alike — and show them together at the end. Off by default, since immediate feedback
      *  is how the trainer teaches; on, it stops the panel naming safe tiles that are still safe
@@ -144,7 +140,6 @@ export const useSettings = create<SettingsState>()(
         openHands: true,
       },
       folding: {
-        showEquallySafe: false,
         feedbackAtEnd: false,
       },
       table: { global: {}, apps: {} },

@@ -144,14 +144,6 @@ export function FoldingPage() {
           className="size-5"
         />
       </SettingRow>
-      <SettingRow label={t('folding.settings.showEquallySafe')}>
-        <input
-          type="checkbox"
-          checked={settings.showEquallySafe}
-          onChange={(e) => update('folding', { showEquallySafe: e.target.checked })}
-          className="size-5"
-        />
-      </SettingRow>
       <SettingRow label={t('folding.settings.opponentWins')}>
         <input
           type="checkbox"

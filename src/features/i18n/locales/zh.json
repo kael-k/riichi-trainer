@@ -349,7 +349,6 @@
     "newSituation": "新牌局",
     "settings": {
       "opponentWins": "允许对手和牌",
-      "showEquallySafe": "显示同样安全的其他牌",
       "feedbackAtEnd": "仅在牌局结束后显示答案",
       "threats": "要防守的立直数"
     }

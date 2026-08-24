@@ -3,7 +3,6 @@ import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { formatLogDetail, formatLogEntry } from '../features/i18n/formatLogEntry'
-import { useSettings } from '../features/settings/settingsStore'
 import { copyText } from '../lib/clipboard'
 import { useLog, type LogDetail, type LogEntry, type LogSeverity } from '../store/log'
 import { Tile, UkeireTiles } from './tiles/Tile'
@@ -211,11 +210,7 @@ function DetailLine({ detail }: { detail: LogDetail }) {
 function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-  // the tie list is a second answer to a question already answered right, so it stays gated on the
-  // setting at *render* — logged unconditionally, exactly as `FoldFeedback` gated its own copy,
-  // which is what lets the toggle take effect on rows already on the record
-  const showEquallySafe = useSettings((s) => s.folding.showEquallySafe)
-  const detail = entry.detail?.filter((d) => showEquallySafe || d.key !== 'folding.equallySafe')
+  const detail = entry.detail
   const tiles = entry.tiles ?? []
   const seam = entry.seam ?? tiles.length
   return (

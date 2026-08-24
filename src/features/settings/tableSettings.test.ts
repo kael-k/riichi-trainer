@@ -46,7 +46,7 @@ describe('resolveTableSettings', () => {
 
   it('matches the shipped folding defaults', () => {
     expect(TABLE_DEFAULTS.folding.threats).toBe(1)
-    expect(TABLE_DEFAULTS.folding.opponentWins).toBe(true)
+    expect(TABLE_DEFAULTS.folding.opponentWins).toBe(false)
   })
 
   it('does not let an app override leak into a sibling app', () => {

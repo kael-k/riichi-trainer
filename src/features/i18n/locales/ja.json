@@ -349,7 +349,6 @@
     "newSituation": "次の局面",
     "settings": {
       "opponentWins": "相手の和了を有効にする",
-      "showEquallySafe": "同じ安全度の牌も表示",
       "feedbackAtEnd": "答えは局の終わりにまとめて表示",
       "threats": "オリる相手のリーチ数"
     }

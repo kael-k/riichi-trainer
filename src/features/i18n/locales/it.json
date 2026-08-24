@@ -450,7 +450,6 @@
     "newSituation": "Nuova situazione",
     "settings": {
       "opponentWins": "Gli avversari possono vincere",
-      "showEquallySafe": "Mostra gli altri scarti altrettanto sicuri",
       "feedbackAtEnd": "Mostra le risposte solo a fine mano",
       "threats": "Riichi contro cui difendersi"
     }
