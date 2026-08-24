@@ -123,8 +123,11 @@ describe('useShantenRound', () => {
     const entry = entries.at(-2)!
     expect(entry.key).toBe('log.shanten.result')
     expect(decodeSituation(new URLSearchParams(entry.situation!)).hand).toEqual(situation.hand)
-    // the newly-dealt next hand gets its own row, shareable before it has been answered
+    // the newly-dealt next hand gets its own row, shareable before it has been answered — but a
+    // boundary, not a second copy of the hand: the graded row above is where the tiles are drawn
     expect(entries.at(-1)!.key).toBe('log.dealtHand')
+    expect(entries.at(-1)!.tiles).toBeUndefined()
+    expect(entry.tiles).toEqual(situation.hand)
     // a pinned hand is served once: the stream carries on rather than re-serving it forever
     expect(result.current.hand).not.toEqual(situation.hand)
   })

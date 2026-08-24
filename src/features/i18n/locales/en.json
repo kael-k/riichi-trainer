@@ -486,7 +486,7 @@
     "wentBack": "Went back one step",
     "replay": "Replayed discard {{tile}}",
     "dealt": "Board dealt",
-    "dealtHand": "Hand dealt",
+    "dealtHand": "Hand {{hand}} dealt",
     "lab": {
       "discard": "Turn {{turn}}: discarded {{tile}}"
     },

@@ -272,8 +272,9 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
   )
 }
 
-/** A deal, drawn as the boundary it is: a hairline across the list with its label in the middle,
- *  its own rewind/share buttons inline, and the dealt hand beneath it when the entry carries one. */
+/** A deal, drawn as the boundary it is: a hairline across the list with its label in the middle
+ *  and its own rewind/share/copy buttons inline. No tiles — a deal is where the record starts
+ *  again, and the hand itself belongs to the row that grades it. */
 function DealSeparator({ entry, number }: { entry: LogEntry; number: number }) {
   const { t } = useTranslation()
   return (
@@ -286,11 +287,6 @@ function DealSeparator({ entry, number }: { entry: LogEntry; number: number }) {
         <RowActions entry={entry} number={number} />
         <div className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
       </div>
-      {entry.tiles && entry.tiles.length > 0 && (
-        <div className="mt-1 flex flex-wrap justify-center">
-          <Tiles tiles={entry.tiles} />
-        </div>
-      )}
     </li>
   )
 }

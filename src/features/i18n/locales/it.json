@@ -486,7 +486,7 @@
     "wentBack": "Tornato indietro di un passo",
     "replay": "Scarto ripetuto {{tile}}",
     "dealt": "Mano distribuita",
-    "dealtHand": "Mano distribuita",
+    "dealtHand": "Mano {{hand}} distribuita",
     "lab": {
       "discard": "Turno {{turn}}: scartato {{tile}}"
     },

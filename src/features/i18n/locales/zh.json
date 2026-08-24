@@ -385,7 +385,7 @@
     "wentBack": "已后退一步",
     "replay": "回放：打出 {{tile}}",
     "dealt": "已发牌",
-    "dealtHand": "已发牌",
+    "dealtHand": "发牌 {{hand}}",
     "lab": {
       "discard": "第{{turn}}巡: 打出{{tile}}"
     },

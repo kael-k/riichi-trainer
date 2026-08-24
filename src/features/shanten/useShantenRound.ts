@@ -66,15 +66,21 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
   const [state, setState] = useState<State>(() => nextHand())
   const log = useLog((s) => s.log)
 
-  /** The hand as dealt, as its own log row — see the table hook's own `logReplay` for why every
-   *  deal needs one now that the page's own share pill is gone (T3). Keyed on `handIndex` rather
-   *  than `situation` (which does not move per hand in this stream) — see the reset above. */
+  /** The deal, as its own log row — see the table hook's own `logReplay` for why every deal needs
+   *  one now that the page's own share pill is gone (T3). Keyed on `handIndex` rather than
+   *  `situation` (which does not move per hand in this stream) — see the reset above.
+   *
+   *  It draws no tiles: this is a boundary, and the graded row that follows already carries the
+   *  hand. Two copies of one hand in a list read newest-first put the incoming hand's tiles
+   *  directly above the *previous* hand's verdict, which reads as the deal having replaced it.
+   *  What it keeps is what only it can offer — the copy, rewind and share of a hand nobody has
+   *  answered yet — plus the number, so a boundary in a reversed list says which hand it opens. */
   function logDealt(hand: ParsedTile[]) {
     if (loggedDealIndex.current === handIndex) return
     loggedDealIndex.current = handIndex
     log({
       key: 'log.dealtHand',
-      tiles: hand,
+      params: { hand: stats.totalCount + 1 },
       copyText: serializeTenhou(hand),
       situation: encodeSituation({ ...situation, hand, wall: [], log: [] }),
     })
