@@ -29,10 +29,10 @@ apps (efficiency, folding, scoring, lab).
 ## Consequences
 
 - Every route is one app. No setting silently changes which.
-- The two hooks are near-verbatim duplicates (~150 lines: `recordChoice`, `writeRows`,
-  `logReplay`, both effects, the `finished`/`tenpai` derivation, the return object) with only
-  `players`/`calls`/`riichi` differing. This is a known, accepted maintenance cost, tracked in
-  `docs/STATUS.md` — if a third near-identical consumer appears, factor it then.
+- The two hooks shared ~150 near-verbatim lines (`recordChoice`, `writeRows`, `logReplay`, both
+  effects, the `finished`/`tenpai` derivation, the return object), accepted as this decision's
+  maintenance cost until factored — done in [ADR-0032](0032-one-efficiency-drill-core.md), which
+  both hooks now sit on. The route split above still stands; only the duplication did not.
 - Solo's grader is ukeire-only, so a kept dora can mark a discard "wrong". Accepted, and worth one
   line in the trainer's intro.
 

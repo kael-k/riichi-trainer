@@ -153,11 +153,6 @@ Both re-verified present in the current tree:
   compares an unchanged hand against itself. The product path is fine — `FoldingPage` renders
   `folding.noHand` on `failed` — so this is a test that reads one signal for two states, not a bug
   in the trainer. Fix by asserting on `failed` as well, if it becomes annoying.
-- **`useEfficiencyRound.ts` and `useEfficiencySoloRound.ts` are ~150 near-verbatim duplicate
-  lines** (`recordChoice`, `writeRows`, `logReplay`, both effects, the `finished`/`tenpai`
-  derivation, the return object) differing only in `players`/`calls`/`riichi`. Deliberate for now
-  ([ADR-0013](adr/0013-efficiency-split.md)). Nothing asserts the two stay in lockstep, so a fix
-  applied to one and not the other goes unnoticed. Factor only if a third consumer appears.
 - **ja/zh omit ~75 keys en/it have** (glossary entries, `*Translated` yaku tables, `intro` copy,
   `_one` plurals). Believed intentional — those terms already read as their own words — but
   nothing distinguishes "deliberately locale-specific" from "someone forgot", so a genuinely new

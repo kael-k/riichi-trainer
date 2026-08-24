@@ -458,14 +458,22 @@ posed once and the stream carries on.
 
 **The two efficiency trainers are two routes, not a checkbox**: `/efficiency-solo` is genuinely one
 seat (`createRound(wall, 1, …)`, dead wall and dora kept, no `<Table>`), `/efficiency` is a full
-table. Both grade inside their own `onEvent` on `kind === 'discard'` and run `wins: false` (a hand
-ending on someone else's tsumo would cut a per-turn drill short on a result the player did not
-cause), `riichi: false` (efficiency reads no danger, so an opponent's riichi was decoration, not
-signal) and `calls: true`. Both return `{ stop: true }` when their own seat's discard reaches
-tenpai, leaving 13 tiles so it reads as finished. The graded `seatIndex` comes from the link alone,
-never from the seat panel. **The two hooks are mirrored rather than shared**, differing only in
-`players`/`calls`/`riichi`; nothing asserts they stay in lockstep, so a change to one wants checking
-against the other.
+table. Both run `wins: false` (a hand ending on someone else's tsumo would cut a per-turn drill
+short on a result the player did not cause) and `riichi: false` (efficiency reads no danger, so an
+opponent's riichi was decoration, not signal); solo also runs `calls: false` (nobody else is dealt
+in) where the table runs `calls: true`. Both stop at their own seat's discard reaching tenpai,
+leaving 13 tiles so it reads as finished. The graded `seatIndex` comes from the link alone, never
+from the seat panel.
+
+**Grading and session state live in one place, `useEfficiencyDrill`** (`features/efficiency/`):
+`recordChoice`/`writeRows`/`settle`, the `onEvent` grading dispatch (kind === 'discard'/'kita'/
+'ankan', the tenpai stop), `logReplay`, the reset effect, and the `finished`/`tenpai` derivation.
+Each app's own hook (`useEfficiencyRound`, `useEfficiencySoloRound`) only builds its own
+`RoundOptions` and `seatIndex` and calls the drill, then adds the board-only fields its page needs
+on top (the table's every-seat `hands`/`melds`/`nuki`, the claim prompt, riichi arming; solo's own
+single-seat `nuki`). **`nuki` is not in the drill's return** — its shape differs per app (an array
+indexed by seat vs. one seat's own pile), so each hook reads it off the drill's `snapshot`/`table`
+rather than the drill guessing which shape to hand back.
 
 Other rules that hold across trainers:
 
@@ -543,7 +551,7 @@ other than the one that would act swaps every other line out for "Watching {wind
 seat"** — spectating suspends the whole control surface, a pending claim included, rather than
 answering it against a hand that isn't on screen.
 
-**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md)
+**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0032](docs/adr/0032-one-efficiency-drill-core.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md)
 
 ### UI
 

@@ -53,6 +53,10 @@ setting ([ADR-0013](adr/0013-efficiency-split.md)).
 | `scoring/`         | `/scoring`         | `useScoringRound`           | Generates a finished hand, never steps it      |
 | `lab/`             | `/lab`             | `useLabRound`               | Free play, no grading                          |
 
+`efficiency/useEfficiencyDrill.ts` is the grading/session-state core both efficiency hooks sit on —
+`useEfficiencySoloRound` imports it from `features/efficiency/`, same direction as its existing
+`grade.ts` import ([ADR-0032](adr/0032-one-efficiency-drill-core.md)).
+
 Shared:
 
 | Path                            | Role                                                                            |
