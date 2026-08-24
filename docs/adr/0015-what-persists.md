@@ -15,9 +15,11 @@ The test is **what the value is about**, not where its control lives.
 
 **Persisted (a question about the reader):**
 
-- Global settings: theme, tile size, language, tile numbers, `sanma`, `aka`, advanced mode,
-  per-trainer timer/display preferences. (`mobileFullscreen` was one of these until
-  [ADR-0025](0025-one-interface.md) removed the mode it switched.)
+- Global settings: theme, tile size, language, tile numbers, `sanma`, `aka`, `kiriageMangan`,
+  advanced mode, per-trainer timer/display preferences. (`mobileFullscreen` was one of these until
+  [ADR-0025](0025-one-interface.md) removed the mode it switched.) These are grouped in the
+  settings dialog by what they are about — Ruleset, UI, Misc — not by how they persist; the
+  grouping is a UI concern, not a store section ([ADR-0033](0033-settings-sections.md)).
 - `TableSettings` — `opponentWins`, `threats`, `showOpponentHands`, `showSeatWaits`, `claims` —
   resolved per app as `{ ...TABLE_DEFAULTS[app], ...global, ...appOverride }`.
   Both override layers are `Partial`: absent-key-means-inherit is plain object-spread semantics,

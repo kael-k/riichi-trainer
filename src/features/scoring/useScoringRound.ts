@@ -18,8 +18,14 @@ import { completeWall } from '../../core/wall'
 import { encodeScoringUrl, encodeScoringWallUrl, type ScoringUrl } from './scoringUrl'
 
 /** The whole scoring settings section, plus the ruleset the round runs under (which a shared
- *  link can pin, so it isn't a plain setting) and the global red-fives toggle. */
-export type ScoringOptions = Settings['scoring'] & { sanma: boolean; aka: boolean }
+ *  link can pin, so it isn't a plain setting), the global red-fives toggle, and kiriage mangan —
+ *  a match-wide rule now (`settingsStore.ts`), not a scoring-trainer field, so it rides in beside
+ *  `sanma`/`aka` rather than inside the `scoring` section. */
+export type ScoringOptions = Settings['scoring'] & {
+  sanma: boolean
+  aka: boolean
+  kiriageMangan: boolean
+}
 
 export interface Answer {
   han?: number

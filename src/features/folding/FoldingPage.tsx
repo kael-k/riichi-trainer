@@ -72,14 +72,8 @@ export function FoldingPage() {
   const sanma = useSettings((s) => s.sanma)
   // folding always shows the board (reading it is the drill); the reveal gate below
   // withholds real tile ids until `round.finished` or `showOpponentHands`
-  const {
-    showOpponentHands,
-    showSeatWaits,
-    threats,
-    opponentWins,
-    claims,
-    seatsEnabled,
-  } = useTableSettings('folding')
+  const { showOpponentHands, showSeatWaits, threats, opponentWins, claims, seatsEnabled } =
+    useTableSettings('folding')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
   // `apps.folding` slice in first.
@@ -184,7 +178,7 @@ export function FoldingPage() {
 
   if (round.loading || round.failed) {
     return (
-      <BoardStage title={t('trainer.folding.title')} settings={settingsRows}>
+      <BoardStage title={t('trainer.folding.title')} app="folding" settings={settingsRows}>
         <div className="flex flex-col items-center gap-4">
           <p className="text-center text-neutral-500">
             {t(round.failed ? 'folding.noHand' : 'folding.dealing')}
@@ -284,6 +278,7 @@ export function FoldingPage() {
   return (
     <BoardStage
       title={t('trainer.folding.title')}
+      app="folding"
       intro={{ text: t('trainer.folding.intro'), wikiUrl: TRAINER_WIKI.folding }}
       settings={settingsRows}
       onLogOpen={(open) => open !== round.paused && round.togglePause()}

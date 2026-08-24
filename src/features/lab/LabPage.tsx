@@ -127,6 +127,7 @@ export function LabPage() {
   const { t } = useTranslation()
   const urlSituation = useUrlData(decodeSituation)
   const sanma = useSettings((s) => s.sanma)
+  const kiriageMangan = useSettings((s) => s.kiriageMangan)
   const { aka } = useAdvancedSettings()
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
@@ -191,12 +192,23 @@ export function LabPage() {
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
       opponentWins,
+      kiriageMangan,
       showOpponentHands,
       showSeatWaits,
       seats: seatConfig,
       claims,
     }),
-    [situation, aka, sanma, opponentWins, showOpponentHands, showSeatWaits, seatConfig, claims],
+    [
+      situation,
+      aka,
+      sanma,
+      opponentWins,
+      kiriageMangan,
+      showOpponentHands,
+      showSeatWaits,
+      seatConfig,
+      claims,
+    ],
   )
 
   const round = useLabRound(situation, options)
@@ -327,6 +339,7 @@ export function LabPage() {
   return (
     <BoardStage
       title={t('trainer.lab.title')}
+      app="lab"
       intro={{ text: t('trainer.lab.intro'), wikiUrl: TRAINER_WIKI.lab }}
       settings={settingsRows}
       chrome={<BackButton canBack={canBack} onBack={back} backLabel={t('common.undoAction')} />}

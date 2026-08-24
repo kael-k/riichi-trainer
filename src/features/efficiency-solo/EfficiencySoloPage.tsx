@@ -77,6 +77,7 @@ export function EfficiencySoloPage() {
   return (
     <BoardStage
       title={t('trainer.efficiencySolo.title')}
+      app="efficiencySolo"
       intro={{ text: t('trainer.efficiencySolo.intro'), wikiUrl: TRAINER_WIKI.efficiencySolo }}
       status={
         <>

@@ -63,6 +63,7 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0029](0029-calls-on-the-hand-ring.md)                      | A seat's calls ride on its hand ring, not on the felt        | Accepted   |
 | [0030](0030-the-felt-sizes-itself.md)                       | The felt sizes itself: container units, and a scale only where there is room | Accepted   |
 | [0032](0032-one-efficiency-drill-core.md)                   | One drill core behind both efficiency hooks                  | Accepted   |
+| [0033](0033-settings-sections.md)                            | Settings sections are named for what a setting is about       | Accepted   |
 
 ### Process and product
 
@@ -74,7 +75,7 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0020](0020-no-back-compat-pre-release.md)                  | No backward compatibility while pre-release                  | Accepted  |
 | [0031](0031-claude-md-carries-how-not-why.md)               | `CLAUDE.md` carries how, not why                             | Accepted  |
 
-Numbering runs 0001–0032 with no gaps. Take the next free number, and never reuse one — not even
+Numbering runs 0001–0033 with no gaps. Take the next free number, and never reuse one — not even
 if an ADR is later withdrawn.
 
 Vocabulary note: every ADR up to 0021 was written when the engine called one deal a "match". Since

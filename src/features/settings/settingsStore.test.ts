@@ -81,6 +81,21 @@ describe('settingsStore table section', () => {
     const { useSettings } = await import('./settingsStore')
     expect(useSettings.persist.getOptions().version).toBe(3)
   })
+
+  it('kiriageMangan defaults off at the top level and survives a persist round-trip', async () => {
+    const { useSettings } = await import('./settingsStore')
+    expect(useSettings.getState().kiriageMangan).toBe(false)
+    useSettings.getState().setKiriageMangan(true)
+    expect(useSettings.getState().kiriageMangan).toBe(true)
+
+    localStorage.setItem(
+      'riichi-trainer-settings',
+      JSON.stringify({ state: { kiriageMangan: true }, version: 3 }),
+    )
+    vi.resetModules()
+    const { useSettings: reloaded } = await import('./settingsStore')
+    expect(reloaded.getState().kiriageMangan).toBe(true)
+  })
 })
 
 describe('useAdvancedSettings', () => {

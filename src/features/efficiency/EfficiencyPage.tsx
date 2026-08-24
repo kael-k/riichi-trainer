@@ -161,6 +161,7 @@ export function EfficiencyPage() {
   return (
     <BoardStage
       title={t('trainer.efficiency.title')}
+      app="efficiency"
       intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
       onLogOpen={(open) => open !== round.paused && round.togglePause()}
       status={

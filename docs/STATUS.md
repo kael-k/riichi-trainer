@@ -97,6 +97,19 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
    from the rinshan end, kan dora walking back toward the live wall. A `?wall=` link's flipped
    indicator is the 9th of those 14 rather than the 1st.
 
+10. **Settings sections are named for what a setting is about**
+    ([ADR-0033](adr/0033-settings-sections.md)) — the dialog's own title is now constant
+    ("Settings") instead of templated per trainer; the trainer name instead heads its own
+    app-specific section, shown only when the page has rows for it. `BoardStage`/`SettingsButton`
+    gain an `app?: TableApp` prop that gates a real Table section (resolved against that app's own
+    override layer, replacing a hardcoded `'efficiency'`) and is present on every board-rendering
+    trainer including `/efficiency-solo`, absent on `/shanten` and home. What used to be "Global"
+    split into Ruleset (number of players, Kiriage mangan, red fives), UI (theme, tile size,
+    language, tile numbers, glossary-on-click) and Misc (the Advanced switch alone). Kiriage
+    mangan is now a real `RoundOptions` field the round engine honours for every win it prices
+    (lab, scoring), not a scoring-trainer-only display toggle — not threaded into the efficiency
+    trainers (`wins: false` there always) or folding (never prices a win).
+
 ## In flight
 
 - Nothing. `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per

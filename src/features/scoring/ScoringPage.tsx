@@ -112,6 +112,7 @@ export function ScoringPage() {
   const settings = useSettings((s) => s.scoring)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
+  const kiriageMangan = useSettings((s) => s.kiriageMangan)
   const advanced = useSettings((s) => s.advanced)
   const { aka, exactFu } = useAdvancedSettings()
   const { showOpponentHands } = useTableSettings('scoring')
@@ -124,12 +125,13 @@ export function ScoringPage() {
     () => ({
       ...settings,
       exactFu,
+      kiriageMangan,
       sanma: urlData.sanma ?? sanma,
       aka: urlData.aka ?? aka,
       openHands: urlData.calls ?? settings.openHands,
       honba: urlData.honba ?? settings.honba,
     }),
-    [urlData, sanma, aka, exactFu, settings],
+    [urlData, sanma, aka, exactFu, kiriageMangan, settings],
   )
 
   const round = useScoringRound(urlData, options)
@@ -138,7 +140,7 @@ export function ScoringPage() {
 
   if (round.loading || !round.situation || !round.actual) {
     return (
-      <BoardStage title={t('trainer.scoring.title')}>
+      <BoardStage title={t('trainer.scoring.title')} app="scoring">
         <p className="p-8 text-center text-neutral-500">{t('scoring.dealing')}</p>
       </BoardStage>
     )
@@ -258,7 +260,6 @@ export function ScoringPage() {
       {advanced && toggle('exactFu', 'scoring.settings.exactFu')}
       {toggle('showYaku', 'scoring.settings.showYaku')}
       {toggle('showFu', 'scoring.settings.showFu')}
-      {toggle('kiriageMangan', 'scoring.settings.kiriageMangan')}
       {toggle('honba', 'scoring.settings.honba')}
       {toggle('ignoreFuOnLimit', 'scoring.settings.ignoreFuOnLimit')}
       {toggle('openHands', 'scoring.settings.openHands')}
@@ -289,6 +290,7 @@ export function ScoringPage() {
   return (
     <BoardStage
       title={t('trainer.scoring.title')}
+      app="scoring"
       intro={{ text: t('trainer.scoring.intro'), wikiUrl: TRAINER_WIKI.scoring }}
       settings={settingsRows}
       onLogOpen={(open) => open !== round.paused && round.togglePause()}

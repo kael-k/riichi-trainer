@@ -26,7 +26,6 @@ export interface Settings {
     showYaku: boolean
     /** Show the fu itemization on reveal, instead of just the fu total. */
     showFu: boolean
-    kiriageMangan: boolean
     /** Add random honba sticks to generated hands and require them in the points total. */
     honba: boolean
     /** Generate hands with called melds, not just closed ones. */
@@ -88,6 +87,11 @@ interface SettingsState extends Settings {
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats, nukidora. Applies to both trainers. */
   sanma: boolean
   setSanma: (sanma: boolean) => void
+  /** Round a 4-han/30-fu or 3-han/60-fu hand up to a flat mangan instead of scoring its exact fu.
+   *  A rule of the match (`RoundOptions.kiriageMangan`, `core/round.ts`), not a display option —
+   *  it moves points the same way in every trainer that prices a win, not just scoring's. */
+  kiriageMangan: boolean
+  setKiriageMangan: (kiriageMangan: boolean) => void
   /** Shade discards that were tsumogiri (taken straight off the draw), leaving tedashi plain.
    *  Off by default: it is a reading cue for players already tracking opponents' hands, and it
    *  puts a mark on most of the table until you know what it means. */
@@ -135,7 +139,6 @@ export const useSettings = create<SettingsState>()(
         exactFu: false,
         showYaku: false,
         showFu: false,
-        kiriageMangan: false,
         honba: false,
         ignoreFuOnLimit: true,
         openHands: true,
@@ -153,6 +156,8 @@ export const useSettings = create<SettingsState>()(
       setTileScale: (tileScale) => set({ tileScale }),
       sanma: false,
       setSanma: (sanma) => set({ sanma }),
+      kiriageMangan: false,
+      setKiriageMangan: (kiriageMangan) => set({ kiriageMangan }),
       showTsumogiri: false,
       setShowTsumogiri: (showTsumogiri) => set({ showTsumogiri }),
       aka: true,

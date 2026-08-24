@@ -25,6 +25,9 @@ export interface LabOptions {
   sanma: boolean
   /** Let the AI opponents actually ron/tsumo — off plays every hand out to the wall instead. */
   opponentWins: boolean
+  /** Round a 4-han/30-fu or 3-han/60-fu win up to a flat mangan — only visible here since the lab
+   *  is the one boardless-of-scoring app whose wins can actually price out (`opponentWins`). */
+  kiriageMangan: boolean
   /** The board's own debug reveal switch — every seat's hand goes real, mid-hand, not just once
    *  the hand ends. */
   showOpponentHands: boolean
@@ -69,6 +72,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     calls: true,
     riichi: true,
     wins: options.opponentWins,
+    kiriageMangan: options.kiriageMangan,
     algorithms,
     claims: options.claims,
   }

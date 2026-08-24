@@ -497,7 +497,12 @@ Other rules that hold across trainers:
 **Stores.** Zustand: `settingsStore.ts` (persisted; **has a custom section-wise `merge` — extend it
 when adding a section**, or old persisted schemas drop the new fields) and `store/log.ts`
 (session-only). The persist version stayed at 3 rather than bumping to drop stale keys: **a bump
-drops the whole blob**, costing every reader their theme, language and scoring settings.
+drops the whole blob**, costing every reader their theme, language and scoring settings. Rules of
+the game that are not scoped to one trainer — `sanma`, `aka`, `kiriageMangan` — are **top-level**
+store fields, not inside a section: `kiriageMangan` moved out of `scoring` when it became a real
+`RoundOptions` field every win-pricing round reads, not a scoring-trainer display toggle
+([ADR-0033](docs/adr/0033-settings-sections.md)); the settings dialog's own grouping of these
+fields (Ruleset, UI, Misc) is a UI concern layered on top, not a store shape.
 
 **Log rows are written imperatively from user-triggered actions** (inside `discard()` / `submit()`),
 **never from `useEffect`s watching round state** — effect-based logging inverts entry order and
@@ -554,7 +559,7 @@ other than the one that would act swaps every other line out for "Watching {wind
 seat"** — spectating suspends the whole control surface, a pending claim included, rather than
 answering it against a hand that isn't on screen.
 
-**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0032](docs/adr/0032-one-efficiency-drill-core.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md)
+**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0032](docs/adr/0032-one-efficiency-drill-core.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)
 
 ### UI
 
@@ -654,6 +659,16 @@ sideways the row moves to the left gutter. Names appear beside icons behind the 
 **the visible text is the same string the `aria-label` already used**, so the accessible name never
 depends on the viewport.
 
+**The settings dialog's own title never changes** — always `t('settings.button')` ("Settings"),
+portalled to `<body>` the same as before. What used to vary the title (the trainer's translated
+name) instead heads its own section, shown only when the page passes `settings` rows; `BoardStage`'s
+`app?: TableApp` prop gates a second section, Table, resolved against that app's own override layer
+rather than a hardcoded stand-in — present iff the trainer draws a `<Table>`. Two sections render
+unconditionally on every screen, including home: Ruleset (number of players, Kiriage mangan, red
+fives) and UI (theme, tile size, language, tile-number overlay, glossary-on-click); Misc holds the
+Advanced switch alone, since flipping it changes what the other sections show
+([ADR-0033](docs/adr/0033-settings-sections.md)).
+
 **Fullscreen is not a mode with a button or a store.** `useMobileFullscreen` asks on phone-sized
 viewports only, on the reader's **first `pointerdown`** — `requestFullscreen` is rejected outside a
 real user gesture — and never again once they have left it (module-level session flag, not
@@ -695,4 +710,4 @@ Glossary rules (`features/i18n/glossary.ts`, marked inline with `<GlossaryTerm i
   the page's 16px instead of the board's `cqw` scale. It keeps the affordance — dotted underline and
   question mark, both sized in `cqw`.
 
-**Why:** [ADR-0025](docs/adr/0025-one-interface.md), [ADR-0026](docs/adr/0026-stats-on-the-board.md), [ADR-0027](docs/adr/0027-the-log-is-the-feedback.md), [ADR-0029](docs/adr/0029-calls-on-the-hand-ring.md), [ADR-0030](docs/adr/0030-the-felt-sizes-itself.md), [ADR-0019](docs/adr/0019-mobile-first-board.md), [ADR-0018](docs/adr/0018-beginner-defaults-advanced-depth.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md)
+**Why:** [ADR-0025](docs/adr/0025-one-interface.md), [ADR-0026](docs/adr/0026-stats-on-the-board.md), [ADR-0027](docs/adr/0027-the-log-is-the-feedback.md), [ADR-0029](docs/adr/0029-calls-on-the-hand-ring.md), [ADR-0030](docs/adr/0030-the-felt-sizes-itself.md), [ADR-0019](docs/adr/0019-mobile-first-board.md), [ADR-0018](docs/adr/0018-beginner-defaults-advanced-depth.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)

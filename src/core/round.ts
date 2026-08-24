@@ -37,6 +37,9 @@ export const NORTH: TileId = HONOR + 3
 export interface RoundOptions {
   sanma: boolean
   aka: boolean
+  /** Round a 4-han/30-fu or 3-han/60-fu win up to a flat mangan (`ScoringRules.kiriageMangan`,
+   *  `core/score.ts`). Defaults to off, matching every trainer that predates the setting. */
+  kiriageMangan?: boolean
   /** The match this round sits inside — prevalent wind, dealer seat, points, honba, riichi
    *  sticks, which round it is. Carry-in only: nothing here steps between rounds, no dealer
    *  rotation, no honba increment, no settlement. A round's own riichi declarations do mutate
@@ -518,7 +521,11 @@ function tryWin(
     doraIndicators: state.doraIndicators.map((t) => t.id),
     uraIndicators,
     kita: player.nuki.length,
-    rules: { kiriageMangan: false, honba: state.match.honba, sanma: options.sanma },
+    rules: {
+      kiriageMangan: options.kiriageMangan ?? false,
+      honba: state.match.honba,
+      sanma: options.sanma,
+    },
   })
   if (!score) return null
 

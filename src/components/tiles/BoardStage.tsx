@@ -9,6 +9,7 @@ import {
   TILE_SCALES,
   useSettings,
 } from '../../features/settings/settingsStore'
+import type { TableApp } from '../../features/settings/tableSettings'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 import { useLog } from '../../store/log'
 import { InfoPopover } from '../InfoPopover'
@@ -83,10 +84,14 @@ interface BoardStageProps {
    *  home, the info button, the log toggle and the settings dialog are this component's own —
    *  every trainer has those, and their order must not be a per-page decision. */
   chrome?: ReactNode
-  /** Form controls rendered inside the settings dialog, above the shared sections; omit to show
-   *  the shared ones alone. */
+  /** Form controls rendered inside the settings dialog, in their own section headed `title`; omit
+   *  to show the shared sections alone. */
   settings?: ReactNode
-  /** The trainer's own title: names the settings dialog and the info popover. */
+  /** The trainer's table-settings id (`tableSettings.ts`), if it draws a `Table` — gates the
+   *  dialog's Table section. Omitted by trainers with no board (shanten) or no settings surface
+   *  for it yet (efficiency-solo). */
+  app?: TableApp
+  /** The trainer's own title: names the settings section and the info popover. */
   title: string
   /** Shown behind the info button in the chrome row; omit to hide that button. */
   intro?: TrainerIntro
@@ -191,6 +196,7 @@ export function BoardStage({
   onLogOpen,
   chrome,
   settings,
+  app,
   title,
   intro,
 }: BoardStageProps) {
@@ -329,7 +335,7 @@ export function BoardStage({
             </button>
             {/* right-hand end of the row, the corner it keeps on the home page too */}
             <div className="ml-auto short:ml-0">
-              <SettingsButton title={title} labelled>
+              <SettingsButton title={title} app={app} labelled>
                 {settings}
               </SettingsButton>
             </div>

@@ -11,6 +11,7 @@ const BARE: LabOptions = {
   aka: false,
   sanma: false,
   opponentWins: false,
+  kiriageMangan: false,
   showOpponentHands: false,
   showSeatWaits: false,
   seats: null,
