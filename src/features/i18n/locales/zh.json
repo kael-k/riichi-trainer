@@ -226,12 +226,12 @@
     "newHand": "下一题",
     "correct": "正确",
     "wrong": "错误",
+    "correctLabel": "正确",
+    "wrongLabel": "错误",
     "inTime": "{{time}}",
-    "correctWas": " — 正确答案: {{value}}",
-    "yakuListLabel": "役种",
-    "fuListLabel": "符数明细",
     "yakumanLabel": "役满",
     "hanCount_other": "{{count}}番",
+    "fuCount_other": "{{count}}符",
     "doraLabel": "宝牌",
     "akaLabel": "赤宝牌",
     "uraLabel": "里宝牌",
@@ -403,7 +403,10 @@
       "result": "第{{hand}}题: 回答{{guess}},正确{{actual}}{{via}} — {{result}}{{time}}"
     },
     "scoring": {
-      "result": "第{{hand}}题: {{han}}番 — {{result}}{{time}}"
+      "result": "第{{hand}}题: {{han}}番 — {{result}}{{time}}",
+      "field": "{{label}}: {{expected}}",
+      "fieldWrong": "{{label}}: {{expected}} — 你的答案是{{answer}}",
+      "detailLine": "{{label}} — {{value}}"
     }
   }
 }

@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { formatLogDetail, formatLogEntry } from '../features/i18n/formatLogEntry'
+import { useTermName } from '../features/i18n/useTermName'
 import { copyText } from '../lib/clipboard'
 import { useLog, type LogDetail, type LogEntry, type LogSeverity } from '../store/log'
 import { Tile, UkeireTiles } from './tiles/Tile'
@@ -192,9 +193,10 @@ function Tiles({ tiles }: { tiles: NonNullable<LogEntry['tiles']> }) {
  *  tile shapes it carries (plain tiles, or tiles with their remaining counts). */
 function DetailLine({ detail }: { detail: LogDetail }) {
   const { t } = useTranslation()
+  const termName = useTermName()
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-500">
-      <span>{formatLogDetail(detail, t)}</span>
+      <span>{formatLogDetail(detail, t, termName)}</span>
       {detail.tiles && detail.tiles.length > 0 && (
         <span className="flex items-center">
           <Tiles tiles={detail.tiles} />

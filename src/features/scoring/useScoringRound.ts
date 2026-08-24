@@ -12,7 +12,7 @@ import { mulberry32 } from '../../core/rng'
 import { scoreHand, type ScoreResult } from '../../core/score'
 import { HONOR, serializeTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
 import { useSessionStats } from '../../lib/useSessionStats'
-import { useLog } from '../../store/log'
+import { useLog, type LogDetail } from '../../store/log'
 import type { Settings } from '../settings/settingsStore'
 import { completeWall } from '../../core/wall'
 import { encodeScoringUrl, encodeScoringWallUrl, type ScoringUrl } from './scoringUrl'
@@ -115,6 +115,98 @@ function situationFromWin(
     kita: win.kita,
     honba,
   }
+}
+
+/** One graded field's line — your answer only when it was wrong, which is what picks the
+ *  "you answered" phrasing at render (`formatLogEntry.ts`). */
+function fieldDetail(labelKey: string, expected: number, given: number | undefined): LogDetail {
+  return {
+    key: 'log.scoring.field',
+    params: { labelKey, expected, answer: given === expected ? undefined : given },
+  }
+}
+
+/** The detail lines a graded scoring row expands to: each field under test, the limit name, the
+ *  full yaku list (or yakuman) with bonus han, and the fu itemization — everything the old
+ *  reveal card (`ScoreBreakdown`) drew, now on the row rather than gating the board. */
+function scoringDetail(
+  actual: ScoreResult,
+  answer: Answer,
+  options: ScoringOptions,
+  tsumo: boolean,
+): LogDetail[] {
+  const detail: LogDetail[] = []
+  if (options.testHan) detail.push(fieldDetail('scoring.hanLabel', actual.han, answer.han))
+
+  const skipFu = options.ignoreFuOnLimit && actual.han >= 5
+  if (options.testFu && !skipFu) {
+    const expectedFu = options.exactFu ? actual.fuExact : actual.fu
+    detail.push(fieldDetail('scoring.fuLabel', expectedFu, answer.fu))
+  }
+
+  const split = actual.payments.fromDealer !== undefined
+  if (options.testPoints) {
+    if (split) {
+      detail.push(fieldDetail('scoring.pointsMainLabel', actual.payments.main, answer.pointsMain))
+      detail.push(
+        fieldDetail(
+          'scoring.pointsFromDealerLabel',
+          actual.payments.fromDealer!,
+          answer.pointsFromDealer,
+        ),
+      )
+    } else {
+      detail.push(
+        fieldDetail(
+          tsumo ? 'scoring.pointsMainLabel' : 'scoring.pointsLabel',
+          actual.payments.main,
+          answer.points,
+        ),
+      )
+    }
+  }
+
+  if (actual.limit) detail.push({ key: 'log.scoring.limit', params: { limit: actual.limit } })
+
+  if (actual.yakuman.length > 0) {
+    for (const name of actual.yakuman) {
+      detail.push({
+        key: 'log.scoring.detailLine',
+        params: { group: 'yakuman', name, valueKey: 'scoring.yakumanLabel' },
+      })
+    }
+  } else {
+    for (const y of actual.yaku) {
+      detail.push({
+        key: 'log.scoring.detailLine',
+        params: { group: 'yaku', name: y.name, valueKey: 'scoring.hanCount', count: y.han },
+      })
+    }
+    const bonusHan = [
+      { labelKey: 'scoring.doraLabel', count: actual.dora.dora },
+      { labelKey: 'scoring.akaLabel', count: actual.dora.aka },
+      { labelKey: 'scoring.uraLabel', count: actual.dora.ura },
+      { labelKey: 'scoring.kitaLabel', count: actual.dora.kita },
+    ]
+    for (const b of bonusHan) {
+      if (b.count > 0) {
+        detail.push({
+          key: 'log.scoring.detailLine',
+          params: { labelKey: b.labelKey, valueKey: 'scoring.hanCount', count: b.count },
+        })
+      }
+    }
+  }
+
+  for (const item of actual.fuItems) {
+    detail.push({
+      key: 'log.scoring.detailLine',
+      params: { labelKey: `scoring.fu.${item.reason}`, valueKey: 'scoring.fuCount', count: item.fu },
+      tiles: item.tile !== undefined ? [{ id: item.tile, red: false }] : undefined,
+    })
+  }
+
+  return detail
 }
 
 /** Deals a fresh random wall (ADR-0005: generation via random walls, not seed suffixes) and plays it
@@ -328,6 +420,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
       copyText: serializeTenhou(state.situation.concealed),
       severity: correct ? 'ok' : 'error',
       situation: situationBefore,
+      detail: scoringDetail(actual, answer, options, state.situation.ctx.tsumo),
     })
     stats.record(correct, elapsed)
 

@@ -226,12 +226,12 @@
     "newHand": "次の問題へ",
     "correct": "正解",
     "wrong": "不正解",
+    "correctLabel": "正解",
+    "wrongLabel": "不正解",
     "inTime": "{{time}}",
-    "correctWas": " — 正解: {{value}}",
-    "yakuListLabel": "役",
-    "fuListLabel": "符の内訳",
     "yakumanLabel": "役満",
     "hanCount_other": "{{count}}翻",
+    "fuCount_other": "{{count}}符",
     "doraLabel": "ドラ",
     "akaLabel": "赤ドラ",
     "uraLabel": "裏ドラ",
@@ -403,7 +403,10 @@
       "result": "{{hand}}問目: 回答{{guess}}、正解{{actual}}{{via}} — {{result}}{{time}}"
     },
     "scoring": {
-      "result": "{{hand}}問目: {{han}}翻 — {{result}}{{time}}"
+      "result": "{{hand}}問目: {{han}}翻 — {{result}}{{time}}",
+      "field": "{{label}}: {{expected}}",
+      "fieldWrong": "{{label}}: {{expected}} — 回答は{{answer}}",
+      "detailLine": "{{label}} — {{value}}"
     }
   }
 }

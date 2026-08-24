@@ -284,13 +284,14 @@
     "newHand": "Nuova mano",
     "correct": "corretto",
     "wrong": "sbagliato",
+    "correctLabel": "Corretto",
+    "wrongLabel": "Sbagliato",
     "inTime": "in {{time}}",
-    "correctWas": " — corretto: {{value}}",
-    "yakuListLabel": "Yaku",
-    "fuListLabel": "Dettaglio fu",
     "yakumanLabel": "Yakuman",
     "hanCount_one": "{{count}} han",
     "hanCount_other": "{{count}} han",
+    "fuCount_one": "{{count}} fu",
+    "fuCount_other": "{{count}} fu",
     "doraLabel": "Dora",
     "akaLabel": "Aka dora",
     "uraLabel": "Ura dora",
@@ -504,7 +505,10 @@
       "result": "Mano {{hand}}: risposto {{guess}}, reale {{actual}}{{via}} — {{result}}{{time}}"
     },
     "scoring": {
-      "result": "Mano {{hand}}: {{han}} han — {{result}}{{time}}"
+      "result": "Mano {{hand}}: {{han}} han — {{result}}{{time}}",
+      "field": "{{label}}: {{expected}}",
+      "fieldWrong": "{{label}}: {{expected}} — hai risposto {{answer}}",
+      "detailLine": "{{label}} — {{value}}"
     }
   }
 }

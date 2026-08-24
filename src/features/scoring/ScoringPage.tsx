@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle } from 'lucide-react'
+import type { TFunction } from 'i18next'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BoardStage } from '../../components/tiles/BoardStage'
@@ -18,10 +18,10 @@ import { SettingRow } from '../settings/SettingsDialog'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
 import { useTableSettings } from '../settings/tableSettings'
-import { ScoreBreakdown } from './ScoreBreakdown'
+import { Verdict } from '../table/Verdict'
 import { decodeScoringUrl } from './scoringUrl'
 import { useUrlData } from '../situation/useUrlData'
-import { useScoringRound, type Answer, type ScoringOptions } from './useScoringRound'
+import { useScoringRound, type Answer, type RoundResult, type ScoringOptions } from './useScoringRound'
 
 const FLAG_KEYS = [
   'riichi',
@@ -70,39 +70,29 @@ function NumberField({
   )
 }
 
-function FieldFeedback({
-  correct,
-  label,
-  expected,
-  note,
-}: {
-  correct: boolean
-  label: string
-  expected: string
-  /** Extra context shown whether or not the answer was right — the limit name, on points. */
-  note?: string
-}) {
-  const { t } = useTranslation()
-  return (
-    <p
-      className={`flex flex-wrap items-center gap-1.5 text-sm font-medium ${correct ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-    >
-      {correct ? (
-        <CheckCircle2 className="size-4 shrink-0" />
-      ) : (
-        <XCircle className="size-4 shrink-0" />
-      )}
-      {label}
-      {!correct && (
-        <span className="font-normal">{t('scoring.correctWas', { value: expected })}</span>
-      )}
-      {note && (
-        <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-          {note}
-        </span>
-      )}
-    </p>
-  )
+/** The one-line verdict that floats over the board once a hand is checked — same shape as every
+ *  other trainer's `noticeCompact` (`Verdict`): a label plus the correct answer for every field
+ *  under test, so the reader isn't left guessing what they got wrong without opening the log. The
+ *  full breakdown (yaku, fu items, which fields were wrong) lives on the log row instead. */
+function verdictText(result: RoundResult, options: ScoringOptions, t: TFunction): string {
+  const { actual } = result
+  const label = t(result.correct ? 'scoring.correctLabel' : 'scoring.wrongLabel')
+  const parts: string[] = []
+  if (options.testHan) parts.push(t('scoring.hanCount', { count: actual.han }))
+  const skipFu = options.ignoreFuOnLimit && actual.han >= 5
+  if (options.testFu && !skipFu) {
+    parts.push(t('scoring.fuCount', { count: options.exactFu ? actual.fuExact : actual.fu }))
+  }
+  const split = actual.payments.fromDealer !== undefined
+  if (options.testPoints) {
+    parts.push(
+      split
+        ? `${actual.payments.main} / ${actual.payments.fromDealer}`
+        : String(actual.payments.main),
+    )
+  }
+  if (actual.limit) parts.push(t(`scoring.limit.${actual.limit}`))
+  return parts.length > 0 ? `${label} — ${parts.join(' · ')}` : label
 }
 
 export function ScoringPage() {
@@ -152,7 +142,6 @@ export function ScoringPage() {
   // a single points field is either a ron total or a dealer tsumo, where every other seat pays
   // that same amount — the "(each)" label the split fields already use says exactly that
   const singlePointsLabel = t(ctx.tsumo ? 'scoring.pointsMainLabel' : 'scoring.pointsLabel')
-  const limitName = round.actual.limit ? t(`scoring.limit.${round.actual.limit}`) : undefined
 
   const submit = (form: HTMLFormElement) => {
     const fields = new FormData(form)
@@ -402,7 +391,18 @@ export function ScoringPage() {
             />
           </div>
 
-          {!round.checked && (
+          {round.checked ? (
+            // takes the form's exact place once the hand is graded — the verdict is a floating
+            // chip now (`noticeCompact`), and the full breakdown is a tap away on the log row, so
+            // nothing needs to hold the board any more
+            <button
+              type="button"
+              onClick={round.next}
+              className="min-h-14 shrink-0 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+            >
+              {t('scoring.newHand')}
+            </button>
+          ) : (
             // uncontrolled: the form is keyed to the hand, so a new hand remounts it empty
             <form
               key={serializeTenhou(round.situation.concealed)}
@@ -443,59 +443,13 @@ export function ScoringPage() {
           )}
         </div>
       }
-      end={
-        round.checked &&
+      noticeKey={round.lastResult ? round.totalCount : undefined}
+      noticeCompact={
         round.lastResult && (
-          <div className="flex flex-col gap-3">
-            {settings.testHan && (
-              <FieldFeedback
-                correct={round.lastResult.correctHan}
-                label={t('scoring.hanLabel')}
-                expected={String(round.actual!.han)}
-              />
-            )}
-            {settings.testFu && (
-              <FieldFeedback
-                correct={round.lastResult.correctFu}
-                label={t('scoring.fuLabel')}
-                expected={String(options.exactFu ? round.actual!.fuExact : round.actual!.fu)}
-              />
-            )}
-            {settings.testPoints && !split && (
-              <FieldFeedback
-                correct={round.lastResult.correctPoints}
-                label={singlePointsLabel}
-                expected={String(round.actual!.payments.main)}
-                note={limitName}
-              />
-            )}
-            {settings.testPoints && split && (
-              <FieldFeedback
-                correct={round.lastResult.correctPoints}
-                label={`${t('scoring.pointsMainLabel')} / ${t('scoring.pointsFromDealerLabel')}`}
-                expected={`${round.actual!.payments.main} / ${round.actual!.payments.fromDealer}`}
-                note={limitName}
-              />
-            )}
-            {/* the limit name rides along with the points row; without one it needs its own line */}
-            {!settings.testPoints && limitName && (
-              <p className="text-sm text-neutral-500">{limitName}</p>
-            )}
-            {(settings.showYaku || settings.showFu) && (
-              <ScoreBreakdown
-                result={round.actual!}
-                showYaku={settings.showYaku}
-                showFu={settings.showFu}
-              />
-            )}
-            <button
-              type="button"
-              onClick={round.next}
-              className="min-h-11 rounded-lg bg-neutral-900 px-4 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-            >
-              {t('scoring.newHand')}
-            </button>
-          </div>
+          <Verdict
+            severity={round.lastResult.correct ? 'ok' : 'error'}
+            text={verdictText(round.lastResult, options, t)}
+          />
         )
       }
       wall={

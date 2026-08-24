@@ -284,13 +284,14 @@
     "newHand": "New hand",
     "correct": "correct",
     "wrong": "wrong",
+    "correctLabel": "Correct",
+    "wrongLabel": "Wrong",
     "inTime": "in {{time}}",
-    "correctWas": " — correct: {{value}}",
-    "yakuListLabel": "Yaku",
-    "fuListLabel": "Fu breakdown",
     "yakumanLabel": "Yakuman",
     "hanCount_one": "{{count}} han",
     "hanCount_other": "{{count}} han",
+    "fuCount_one": "{{count}} fu",
+    "fuCount_other": "{{count}} fu",
     "doraLabel": "Dora",
     "akaLabel": "Aka dora",
     "uraLabel": "Ura dora",
@@ -504,7 +505,10 @@
       "result": "Hand {{hand}}: guessed {{guess}}, actual {{actual}}{{via}} — {{result}}{{time}}"
     },
     "scoring": {
-      "result": "Hand {{hand}}: {{han}} han — {{result}}{{time}}"
+      "result": "Hand {{hand}}: {{han}} han — {{result}}{{time}}",
+      "field": "{{label}}: {{expected}}",
+      "fieldWrong": "{{label}}: {{expected}} — you answered {{answer}}",
+      "detailLine": "{{label}} — {{value}}"
     }
   }
 }

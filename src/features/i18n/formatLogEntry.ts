@@ -106,13 +106,46 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
 
 /** One expanded-row detail line. Same idea as `formatLogEntry`'s own special cases — the one
  *  key that needs render-time composition (the wind name, looked up from a raw seat number) gets
- *  its own branch, everything else is a plain `t(key, params)`. */
-export function formatLogDetail(detail: LogDetail, t: TFunction): string {
+ *  its own branch, everything else is a plain `t(key, params)`. `termName` resolves a scoring
+ *  yaku/yakuman name through the `translatedTerms` setting, the same as `ScoreBreakdown` used to —
+ *  passed in rather than read from the store here, so a setting flip re-renders the row. */
+export function formatLogDetail(
+  detail: LogDetail,
+  t: TFunction,
+  termName: (group: 'yaku' | 'yakuman' | 'flags', name: string) => string,
+): string {
   if (detail.key === 'log.folding.reason') {
     const { seat, tier } = detail.params as unknown as { seat?: number; tier: string }
     return seat === undefined
       ? t(`folding.tier.${tier}`)
       : t('log.folding.reason', { wind: t(`wind.${WINDS[seat]}`), tier: t(`folding.tier.${tier}`) })
+  }
+  if (detail.key === 'log.scoring.field') {
+    const { labelKey, expected, answer } = detail.params as unknown as {
+      labelKey: string
+      expected: number
+      answer?: number
+    }
+    const label = t(labelKey)
+    return answer === undefined
+      ? t('log.scoring.field', { label, expected })
+      : t('log.scoring.fieldWrong', { label, expected, answer })
+  }
+  if (detail.key === 'log.scoring.limit') {
+    const { limit } = detail.params as unknown as { limit: string }
+    return t(`scoring.limit.${limit}`)
+  }
+  if (detail.key === 'log.scoring.detailLine') {
+    const { group, name, labelKey, valueKey, count } = detail.params as unknown as {
+      group?: 'yaku' | 'yakuman'
+      name?: string
+      labelKey?: string
+      valueKey: string
+      count?: number
+    }
+    const label = group && name !== undefined ? termName(group, name) : t(labelKey!)
+    const value = count === undefined ? t(valueKey) : t(valueKey, { count })
+    return t('log.scoring.detailLine', { label, value })
   }
   return t(detail.key, detail.params)
 }
