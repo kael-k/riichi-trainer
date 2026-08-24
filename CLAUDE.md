@@ -11,7 +11,10 @@ behind the `**Why:**` line each section ends with ([ADR-0031](docs/adr/0031-clau
 
 - **`docs/adr/`** — _why_ it works that way. One decision per file, superseded rather than edited.
   Read the relevant ADR before proposing to change a design; write a new one when a decision moves,
-  in the same commit as the code.
+  in the same commit as the code. **Only two cases warrant a new ADR**: it supersedes or amends a
+  currently Accepted ADR, or the decision is architecturally significant (a layer boundary, an
+  invariant future code must not violate, a rejected alternative worth not re-proposing). A small
+  fix, a UI tweak, or anything whose rationale fits in a code comment does not get one.
 - **`docs/STRUCTURE.md`** — _where_ things live: an annotated source map and the dependency rules.
 - **`docs/STATUS.md`** — what is shipped, in flight, known broken, or out of scope on purpose. Read
   it before starting anything; update it when that changes.
