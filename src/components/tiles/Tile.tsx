@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Meld } from '../../core/agari'
 import {
+  suitOf,
   tileCode,
   tileLabel,
   tileName,
@@ -384,15 +385,28 @@ export function WallDetails({
 
 /** Improving tiles with remaining counts; exhausted ones dimmed. */
 export function UkeireTiles({ tiles }: { tiles: { tile: TileId; remaining: number }[] }) {
+  // grouped per suit, and each group is one non-wrapping flex item: the row then breaks *between*
+  // suits or not at all, never mid-suit. Nothing else changes — the groups sit in the same order
+  // `ukeire` returned them in
+  const groups: { tile: TileId; remaining: number }[][] = []
+  for (const entry of tiles) {
+    const last = groups.at(-1)
+    if (last && suitOf(last[0].tile) === suitOf(entry.tile)) last.push(entry)
+    else groups.push([entry])
+  }
   return (
-    <div className="flex flex-wrap gap-1 [--tile-w:calc(var(--tile-w-base)*0.8)]">
-      {tiles.map(({ tile, remaining }) => (
-        <div
-          key={tile}
-          className={`flex flex-col items-center ${remaining === 0 ? 'opacity-30' : ''}`}
-        >
-          <Tile id={tile} />
-          <span className="text-xs text-neutral-500">{remaining}</span>
+    <div className="flex flex-wrap gap-2 [--tile-w:calc(var(--tile-w-base)*0.8)]">
+      {groups.map((group) => (
+        <div key={group[0].tile} className="flex gap-1">
+          {group.map(({ tile, remaining }) => (
+            <div
+              key={tile}
+              className={`flex flex-col items-center ${remaining === 0 ? 'opacity-30' : ''}`}
+            >
+              <Tile id={tile} />
+              <span className="text-xs text-neutral-500">{remaining}</span>
+            </div>
+          ))}
         </div>
       ))}
     </div>

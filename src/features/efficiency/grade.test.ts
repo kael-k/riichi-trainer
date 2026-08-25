@@ -5,6 +5,7 @@ import { NORTH } from '../../core/round'
 import { HONOR, parseTenhou } from '../../core/tiles'
 import {
   actionStats,
+  discardDetail,
   efficiencyLogRows,
   gradeAction,
   handFromSnapshot,
@@ -123,6 +124,43 @@ describe('grade', () => {
       const hand = handFromSnapshot(tiles, parseTenhou('3p')[0], 1)
       expect(hand.counts[11]).toBe(1) // 3p
       expect(hand.melds).toBe(1)
+    })
+  })
+
+  describe('discardDetail', () => {
+    it('carries the ukeire total on the label, so the list has a size before it is counted', () => {
+      const hand = handFrom('123456789m11223p')
+      const stats = statsFor(hand, 'discard', 10)
+      const result = gradeAction(stats, 3, false)
+      const [yours] = discardDetail(result)
+
+      expect(yours.key).toBe('log.efficiency.yourDiscardTotal')
+      expect(yours.params).toEqual({ count: result.yours.ukeireCount })
+      // the count is copies left in the wall, not kinds — the legend below the block says so
+      expect(result.yours.ukeireCount).toBeGreaterThan(result.yours.ukeireTiles.length)
+    })
+
+    it('adds the best line with its own total once the choice was an actual mistake', () => {
+      const hand = handFrom('123456789m11223p')
+      // 9m breaks a finished run: a real shanten regression, not a tie
+      const result = gradeAction(statsFor(hand, 'discard', 8), 3, false)
+      expect(result.grade).toBe('error')
+
+      const detail = discardDetail(result)
+      const best = detail.find((line) => line.key === 'log.efficiency.bestDiscardTotal')!
+      expect(best.params).toEqual({ count: result.best.ukeireCount })
+      expect(best.tiles).toEqual([{ id: result.best.discard, red: false }])
+    })
+
+    it('closes the block with one legend, whether or not the best line is there', () => {
+      const hand = handFrom('123456789m11223p')
+      const tie = discardDetail(gradeAction(statsFor(hand, 'discard', 10), 3, false))
+      const mistake = discardDetail(gradeAction(statsFor(hand, 'discard', 8), 3, false))
+
+      for (const detail of [tie, mistake]) {
+        expect(detail.filter((line) => line.key === 'log.detail.ukeireLegend')).toHaveLength(1)
+        expect(detail.at(-1)!.key).toBe('log.detail.ukeireLegend')
+      }
     })
   })
 

@@ -13,6 +13,16 @@ export interface LogDetail {
   tiles?: ParsedTile[]
   /** Rendered through the existing `UkeireTiles` (per-tile remaining counts). */
   ukeire?: UkeireTile[]
+  /** Index in `tiles` where the *evidence* for the line begins — the subject tile leads, what
+   *  explains it follows past a hairline seam. Same field, same meaning as `LogEntry.seam`;
+   *  absent means the line's tiles are all one thing. */
+  seam?: number
+  /** Draws the line as a muted section header ("Yaku", "Fu") rather than a detail line. Headers
+   *  carry no tiles — they are the grouping, not a fact about the hand. */
+  header?: boolean
+  /** Text tone. `'error'` is the wrong-answer colour, matching the verdict palette; absent is the
+   *  neutral one every other line draws in. */
+  tone?: 'error'
 }
 
 export interface LogEntry {

@@ -115,18 +115,27 @@ function situationFromWin(win: WinRecord, wall: ParsedTile[]): ScoringSituation 
 }
 
 /** One graded field's line — your answer only when it was wrong, which is what picks the
- *  "you answered" phrasing at render (`formatLogEntry.ts`). */
+ *  "you answered" phrasing at render (`formatLogEntry.ts`) *and* the error tone: the two say the
+ *  same thing, so they are decided in the same place rather than derived twice. */
 function fieldDetail(labelKey: string, expected: number, given: number | undefined): LogDetail {
+  const answer = given === expected ? undefined : given
   return {
     key: 'log.scoring.field',
-    params: { labelKey, expected, answer: given === expected ? undefined : given },
+    params: { labelKey, expected, answer },
+    tone: answer === undefined ? undefined : 'error',
   }
 }
 
 /** The detail lines a graded scoring row expands to: each field under test, the limit name, the
  *  full yaku list (or yakuman) with bonus han, and the fu itemization — everything the old
- *  reveal card (`ScoreBreakdown`) drew, now on the row rather than gating the board. */
-function scoringDetail(
+ *  reveal card (`ScoreBreakdown`) drew, now on the row rather than gating the board.
+ *
+ *  Grouped rather than flat: the graded fields lead (a wrong one in the error tone), then the han
+ *  under a `Yaku` header, then the fu items under a `Fu` header ending in the subtotal — so the
+ *  reader never has to work out which of three kinds of line they are looking at, nor do the
+ *  rounding maths that turns 26 fu into 30. A yakuman carries no header: it is not a list of yaku
+ *  adding to a han count, it is the hand's name. */
+export function scoringDetail(
   actual: ScoreResult,
   answer: Answer,
   options: ScoringOptions,
@@ -173,12 +182,10 @@ function scoringDetail(
       })
     }
   } else {
-    for (const y of actual.yaku) {
-      detail.push({
-        key: 'log.scoring.detailLine',
-        params: { group: 'yaku', name: y.name, valueKey: 'scoring.hanCount', count: y.han },
-      })
-    }
+    const han: LogDetail[] = actual.yaku.map((y) => ({
+      key: 'log.scoring.detailLine',
+      params: { group: 'yaku', name: y.name, valueKey: 'scoring.hanCount', count: y.han },
+    }))
     const bonusHan = [
       { labelKey: 'scoring.doraLabel', count: actual.dora.dora },
       { labelKey: 'scoring.akaLabel', count: actual.dora.aka },
@@ -187,20 +194,37 @@ function scoringDetail(
     ]
     for (const b of bonusHan) {
       if (b.count > 0) {
-        detail.push({
+        han.push({
           key: 'log.scoring.detailLine',
           params: { labelKey: b.labelKey, valueKey: 'scoring.hanCount', count: b.count },
         })
       }
     }
+    // the header is a claim that a list follows, so it is only written when one does
+    if (han.length > 0) detail.push({ key: 'log.detail.yaku', header: true })
+    detail.push(...han)
   }
 
-  for (const item of actual.fuItems) {
-    detail.push({
-      key: 'log.scoring.detailLine',
-      params: { labelKey: `scoring.fu.${item.reason}`, valueKey: 'scoring.fuCount', count: item.fu },
-      tiles: item.tile !== undefined ? [{ id: item.tile, red: false }] : undefined,
-    })
+  // a limit hand's fu are never itemized (and never quizzed), so the section skips itself
+  if (actual.fuItems.length > 0) {
+    detail.push({ key: 'log.detail.fu', header: true })
+    for (const item of actual.fuItems) {
+      detail.push({
+        key: 'log.scoring.detailLine',
+        params: {
+          labelKey: `scoring.fu.${item.reason}`,
+          valueKey: 'scoring.fuCount',
+          count: item.fu,
+        },
+        tiles: item.tile !== undefined ? [{ id: item.tile, red: false }] : undefined,
+      })
+    }
+    // the rounding, stated rather than left to the reader — one line when there is none to do
+    detail.push(
+      actual.fuExact === actual.fu
+        ? { key: 'log.detail.fuTotalExact', params: { fu: actual.fu } }
+        : { key: 'log.detail.fuTotal', params: { exact: actual.fuExact, fu: actual.fu } },
+    )
   }
 
   return detail
@@ -355,13 +379,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
       onAgariCall(found.win)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    urlData,
-    handIndex,
-    options.sanma,
-    options.aka,
-    options.kiriageMangan,
-  ])
+  }, [urlData, handIndex, options.sanma, options.aka, options.kiriageMangan])
 
   /** Current hand as a shareable query string. A round reproduces from its wall, rivers and all,
    *  so that is the better link; a pinned or constructed hand has no round behind it and ships

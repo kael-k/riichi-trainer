@@ -190,16 +190,35 @@ function Tiles({ tiles }: { tiles: NonNullable<LogEntry['tiles']> }) {
 }
 
 /** One expanded line: what the deleted feedback panels drew, as a label plus whichever of the two
- *  tile shapes it carries (plain tiles, or tiles with their remaining counts). */
+ *  tile shapes it carries (plain tiles, or tiles with their remaining counts). A `header` line is
+ *  the grouping above them — the same hairline-label treatment `DealSeparator` gives a deal, since
+ *  it makes the same kind of claim: what follows belongs together. */
 function DetailLine({ detail }: { detail: LogDetail }) {
   const { t } = useTranslation()
   const termName = useTermName()
+  const text = formatLogDetail(detail, t, termName)
+  if (detail.header) {
+    return <div className="mt-1 text-[10px] tracking-wider text-neutral-400 uppercase">{text}</div>
+  }
+  const tiles = detail.tiles ?? []
+  const seam = detail.seam ?? tiles.length
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-500">
-      <span>{formatLogDetail(detail, t, termName)}</span>
-      {detail.tiles && detail.tiles.length > 0 && (
+    <div
+      className={`flex flex-wrap items-center gap-1.5 text-xs ${
+        detail.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-neutral-500'
+      }`}
+    >
+      <span>{text}</span>
+      {tiles.length > 0 && (
         <span className="flex items-center">
-          <Tiles tiles={detail.tiles} />
+          <Tiles tiles={tiles.slice(0, seam)} />
+          {/* the subject tile, then a rule, then what explains it — the same seam a row draws
+              between your own choice and the one that beat it */}
+          {seam < tiles.length && (
+            <span className="ml-1.5 flex items-center border-l border-neutral-200 pl-1.5 dark:border-neutral-700">
+              <Tiles tiles={tiles.slice(seam)} />
+            </span>
+          )}
         </span>
       )}
       {detail.ukeire && detail.ukeire.length > 0 && <UkeireTiles tiles={detail.ukeire} />}

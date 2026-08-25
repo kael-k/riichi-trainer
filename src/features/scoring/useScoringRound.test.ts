@@ -3,11 +3,20 @@ import { describe, expect, it } from 'vitest'
 import { createMatch } from '../../core/match'
 import { playWall } from '../../core/round'
 import { mulberry32 } from '../../core/rng'
-import { HONOR, parseTenhou, PIN, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
+import { scoreHand, type ScoreResult } from '../../core/score'
+import {
+  HONOR,
+  parseTenhou,
+  PIN,
+  SOU,
+  serializeTenhouOrdered,
+  type ParsedTile,
+} from '../../core/tiles'
+import type { WinContext } from '../../core/yaku'
 import { completeWall } from '../../core/wall'
 import { useLog } from '../../store/log'
 import { decodeScoringUrl, type ScoringUrl } from './scoringUrl'
-import { useScoringRound, type ScoringOptions } from './useScoringRound'
+import { scoringDetail, useScoringRound, type Answer, type ScoringOptions } from './useScoringRound'
 
 const FULL: ScoringOptions = {
   sanma: false,
@@ -41,6 +50,96 @@ async function deal(urlData: ScoringUrl, options: ScoringOptions = FULL) {
   await waitFor(() => expect(result.current.loading).toBe(false))
   return result
 }
+
+/** A scored hand, through the real scorer — the grouping under test is about what `ScoreResult`
+ *  actually carries, so nothing here is a hand-written stand-in for it. */
+function scored(tenhou: string, winTile: number, overrides: Partial<WinContext> = {}): ScoreResult {
+  return scoreHand({
+    concealed: parseTenhou(tenhou),
+    melds: [],
+    ctx: {
+      round: HONOR,
+      seat: HONOR,
+      tsumo: false,
+      riichi: false,
+      doubleRiichi: false,
+      ippatsu: false,
+      haitei: false,
+      houtei: false,
+      rinshan: false,
+      chankan: false,
+      winTile,
+      ...overrides,
+    },
+    doraIndicators: [],
+    uraIndicators: [],
+    kita: 0,
+    rules: { kiriageMangan: false, honba: 0, sanma: false },
+  })!
+}
+
+/** The order the sections come out in, by key — the reader's whole complaint was that they didn't
+ *  come out in any. */
+function keys(actual: ScoreResult, answer: Answer = {}) {
+  return scoringDetail(actual, answer, FULL, false).map((line) => line.key)
+}
+
+describe('scoringDetail', () => {
+  it('leads with the graded fields, then the yaku, then the fu — each list under its header', () => {
+    // dealer riichi/pinfu/tanyao ron: 3 han, 30 fu, both lists non-empty
+    const actual = scored('234567m456678p33s', PIN + 7, { riichi: true })
+    const order = keys(actual)
+
+    const fields = order.filter((k) => k === 'log.scoring.field').length
+    expect(fields).toBe(3) // han, fu, points — every field FULL puts under test
+    expect(order.slice(0, fields).every((k) => k === 'log.scoring.field')).toBe(true)
+
+    const yaku = order.indexOf('log.detail.yaku')
+    const fu = order.indexOf('log.detail.fu')
+    expect(yaku).toBe(fields)
+    expect(fu).toBeGreaterThan(yaku)
+    // every line between the two headers is a yaku/bonus line, and the fu section runs to the end
+    expect(order.slice(yaku + 1, fu).every((k) => k === 'log.scoring.detailLine')).toBe(true)
+    expect(order.at(-1)).toMatch(/^log\.detail\.fuTotal/)
+  })
+
+  it('tones only the fields that were answered wrong', () => {
+    const actual = scored('234567m456678p33s', PIN + 7, { riichi: true })
+    const detail = scoringDetail(
+      actual,
+      { han: actual.han + 1, fu: actual.fu, points: actual.payments.main },
+      FULL,
+      false,
+    )
+    const fields = detail.filter((line) => line.key === 'log.scoring.field')
+
+    expect(fields[0].tone).toBe('error')
+    expect(fields[0].params).toMatchObject({ answer: actual.han + 1 })
+    expect(fields.slice(1).map((line) => line.tone)).toEqual([undefined, undefined])
+  })
+
+  it('states the rounding as its own line, and says nothing about it when there is none', () => {
+    // 111m closed terminal triplet + a tanki on the pair, self-drawn: 20 + 2 + 8 + 2 = 32 fu
+    const rounded = scored('111m234567p23499s', SOU + 8, { tsumo: true })
+    expect(rounded.fuExact).not.toBe(rounded.fu)
+    const total = scoringDetail(rounded, {}, FULL, true).at(-1)!
+    expect(total.key).toBe('log.detail.fuTotal')
+    expect(total.params).toEqual({ exact: rounded.fuExact, fu: rounded.fu })
+
+    // pinfu ron is exactly 30: there is no rounding to explain
+    const exact = scored('234567m456678p33s', PIN + 7, { riichi: true })
+    expect(exact.fuExact).toBe(exact.fu)
+    expect(keys(exact).at(-1)).toBe('log.detail.fuTotalExact')
+  })
+
+  it('gives a yakuman no Yaku header: the hand is not a list of yaku adding up', () => {
+    const kokushi = scored('119m19p19s1234567z', 0)
+    expect(kokushi.yakuman).not.toHaveLength(0)
+    const order = keys(kokushi)
+    expect(order).not.toContain('log.detail.yaku')
+    expect(order).toContain('log.scoring.detailLine')
+  })
+})
 
 describe('useScoringRound', () => {
   it('deals a hand with a precomputed score', async () => {

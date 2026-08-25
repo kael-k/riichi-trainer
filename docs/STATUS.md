@@ -110,6 +110,17 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     (lab, scoring), not a scoring-trainer-only display toggle — not threaded into the efficiency
     trainers (`wins: false` there always) or folding (never prices a win).
 
+11. **Expanded log rows are grouped, not a flat list** (`PLAN-ux-1`) — `LogDetail` gains three
+    optional fields (`header`, `tone`, `seam`) and `DetailLine` renders them, so the three
+    trainers that write detail lines can say what a line _is_. Scoring leads with the graded
+    fields (a wrong one in the error colour), then `Yaku`, then `Fu` ending in the rounding as
+    its own line ("26 → 30 fu"); a yakuman gets no header. Efficiency puts the ukeire total on
+    each label and closes the block with one legend for the numbers under the tiles, and
+    `UkeireTiles` groups per suit so a wrap never falls mid-suit (the lab and the session panel
+    get that for free). Folding's lines name their own subject — "Your tile — Suji" with the tile
+    leading and the suji partner past the seam — replacing the bare tier names that restated the
+    row above them. `log.folding.reason` and `folding.safestDiscard` are gone.
+
 ## In flight
 
 - Nothing. `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per

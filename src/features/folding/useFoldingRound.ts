@@ -111,15 +111,25 @@ export const FOLDING_VERDICT_TEXT_KEY: Record<VerdictSeverity, string> = {
 
 /** One line per threat this tile was judged against — what `FoldFeedback`'s `Reasons` used to
  *  draw. `seats[i]` names `entry.against[i]`'s threat: both come from the same seat-ascending
- *  `riichiSeats` walk, so the indices line up. */
-function reasonLines(entry: TileDanger, seats: number[]): LogDetail[] {
+ *  `riichiSeats` walk, so the indices line up.
+ *
+ *  Every line names its own subject (`key` says whose tile it is, the tile itself leads the
+ *  graphics) rather than standing as a bare tier name under a row that already said one — the two
+ *  read as a repetition otherwise, not as an explanation. The evidence follows past the seam;
+ *  genbutsu's own evidence is the tile itself, and drawing it twice says nothing, so it is
+ *  dropped. */
+function reasonLines(entry: TileDanger, seats: number[], key: string): LogDetail[] {
   // the wind only earns its place in the sentence once there's more than one threat to tell
   // apart — same gate `FoldFeedback`'s `Reasons` used
   const showSeat = entry.against.length > 1
   return entry.against.map((against, i) => ({
-    key: 'log.folding.reason',
+    key,
     params: { seat: showSeat ? seats[i] : undefined, tier: against.tier },
-    tiles: against.because.map((id) => ({ id, red: false })),
+    tiles: [
+      { id: entry.tile, red: false },
+      ...against.because.filter((id) => id !== entry.tile).map((id) => ({ id, red: false })),
+    ],
+    seam: 1,
   }))
 }
 
@@ -128,11 +138,10 @@ function reasonLines(entry: TileDanger, seats: number[]): LogDetail[] {
  *  tie list is logged alongside them whenever one exists, unconditionally. */
 function foldingDetail(result: TurnResult, seats: number[]): LogDetail[] {
   const { yours, safest, correct } = result
-  const detail = reasonLines(yours, seats)
-  if (!correct) {
-    detail.push({ key: 'folding.safestDiscard', tiles: [{ id: safest[0].tile, red: false }] })
-    detail.push(...reasonLines(safest[0], seats))
-  }
+  const detail = reasonLines(yours, seats, 'log.folding.yourTile')
+  // one line, not a "Safest was 1m" heading over a bare tier: the tile and its tier are the same
+  // fact and belong in the same sentence
+  if (!correct) detail.push(...reasonLines(safest[0], seats, 'log.folding.safestTile'))
   const alsoSafe = safest.filter((entry) => entry.tile !== yours.tile)
   if (correct && alsoSafe.length > 0) {
     detail.push({

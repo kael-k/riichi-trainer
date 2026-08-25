@@ -114,11 +114,14 @@ export function formatLogDetail(
   t: TFunction,
   termName: (group: 'yaku' | 'yakuman' | 'flags', name: string) => string,
 ): string {
-  if (detail.key === 'log.folding.reason') {
+  // "Your 9m — non-suji" / "Safest 1m vs East — genbutsu": the subject is in the key, the tier is
+  // translated here (not baked in at log time) and the threat's wind is an optional clause,
+  // composed the same way `formatLogEntry` composes its own — only present with more than one
+  // threat to tell apart
+  if (detail.key === 'log.folding.yourTile' || detail.key === 'log.folding.safestTile') {
     const { seat, tier } = detail.params as unknown as { seat?: number; tier: string }
-    return seat === undefined
-      ? t(`folding.tier.${tier}`)
-      : t('log.folding.reason', { wind: t(`wind.${WINDS[seat]}`), tier: t(`folding.tier.${tier}`) })
+    const vs = seat === undefined ? '' : t('log.folding.vs', { wind: t(`wind.${WINDS[seat]}`) })
+    return t(detail.key, { vs, tier: t(`folding.tier.${tier}`) })
   }
   if (detail.key === 'log.scoring.field') {
     const { labelKey, expected, answer } = detail.params as unknown as {

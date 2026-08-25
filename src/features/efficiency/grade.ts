@@ -125,16 +125,30 @@ type LogRow = Omit<LogEntry, 'id' | 'situation'>
 /** The detail lines a graded main row expands to — your own line always, the best line too once
  *  the choice was an actual mistake (a tie's "best" carries no ukeire list in `DiscardFeedback`
  *  either, since there's nothing lost to show). Generic "your discard"/"best discard" labels
- *  regardless of kind: the row's own text already says "Kita"/kanned, and the tiles say the rest. */
-function discardDetail(result: TurnResult): LogDetail[] {
+ *  regardless of kind: the row's own text already says "Kita"/kanned, and the tiles say the rest.
+ *
+ *  Each label carries its own total, so the list below it has a size before the reader counts it,
+ *  and the block closes on one legend saying what the number under each tile is — a footnote line
+ *  rather than a `title`, since a hover is not available to the phone this trainer is built for. */
+export function discardDetail(result: TurnResult): LogDetail[] {
   const { yours, best, grade } = result
-  const detail: LogDetail[] = [{ key: 'discardFeedback.yourDiscard', ukeire: yours.ukeireTiles }]
+  const detail: LogDetail[] = [
+    {
+      key: 'log.efficiency.yourDiscardTotal',
+      params: { count: yours.ukeireCount },
+      ukeire: yours.ukeireTiles,
+    },
+  ]
   if (grade === 'error') {
     detail.push({
-      key: 'discardFeedback.bestDiscard',
+      key: 'log.efficiency.bestDiscardTotal',
+      params: { count: best.ukeireCount },
       tiles: [{ id: best.discard, red: false }],
       ukeire: best.ukeireTiles,
     })
+  }
+  if (detail.some((line) => line.ukeire && line.ukeire.length > 0)) {
+    detail.push({ key: 'log.detail.ukeireLegend' })
   }
   return detail
 }

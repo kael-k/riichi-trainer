@@ -642,6 +642,9 @@ drawn through the same props.
 - **Both halves override `--tile-w-base`, not `--tile-w` alone**, so a nested override composes with
   the panel's 0.6 instead of ignoring it (`UkeireTiles` drew _larger_ than the tiles above it until
   it did).
+- **`UkeireTiles` wraps per suit, never inside one**: it groups its tiles by suit and each group is
+  one non-wrapping flex item, so a break falls between suits. Shared with the lab and the session
+  panel — the grouping is in the component, not in whoever renders it.
 - **`onLogOpen` (the clock pause) is derived from _drawer_ open, not panel open** — a docked panel
   hides nothing — and is reported from an effect on that one derived flag, so a resize, Escape or
   the scrim each resume exactly once and never lift a pause the reader pressed themselves.
@@ -657,6 +660,12 @@ is a tap on its own row.
 - **A `LogDetail` is an i18n key plus params and tiles, never text** — a language switch has to
   re-translate it. `folding.equallySafe` is logged unconditionally and gated **at render**, so the
   toggle reaches rows already on the record.
+- **A detail line's three optional fields say what it _is_, and each has one owner.** `header`
+  makes it the muted label above a list — it is a claim that a list follows, so it is written only
+  when one does, and it **draws no tiles**. `tone: 'error'` is decided where the wrong-answer
+  _phrasing_ is decided (`fieldDetail`), never derived a second time. `seam` is `LogEntry.seam`'s
+  meaning on a line: the subject tile leads, the evidence follows past the rule — so a tier whose
+  evidence _is_ the subject (genbutsu) must drop it rather than draw it twice.
 - **Ordinals are assigned before filtering**, so `log.rewound`'s "Rewound to entry {{number}}" stays
   honest.
 - **`log.dealt`/`log.dealtHand` carry no tiles** — a hand is drawn on exactly one row, the one that

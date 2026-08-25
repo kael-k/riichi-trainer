@@ -158,8 +158,6 @@
     "kanPile": "已杠"
   },
   "discardFeedback": {
-    "yourDiscard": "你的出牌",
-    "bestDiscard": "最佳出牌",
     "shantenLine": "<term>上听数</term> {{count}}",
     "tilesSuffix_other": "· {{count}}种",
     "verdictOk": "最佳切牌",
@@ -304,7 +302,6 @@
     "score": "最安全: {{correct}} / {{total}}",
     "accuracy": "准确率 {{percent}}%",
     "avgTime": "平均 {{time}}",
-    "safestDiscard": "最安全的是",
     "verdictOk": "最安全的牌",
     "verdictWarning": "较危险的牌",
     "verdictError": "危险的牌",
@@ -376,6 +373,13 @@
     "replay": "回放：打出 {{tile}}",
     "dealt": "已发牌",
     "dealtHand": "发牌 {{hand}}",
+    "detail": {
+      "yaku": "役种",
+      "fu": "符",
+      "fuTotal": "合计：{{exact}} → {{fu}} 符",
+      "fuTotalExact": "合计：{{fu}} 符",
+      "ukeireLegend": "牌下方数字：牌山中剩余张数"
+    },
     "lab": {
       "discard": "第{{turn}}巡: 打出{{tile}}"
     },
@@ -383,7 +387,9 @@
       "safe": "第 {{turn}} 巡: 打出 {{tile}}——{{tier}}，当前最安全",
       "risky": "第 {{turn}} 巡: 打出 {{tile}}（{{tier}}）; {{best}} 更安全（{{bestTier}}）",
       "dealIn": "放铳: {{tile}} 给{{wind}}——{{points}} 点",
-      "reason": "{{wind}}: {{tier}}"
+      "yourTile": "你的牌{{vs}}——{{tier}}",
+      "safestTile": "最安全的牌{{vs}}——{{tier}}",
+      "vs": "（对{{wind}}）"
     },
     "efficiency": {
       "shanten": "上听数 {{count}}",
@@ -397,7 +403,9 @@
       "kanBest": "第{{turn}}巡: 开杠{{tile}} — 免费 (进张{{ukeire}}){{shantenSuffix}}",
       "kanMistake": "第{{turn}}巡: 开杠{{tile}} (进张{{yours}}); 最佳为{{best}} (进张{{bestUkeire}}){{shantenSuffix}}",
       "missedKita": "第{{turn}}巡: 错过了{{tile}}的免费拔北",
-      "missedKan": "第{{turn}}巡: 错过了{{tile}}的免费开杠"
+      "missedKan": "第{{turn}}巡: 错过了{{tile}}的免费开杠",
+      "yourDiscardTotal_other": "你的出牌——可进张 {{count}} 张",
+      "bestDiscardTotal_other": "最佳出牌——可进张 {{count}} 张"
     },
     "shanten": {
       "result": "第{{hand}}题: 回答{{guess}},正确{{actual}}{{via}} — {{result}}{{time}}"

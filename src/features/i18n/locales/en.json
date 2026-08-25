@@ -208,8 +208,6 @@
     "kanPile": "Kan"
   },
   "discardFeedback": {
-    "yourDiscard": "Your discard",
-    "bestDiscard": "Best discard",
     "shantenLine": "<term>shanten</term> {{count}}",
     "tilesSuffix_one": "· {{count}} tile",
     "tilesSuffix_other": "· {{count}} tiles",
@@ -405,7 +403,6 @@
     "score": "Safest: {{correct}} / {{total}}",
     "accuracy": "accuracy {{percent}}%",
     "avgTime": "avg {{time}}",
-    "safestDiscard": "Safest was",
     "verdictOk": "Safest tile",
     "verdictWarning": "Riskier tile",
     "verdictError": "Dangerous tile",
@@ -478,6 +475,13 @@
     "replay": "Replayed discard {{tile}}",
     "dealt": "Board dealt",
     "dealtHand": "Hand {{hand}} dealt",
+    "detail": {
+      "yaku": "Yaku",
+      "fu": "Fu",
+      "fuTotal": "Total: {{exact}} → {{fu}} fu",
+      "fuTotalExact": "Total: {{fu}} fu",
+      "ukeireLegend": "Numbers under each tile: copies left in the wall"
+    },
     "lab": {
       "discard": "Turn {{turn}}: discarded {{tile}}"
     },
@@ -485,7 +489,9 @@
       "safe": "Turn {{turn}}: threw {{tile}} — {{tier}}, the safest available",
       "risky": "Turn {{turn}}: threw {{tile}} ({{tier}}); {{best}} was safer ({{bestTier}})",
       "dealIn": "Dealt in: {{tile}} to {{wind}} — {{points}} points",
-      "reason": "{{wind}}: {{tier}}"
+      "yourTile": "Your tile{{vs}} — {{tier}}",
+      "safestTile": "Safest tile{{vs}} — {{tier}}",
+      "vs": " vs {{wind}}"
     },
     "efficiency": {
       "shanten": "shanten {{count}}",
@@ -499,7 +505,11 @@
       "kanBest": "Turn {{turn}}: kanned {{tile}} — free (ukeire {{ukeire}}){{shantenSuffix}}",
       "kanMistake": "Turn {{turn}}: kanned {{tile}} (ukeire {{yours}}); best was {{best}} (ukeire {{bestUkeire}}){{shantenSuffix}}",
       "missedKita": "Turn {{turn}}: a free kita on {{tile}} was passed up",
-      "missedKan": "Turn {{turn}}: a free kan on {{tile}} was passed up"
+      "missedKan": "Turn {{turn}}: a free kan on {{tile}} was passed up",
+      "yourDiscardTotal_one": "Your discard — {{count}} tile improves the hand",
+      "yourDiscardTotal_other": "Your discard — {{count}} tiles improve the hand",
+      "bestDiscardTotal_one": "Best discard — {{count}} tile improves the hand",
+      "bestDiscardTotal_other": "Best discard — {{count}} tiles improve the hand"
     },
     "shanten": {
       "result": "Hand {{hand}}: guessed {{guess}}, actual {{actual}}{{via}} — {{result}}{{time}}"

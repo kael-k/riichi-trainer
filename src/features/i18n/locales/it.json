@@ -208,8 +208,6 @@
     "kanPile": "Kan"
   },
   "discardFeedback": {
-    "yourDiscard": "Il tuo scarto",
-    "bestDiscard": "Scarto migliore",
     "shantenLine": "<term>shanten</term> {{count}}",
     "tilesSuffix_one": "· {{count}} tessera",
     "tilesSuffix_other": "· {{count}} tessere",
@@ -405,7 +403,6 @@
     "score": "Più sicuro: {{correct}} / {{total}}",
     "accuracy": "precisione {{percent}}%",
     "avgTime": "media {{time}}",
-    "safestDiscard": "Il più sicuro era",
     "verdictOk": "Tessera più sicura",
     "verdictWarning": "Tessera più rischiosa",
     "verdictError": "Tessera pericolosa",
@@ -478,6 +475,13 @@
     "replay": "Scarto ripetuto {{tile}}",
     "dealt": "Mano distribuita",
     "dealtHand": "Mano {{hand}} distribuita",
+    "detail": {
+      "yaku": "Yaku",
+      "fu": "Fu",
+      "fuTotal": "Totale: {{exact}} → {{fu}} fu",
+      "fuTotalExact": "Totale: {{fu}} fu",
+      "ukeireLegend": "I numeri sotto le tessere: copie rimaste nel muro"
+    },
     "lab": {
       "discard": "Turno {{turn}}: scartato {{tile}}"
     },
@@ -485,7 +489,9 @@
       "safe": "Turno {{turn}}: scartato {{tile}} — {{tier}}, il più sicuro disponibile",
       "risky": "Turno {{turn}}: scartato {{tile}} ({{tier}}); {{best}} era più sicuro ({{bestTier}})",
       "dealIn": "Ron subito: {{tile}} a {{wind}} — {{points}} punti",
-      "reason": "{{wind}}: {{tier}}"
+      "yourTile": "La tua tessera{{vs}} — {{tier}}",
+      "safestTile": "Tessera più sicura{{vs}} — {{tier}}",
+      "vs": " contro {{wind}}"
     },
     "efficiency": {
       "shanten": "shanten {{count}}",
@@ -499,7 +505,11 @@
       "kanBest": "Turno {{turn}}: kan su {{tile}} — gratuito (ukeire {{ukeire}}){{shantenSuffix}}",
       "kanMistake": "Turno {{turn}}: kan su {{tile}} (ukeire {{yours}}); il migliore era {{best}} (ukeire {{bestUkeire}}){{shantenSuffix}}",
       "missedKita": "Turno {{turn}}: un kita gratuito su {{tile}} non è stato colto",
-      "missedKan": "Turno {{turn}}: un kan gratuito su {{tile}} non è stato colto"
+      "missedKan": "Turno {{turn}}: un kan gratuito su {{tile}} non è stato colto",
+      "yourDiscardTotal_one": "Il tuo scarto — {{count}} tessera migliora la mano",
+      "yourDiscardTotal_other": "Il tuo scarto — {{count}} tessere migliorano la mano",
+      "bestDiscardTotal_one": "Scarto migliore — {{count}} tessera migliora la mano",
+      "bestDiscardTotal_other": "Scarto migliore — {{count}} tessere migliorano la mano"
     },
     "shanten": {
       "result": "Mano {{hand}}: risposto {{guess}}, reale {{actual}}{{via}} — {{result}}{{time}}"

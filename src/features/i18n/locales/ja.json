@@ -158,8 +158,6 @@
     "kanPile": "カン"
   },
   "discardFeedback": {
-    "yourDiscard": "あなたの打牌",
-    "bestDiscard": "最善の打牌",
     "shantenLine": "<term>シャンテン</term> {{count}}",
     "tilesSuffix_other": "・{{count}}種",
     "verdictOk": "最善の打牌",
@@ -304,7 +302,6 @@
     "score": "最安全: {{correct}} / {{total}}",
     "accuracy": "精度 {{percent}}%",
     "avgTime": "平均 {{time}}",
-    "safestDiscard": "最も安全なのは",
     "verdictOk": "最も安全な牌",
     "verdictWarning": "より危険な牌",
     "verdictError": "危険な牌",
@@ -376,6 +373,13 @@
     "replay": "リプレイ: {{tile}}を捨てた",
     "dealt": "配牌完了",
     "dealtHand": "配牌 {{hand}}",
+    "detail": {
+      "yaku": "役",
+      "fu": "符",
+      "fuTotal": "合計: {{exact}} → {{fu}}符",
+      "fuTotalExact": "合計: {{fu}}符",
+      "ukeireLegend": "牌の下の数字: 山に残っている枚数"
+    },
     "lab": {
       "discard": "{{turn}}巡目: {{tile}}を切った"
     },
@@ -383,7 +387,9 @@
       "safe": "{{turn}}巡目: {{tile}}を切った——{{tier}}、この局面で最も安全",
       "risky": "{{turn}}巡目: {{tile}}を切った（{{tier}}）; {{best}}の方が安全（{{bestTier}}）",
       "dealIn": "放銃: {{tile}}を{{wind}}に——{{points}}点",
-      "reason": "{{wind}}: {{tier}}"
+      "yourTile": "あなたの牌{{vs}}——{{tier}}",
+      "safestTile": "最も安全な牌{{vs}}——{{tier}}",
+      "vs": "（{{wind}}に対して）"
     },
     "efficiency": {
       "shanten": "シャンテン {{count}}",
@@ -397,7 +403,9 @@
       "kanBest": "{{turn}}巡目: {{tile}}をカンした — 無料 (受け入れ{{ukeire}}){{shantenSuffix}}",
       "kanMistake": "{{turn}}巡目: {{tile}}をカンした (受け入れ{{yours}}); 最善は{{best}} (受け入れ{{bestUkeire}}){{shantenSuffix}}",
       "missedKita": "{{turn}}巡目: {{tile}}の無料の北抜きを見送った",
-      "missedKan": "{{turn}}巡目: {{tile}}の無料のカンを見送った"
+      "missedKan": "{{turn}}巡目: {{tile}}の無料のカンを見送った",
+      "yourDiscardTotal_other": "あなたの打牌——有効牌{{count}}枚",
+      "bestDiscardTotal_other": "最善の打牌——有効牌{{count}}枚"
     },
     "shanten": {
       "result": "{{hand}}問目: 回答{{guess}}、正解{{actual}}{{via}} — {{result}}{{time}}"
