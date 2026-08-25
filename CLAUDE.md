@@ -452,12 +452,18 @@ unspecified seed stays random per mount, and restart/next-hand appends a counter
 trainers get their session score, per-decision clock and random seed from `lib/useSessionStats.ts`,
 which also owns "clearing the log resets the session".
 
+**A link names one hand, not every hand from here on** (`useLinkedHand`,
+`features/situation/useLinkedHand.ts`): every `use*Round` hook pairs a `handIndex` counter (bumped
+by "new hand"/"restart", reset whenever the decoded link changes identity — a share link, or a
+rewind, which is `setSearchParams` under a new `location.key`) with `fromLink` (`handIndex === 0`).
+Every branch that replays what the URL names — a pinned situation, a pinned wall, a replay log —
+must gate on `fromLink`, or "new hand" re-poses the link's hand forever instead of moving past it.
+`useRound.ts`'s `restartCount` is this same counter under its table-layer name.
+
 **Shanten is a continuous stream**, not one graded hand at a time: `submit()` grades, then bumps
 `handIndex` carrying `running` forward, so the next hand is dealt already revealed with the previous
 feedback in `lastResult` (which holds **its own tiles**, since the on-screen hand has moved on).
-There is no next-hand button; stop abandons the hand rather than pausing. **A link's pinned `hand`
-is honoured only at `handIndex === 0`**, so a shared hand — or a rewind, which resets the index — is
-posed once and the stream carries on.
+There is no next-hand button; stop abandons the hand rather than pausing.
 
 **The two efficiency trainers are two routes, not a checkbox**: `/efficiency-solo` is genuinely one
 seat (`createRound(wall, 1, …)`, dead wall and dora kept, no `<Table>`), `/efficiency` is a full

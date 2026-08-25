@@ -46,7 +46,6 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
   const log = useLog((s) => s.log)
   const stats = useSessionStats()
 
-  const [restartCount, setRestartCount] = useState(0)
   const [cumulativeLost, setCumulativeLost] = useState(0)
   const [cumulativeTotal, setCumulativeTotal] = useState(0)
   const [lastResult, setLastResult] = useState<TurnResult | null>(null)
@@ -180,11 +179,11 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
   function logReplay() {
     if (
       loggedReplay.current?.situation === situation &&
-      loggedReplay.current?.restartCount === restartCount
+      loggedReplay.current?.restartCount === table.restartCount
     ) {
       return
     }
-    loggedReplay.current = { situation, restartCount }
+    loggedReplay.current = { situation, restartCount: table.restartCount }
     const base = table.situation(seatIndex, [])
     // the deal itself, as its own row: its rewind link is the board as dealt, and its share
     // button is the one surface left for sending a fresh board — the page's own share pill is
@@ -211,7 +210,7 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     pending.current = undefined
     logReplay()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [situation, restartCount])
+  }, [situation, table.restartCount])
 
   // a fixed meld (ankan) counts as 3 tiles toward the 14 even though it isn't in `hand`/`drawn`
   const ownHand = splitDrawn(
@@ -265,9 +264,6 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     },
     situationQuery: () => encodeSituation(table.situation(seatIndex)),
     togglePause: () => (stats.paused ? stats.resume() : stats.pause()),
-    restart: () => {
-      table.restart()
-      setRestartCount((n) => n + 1)
-    },
+    restart: table.restart,
   }
 }

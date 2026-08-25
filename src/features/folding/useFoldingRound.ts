@@ -29,6 +29,7 @@ import { useSessionStats } from '../../lib/useSessionStats'
 import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
 import { useLog, type LogDetail, type LogEntry as UiLogEntry } from '../../store/log'
 import { resolveSanma } from '../situation/urlCodec'
+import { useLinkedHand } from '../situation/useLinkedHand'
 import type { Settings } from '../settings/settingsStore'
 import type { SeatConfig } from '../settings/tableSettings'
 import type { VerdictSeverity } from '../table/Verdict'
@@ -483,15 +484,7 @@ const IDLE: RoundOptions = {
 const NO_WALL: ParsedTile[] = []
 
 export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
-  const [handIndex, setHandIndex] = useState(0)
-  // handIndex counts "new situation" presses this mount, but a link (or a rewind out of the log)
-  // names one exact board, which only the index-0 build replays verbatim. Reset it whenever the
-  // link changes identity — the "adjust state while rendering" pattern the other trainers use
-  const [lastUrlData, setLastUrlData] = useState(urlData)
-  if (urlData !== lastUrlData) {
-    setLastUrlData(urlData)
-    setHandIndex(0)
-  }
+  const { handIndex, fromLink, next } = useLinkedHand(urlData)
   const stats = useSessionStats()
   // the board the search settled on. Identity-stable per round, which is what keeps `useRound`
   // from rebuilding underneath it every render
@@ -538,7 +531,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     // a link's wall is already an accepted board, so replay it as-is; only a hand-edited one (or a
     // fresh "new situation" request) falls through to a search
     const pinned =
-      urlData.wall.length > 0 && handIndex === 0
+      urlData.wall.length > 0 && fromLink
         ? buildRound(urlData.wall, board, options.seats, options.claims)
         : null
     const found = pinned ? Promise.resolve(pinned) : findRound(board, options.seats, options.claims)
@@ -793,7 +786,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     riichiTiles: table.riichiTiles,
     riichiArmed: table.riichiArmed,
     armRiichi: table.armRiichi,
-    next: () => setHandIndex((n) => n + 1),
+    next,
     paused: stats.paused,
     togglePause: () => (stats.paused ? stats.resume() : stats.pause()),
     situationQuery,

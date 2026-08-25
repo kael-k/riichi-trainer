@@ -6,6 +6,7 @@ import { deal, INITIAL_HAND_SIZE } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
 import { encodeSituation, type Situation } from '../situation/urlCodec'
+import { useLinkedHand } from '../situation/useLinkedHand'
 
 export type ShantenPath = 'standard' | 'chiitoitsu' | 'kokushi'
 
@@ -47,28 +48,18 @@ function computeBreakdown(hand: Hand): ShantenBreakdown {
 /** Drives a continuous stream of hands: reveal once, then guess after guess with
  *  the feedback for the last one alongside the hand already dealt. */
 export function useShantenRound(situation: Situation, sanma: boolean) {
-  const [handIndex, setHandIndex] = useState(0)
-  // handIndex counts hands dealt this mount, but a link (or a rewind out of the log) names one
-  // exact hand, which only the index-0 deal below shows. Reset it whenever the situation changes
-  // identity — the "adjust state while rendering" pattern the other trainers use
-  const [lastSituation, setLastSituation] = useState(situation)
-  // the dedupe ref below only tells hands apart by handIndex, which restarts at 0 for every new
-  // situation — reset it alongside the index so a fresh link's own hand 0 isn't skipped as "already
-  // logged" just because the previous situation's hand 0 was
-  const loggedDealIndex = useRef<number | undefined>(undefined)
-  if (situation !== lastSituation) {
-    setLastSituation(situation)
-    setHandIndex(0)
-    loggedDealIndex.current = undefined
-  }
+  const { handIndex, fromLink, next: advance } = useLinkedHand(situation)
+  // the dedupe ref pairs handIndex with the situation it belongs to, since handIndex alone
+  // restarts at 0 for every new situation — a plain handIndex check would skip a fresh link's own
+  // hand 0 as "already logged" just because the previous situation's hand 0 was
+  const loggedDeal = useRef<{ situation: Situation; handIndex: number } | undefined>(undefined)
   const stats = useSessionStats()
   const handRef = useRef<Hand>(undefined)
   const [state, setState] = useState<State>(() => nextHand())
   const log = useLog((s) => s.log)
 
   /** The deal, as its own log row — see the table hook's own `logReplay` for why every deal needs
-   *  one now that the page's own share pill is gone (T3). Keyed on `handIndex` rather than
-   *  `situation` (which does not move per hand in this stream) — see the reset above.
+   *  one now that the page's own share pill is gone (T3).
    *
    *  It draws no tiles: this is a boundary, and the graded row that follows already carries the
    *  hand. Two copies of one hand in a list read newest-first put the incoming hand's tiles
@@ -76,8 +67,10 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
    *  What it keeps is what only it can offer — the copy, rewind and share of a hand nobody has
    *  answered yet — plus the number, so a boundary in a reversed list says which hand it opens. */
   function logDealt(hand: ParsedTile[]) {
-    if (loggedDealIndex.current === handIndex) return
-    loggedDealIndex.current = handIndex
+    if (loggedDeal.current?.situation === situation && loggedDeal.current?.handIndex === handIndex) {
+      return
+    }
+    loggedDeal.current = { situation, handIndex }
     log({
       key: 'log.dealtHand',
       params: { hand: stats.totalCount + 1 },
@@ -99,7 +92,7 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
     const seed = `${situation.seed || stats.randomSeed}:${handIndex}`
     // a pinned hand is the hand the link names, not every hand from here on: it is shown once and
     // the stream carries on dealing from the seed, so a rewind doesn't freeze the trainer
-    if (handIndex === 0 && situation.hand?.length === INITIAL_HAND_SIZE) {
+    if (fromLink && situation.hand?.length === INITIAL_HAND_SIZE) {
       const hand = createHand()
       for (const t of situation.hand) addTile(hand, t.id)
       handRef.current = hand
@@ -145,7 +138,7 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
       // already back at zero by the render that conceals the hand
       stats.startClock()
       setState((s) => ({ ...s, revealed: false }))
-      setHandIndex((n) => n + 1)
+      advance()
     },
     submit: (guess: number) => {
       if (!state.revealed || !handRef.current) return
@@ -176,7 +169,7 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
       stats.record(correct, elapsed)
       // keep running: the feedback rides along with the hand dealt by the index bump
       setState((s) => ({ ...s, lastResult: { guess, actual, correct, hand: s.hand } }))
-      setHandIndex((n) => n + 1)
+      advance()
     },
   }
 }

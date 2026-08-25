@@ -200,6 +200,55 @@ describe('useScoringRound', () => {
     expect(result.current.round).toBeNull()
   })
 
+  // regression: a link (or a rewind, which pushes the same params) named exactly one hand, and
+  // `next()` used to keep re-posing it forever because the pinned branch had no handIndex guard
+  it('next() moves off a pinned situation onto a freshly generated hand', async () => {
+    const pinned: ScoringUrl = {
+      wall: [],
+      situation: {
+        concealed: parseTenhou('234567m456678p33s'),
+        melds: [],
+        ctx: {
+          round: HONOR,
+          seat: HONOR,
+          tsumo: false,
+          riichi: true,
+          doubleRiichi: false,
+          ippatsu: false,
+          haitei: false,
+          houtei: false,
+          rinshan: false,
+          chankan: false,
+          winTile: PIN + 7,
+        },
+        doraIndicators: [],
+        uraIndicators: [],
+        kita: 0,
+        honba: 0,
+      },
+    }
+    const result = await deal(pinned)
+    expect(result.current.situation!.concealed).toEqual(pinned.situation!.concealed)
+
+    act(() => result.current.next())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.situation!.concealed).not.toEqual(pinned.situation!.concealed)
+    expect(result.current.invalidLink).toBe(false)
+  })
+
+  // same regression, for a pinned wall rather than a pinned situation — the other branch that
+  // used to have no handIndex guard
+  it('next() moves off a pinned wall onto a freshly generated hand', async () => {
+    const wall = winningWall('pinned-wall-next-seed')
+    const result = await deal({ wall, situation: null })
+    const first = result.current.situation
+
+    act(() => result.current.next())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.situation).not.toEqual(first)
+    expect(result.current.invalidLink).toBe(false)
+  })
+
   it('falls back to a generated hand when the pinned situation has no legal win', async () => {
     const yakuless: ScoringUrl = {
       wall: [],

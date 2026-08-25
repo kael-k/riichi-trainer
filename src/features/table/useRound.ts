@@ -28,6 +28,7 @@ import {
   type TableSnapshot,
 } from '../../core/table'
 import { HONOR, type ParsedTile, type TileId } from '../../core/tiles'
+import { useLinkedHand } from '../situation/useLinkedHand'
 import { WINDS, type Situation } from '../situation/urlCodec'
 
 /**
@@ -108,7 +109,11 @@ function awaitingManual(state: RoundState): boolean {
 
 export function useRound(input: UseRoundInput) {
   const core = useRef<TableCore | undefined>(undefined)
-  const [restartCount, setRestartCount] = useState(0)
+  // `restartCount === 0` (`fromLink`) is "this build owes the link its wall/replay" — a restart
+  // moves past it, same rule as every other trainer's own hand counter (`useLinkedHand`). Not
+  // aliased to `restart` here: `drive` below has its own block-scoped `restart` (a mid-drive
+  // "redeal to this wall" command payload) that would otherwise shadow it.
+  const { handIndex: restartCount, fromLink, next: bumpRestart } = useLinkedHand(input.wall)
   // "the next discard declares riichi", armed from the UI's riichi button — the declaration rides
   // on the discard the reader was going to make anyway rather than needing its own call site
   const [riichiArmed, setRiichiArmed] = useState(false)
@@ -131,12 +136,6 @@ export function useRound(input: UseRoundInput) {
   // joined, not the array itself: a caller builds this fresh from its settings on every render, so
   // an identity dep would redeal the board each time it rendered
   const algorithmsKey = input.options.algorithms?.join()
-
-  const [lastWall, setLastWall] = useState(input.wall)
-  if (input.wall !== lastWall) {
-    setLastWall(input.wall)
-    setRestartCount(0)
-  }
 
   const handler = useRef<RoundEventHandler | undefined>(input.onEvent)
   handler.current = input.onEvent
@@ -275,7 +274,7 @@ export function useRound(input: UseRoundInput) {
    * drains the queue instead, once per distinct build.
    */
   function build(): TableCore {
-    const wall = restartCount === 0 ? input.wall : []
+    const wall = fromLink ? input.wall : []
     const c: TableCore = {
       round: createRound(wall, input.players, input.options),
       options: input.options,
@@ -288,7 +287,7 @@ export function useRound(input: UseRoundInput) {
     // a consumer rebuilds from one stream rather than needing a second path for links. A command
     // is not honoured mid-replay: the recording says what happened, and a handler cannot stop or
     // redeal a board that already played out this way.
-    const log = restartCount === 0 ? (input.replay ?? []) : []
+    const log = fromLink ? (input.replay ?? []) : []
     const consumed = replayLog(c.round, c.options, log, (event) => queued.current.push(event))
     replayed.current = log.slice(0, consumed)
     capture(c)
@@ -470,7 +469,10 @@ export function useRound(input: UseRoundInput) {
     armRiichi: setRiichiArmed,
     kita,
     kan,
-    restart: () => setRestartCount((n) => n + 1),
+    restart: bumpRestart,
+    /** Bumped by `restart`, reset whenever `input.wall` changes identity — a consumer's own
+     *  restart-dedupe key, so it doesn't need a second copy of this same counter. */
+    restartCount,
     /** A function, not a value: the log is replayed in the mount effect, which runs *after* the
      *  render that would have captured it — a consumer reading this from its own effect needs the
      *  live ref, not an empty array snapshotted a moment too early. */

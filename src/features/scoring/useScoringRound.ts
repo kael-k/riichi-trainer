@@ -15,6 +15,7 @@ import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog, type LogDetail } from '../../store/log'
 import type { Settings } from '../settings/settingsStore'
 import { completeWall } from '../../core/wall'
+import { useLinkedHand } from '../situation/useLinkedHand'
 import { encodeScoringUrl, encodeScoringWallUrl, type ScoringUrl } from './scoringUrl'
 
 /** The whole scoring settings section, plus the ruleset the round runs under (which a shared
@@ -229,16 +230,7 @@ async function findWall(
  *  shanten trainer's auto-advancing stream, `check` deliberately stops and waits for `next` —
  *  the feedback here (yaku list, fu breakdown) needs to be read, not just glanced at. */
 export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
-  const [handIndex, setHandIndex] = useState(0)
-  // handIndex is per-mount state that counts "next hand" presses, but a link (or a rewind out of
-  // the log) already names one exact hand — carrying a stale index into it would deal a different
-  // one on top of what the link named. Reset it whenever the link changes identity, the "adjust
-  // state while rendering" pattern
-  const [lastUrlData, setLastUrlData] = useState(urlData)
-  if (urlData !== lastUrlData) {
-    setLastUrlData(urlData)
-    setHandIndex(0)
-  }
+  const { handIndex, fromLink, next } = useLinkedHand(urlData)
   const stats = useSessionStats()
   const [state, setState] = useState<State | null>(null)
   const log = useLog((s) => s.log)
@@ -307,7 +299,9 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
 
   useEffect(() => {
     const id = ++request.current
-    const pinned = urlData.situation
+    // a link (or a rewind) names one exact hand, not every hand from here on — honoured only while
+    // `fromLink` (`useLinkedHand`), or `next()` would re-deal the same pinned hand forever
+    const pinned = fromLink ? urlData.situation : null
     const pinnedScore = pinned ? scoreSituation(pinned, options) : null
     if (pinned && pinnedScore) {
       stats.startClock()
@@ -329,7 +323,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
     const players = options.sanma ? 3 : 4
     const fallbackSeed = `${stats.randomSeed}:${handIndex}`
 
-    if (urlData.wall.length > 0) {
+    if (fromLink && urlData.wall.length > 0) {
       const outcome = playWall(urlData.wall, players, roundOptions(urlData.wall, options))
       if (outcome.state.win) {
         stats.startClock()
@@ -356,7 +350,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
       pending.current = {
         wall: found.wall,
         round: found.round,
-        invalidLink: urlData.wall.length > 0 || pinned !== null,
+        invalidLink: fromLink && (urlData.wall.length > 0 || pinned !== null),
       }
       onAgariCall(found.win)
     })
@@ -451,7 +445,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
     paused: stats.paused,
     togglePause: () => (stats.paused ? stats.resume() : stats.pause()),
     check,
-    next: () => setHandIndex((n) => n + 1),
+    next,
     situationQuery,
   }
 }
