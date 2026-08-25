@@ -3,16 +3,19 @@
 Four kinds of document, one job each. Nothing here duplicates another — if two disagree, the
 order below is the precedence.
 
-| Document                    | Answers                                        | Churn                       |
-| --------------------------- | ---------------------------------------------- | --------------------------- |
-| `CLAUDE.md` (repo root)     | **How the code works today**, in prose          | Every behaviour change      |
-| `docs/adr/`                 | **Why it works that way**, one decision per file | Only when a decision moves  |
-| `docs/STRUCTURE.md`         | **Where things live** — annotated source map     | When a directory is added   |
-| `docs/STATUS.md`            | **What is shipped, in flight, or broken**        | Every session               |
-| `PLAN-*.md` (repo root, uncommitted) | **What this session is doing right now** | Per work item, then deleted |
+| Document                             | Answers                                          | Churn                       |
+| ------------------------------------ | ------------------------------------------------ | --------------------------- |
+| `CLAUDE.md` (repo root)              | **How the code works today**, in prose           | Every behaviour change      |
+| `docs/adr/`                          | **Why it works that way**, one decision per file | Only when a decision moves  |
+| `docs/STRUCTURE.md`                  | **Where things live** — annotated source map     | When a directory is added   |
+| `docs/STATUS.md`                     | **What is shipped, in flight, or broken**        | Every session               |
+| `PLAN-*.md` (repo root, uncommitted) | **What this session is doing right now**         | Per work item, then deleted |
 
-`README.md` at the root is for humans arriving from GitHub: what the app is, its modes, and the
-situation-URL format. It is user-facing, not architecture.
+`README.md` at the root is the shop window for humans arriving from GitHub: what the app is, the
+routes, how to run it, and nothing else. No trainer walkthroughs, no settings tours, no rationale,
+no implementation detail — every one of those belongs in a document above. **Agents never edit it
+unprompted**: adding anything needs the user's explicit permission, asked first (in the plan, when
+there is one) and stating what would be added and why it cannot live in one of these files instead.
 
 ## Precedence
 

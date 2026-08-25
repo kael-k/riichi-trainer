@@ -15,7 +15,7 @@ Six trainers, each its own route ([ADR-0013](adr/0013-efficiency-split.md)):
 | `/efficiency-solo` | Stable. One seat, boardless                                          |
 | `/efficiency`      | Stable. Board, opponents, graded per discard                         |
 | `/folding`         | Stable. Ordinal danger, full betaori grading, partial credit         |
-| `/scoring`         | **Alpha** — yaku detection still being verified                      |
+| `/scoring`         | Stable. Han/fu/points grading, full breakdown in the log             |
 | `/lab`             | Free play, no grading. Wall authoring exists; the flow is still thin |
 
 Also shipped: situation URLs, i18n (en/ja/zh/it), glossary popovers, beginner/advanced split,

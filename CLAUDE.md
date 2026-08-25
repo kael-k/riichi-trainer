@@ -18,6 +18,15 @@ behind the `**Why:**` line each section ends with ([ADR-0031](docs/adr/0031-clau
 - **`docs/STRUCTURE.md`** — _where_ things live: an annotated source map and the dependency rules.
 - **`docs/STATUS.md`** — what is shipped, in flight, known broken, or out of scope on purpose. Read
   it before starting anything; update it when that changes.
+- **`README.md`** — the shop window, not documentation: what the project is, the routes, how to run
+  it, and nothing else. **No** per-trainer walkthroughs, no settings tours, no rationale, no
+  implementation detail, no reference tables — a reader looking at this repo already knows what a
+  shanten trainer is, and everything else lives in one of the files above or in the code. The
+  situation-URL params are `urlCodec.ts` itself; the two `wall=` examples worth quoting anywhere are
+  `src/features/situation/wallExamples.test.ts`, which proves them against the engine.
+  **Never edit it unprompted.** Adding to it needs the user's explicit permission, asked before the
+  edit (in the plan, when there is one) and stating exactly what would be added and why it cannot
+  live in one of those other files.
 
 `docs/README.md` explains the precedence between them and the working rules (one plan file, one task
 per commit). A `###` section here past ~10KB is carrying rationale that belongs in an ADR.
@@ -37,8 +46,6 @@ npm run tiles                        # regenerate SVG tile sprite (only when til
 npm run format                       # prettier
 ```
 
-`README.md` documents the situation-URL format; keep it current when behavior changes.
-
 ## Architecture
 
 Three layers: pure engine (`src/core/`), URL situation codec
@@ -54,7 +61,7 @@ the app; `components/tiles/Table.tsx` imports no game logic. Both rules are load
 - `Hand` (`hand.ts`) is a `Uint8Array(34)` of counts plus a fixed-meld count, and nothing else — no
   redness, no drawn tile.
 - Which physical copies a seat holds is **stored, not inferred**. `PlayerState.concealed:
-  ParsedTile[]` (`round.ts`) is the concealed hand as held, redness included, kept sorted **except
+ParsedTile[]` (`round.ts`) is the concealed hand as held, redness included, kept sorted **except
   for its last element** while `PlayerState.drawn?: ParsedTile` is set — that 14th tile is appended
   rather than sorted in, which is what lets a discard know tedashi from tsumogiri without inferring
   it.
@@ -200,12 +207,12 @@ silently skipped.
 **Permissions live entirely in `RoundOptions`, never in `Table`.** Four flags, each shared by every
 seat:
 
-| Flag     | Gates                                                                                                        |
-| -------- | ------------------------------------------------------------------------------------------------------------ |
+| Flag     | Gates                                                                                                         |
+| -------- | ------------------------------------------------------------------------------------------------------------- |
 | `wins`   | `tryWin` itself — `false` blocks ron **and** tsumo for every seat and drops the ron entry from `claimOptions` |
-| `calls`  | Whether an AI algorithm may pon/chi at all                                                                   |
-| `riichi` | `canDeclareRiichi`, for AI and manual seats alike                                                            |
-| `claims` | Whether a **manual** seat is _asked_ about another seat's discard                                            |
+| `calls`  | Whether an AI algorithm may pon/chi at all                                                                    |
+| `riichi` | `canDeclareRiichi`, for AI and manual seats alike                                                             |
+| `claims` | Whether a **manual** seat is _asked_ about another seat's discard                                             |
 
 Layering is legality (`RoundOptions`) → choice (the algorithm) → prompt (`claims`, manual seats
 only): with `wins: false` the engine never even asks an algorithm's `win`. A manual seat's own tsumo
@@ -269,7 +276,7 @@ reaching `ALGORITHMS`. Its five call sites are `ALGORITHMS[player.algorithm].<me
   `seen` and `threats` are **lazy getters**, since the call gate builds a `SeatView` for every seat
   on every discard.
 - `win(view, candidate)` is the one method with a second argument: `WinCandidate { tile, from?,
-  score }`, already priced by `tryWin` before it asks. `defense.win` is `() => false`.
+score }`, already priced by `tryWin` before it asks. `defense.win` is `() => false`.
 - Purity: same view ⇒ same choice, every ranking a total order.
 - `SeatView.concealed`/`drawn` name the tiles as actually held while `hand` stays counts-only for
   the maths. `SeatView.dealer` is `seatWind === HONOR`.
@@ -611,7 +618,7 @@ drawn through the same props.
 - **A ≥44px target on the felt comes from an `after:size-11` pseudo-element**, never a pixel height:
   a fixed `h-11` ran a phone-sized board's plate off the felt.
 - **The stage itself is capped from `ultrawide:` up** (`min-height: 800px` and `min-aspect-ratio:
-  2/1`) at `--stage-max` (`index.css`), so the docked session panel stops well short of a 21:9
+2/1`) at `--stage-max` (`index.css`), so the docked session panel stops well short of a 21:9
   screen's physical edge. **Everything docked to that right edge is a child of the capped box and
   inherits the cap — nothing re-derives the number for itself.** The settings sheet included: it
   portals into the stage element (`BoardStage`'s own ref, threaded as `SettingsButton`'s
