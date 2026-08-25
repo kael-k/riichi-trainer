@@ -16,8 +16,6 @@ Mobile-first riichi mahjong trainer: efficiency, shanten, scoring and defensive 
 
 ## Modes
 
-Every mode is its own route — no setting silently changes which trainer you are using.
-
 | Route              | Drill                                                                                         |
 | ------------------ | --------------------------------------------------------------------------------------------- |
 | `/shanten`         | Guess the shanten count of a dealt hand, timed, as a continuous stream                        |
