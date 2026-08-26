@@ -133,13 +133,16 @@ export function InfoButton({
   )
 }
 
-/** The stats HUD's own card — shared by its two placements (real flow on a narrow portrait phone,
- *  floating everywhere else) so the two can't drift out of style with each other. */
-function StatusCard({ children }: { children: ReactNode }) {
+/** The stats HUD's own card — shared by its placements (a strip above the board everywhere but
+ *  held sideways, a float in the right gutter there) so they can't drift out of style with each
+ *  other. `strip` lays the lines out across the card's full width instead of stacking them. */
+function StatusCard({ children, strip }: { children: ReactNode; strip?: boolean }) {
   return (
     <div
       data-testid="stats-hud"
-      className="flex flex-col gap-0.5 rounded-lg border border-neutral-200 bg-white/95 px-3 py-2 text-xs text-neutral-600 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400"
+      className={`flex gap-0.5 rounded-lg border border-neutral-200 bg-white/95 px-3 py-2 text-xs text-neutral-600 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/95 dark:text-neutral-400 ${
+        strip ? 'flex-row flex-wrap items-center justify-center gap-x-6 gap-y-1' : 'flex-col'
+      }`}
     >
       {children}
     </div>
@@ -361,14 +364,15 @@ export function BoardStage({
             className={`flex min-h-0 flex-1 flex-col short:pl-[calc(2.75rem+env(safe-area-inset-left))] ${flow && !board ? 'roomy:flex-initial' : ''}`}
           >
             {status && (
-              // Portrait: a row of its own, full width, above the board — upright there is no gutter
-              // beside the square to stand in (the board fills the width), and the room left over is
-              // all above and below it. Reserved rather than floating, so it can never sit on
-              // toimen's plate. It costs the square nothing: upright the square is limited by the
-              // width, not by the height this row takes. Hidden in the two shapes that *do* have a
-              // gutter (`short:`, `roomy:`), where the block inside the board area below stands in it.
-              <div className="shrink-0 p-2 pt-3 short:hidden roomy:hidden">
-                <StatusCard>{status}</StatusCard>
+              // A strip of its own, full width, above the board — every shape but held sideways.
+              // Upright there is no gutter beside the square to stand in (the board fills the
+              // width), and on a desktop a gutter float wraps to four cramped lines the moment the
+              // window is laptop-sized. Reserved rather than floating, so it can never sit on
+              // toimen's plate. The cost is the square's height on a desktop, where the square is
+              // height-limited — the price of a HUD that reads at a glance. Hidden held sideways
+              // (`short:`), where the float inside the board area below stands in the right gutter.
+              <div className="shrink-0 p-2 pt-3 short:hidden">
+                <StatusCard strip>{status}</StatusCard>
               </div>
             )}
             {/* `container-type: size` is what makes the square actually fit: `Table` caps itself at
@@ -388,12 +392,10 @@ export function BoardStage({
                     // stage stops reserving a screenful for six discards. It still shrinks when the
                     // content outgrows the room (`flex: 0 1 auto` plus `min-h-0`), which is the
                     // whole-wall case: the area fills, the wrapper scrolls, and `pb-6` is the gap
-                    // that keeps the last river row off the hand. `min-h-36` is for the floating HUD
-                    // that is absolutely positioned in here — a board area shorter than that card
-                    // would let it hang out over the hand. `container-type` drops to `inline-size`:
+                    // that keeps the last river row off the hand. `container-type` drops to `inline-size`:
                     // size containment would make this box ignore its own content and collapse, and
                     // `100cqh` belongs to `Table`'s square, which a flow page does not have.
-                    'relative flex min-h-0 flex-1 items-start justify-center px-2 pt-2 pb-16 [container-type:inline-size] roomy:min-h-36 roomy:flex-initial roomy:px-4 roomy:pt-4'
+                    'relative flex min-h-0 flex-1 items-start justify-center px-2 pt-2 pb-16 [container-type:inline-size] roomy:flex-initial roomy:px-4 roomy:pt-4'
                   : // `short:py-1`: held sideways this area is the whole viewport height, so the
                     // square sits flush on the screen's top edge and the seat drawn there has its
                     // hand ring, its melds and their shadows cut off by it. The padding is on the
@@ -413,39 +415,30 @@ export function BoardStage({
                 </div>
               )}
               {status && (
-                // Held sideways and on a window with room to spare, the square is limited by its
-                // height, so what is left over is a gutter down each side of it — the HUD stands in
-                // the left one rather than over the felt (a 338px board cannot spare its top-left
-                // corner: that is a seat's plate and a third of its river). Which edge of that
-                // gutter it hugs is the difference between the two:
-                //  - held sideways it tucks against the chrome column, `left-2`/`top-2` — the same
-                //    inset off the bar and off the screen's own top edge;
-                //  - `roomy:` it hangs off the square instead, its top-left corner on the square's
-                //    own top-left: `left: gutter - width` puts its right edge exactly on the board's
-                //    left edge (the gutter being how far the square starts from this box's left
-                //    edge), and `top-0` sits on the board's top edge, the area's own margin having
-                //    already pushed both clear of the chrome row above. Positioned from the left
-                //    with a `max(0px, …)` rather than anchored with `right`, so a window tall enough
-                //    to leave a gutter narrower than the card (a 4:3 desktop, or a tall window with
-                //    the panel docked) has it overlap the square's edge rather than slide off screen.
-                // Capped either way rather than filling the gutter it stands in: a card the width of
-                // the gutter beside a 338px felt is a HUD the size of the board, which reads as the
+                // Held sideways the square is limited by its height, so what is left over is a
+                // gutter down each side of it — the HUD stands in the *right* one rather than over
+                // the felt (a 338px board cannot spare its top-left corner: that is a seat's plate
+                // and a third of its river), `top-2`/`right-2` off the screen's own edges. The left
+                // is the chrome column's crowded edge; the right is the slot the verdict chip
+                // vacated when it unified on top-centre, and the two clear each other there (chip
+                // centred, card top-right). Every other shape takes the strip above the board.
+                // Capped rather than filling the gutter it stands in: a card the width of the
+                // gutter beside a 338px felt is a HUD the size of the board, which reads as the
                 // board being small. `--gutter` is measured off the same container the square
-                // measures itself against, and `roomy:inset-4` matches the board area's own margin
-                // so that both stay in the same coordinates.
-                <div className="pointer-events-none absolute inset-0 hidden [--gutter:calc((100cqw-min(100cqw,100cqh)*var(--board-scale,1))/2)] [--hud-w:clamp(7rem,calc(var(--gutter)-1rem),8rem)] short:block roomy:inset-4 roomy:block roomy:[--hud-w:clamp(7rem,calc(var(--gutter)-0.5rem),10rem)]">
-                  <div className="pointer-events-auto absolute top-2 left-2 w-[var(--hud-w)] roomy:top-0 roomy:left-[max(0px,calc(var(--gutter)-var(--hud-w)))]">
+                // measures itself against.
+                <div className="pointer-events-none absolute inset-0 hidden [--gutter:calc((100cqw-min(100cqw,100cqh)*var(--board-scale,1))/2)] [--hud-w:clamp(7rem,calc(var(--gutter)-1rem),8rem)] short:block">
+                  <div className="pointer-events-auto absolute top-2 right-2 w-[var(--hud-w)]">
                     <StatusCard>{status}</StatusCard>
                   </div>
                 </div>
               )}
               {!drawerOpen && noticeCompact && noticeShown && (
                 // pointer-events-none: a notice must never sit between the reader and a tile they are
-                // about to click, which is the whole difference between this and a dialog. Held
-                // sideways it stops floating over the board at all and stands in the right-hand
-                // gutter instead — sized so it cannot reach the square (the board is `100cqh` wide
-                // there, centred in what is left after the chrome column), because feedback that
-                // covers the tiles it is talking about is feedback you have to wait out. Compact here:
+                // about to click, which is the whole difference between this and a dialog. Top-centre
+                // in every shape, transient: held sideways it briefly covers the toimen hand ring,
+                // the same trade it already made over tiles on a desktop — it never blocks input,
+                // and feedback you have to wait out beats feedback that parks itself over the board.
+                // Compact here:
                 // a phone mid-drill has no room for `notice`'s tile lists and ukeire counts, and the
                 // full breakdown is a tap away in the panel. Gated on the *drawer* alone: that shape
                 // is over the top of the board, so a float under it is one nobody can see. A docked
@@ -457,9 +450,9 @@ export function BoardStage({
                 // The `pb-16` the flow area carries is the strip it lands in, so it never reaches
                 // the river above it either
                 <div
-                  className={`pointer-events-none absolute inset-x-2 top-2 flex justify-center short:inset-x-auto short:top-2 short:right-2 short:bottom-2 short:items-center ${flow && !board ? 'top-auto bottom-2' : ''}`}
+                  className={`pointer-events-none absolute inset-x-2 top-2 flex justify-center ${flow && !board ? 'top-auto bottom-2' : ''}`}
                 >
-                  <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 short:max-h-full short:max-w-[calc((100svw-2.75rem-100cqh)/2-0.5rem)] dark:bg-neutral-900/95 dark:ring-white/10">
+                  <div className="max-h-[45%] max-w-md overflow-y-auto rounded-xl bg-white/95 p-3 text-sm shadow-lg ring-1 ring-black/10 dark:bg-neutral-900/95 dark:ring-white/10">
                     {noticeCompact}
                   </div>
                 </div>

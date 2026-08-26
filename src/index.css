@@ -38,11 +38,10 @@
   --tile-w-base: var(--tile-w-raw);
   --tile-w: var(--tile-w-base);
   /* the stage's own width cap under `ultrawide:` (`BoardStage`) — the square (never wider than
-     its own height) plus the docked panel at its widest (28rem) plus a 6rem gutter for the HUD
-     that hangs off the board's left edge. Everything that docks to the stage's right edge — the
-     session panel, the log drawer, the settings sheet — is a child of that box and inherits the
-     cap; nothing re-derives this number for itself. */
-  --stage-max: calc(100svh + 34rem);
+     its own height) plus the docked panel at its widest (28rem). Everything that docks to the
+     stage's right edge — the session panel, the log drawer, the settings sheet — is a child of
+     that box and inherits the cap; nothing re-derives this number for itself. */
+  --stage-max: calc(100svh + 28rem);
   color-scheme: light;
 }
 :root.dark {

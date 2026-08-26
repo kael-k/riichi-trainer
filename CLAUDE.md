@@ -684,10 +684,12 @@ is a tap on its own row.
   persisted preference.
 
 **Feedback is one line, everywhere.** `status` (score/accuracy/clock) is **not** panel content — a
-clock behind a drawer tap goes unread — so it floats as a HUD in the board area opposite
-`noticeCompact`, at every viewport, panel open or shut; only the panel's **drawer** shape hides the
-float. **`status` is not `pointer-events-none` as a whole**: efficiency's ukeire line carries a live
-`GlossaryTerm` trigger, so only the wrapper is inert. **Severity is derived at display level from
+clock behind a drawer tap goes unread — so it is a HUD strip above the board at every viewport,
+panel open or shut, **except held sideways** (`short:`), where it floats in the board area's right
+gutter; only the panel's **drawer** shape hides it. **`status` is not `pointer-events-none` as a
+whole**: efficiency's ukeire line carries a live `GlossaryTerm` trigger, so only the wrapper is
+inert. The verdict chip is **top-centre, transient, `pointer-events-none` in every shape** — it
+briefly covers tiles rather than parking in a gutter. **Severity is derived at display level from
 the existing grade/partial credit, never a new grading concept** (`efficiencyVerdictSeverity` in
 `grade.ts`, red only on an actual shanten regression; `foldingVerdictSeverity` banding the partial
 credit `useSessionStats` already averages).
