@@ -1,4 +1,4 @@
-import { ExternalLink, Info, X } from 'lucide-react'
+import { ExternalLink, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,9 @@ interface InfoPopoverProps {
   dialogTitle: string
   text?: string
   wikiUrl?: string
-  /** Header icon; the `Info` glyph unless a caller has a better one for what it is showing. */
+  /** Header icon, for a caller with one that says what it is showing — the wall reveal's own.
+   *  There is no default: a 16px hollow `Info` circle beside a bold title read as a loading
+   *  spinner, and the trigger the reader just pressed carried that glyph already. */
   icon?: ReactNode
   /** Arbitrary dialog content, below `text` when both are given — the wall reveal draws rows of
    *  tiles in here rather than a paragraph. */
@@ -82,9 +84,7 @@ export function InfoPopover({
             >
               <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
                 <h2 className="flex items-center gap-2 font-semibold">
-                  <span className="shrink-0 text-neutral-400">
-                    {icon ?? <Info className="size-4" />}
-                  </span>
+                  {icon && <span className="shrink-0 text-neutral-400">{icon}</span>}
                   {dialogTitle}
                 </h2>
                 <button
