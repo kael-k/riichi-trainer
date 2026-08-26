@@ -132,7 +132,9 @@ export function EfficiencySoloPage() {
         )
       }
       end={
-        round.finished && (
+        // `drillOver` like the table app — solo never takes claims, so the two are always the
+        // same fact here, but the card's question is "is the drill over", not "13 tiles held"
+        round.drillOver && (
           <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
             <p className="font-semibold">
               {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}

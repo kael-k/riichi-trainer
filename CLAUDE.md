@@ -495,7 +495,10 @@ Other rules that hold across trainers:
 
 - `RoundState.visible` accumulates every face-up tile and feeds ukeire remaining counts.
 - **Player count is derived per round (`options.sanma ? 3 : 4`) — never hardcode 4/3.**
-- **"finished" is derived** (hand below 14 tiles), not stored.
+- **"finished" is derived** (hand below 14 tiles), not stored — and it is a tile count, never
+  "the drill is over": it is true for the whole window between the seat's discard and its next
+  draw, which a pending claim holds open. Anything that should appear only at drill end reads
+  `useEfficiencyDrill`'s **`drillOver`** (the tenpai stop or `snapshot.ended`) instead.
 - **Sanma is "these ids have zero copies", not a smaller id space.** `NUM_TILE_TYPES` stays 34 and
   the id layout is untouched: `buildWall`/`deal` skip 2m-8m via `inTileSet` (`core/tiles.ts`), and
   `improvingTiles`/`ukeire`/`evaluateDiscards` take a `sanma` flag so they never propose drawing a

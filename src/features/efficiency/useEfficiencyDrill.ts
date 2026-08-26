@@ -219,6 +219,15 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
   const finished = ownHand.tiles.length + (ownHand.drawn ? 1 : 0) + seatMelds.length * 3 < 14
   const tenpai =
     finished && shanten(handFromSnapshot(ownHand.tiles, ownHand.drawn, seatMelds.length)) <= 0
+  /** The drill is *over* — the tenpai stop fired, or the round genuinely ended. Distinct from
+   *  `finished`, which is a tile count: it is true for the whole window between the seat's own
+   *  discard and its next draw, and a pending claim holds that window open — the end card would
+   *  show over a board still waiting on an answer. The two conditions here are exact, not a
+   *  latch: the stop fires in the same turn the seat's 13 tiles read tenpai (and no claim can
+   *  pend on a seat whose discard just stopped the drill), and `snapshot.ended` is set only once
+   *  every claim has been answered. A replayed link lands on the same derivation, so a board
+   *  shared at its last turn opens with the card already up. */
+  const drillOver = tenpai || snapshot?.ended !== undefined
 
   return {
     table,
@@ -243,6 +252,7 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     replacements: snapshot?.replacements ?? 0,
     finished,
     tenpai,
+    drillOver,
     lastResult,
     cumulativeLost,
     cumulativeTotal,

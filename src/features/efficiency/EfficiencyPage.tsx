@@ -213,7 +213,9 @@ export function EfficiencyPage() {
         )
       }
       end={
-        round.finished && (
+        // `drillOver`, not `finished`: a pending claim holds the seat at 13 tiles mid-hand, and
+        // the card must not race the prompt it would have to share the board with
+        round.drillOver && (
           <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
             <p className="font-semibold">
               {t(round.tenpai ? 'efficiency.tenpaiReached' : 'efficiency.roundComplete')}

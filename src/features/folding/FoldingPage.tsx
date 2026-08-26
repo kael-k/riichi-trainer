@@ -354,7 +354,9 @@ export function FoldingPage() {
         )
       }
       end={
-        round.end && (
+        // a claim pending on the hand's final discard holds the round suspended with `end`
+        // already derivable — the card waits for the answer, never shares the board with it
+        round.end && !round.claim && (
           <div className="flex flex-col gap-3">
             <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
               <p className="font-semibold">

@@ -156,10 +156,22 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     eight viewports plus 667×375: one line everywhere but a portrait phone, chip and landscape
     HUD clear each other at every width.
 
+16. **The end card reads `drillOver`, not the tile count** — the efficiency "Round complete"
+    card raced a pending claim: `finished` (holding 13 tiles) is true for the whole window
+    between the seat's discard and its next draw, and a claim holds that window open with the
+    card up over the prompt. `useEfficiencyDrill` now derives `drillOver` — the tenpai stop or
+    the round's genuine end (`snapshot.ended`), exact rather than latched, since no claim can
+    pend on a seat whose discard just stopped the drill — and both efficiency pages point their
+    `end=` at it. Solo is claims-free, so the two are the same fact there. Folding's end card
+    gains the defensive `!round.claim` gate; the lab has no end-state UI. Regression tests pin a
+    wall where an opponent's 5m prompts the graded seat: no card while pending, none after a
+    pass, card once a taken pon leads to the tenpai discard, and a replayed link into the
+    drill's last turn still reaches it. Verified live at 1440×900 and 390×844 against a
+    wall+log link reproducing the audit scenario (the card shows pre-fix, never post).
+
 ## In flight
 
-- `plans/PLAN-ux-6-claims-endcard-race.md` (the efficiency end card racing a pending claim,
-  audit §B1) is written and unstarted — the last of the six `plans/UX-AUDIT.md` plans.
+- Nothing. All six `plans/UX-AUDIT.md` plans have landed.
 - `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per
   `docs/README.md`'s one-plan-file rule. `PLAN-seat-algorithms.md`, `UX-TESTS-BUG.md` and
   `UX-SPECS.md` are all gone from root too; the mobile-layout items `UX-TESTS-BUG.md` carried are

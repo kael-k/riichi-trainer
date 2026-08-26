@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { HONOR, parseTenhou, SOU } from '../../core/tiles'
-import { completeWall, INITIAL_HAND_SIZE, wallWithHand } from '../../core/wall'
+import { completeWall, INITIAL_HAND_SIZE, wallWithHand, wallWithHands } from '../../core/wall'
 import { useLog } from '../../store/log'
 import { decodeSituation, emptySituation, type Situation } from '../situation/urlCodec'
 import { NORTH, useEfficiencyRound, type EfficiencyOptions } from './useEfficiencyRound'
@@ -496,5 +496,102 @@ describe('useEfficiencyRound', () => {
     act(() => result.current.discard(index))
     expect(result.current.lastResult?.grade).toBe('warning')
     expect(result.current.lastResult?.missed).toEqual({ kind: 'kan', tile: HONOR + 2 })
+  })
+})
+
+describe('the end card and a pending claim', () => {
+  /** A wall where the graded seat gets *asked* about an opponent's discard mid-hand: seat 0
+   *  holds the 5m pair, seat 1 (also manual) holds the 5m it is made to discard, and seats 2/3
+   *  are pinned so their only efficiency-best discard is a tile seat 0 cannot take (triplets
+   *  plus a pair, drawing the second of the other stray). The draws are pinned inert so nobody
+   *  drifts to tenpai on their own. */
+  function claimWall() {
+    const wall = wallWithHands(
+      [
+        parseTenhou('55m12345678p11z9s'), // seat 0: the 5m pair, one away once the 9s goes
+        parseTenhou('123456789p113z5m'), // seat 1: the 5m it will discard
+        parseTenhou('9m339s222444666z'), // seats 2/3: throws 9m / 9s, nothing seat 0 holds
+        parseTenhou('9m339s333555777z'),
+      ],
+      false,
+      false,
+      'claim-race-seed',
+    )
+    // pinned by swap, never by overwrite: an overwrite would duplicate the copies the random
+    // fill already placed, and the link path's `validateWall` rejects a wall with a fifth copy
+    const wants = parseTenhou('9m7m9s9m8m') // seats 0, 1, then 2/3 and seat 0 again
+    for (let i = 0; i < wants.length; i++) {
+      const at = 4 * INITIAL_HAND_SIZE + i
+      const from = wall.findIndex(
+        (t, j) => j > at && t.id === wants[i].id && t.red === wants[i].red,
+      )
+      ;[wall[at], wall[from]] = [wall[from], wall[at]]
+    }
+    return wall
+  }
+
+  const CLAIMS: EfficiencyOptions = {
+    ...BARE,
+    claims: true,
+    seats: { modes: ['manual', 'manual', 'efficiency', 'efficiency'] },
+  }
+
+  /** Seat 0 throws the 9s; seat 1 draws and throws the 5m, which seat 0 can pon. */
+  function playToClaim(result: { current: ReturnType<typeof useEfficiencyRound> }) {
+    act(() => result.current.discard(10)) // 9s out of the hand — one away, not tenpai
+    expect(result.current.acting).toBe(1)
+    act(() => result.current.discard(0)) // seat 1's 5m
+    expect(result.current.claim?.seat).toBe(0)
+    expect(result.current.claim?.options.some((o) => o.kind === 'pon')).toBe(true)
+  }
+
+  it('does not show while a claim is pending, nor once a pass lets the drill continue', () => {
+    const situation = emptySituation()
+    situation.wall = claimWall()
+    const { result } = renderHook(() => useEfficiencyRound(situation, CLAIMS))
+    playToClaim(result)
+
+    // the race the audit caught: the seat holds 13 for the whole suspension, which is all
+    // `finished` ever meant — but the drill has not stopped, so the card must not be up
+    expect(result.current.finished).toBe(true)
+    expect(result.current.drillOver).toBe(false)
+
+    act(() => result.current.answer({ kind: 'pass' }))
+    expect(result.current.claim).toBeUndefined()
+    expect(result.current.finished).toBe(false) // drawn again — the drill is mid-hand
+    expect(result.current.drillOver).toBe(false)
+  })
+
+  it('shows once a taken claim leads to the tenpai discard', () => {
+    const situation = emptySituation()
+    situation.wall = claimWall()
+    const { result } = renderHook(() => useEfficiencyRound(situation, CLAIMS))
+    playToClaim(result)
+
+    act(() => result.current.answer({ kind: 'pon', from: [4, 4] }))
+    expect(result.current.claim).toBeUndefined()
+    expect(result.current.drillOver).toBe(false) // 14 held, still one away
+
+    act(() => result.current.discard(0)) // the 9m — leaves 123 456 78p + 11z + the meld: tenpai
+    expect(result.current.drillOver).toBe(true)
+    expect(result.current.tenpai).toBe(true)
+  })
+
+  it('still reaches the card from a shared link replayed into the drill’s last turn', () => {
+    const situation = emptySituation()
+    // dealt tenpai (three runs + a shanpon): the recorded turn is the tsumogiri that keeps it
+    situation.wall = wallWithHand(0, parseTenhou('123456789m1122z'), false, false, 'replay-stop')
+    situation.wall[4 * INITIAL_HAND_SIZE] = parseTenhou('9m')[0]
+    situation.log = [
+      { kind: 'discard', seat: 0, tile: parseTenhou('9m')[0], fromDrawn: true, riichi: false },
+    ]
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
+
+    // the replay hands the decision back rather than grading it: one more tenpai-preserving
+    // discard is the link's last turn, and the card follows it exactly as in live play
+    expect(result.current.drillOver).toBe(false)
+    act(() => result.current.discard(13))
+    expect(result.current.drillOver).toBe(true)
+    expect(result.current.tenpai).toBe(true)
   })
 })
