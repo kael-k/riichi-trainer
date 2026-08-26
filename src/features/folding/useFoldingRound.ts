@@ -792,7 +792,11 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
       if (tile) table.discard(tile, fromDrawn, declareRiichi)
     },
     answer: table.answer,
-    riichiTiles: table.riichiTiles,
+    /** Never any: the drill is fold-only, so the reader is not offered a declaration. Riichi
+     *  stays legal in the engine (`RULES.riichi`) because an AI seat declaring one is the whole
+     *  premise — it is the threat being folded against — and it locks every later discard to
+     *  tsumogiri, which would play the drill out for whoever declared it. */
+    riichiTiles: (): TileId[] => [],
     riichiArmed: table.riichiArmed,
     armRiichi: table.armRiichi,
     next,
