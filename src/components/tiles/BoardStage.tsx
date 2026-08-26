@@ -321,8 +321,12 @@ export function BoardStage({
             edge: on an ultrawide the buttons would otherwise sit a screen's width away from the
             board they act on. The cap grows for `labelled:`, where every button carries its name
             beside it and the row genuinely needs more than 48rem. Neither applies `short:`, where
-            the row is a 44px gutter column instead. */}
-          <div className="z-40 mx-auto flex w-full max-w-3xl shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] dark:bg-neutral-950 short:absolute labelled:max-w-5xl short:mx-0 short:max-w-none short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
+            the row is a 44px gutter column instead.
+            The air between the buttons goes on the narrowest phones: eight 44px targets plus the
+            row's own padding come to 368px, which an iPhone SE's 375px holds — it was the 28px of
+            gaps that pushed the settings gear off the end. The buttons themselves never shrink,
+            the 44px touch target being the invariant; the space between them is not. */}
+          <div className="z-40 mx-auto flex w-full max-w-3xl shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] max-[400px]:gap-0 dark:bg-neutral-950 short:absolute labelled:max-w-5xl short:mx-0 short:max-w-none short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
             <Link to="/" aria-label={t('common.back')} className={CHROME_BUTTON}>
               <ArrowLeft className="size-5" />
               <ChromeLabel>{t('common.back')}</ChromeLabel>
