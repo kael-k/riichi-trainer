@@ -1,6 +1,6 @@
 # Status
 
-_Last synthesised: 2026-08-24, against the git history through the log-menu wave and the pass that sized it._
+_Last synthesised: 2026-08-26, against the git history through the UX-audit plans (`plans/UX-AUDIT.md`)._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
@@ -121,9 +121,38 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     leading and the suji partner past the seam — replacing the bare tier names that restated the
     row above them. `log.folding.reason` and `folding.safestDiscard` are gone.
 
+12. **The scoring question stands where the felt would be** (`PLAN-ux-2`) — with `settings.table`
+    off, the invalid-link notice, the context bar and the hand move into `BoardStage`'s `children`
+    (centred in the board area) and the strip keeps the answer alone, packed two-up below `sm:`
+    and at 3rem where the screen is only as tall as a phone. Measured on WebKit at 375×667,
+    390×844, 844×390, 820×1180 and 1440×900: nothing scrolls in either the strip or the board
+    area and "Check answer" is above the fold at every one. The `settings.table` on path is
+    structurally unchanged.
+
+13. **The small-fixes bundle** (`PLAN-ux-3`) — the chrome row drops its inter-button gap below
+    400px (8 × 44px targets + 16px padding = 368px, an iPhone SE's 375px holds it, and the touch
+    target never shrinks); folding returns an empty `riichiTiles()` so the fold-only drill stops
+    offering the reader a declaration, engine legality untouched; the board area takes `short:py-1`
+    so the felt held sideways is not flush on the screen's top edge (`e2e/board.spec.ts` measures
+    the area's content box, so the square gives the 8px back rather than overflowing); the home
+    footer shows the short SHA with the whole one in `title`; `InfoPopover` has no default header
+    icon, the 16px hollow `Info` circle having read as a loading spinner.
+
+14. **Log prose draws the tiles it names** (`PLAN-ux-4`) — `splitTileCodes` tokenizes the
+    already-translated sentence and `LogSentence` draws each tenhou code where it stood, so `0p`
+    and `4z` are gone from every locale at once without touching the JSON. The follow-up that
+    landed with it: a tile is now drawn **once** per row, so the graded discard rows dropped the
+    strip that was repeating what their own sentence said, and `LogEntry.seam` went with it
+    (`LogDetail.seam` stays). `LogEntry.tiles` is left to what a sentence cannot name — the tenpai
+    row's waits, the shanten hand, a kan's rinshan replacement. A test walks the four locale JSONs
+    and fails if one ever contains a bare tile code of its own.
+
 ## In flight
 
-- Nothing. `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per
+- `plans/PLAN-ux-5-hud-verdict.md` (HUD and verdict-chip placement, audit §A1) and
+  `plans/PLAN-ux-6-claims-endcard-race.md` (the efficiency end card racing a pending claim, §B1)
+  are written and unstarted — the two the audit reserved for the maintainer's own session.
+- `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per
   `docs/README.md`'s one-plan-file rule. `PLAN-seat-algorithms.md`, `UX-TESTS-BUG.md` and
   `UX-SPECS.md` are all gone from root too; the mobile-layout items `UX-TESTS-BUG.md` carried are
   recorded under known defects below, and the CI gap under CI.
