@@ -320,16 +320,16 @@ export function BoardStage({
             Settings is last, after the page's own controls and the log toggle: it is the one
             button here that is about the app rather than about this hand — and it is pushed to
             the row's right-hand end (`ml-auto`), the corner it keeps on the home page.
-            Centred in a capped width like the home page's own column rather than run edge to
-            edge: on an ultrawide the buttons would otherwise sit a screen's width away from the
-            board they act on. The cap grows for `labelled:`, where every button carries its name
-            beside it and the row genuinely needs more than 48rem. Neither applies `short:`, where
-            the row is a 44px gutter column instead.
+            Run the full width of the column, on the same `px-2` as the HUD strip below it and the
+            hand strip at the foot — the three rows the stage stacks around the board all start on
+            the same edge, and a row centred in its own cap read as inset from a board that isn't.
+            The old cap was there to keep the buttons off an ultrawide's far edge; the stage's own
+            `ultrawide:max-w-[var(--stage-max)]` does that for every row at once now.
             The air between the buttons goes on the narrowest phones: eight 44px targets plus the
             row's own padding come to 368px, which an iPhone SE's 375px holds — it was the 28px of
             gaps that pushed the settings gear off the end. The buttons themselves never shrink,
             the 44px touch target being the invariant; the space between them is not. */}
-          <div className="z-40 mx-auto flex w-full max-w-3xl shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] max-[400px]:gap-0 dark:bg-neutral-950 short:absolute labelled:max-w-5xl short:mx-0 short:max-w-none short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
+          <div className="z-40 flex w-full shrink-0 items-center gap-1 bg-white px-2 pt-[env(safe-area-inset-top)] max-[400px]:gap-0 dark:bg-neutral-950 short:absolute short:inset-y-0 short:left-0 short:w-11 short:flex-col short:justify-center short:px-0 short:pt-[env(safe-area-inset-top)] short:pb-[env(safe-area-inset-bottom)] short:pl-[env(safe-area-inset-left)]">
             <Link to="/" aria-label={t('common.back')} className={CHROME_BUTTON}>
               <ArrowLeft className="size-5" />
               <ChromeLabel>{t('common.back')}</ChromeLabel>
