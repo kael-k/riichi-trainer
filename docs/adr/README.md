@@ -64,7 +64,8 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0030](0030-the-felt-sizes-itself.md)                       | The felt sizes itself: container units, and a scale only where there is room | Accepted   |
 | [0032](0032-one-efficiency-drill-core.md)                   | One drill core behind both efficiency hooks                  | Accepted   |
 | [0033](0033-settings-sections.md)                            | Settings sections are named for what a setting is about       | Accepted   |
-| [0034](0034-you-act-from-where-you-watch.md)                 | You act from where you watch; the felt says who owes a decision | Accepted   |
+| [0034](0034-you-act-from-where-you-watch.md)                 | You act from where you watch; the felt says who owes a decision | Amended by [0035](0035-efficiency-asks-for-no-calls.md) |
+| [0035](0035-efficiency-asks-for-no-calls.md)                 | Efficiency asks for no calls; transient controls float, never resize the board | Accepted |
 
 ### Process and product
 
@@ -76,7 +77,7 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0020](0020-no-back-compat-pre-release.md)                  | No backward compatibility while pre-release                  | Accepted  |
 | [0031](0031-claude-md-carries-how-not-why.md)               | `CLAUDE.md` carries how, not why                             | Accepted  |
 
-Numbering runs 0001–0034 with no gaps. Take the next free number, and never reuse one — not even
+Numbering runs 0001–0035 with no gaps. Take the next free number, and never reuse one — not even
 if an ADR is later withdrawn.
 
 Vocabulary note: every ADR up to 0021 was written when the engine called one deal a "match". Since

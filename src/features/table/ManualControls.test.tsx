@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import '../../features/i18n'
 import type { PendingClaim } from '../../core/round'
-import { ManualControls } from './ManualControls'
+import { ManualControls, manualControlsVisible } from './ManualControls'
 
 /** Seat 3 throws an 8m; seat 0 can chi it with the 6m7m it holds. */
 const CLAIM: PendingClaim = {
@@ -50,5 +50,29 @@ describe('ManualControls', () => {
     render(controls({ acting: 2, viewSeat: 0, onGoTo }))
     screen.getByRole('button', { name: /Go to/ }).click()
     expect(onGoTo).toHaveBeenCalledWith(2)
+  })
+})
+
+describe('manualControlsVisible', () => {
+  const BASE = { acting: 0, claim: undefined, riichiTiles: [], viewSeat: 0, ended: false }
+
+  it('is false in the shipped single-seat setup with nothing to show — the render-nothing case', () => {
+    expect(manualControlsVisible(BASE)).toBe(false)
+  })
+
+  it('is false once ended with nothing left to answer', () => {
+    expect(manualControlsVisible({ ...BASE, ended: true })).toBe(false)
+  })
+
+  it('stays true for an unanswered claim even once ended — the race `ended` must not win', () => {
+    expect(manualControlsVisible({ ...BASE, ended: true, claim: CLAIM })).toBe(true)
+  })
+
+  it('is true while a different seat owes the decision', () => {
+    expect(manualControlsVisible({ ...BASE, acting: 2 })).toBe(true)
+  })
+
+  it('is true with a riichi declaration on offer', () => {
+    expect(manualControlsVisible({ ...BASE, riichiTiles: [7] })).toBe(true)
   })
 })

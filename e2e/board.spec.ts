@@ -682,12 +682,12 @@ function twoFuritenBoard(): string {
   const tanki = ['1m', '2m', '3m', '4p', '5p', '6p', '7p', '8p', '9p', '2s', '3s', '4s', '5s']
   // spaced by 3, not 2: a chi needs two held tiles either side of the discard within a run of
   // three, which needs two held tiles 1 or 2 apart — spacing every held tile 3 apart makes that
-  // impossible for *any* discard, so this hand can never react to one. Claims are always on now
-  // (ADR-0034), and replay temporarily puts every seat on manual, so an unanswered claim
-  // opportunity anywhere in the log's own window aborts the replay rather than being silently
-  // skipped — the original 2/4/6/8 spacing left seat 1's own discard (5s, a fixed part of this
-  // scenario, not junk) chi-able via this hand's 4s+6s. Honours fill the rest: never chi-able at
-  // all, and single copies here can never pon either.
+  // impossible for *any* discard, so this hand can never react to one. `replayLog` forces claims
+  // on for its own duration regardless of the live setting (`round.ts`), and replay temporarily
+  // puts every seat on manual, so an unanswered claim opportunity anywhere in the log's own window
+  // aborts the replay rather than being silently skipped — the original 2/4/6/8 spacing left seat
+  // 1's own discard (5s, a fixed part of this scenario, not junk) chi-able via this hand's 4s+6s.
+  // Honours fill the rest: never chi-able at all, and single copies here can never pon either.
   const spaced = (last: string) => [
     '1m',
     '4m',
@@ -785,22 +785,16 @@ function tenpaiWithReplayedLogBoard(): string {
   return `/efficiency?wall=${tenhou([...deal, draw])}&log=D0${draw}T&seat=0&deadWall=1&aka=0&sanma=0`
 }
 
-/** The hand strip's *tiles*, without the ankan button that joins them whenever the hand holds
- *  four of a kind — it sits in the same strip and answers to the same role, so counting or
- *  clicking `getByRole('button')` raw makes any test over a randomly completed wall depend on the
- *  hand not happening to draw a quad. Its accessible name carries the label; a tile's is the tile
- *  alone. */
+/** The hand strip's tiles — a readable alias for the common case, now that the transient buttons
+ *  (kita/kan, the claim prompt) float over the board instead of sharing this strip with the hand
+ *  (`BoardStage`'s `controls`). Its accessible name carries the label; a tile's is the tile alone. */
 function handTiles(handStrip: Locator): Locator {
-  return handStrip.getByRole('button').filter({ hasNotText: 'Kan' })
+  return handStrip.getByRole('button')
 }
 
-/** Waits for the hand strip to reach a full 14-tile hand, declining any claim prompt that
- *  appears along the way — claims are always on now (ADR-0034), and the rest of this wall is
- *  completed at random (deliberately, per `tenpaiWithReplayedLogBoard`'s own comment), so a
- *  pair-heavy seat 0 occasionally gets offered a pon or a chi on an opponent's incidental
- *  discard. The engine suspends every turn until that is answered, so this has to answer it
- *  rather than merely outwait it. This test is about restart-after-replay, not the claims flow,
- *  so it declines and keeps waiting. */
+/** Waits for the hand strip to reach a full 14-tile hand. Efficiency asks no claims (ADR-0035),
+ *  so there is nothing to decline here any more; kept defensive in case a future trainer reusing
+ *  this helper still does. */
 async function waitForFullHand(page: Page, handStrip: Locator) {
   const pass = page.getByRole('button', { name: 'Pass' })
   await expect(async () => {
@@ -886,4 +880,142 @@ test('a declared seat may only throw the tile it just drew', async ({ page }) =>
   const hand = page.locator('div.flex.justify-center').last()
   await expect(hand.getByRole('img'), 'thirteen tiles plus the draw').toHaveCount(14)
   await expect(hand.getByRole('button'), 'only the drawn tile is live').toHaveCount(1)
+})
+
+/**
+ * Seat 0 holds an open triplet of 3s plus the 2s/4s kanchan either side of it; seat 3 — its
+ * kamicha, the only seat chi ever offers from — holds the fourth and last copy of 3s. Discarding
+ * it is simultaneously pon-able (2+ held), chi-able (the kanchan) and shaped like a daiminkan
+ * (3+ held), which the engine never offers to anyone regardless (`ClaimOption.kind` has no `'kan'`
+ * case) — one discard exercises all three named calls at once. Everyone else's tiles are single
+ * copies spaced 3 apart within every suit, which makes chi structurally impossible off any of
+ * *their* discards too (a run needs two held tiles within 2 of each other), so nothing but the
+ * engineered discard could ever be callable in the first place.
+ */
+function callableBoard(): string {
+  const seat0 = ['3s', '3s', '3s', '2s', '4s', '2m', '5m', '8m', '2p', '5p', '8p', '1z', '5z']
+  const spaced = (last: string) => [
+    '1m', '4m', '7m', '1p', '4p', '7p', '1s', '4s', '7s', '2z', '3z', '4z', last,
+  ]
+  const seat1 = spaced('9m')
+  const seat2 = spaced('9p')
+  const seat3 = spaced('3s') // the last copy — seat 0's kamicha, discarding straight into it
+  const deal = dealt([seat0, seat1, seat2, seat3])
+  return `/efficiency?wall=${tenhou(deal)}&seat=0&sanma=0`
+}
+
+test('efficiency never offers a call: chi, pon and daiminkan all stay unavailable', async ({
+  page,
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+
+  await page.goto(callableBoard())
+  await waitForStage(page)
+  const handStrip = page.getByTestId('hand-strip')
+
+  // seat 3 (North), seat 0's kamicha, manual too — "two seats seated next to each other" — so
+  // its discard is under this test's own control rather than the AI's
+  await page.getByRole('button', { name: 'N seat' }).click()
+  await page.getByRole('button', { name: 'Manual' }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  // seat 0's own turn: a filler, never touching the triplet or the kanchan. A tile button has no
+  // accessible name of its own (`TileButton`, `Tile.tsx`) — its `<Tile>` child does, and clicking
+  // that bubbles the same as tapping the glyph a reader actually sees
+  await handStrip.getByRole('img', { name: '2m' }).click()
+
+  // the AI seats (1, 2) play themselves out and the board lands on seat 3's turn
+  const goToNorth = page.getByRole('button', { name: 'Go to N' })
+  await expect(goToNorth).toBeVisible({ timeout: 10_000 })
+  await goToNorth.click()
+
+  // seat 3 discards the fourth 3s, straight into seat 0's kamicha-only chi eligibility
+  await handStrip.getByRole('img', { name: '3s' }).click()
+
+  // no prompt for chi, pon or kan ever appears, on any seat, at any point — play simply
+  // continues rather than suspending on an answer nobody is ever asked for
+  await expect(page.getByTestId('claim-prompt')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Pass' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Chi', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Pon', exact: true })).toHaveCount(0)
+  await expect(handStrip).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+/**
+ * A sanma seat given a closed kan and a kita at once: an open triplet of East plus a lone North
+ * dealt straight in, and the dealer's very first live draw is the fourth East — so the very first
+ * render of its turn already offers both together. Kita's own rinshan replacement, then the kan's,
+ * are pinned as the wall's own last two rinshan slots (popped tail-first, `core/round.ts`'s dead
+ * wall) rather than left to a random completion, so neither draw can hand back another North or
+ * East and reopen a button this test has already watched close.
+ */
+function kitaKanBoard(): string {
+  const sanmaKinds = KINDS.filter((kind) => kind[1] !== 'm' || kind === '1m' || kind === '9m')
+  const seat0 = ['1z', '1z', '1z', '4z', '1p', '4p', '7p', '1s', '4s', '7s', '1m', '9m', '2z']
+  const seat1 = ['2p', '5p', '8p', '2s', '5s', '8s', '1m', '9m', '3z', '5z', '6z', '7z', '2z']
+  const seat2 = ['3p', '6p', '9p', '3s', '6s', '9s', '1m', '9m', '3z', '4z', '5z', '6z', '7z']
+  const deal = dealt([seat0, seat1, seat2])
+  const live = ['1z'] // the dealer's first draw: the fourth East, kan-eligible on arrival
+  const rinshanTail = ['9p', '9s'] // the wall's last two rinshan slots, popped tail-first
+
+  const placed = [...deal, ...live, ...rinshanTail]
+  const left = new Map(sanmaKinds.map((kind) => [kind, 4]))
+  for (const tile of placed) left.set(tile, left.get(tile)! - 1)
+  const filler = [...left.entries()].flatMap(([kind, count]) =>
+    Array.from({ length: count }, () => kind),
+  )
+  // the dead wall is its own last 14: whatever is left fills the twelve slots this test never
+  // inspects, then the two pinned rinshan tiles
+  const dead = [...filler.splice(0, 12), ...rinshanTail]
+  const wall = [...deal, ...live, ...filler, ...dead]
+
+  expect(wall, 'the fixture wall is not a full sanma wall').toHaveLength(108)
+  for (const [kind, count] of left) expect(count, `${kind} is over-used`).toBeGreaterThanOrEqual(0)
+  return `/efficiency?wall=${tenhou(wall)}&seat=0&aka=0&sanma=1`
+}
+
+function expectSameBox(
+  a: { x: number; y: number; width: number; height: number } | null,
+  b: typeof a,
+  what: string,
+) {
+  expect(a, `${what}: box missing`).not.toBeNull()
+  expect(b, `${what}: box missing`).not.toBeNull()
+  expect(Math.abs(a!.x - b!.x), `${what}: x moved`).toBeLessThanOrEqual(1)
+  expect(Math.abs(a!.y - b!.y), `${what}: y moved`).toBeLessThanOrEqual(1)
+  expect(Math.abs(a!.width - b!.width), `${what}: width changed`).toBeLessThanOrEqual(1)
+  expect(Math.abs(a!.height - b!.height), `${what}: height changed`).toBeLessThanOrEqual(1)
+}
+
+test('a kita and a kan appearing and disappearing never resize the board or move the hand', async ({
+  page,
+}) => {
+  await page.goto(kitaKanBoard())
+  await waitForStage(page)
+
+  const board = page.getByTestId('board').first()
+  const handStrip = page.getByTestId('hand-strip')
+  const kita = page.getByRole('button', { name: 'Kita' })
+  const kan = page.getByRole('button', { name: 'Kan' })
+
+  // the turn opens with both already available — the dealer's first draw completed the quad
+  await expect(kita).toBeVisible()
+  await expect(kan).toBeVisible()
+  const boardBefore = await board.boundingBox()
+  const stripBefore = await handStrip.boundingBox()
+
+  await kita.click()
+  await expect(kita).toHaveCount(0)
+  await expect(kan).toBeVisible()
+  expectSameBox(await board.boundingBox(), boardBefore, 'the board, after Kita')
+  expectSameBox(await handStrip.boundingBox(), stripBefore, 'the hand strip, after Kita')
+
+  await kan.click()
+  await expect(kan).toHaveCount(0)
+  await expect(kita).toHaveCount(0)
+  expectSameBox(await board.boundingBox(), boardBefore, 'the board, after Kan')
+  expectSameBox(await handStrip.boundingBox(), stripBefore, 'the hand strip, after Kan')
 })

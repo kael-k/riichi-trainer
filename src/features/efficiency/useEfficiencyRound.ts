@@ -29,7 +29,8 @@ export interface EfficiencyOptions {
 
 /** Drives one efficiency round for the full table on `useEfficiencyDrill` — dealing, grading and
  *  session state all live there; this hook only decides this app's own `RoundOptions` (opponents
- *  call but never win, no danger to read, claims live) and adds the board-only fields
+ *  call but never win, no danger to read, the reader is never asked to call) and adds the
+ *  board-only fields
  *  `useEfficiencyDrill` has no opinion about, such as every seat's hands/melds and the claim
  *  prompt. Which seat is graded is decided here and nowhere else: `useRound` reports every seat's
  *  events and the drill ignores the ones that are not `seatIndex`'s, which is what lets a second
@@ -56,9 +57,10 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     riichi: false,
     wins: false,
     algorithms,
-    // always on: a manual seat is simply asked about another seat's discard (ADR-0034) — dropped
-    // the reader-facing checkbox, which read as confusing rather than as a real choice
-    claims: true,
+    // left unset (off): the drill grades exactly three actions — discard, kita, closed kan — and
+    // a pon/chi is none of them, so a manual seat is never asked about another seat's discard
+    // here (ADR-0035, amending ADR-0034's "efficiency and lab hardcode claims: true"). Ron was
+    // already unreachable (`wins: false`) and daiminkan is never modelled by the engine at all.
   }
 
   const drill = useEfficiencyDrill({

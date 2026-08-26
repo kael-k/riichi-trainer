@@ -14,7 +14,7 @@ import { useSettings } from '../settings/settingsStore'
 import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
-import { ManualControls } from '../table/ManualControls'
+import { ManualControls, manualControlsVisible } from '../table/ManualControls'
 import { Verdict } from '../table/Verdict'
 import {
   decodeFoldingUrl,
@@ -242,6 +242,17 @@ export function FoldingPage() {
   )
   const bottomConcealed = !viewingManual && !showOpponentHands
   const canAct = perspective === round.acting && !round.finished
+  const riichiTiles = round.riichiTiles()
+  // whether `controls` has anything to float at all — mirrors `ManualControls`' own "nothing to
+  // show" branches, so `BoardStage`'s positioned card is never rendered empty (and, being
+  // `pointer-events-auto`, never left standing as an invisible dead zone over the felt)
+  const showControls = manualControlsVisible({
+    acting: round.acting,
+    claim: round.claim,
+    riichiTiles,
+    viewSeat: perspective,
+    ended: round.finished,
+  })
 
   // how the session is going — passed to BoardStage's `status`, which floats it as a HUD over the board
   const scoreLines = (
@@ -308,12 +319,12 @@ export function FoldingPage() {
           activeSeat={round.finished ? undefined : round.acting}
         />
       }
-      hand={
-        <div className="flex flex-col gap-4">
+      controls={
+        showControls && (
           <ManualControls
             acting={round.acting}
             claim={round.claim}
-            riichiTiles={round.riichiTiles()}
+            riichiTiles={riichiTiles}
             riichiArmed={round.riichiArmed}
             onArmRiichi={round.armRiichi}
             onAnswer={round.answer}
@@ -321,20 +332,22 @@ export function FoldingPage() {
             onGoTo={setViewSeat}
             ended={round.finished}
           />
-          {/* centred on the board above it, not left-aligned in the page: the calls hang off
-                  the right of the hand, so a called hand would otherwise sit visibly off-centre
-                  from the felt its own seat is drawn on */}
-          <div className="flex justify-center">
-            <HandDisplay
-              tiles={bottomHand}
-              drawn={bottomDrawn}
-              concealed={bottomConcealed}
-              melds={round.melds[perspective]}
-              nuki={round.nuki[perspective]}
-              onTileClick={canAct ? (i) => round.discard(i) : undefined}
-              lockedToDrawn={round.riichi[round.acting]}
-            />
-          </div>
+        )
+      }
+      hand={
+        // centred on the board above it, not left-aligned in the page: the calls hang off the
+        // right of the hand, so a called hand would otherwise sit visibly off-centre from the
+        // felt its own seat is drawn on
+        <div className="flex justify-center">
+          <HandDisplay
+            tiles={bottomHand}
+            drawn={bottomDrawn}
+            concealed={bottomConcealed}
+            melds={round.melds[perspective]}
+            nuki={round.nuki[perspective]}
+            onTileClick={canAct ? (i) => round.discard(i) : undefined}
+            lockedToDrawn={round.riichi[round.acting]}
+          />
         </div>
       }
       // one notice per graded throw. Under `feedbackAtEnd` there is nothing to key off until

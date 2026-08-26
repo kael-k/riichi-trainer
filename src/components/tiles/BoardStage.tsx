@@ -34,11 +34,19 @@ interface BoardStageProps {
    *  their content goes through `children` instead, centred where the felt would be. Each seat's
    *  own info strip lives on the felt itself (`Table`'s `seatInfo`), not here. */
   board?: ReactNode
-  /** Your hand and the controls that belong to it (kita/kan, riichi, the claim prompt), along the
-   *  bottom edge of the stage the way a real table puts your tiles along your own edge of the
-   *  felt. Omitted by shanten: it has no felt, and puts its puzzle (tiles plus the guess controls)
-   *  through `board` instead so the stage centres it rather than pinning it to the hand strip. */
+  /** Your hand, along the bottom edge of the stage the way a real table puts your tiles along
+   *  your own edge of the felt. Omitted by shanten: it has no felt, and puts its puzzle (tiles
+   *  plus the guess controls) through `board` instead so the stage centres it rather than pinning
+   *  it to the hand strip. */
   hand?: ReactNode
+  /** Transient per-turn controls — the claim prompt, kita/kan, the riichi arm — floated over the
+   *  board's own bottom edge rather than laid out in the hand strip below it. The strip is
+   *  `shrink-0`, so anything given real layout there comes straight out of the board area's own
+   *  height (its square is `100cqh` of what the strip leaves): a claim prompt or a Kan button
+   *  appearing mid-hand would resize the felt, and the hand strip growing under it walks the hand
+   *  tiles up under the reader's finger. `undefined` renders nothing, so a trainer with nothing
+   *  transient to show (shanten, solo) pays for none of this. */
+  controls?: ReactNode
   /** The trainer's own score/accuracy/clock lines. A boxed HUD reserved above the board, top-left,
    *  rather than living in the session panel — a clock behind a drawer tap is a clock nobody reads.
    *  Real flow, not a float: the board is pushed down to make room for it rather than covering
@@ -188,6 +196,7 @@ function SessionPanel({ panel }: Pick<BoardStageProps, 'panel'>) {
 export function BoardStage({
   board,
   hand,
+  controls,
   status,
   noticeCompact,
   noticeKey,
@@ -464,14 +473,30 @@ export function BoardStage({
                   </div>
                 </div>
               )}
+              {controls && (
+                // bottom-centre, the mirror of `noticeCompact`'s top-centre float: the board area's
+                // own bottom edge *is* the hand strip's top edge, so this lands exactly where a
+                // claim prompt or the kita/kan row used to sit in flow, but costs the board no
+                // height when it appears or disappears. The same translucent card `noticeCompact`
+                // wraps its own content in — this now floats over whatever the felt is drawing
+                // underneath (tiles, a river, a seat plate), not the page's plain background, and
+                // wants the same contrast guarantee. `pointer-events-auto` only on the content — the
+                // wrapper must never intercept a tap meant for the felt under it
+                <div className="pointer-events-none absolute inset-x-2 bottom-2 flex justify-center">
+                  <div className="pointer-events-auto max-w-full overflow-x-auto rounded-xl bg-white/95 p-2 shadow-lg ring-1 ring-black/10 dark:bg-neutral-900/95 dark:ring-white/10">
+                    {controls}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* capped: the claim prompt and the kita/kan row make this strip taller some turns, and it
-            must take that out of its own scroll rather than out of the board. Always the bottom-
-            most (and, held sideways, still the full-width) row regardless of orientation, so it
-            carries the bottom inset (the home indicator) plus the side ones (a landscape notch)
-            rather than the chrome row above, which only ever owns one edge at a time */}
+          {/* Always the bottom-most (and, held sideways, still the full-width) row regardless of
+            orientation, so it carries the bottom inset (the home indicator) plus the side ones (a
+            landscape notch) rather than the chrome row above, which only ever owns one edge at a
+            time. Its own height no longer varies turn to turn — the claim prompt and the kita/kan
+            row float over the board instead (`controls` above) — so `max-h-[35svh]`/`overflow-auto`
+            here is only ever exercised by the hand itself wrapping on a narrow strip. */}
           <div
             data-testid="hand-strip"
             className="flex max-h-[35svh] shrink-0 justify-center overflow-auto pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] [container-type:inline-size]"

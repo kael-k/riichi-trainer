@@ -15,7 +15,7 @@ import type { GlossaryTermId } from '../i18n/glossary'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow } from '../settings/SettingsDialog'
-import { ManualControls } from '../table/ManualControls'
+import { ManualControls, manualControlsVisible } from '../table/ManualControls'
 import { useSettings } from '../settings/settingsStore'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
@@ -255,6 +255,19 @@ export function LabPage() {
 
   const wallError = situation.wallError
   const loaded = situation.wall.length > 0 && !wallError
+  const riichiTiles = loaded ? round.riichiTiles() : []
+  // whether `controls` has anything to float at all — mirrors `ManualControls`' own "nothing to
+  // show" branches, so `BoardStage`'s positioned card is never rendered empty (and, being
+  // `pointer-events-auto`, never left standing as an invisible dead zone over the felt)
+  const showControls =
+    loaded &&
+    manualControlsVisible({
+      acting: round.acting,
+      claim: round.claim,
+      riichiTiles,
+      viewSeat: perspective,
+      ended: round.finished,
+    })
 
   const settingsRows = (
     <>
@@ -385,34 +398,36 @@ export function LabPage() {
           />
         ) : undefined
       }
+      controls={
+        showControls && (
+          <ManualControls
+            acting={round.acting}
+            claim={round.claim}
+            riichiTiles={riichiTiles}
+            riichiArmed={round.riichiArmed}
+            onArmRiichi={round.armRiichi}
+            onAnswer={round.answer}
+            viewSeat={perspective}
+            onGoTo={setViewSeat}
+            ended={round.finished}
+          />
+        )
+      }
       hand={
         loaded ? (
-          <div className="flex flex-col gap-4">
-            <ManualControls
-              acting={round.acting}
-              claim={round.claim}
-              riichiTiles={round.riichiTiles()}
-              riichiArmed={round.riichiArmed}
-              onArmRiichi={round.armRiichi}
-              onAnswer={round.answer}
-              viewSeat={perspective}
-              onGoTo={setViewSeat}
-              ended={round.finished}
+          // centred on the board above it, not left-aligned in the page: the calls hang off the
+          // right of the hand, so a called hand would otherwise sit visibly off-centre from the
+          // felt its own seat is drawn on
+          <div className="flex justify-center">
+            <HandDisplay
+              tiles={bottomHand}
+              drawn={bottomDrawn}
+              concealed={bottomConcealed}
+              melds={round.melds[perspective]}
+              nuki={round.nuki[perspective]}
+              onTileClick={canAct ? (i) => round.discard(i) : undefined}
+              lockedToDrawn={round.riichi[round.acting]}
             />
-            {/* centred on the board above it, not left-aligned in the page: the calls hang off
-                the right of the hand, so a called hand would otherwise sit visibly off-centre
-                from the felt its own seat is drawn on */}
-            <div className="flex justify-center">
-              <HandDisplay
-                tiles={bottomHand}
-                drawn={bottomDrawn}
-                concealed={bottomConcealed}
-                melds={round.melds[perspective]}
-                nuki={round.nuki[perspective]}
-                onTileClick={canAct ? (i) => round.discard(i) : undefined}
-                lockedToDrawn={round.riichi[round.acting]}
-              />
-            </div>
           </div>
         ) : undefined
       }

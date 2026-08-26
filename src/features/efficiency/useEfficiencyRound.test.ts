@@ -515,13 +515,14 @@ describe('useEfficiencyRound', () => {
   })
 })
 
-describe('the end card and a pending claim', () => {
-  /** A wall where the graded seat gets *asked* about an opponent's discard mid-hand: seat 0
-   *  holds the 5m pair, seat 1 (also manual) holds the 5m it is made to discard, and seats 2/3
-   *  are pinned so their only efficiency-best discard is a tile seat 0 cannot take (triplets
-   *  plus a pair, drawing the second of the other stray). The draws are pinned inert so nobody
-   *  drifts to tenpai on their own. */
-  function claimWall() {
+describe('efficiency never offers a call, and the second manual seat', () => {
+  /** A wall where an opponent's discard is chi/pon-eligible for the graded seat: seat 0 holds
+   *  the 5m pair, seat 1 (also manual) holds the 5m it is made to discard, and seats 2/3 are
+   *  pinned so their only efficiency-best discard is a tile seat 0 cannot take (triplets plus a
+   *  pair, drawing the second of the other stray). Before ADR-0035 this put the graded seat's
+   *  claim prompt up (ADR-0034's "always ask"); `useEfficiencyRound` now leaves `claims` off, so
+   *  the discard is never offered at all. */
+  function claimableWall() {
     const wall = wallWithHands(
       [
         parseTenhou('55m12345678p11z9s'), // seat 0: the 5m pair, one away once the 9s goes
@@ -546,68 +547,38 @@ describe('the end card and a pending claim', () => {
     return wall
   }
 
-  // claims are always on now (ADR-0034), so this is just the two-manual-seat seed
-  const CLAIMS: EfficiencyOptions = {
+  const TWO_MANUAL: EfficiencyOptions = {
     ...BARE,
     seats: { modes: ['manual', 'manual', 'efficiency', 'efficiency'] },
   }
 
-  /** Seat 0 throws the 9s; seat 1 draws and throws the 5m, which seat 0 can pon. */
-  function playToClaim(result: { current: ReturnType<typeof useEfficiencyRound> }) {
-    act(() => result.current.discard(10)) // 9s out of the hand — one away, not tenpai
-    expect(result.current.acting).toBe(1)
-    act(() => result.current.discard(0)) // seat 1's 5m
-    expect(result.current.claim?.seat).toBe(0)
-    expect(result.current.claim?.options.some((o) => o.kind === 'pon')).toBe(true)
-  }
-
-  it('does not show while a claim is pending, nor once a pass lets the drill continue', () => {
+  it('never puts up a claim for a chi/pon-eligible discard', () => {
     const situation = emptySituation()
-    situation.wall = claimWall()
-    const { result } = renderHook(() => useEfficiencyRound(situation, CLAIMS))
-    playToClaim(result)
+    situation.wall = claimableWall()
+    const { result } = renderHook(() => useEfficiencyRound(situation, TWO_MANUAL))
 
-    // the race the audit caught: the seat holds 13 for the whole suspension, which is all
-    // `finished` ever meant — but the drill has not stopped, so the card must not be up
-    expect(result.current.finished).toBe(true)
-    expect(result.current.drillOver).toBe(false)
-
-    act(() => result.current.answer({ kind: 'pass' }))
+    act(() => result.current.discard(10)) // seat 0's 9s — one away, not tenpai
+    expect(result.current.acting).toBe(1)
+    act(() => result.current.discard(0)) // seat 1's 5m — pon/chi-eligible for seat 0
     expect(result.current.claim).toBeUndefined()
-    expect(result.current.finished).toBe(false) // drawn again — the drill is mid-hand
-    expect(result.current.drillOver).toBe(false)
   })
 
   it('leaves the second manual seat playable while the graded seat is frozen between turns', () => {
     // the freeze `NOTE-efficiency-multi-manual-freeze.md` found: `finished` is anchored to the
     // graded seat (0) and stays true for the whole window seat 1 (also manual) is acting in —
-    // `actingPlayable` is what the page's `canAct` reads instead (ADR-0034)
+    // `actingPlayable` is what the page's `canAct` reads instead (ADR-0034). Unrelated to claims,
+    // which share this fixture only because it already seeds a second manual seat.
     const situation = emptySituation()
-    situation.wall = claimWall()
-    const { result } = renderHook(() => useEfficiencyRound(situation, CLAIMS))
+    situation.wall = claimableWall()
+    const { result } = renderHook(() => useEfficiencyRound(situation, TWO_MANUAL))
 
     act(() => result.current.discard(10)) // seat 0's 9s — seat 1 draws and is due to act next
     expect(result.current.acting).toBe(1)
     expect(result.current.finished).toBe(true)
     expect(result.current.actingPlayable).toBe(true)
 
-    act(() => result.current.discard(0)) // seat 1's own 5m
-    expect(result.current.claim?.seat).toBe(0)
-  })
-
-  it('shows once a taken claim leads to the tenpai discard', () => {
-    const situation = emptySituation()
-    situation.wall = claimWall()
-    const { result } = renderHook(() => useEfficiencyRound(situation, CLAIMS))
-    playToClaim(result)
-
-    act(() => result.current.answer({ kind: 'pon', from: [4, 4] }))
+    act(() => result.current.discard(0)) // seat 1's own 5m — no claim to answer, play continues
     expect(result.current.claim).toBeUndefined()
-    expect(result.current.drillOver).toBe(false) // 14 held, still one away
-
-    act(() => result.current.discard(0)) // the 9m — leaves 123 456 78p + 11z + the meld: tenpai
-    expect(result.current.drillOver).toBe(true)
-    expect(result.current.tenpai).toBe(true)
   })
 
   it('still reaches the card from a shared link replayed into the drill’s last turn', () => {

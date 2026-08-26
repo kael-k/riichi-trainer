@@ -566,10 +566,12 @@ reads or needs.
   away from `'manual'` cannot move which seat is graded, only freeze grading in place.
 - `useTableSettings(app)`'s `seatsEnabled` only decides whether to render the panel; `seatConfig` is
   page-local and starts at `null` regardless, so nothing persisted runs under a hidden panel.
-- **Whether a manual seat is asked about another seat's discard is no longer a setting** — every
-  trainer that offers calls at all (efficiency, lab) hardcodes `RoundOptions.claims: true`; folding
-  leaves it unset, since the drill is fold-only. `RoundOptions.claims` itself, the engine-level flag
-  `claimOptions`/`answerClaim` read, is unchanged (ADR-0034).
+- **Whether a manual seat is asked about another seat's discard is no longer a setting** — lab
+  hardcodes `RoundOptions.claims: true` (free play, calling is part of the hand); folding leaves it
+  unset, since the drill is fold-only. **Efficiency leaves it unset too** (ADR-0035): the drill
+  grades exactly three actions — discard, kita, closed kan — and a pon/chi is none of them, so a
+  manual seat there is never asked about another seat's discard at all. `RoundOptions.claims`
+  itself, the engine-level flag `claimOptions`/`answerClaim` read, is unchanged (ADR-0034).
 
 `SeatButton` is the per-seat dialog (the efficiency/defend/manual row only now — "watch from here"
 moved out, see below), placed on the felt by `SeatStrip` through `Table`'s `seatInfo` prop.
@@ -593,7 +595,7 @@ is displaced out of its own river row and ringed amber (`SeatView.claiming`) rat
 repeating which tile in text; the prompt itself draws each call option as the meld it would make,
 the claimed tile ringed in place, `Ron` filled/emphatic and `Pass` a ghost button.
 
-**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0032](docs/adr/0032-one-efficiency-drill-core.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0034](docs/adr/0034-you-act-from-where-you-watch.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)
+**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0032](docs/adr/0032-one-efficiency-drill-core.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0034](docs/adr/0034-you-act-from-where-you-watch.md), [ADR-0035](docs/adr/0035-efficiency-asks-for-no-calls.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)
 
 ### UI
 
@@ -622,6 +624,16 @@ drawn through the same props.
 - **`seatInfoNodes` is computed once per seat**, not per render.
 - **The wind's fallback is `||`, never `??`**: a caller returning `seatsEnabled && <SeatStrip/>`
   hands back `false`, which a nullish check reads as a node and drops the wind entirely.
+- **Transient controls (the claim prompt, kita/kan, the riichi arm) render in `BoardStage`'s
+  `controls` overlay, never in the `hand` slot.** The hand strip is `shrink-0`, and its height feeds
+  the board area's `100cqh` the felt sizes itself against — a control laid out in flow there resizes
+  the felt when it appears or disappears, and walks the hand under the reader's finger since it sits
+  above `HandDisplay`. `controls` floats `absolute` over the board area's own bottom edge instead,
+  so it costs the board no layout either way (ADR-0035). A page must compute whether it has anything
+  to show (`ManualControls`' exported `manualControlsVisible`, plus its own kita/kan eligibility)
+  and pass `undefined` rather than a node that renders empty — `controls && …` alone can't tell an
+  empty turn from a busy one, and an empty card is still `pointer-events-auto`, a dead zone on the
+  felt underneath it.
 
 **Sizing — container units only, never pixels inside the square:**
 
@@ -774,4 +786,4 @@ Glossary rules (`features/i18n/glossary.ts`, marked inline with `<GlossaryTerm i
   the page's 16px instead of the board's `cqw` scale. It keeps the affordance — dotted underline and
   question mark, both sized in `cqw`.
 
-**Why:** [ADR-0025](docs/adr/0025-one-interface.md), [ADR-0026](docs/adr/0026-stats-on-the-board.md), [ADR-0027](docs/adr/0027-the-log-is-the-feedback.md), [ADR-0029](docs/adr/0029-calls-on-the-hand-ring.md), [ADR-0030](docs/adr/0030-the-felt-sizes-itself.md), [ADR-0019](docs/adr/0019-mobile-first-board.md), [ADR-0018](docs/adr/0018-beginner-defaults-advanced-depth.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)
+**Why:** [ADR-0025](docs/adr/0025-one-interface.md), [ADR-0026](docs/adr/0026-stats-on-the-board.md), [ADR-0027](docs/adr/0027-the-log-is-the-feedback.md), [ADR-0029](docs/adr/0029-calls-on-the-hand-ring.md), [ADR-0030](docs/adr/0030-the-felt-sizes-itself.md), [ADR-0035](docs/adr/0035-efficiency-asks-for-no-calls.md), [ADR-0019](docs/adr/0019-mobile-first-board.md), [ADR-0018](docs/adr/0018-beginner-defaults-advanced-depth.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)

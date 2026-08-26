@@ -2,6 +2,8 @@
 
 **Status:** Accepted · **Date:** 2026-08-26
 **Amends:** [ADR-0015](0015-what-persists.md) (drops `claims` as a `TableSettings` field)
+**Amended by** [ADR-0035](0035-efficiency-asks-for-no-calls.md): efficiency no longer hardcodes
+`claims: true` — only lab still does
 **Source:** `features/table/ManualControls.tsx`, `components/tiles/Table.tsx`,
 `features/table/SeatStrip.tsx`, `features/efficiency/useEfficiencyDrill.ts`
 

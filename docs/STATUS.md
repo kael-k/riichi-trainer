@@ -193,6 +193,32 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     box with the plate not wrapping, and a forced pon showed the displaced ringed river tile, the
     meld previews, and `Pass` as the quiet option.
 
+18. **Efficiency asks for no calls; transient controls float instead of resizing the board**
+    ([ADR-0035](adr/0035-efficiency-asks-for-no-calls.md), amending item 17/ADR-0034). Item 17's
+    "efficiency and lab always ask" was a regression nobody had weighed against what the drill
+    actually grades: `useEfficiencyDrill` scores discard/kita/closed-kan only, so a pon/chi offer
+    there answered a question the trainer isn't about. `useEfficiencyRound.ts` drops its hardcoded
+    `claims: true`; `calls: true` (opponents may still call each other) is untouched. Fixing it
+    live surfaced the layout bug the reported link also showed: `ManualControls` and the kita/kan
+    row lived in `BoardStage`'s hand strip, a `shrink-0` sibling of the `100cqh`-sized board area,
+    so a claim prompt or a Kan button appearing mid-hand resized the felt and, sitting above
+    `HandDisplay`, walked the hand under the reader's finger. `BoardStage` gained a `controls`
+    slot — an `absolute` overlay bottom-centred in the board area, the translucent card
+    `noticeCompact` already uses — and every board-rendering trainer moved its transient controls
+    into it. `ManualControls` exports `manualControlsVisible` so a page can tell "nothing to show"
+    from "a node that renders empty" and pass `undefined` rather than float a `pointer-events-auto`
+    dead zone over the felt; efficiency and solo's kita/kan row switched from `options.sanma`
+    (true the whole game) to precise eligibility for the same reason.
+    New coverage: `e2e/board.spec.ts` gains a regression test with two seats set manual live
+    through the seat panel, one discard shaped to be pon-, chi- and daiminkan-eligible at once,
+    asserting no prompt ever appears (daiminkan is never offered to anyone regardless — the engine
+    models no called kan at all); and a sanma fixture giving one seat a closed kan and a kita
+    together, its two rinshan replacements pinned, asserting the board and hand-strip boxes never
+    move across all three states, on every viewport project. `ManualControls.test.tsx` gains direct
+    cases for `manualControlsVisible`; `useEfficiencyRound.test.ts`'s two claim-pending tests, now
+    unreachable in efficiency, are deleted, and its multi-manual-seat freeze test is kept,
+    decoupled from claims (it was never really about them).
+
 ## In flight
 
 - Nothing. All six `plans/UX-AUDIT.md` plans have landed, and the multi-manual freeze the

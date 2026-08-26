@@ -42,6 +42,11 @@ export function EfficiencySoloPage() {
   for (const t of round.hand) counts.set(t.id, (counts.get(t.id) ?? 0) + 1)
   if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
   const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
+  const hasNorth = options.sanma && round.hand.some((tile) => tile.id === NORTH)
+  // precise eligibility, not `options.sanma` alone — that stays true all game, so a broader
+  // check would float `BoardStage`'s positioned (`pointer-events-auto`) card over the board with
+  // nothing in it once neither applies, leaving an invisible dead zone over the felt
+  const showKitaKan = !round.finished && (hasNorth || kanEligible.length > 0)
 
   const { canBack, back } = useLogBack()
 
@@ -86,41 +91,40 @@ export function EfficiencySoloPage() {
         </>
       }
       chrome={<TrainerToggles {...toggles} />}
+      controls={
+        showKitaKan && (
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {hasNorth && (
+              <button
+                type="button"
+                onClick={round.kita}
+                className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+              >
+                {t('efficiency.kitaButton')}
+              </button>
+            )}
+            {kanEligible.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => round.kan(id)}
+                className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+              >
+                <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
+                  <Tile id={id} />
+                </span>
+                {t('efficiency.kanButton')}
+              </button>
+            ))}
+          </div>
+        )
+      }
       hand={
-        <div className="flex flex-col gap-4">
-          <HandDisplay
-            tiles={round.hand}
-            drawn={round.drawn}
-            onTileClick={round.finished ? undefined : (i) => round.discard(i)}
-          />
-
-          {(options.sanma || kanEligible.length > 0) && !round.finished && (
-            <div className="flex flex-wrap gap-2">
-              {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
-                <button
-                  type="button"
-                  onClick={round.kita}
-                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                >
-                  {t('efficiency.kitaButton')}
-                </button>
-              )}
-              {kanEligible.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => round.kan(id)}
-                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                >
-                  <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
-                    <Tile id={id} />
-                  </span>
-                  {t('efficiency.kanButton')}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <HandDisplay
+          tiles={round.hand}
+          drawn={round.drawn}
+          onTileClick={round.finished ? undefined : (i) => round.discard(i)}
+        />
       }
       noticeKey={round.lastResult ? round.cumulativeTotal : undefined}
       noticeCompact={

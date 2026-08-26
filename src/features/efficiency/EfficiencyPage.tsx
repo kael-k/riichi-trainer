@@ -10,7 +10,7 @@ import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
-import { ManualControls } from '../table/ManualControls'
+import { ManualControls, manualControlsVisible } from '../table/ManualControls'
 import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
@@ -88,6 +88,22 @@ export function EfficiencyPage() {
   // true for the whole window a second manual seat plays its own turn in — the freeze
   // `NOTE-efficiency-multi-manual-freeze.md` found (ADR-0034)
   const canAct = perspective === round.acting && round.actingPlayable
+  const hasNorth = options.sanma && round.hand.some((tile) => tile.id === NORTH)
+  const showKitaKan = canAct && (hasNorth || kanEligible.length > 0)
+  const riichiTiles = round.riichiTiles()
+  // whether `controls` has anything to float at all — `showKitaKan` covers the kita/kan row,
+  // `manualControlsVisible` mirrors `ManualControls`' own "nothing to show" branches exactly, so
+  // the positioned card in `BoardStage` is never rendered empty (and, being `pointer-events-auto`,
+  // never left standing as an invisible dead zone over the felt)
+  const showControls =
+    showKitaKan ||
+    manualControlsVisible({
+      acting: round.acting,
+      claim: round.claim,
+      riichiTiles,
+      viewSeat: perspective,
+      ended: round.drillOver,
+    })
   const bottomMelds =
     perspective === round.acting
       ? round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles }))
@@ -236,60 +252,63 @@ export function EfficiencyPage() {
           </div>
         )
       }
-      hand={
-        <div className="flex flex-col gap-4">
-          <ManualControls
-            acting={round.acting}
-            claim={round.claim}
-            riichiTiles={round.riichiTiles()}
-            riichiArmed={round.riichiArmed}
-            onArmRiichi={round.armRiichi}
-            onAnswer={round.answer}
-            viewSeat={perspective}
-            onGoTo={setViewSeat}
-            ended={round.drillOver}
-          />
-          {/* centred on the board above it, not left-aligned in the page: the calls hang off
-                  the right of the hand, so a called hand would otherwise sit visibly off-centre
-                  from the felt its own seat is drawn on */}
-          <div className="flex justify-center">
-            <HandDisplay
-              tiles={bottomHand}
-              drawn={bottomDrawn}
-              concealed={bottomConcealed}
-              melds={bottomMelds}
-              nuki={round.nuki[perspective]}
-              onTileClick={canAct ? (i) => round.discard(i) : undefined}
-              lockedToDrawn={round.riichi[round.acting]}
+      controls={
+        showControls && (
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <ManualControls
+              acting={round.acting}
+              claim={round.claim}
+              riichiTiles={riichiTiles}
+              riichiArmed={round.riichiArmed}
+              onArmRiichi={round.armRiichi}
+              onAnswer={round.answer}
+              viewSeat={perspective}
+              onGoTo={setViewSeat}
+              ended={round.drillOver}
             />
+            {showKitaKan && (
+              <>
+                {hasNorth && (
+                  <button
+                    type="button"
+                    onClick={round.kita}
+                    className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                  >
+                    {t('efficiency.kitaButton')}
+                  </button>
+                )}
+                {kanEligible.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => round.kan(id)}
+                    className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+                  >
+                    <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
+                      <Tile id={id} />
+                    </span>
+                    {t('efficiency.kanButton')}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
-
-          {(options.sanma || kanEligible.length > 0) && canAct && (
-            <div className="flex flex-wrap gap-2">
-              {options.sanma && round.hand.some((tile) => tile.id === NORTH) && (
-                <button
-                  type="button"
-                  onClick={round.kita}
-                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                >
-                  {t('efficiency.kitaButton')}
-                </button>
-              )}
-              {kanEligible.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => round.kan(id)}
-                  className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                >
-                  <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
-                    <Tile id={id} />
-                  </span>
-                  {t('efficiency.kanButton')}
-                </button>
-              ))}
-            </div>
-          )}
+        )
+      }
+      hand={
+        // centred on the board above it, not left-aligned in the page: the calls hang off the
+        // right of the hand, so a called hand would otherwise sit visibly off-centre from the
+        // felt its own seat is drawn on
+        <div className="flex justify-center">
+          <HandDisplay
+            tiles={bottomHand}
+            drawn={bottomDrawn}
+            concealed={bottomConcealed}
+            melds={bottomMelds}
+            nuki={round.nuki[perspective]}
+            onTileClick={canAct ? (i) => round.discard(i) : undefined}
+            lockedToDrawn={round.riichi[round.acting]}
+          />
         </div>
       }
       wall={

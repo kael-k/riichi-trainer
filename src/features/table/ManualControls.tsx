@@ -33,6 +33,24 @@ interface ManualControlsProps {
   ended?: boolean
 }
 
+/** Whether `ManualControls` would render anything for these props — the same three branches its
+ *  own render checks below, kept in exact lockstep with them (there is no other caller of this
+ *  logic). Exported so a caller floating it in a positioned card (`BoardStage`'s `controls`, which
+ *  every board-rendering trainer uses) can skip the card entirely rather than showing an empty,
+ *  still-`pointer-events-auto` one — a `<ManualControls/>` element is truthy regardless of what it
+ *  renders to, so `controls && …` alone can't tell an empty turn from a busy one. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function manualControlsVisible({
+  acting,
+  claim,
+  riichiTiles,
+  viewSeat,
+  ended,
+}: Pick<ManualControlsProps, 'acting' | 'claim' | 'riichiTiles' | 'viewSeat' | 'ended'>): boolean {
+  if (ended && !claim) return false
+  return acting !== viewSeat || !!claim || riichiTiles.length > 0
+}
+
 /**
  * The controls a manual seat needs beyond picking a tile: the riichi declaration and the claim
  * prompt on someone else's discard — both live only on the seat that actually owes the decision,
@@ -80,6 +98,7 @@ export function ManualControls({
   if (claim) {
     return (
       <div
+        data-testid="claim-prompt"
         role="group"
         aria-label={t('seats.claimPrompt', {
           wind: t(`wind.${WINDS[claim.seat]}`),
