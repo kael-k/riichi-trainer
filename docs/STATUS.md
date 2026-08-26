@@ -147,11 +147,19 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     row's waits, the shanten hand, a kan's rinshan replacement. A test walks the four locale JSONs
     and fails if one ever contains a bare tile code of its own.
 
+15. **The HUD is a strip above the board; the chip is top-centre** (`PLAN-ux-5`) — the desktop
+    HUD's left-gutter float (four cramped lines on a laptop window) is gone: every viewport but
+    `short:` takes the portrait shape, a full-width strip above the board (`StatusCard`'s `strip`
+    layout), at ~5-7% of the height-limited square. Held sideways the HUD floats in the *right*
+    gutter, the slot the verdict chip vacated — the chip is top-centre and transient in every
+    shape now. `--stage-max` lost the 6rem HUD-gutter term. Measured on WebKit at the audit's
+    eight viewports plus 667×375: one line everywhere but a portrait phone, chip and landscape
+    HUD clear each other at every width.
+
 ## In flight
 
-- `plans/PLAN-ux-5-hud-verdict.md` (HUD and verdict-chip placement, audit §A1) and
-  `plans/PLAN-ux-6-claims-endcard-race.md` (the efficiency end card racing a pending claim, §B1)
-  are written and unstarted — the two the audit reserved for the maintainer's own session.
+- `plans/PLAN-ux-6-claims-endcard-race.md` (the efficiency end card racing a pending claim,
+  audit §B1) is written and unstarted — the last of the six `plans/UX-AUDIT.md` plans.
 - `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per
   `docs/README.md`'s one-plan-file rule. `PLAN-seat-algorithms.md`, `UX-TESTS-BUG.md` and
   `UX-SPECS.md` are all gone from root too; the mobile-layout items `UX-TESTS-BUG.md` carried are
