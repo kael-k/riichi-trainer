@@ -344,26 +344,23 @@ export function ScoringPage() {
     </div>
   )
 
+  // which tile completed the hand decides the wait fu and menzen ron, so it is part of the
+  // question, not part of the answer — always ringed, never gated on the reveal. The slot beside
+  // the hand means "you drew this", so it is only right for a tsumo: on a ron the tile is a
+  // discard, and the board already rings it in the river it was discarded into. With no board up
+  // there is nothing to point at, so it stays here.
+  //
+  // The calls sit at the right-hand end of the hand, not on a row of their own under it — an open
+  // hand is read left to right along one line, and stacked they read as a second hand. True with
+  // the board up or down: the felt drops this seat's melds for exactly this reason (see `seats`).
   const handBlock = (
-    <div className="flex flex-col gap-2">
-      {/* which tile completed the hand decides the wait fu and menzen ron, so it is
-                    part of the question, not part of the answer — always ringed, never gated on
-                    the reveal. The slot beside the hand means "you drew this", so it is only
-                    right for a tsumo: on a ron the tile is a discard, and the board already rings
-                    it in the river it was discarded into. With no board up there is nothing to
-                    point at, so it stays here. */}
-      {/* the calls sit at the right-hand end of the hand, not on a row of their own
-                    under it — an open hand is read left to right along one line, and stacked
-                    they read as a second hand. True with the board up or down: the felt drops
-                    this seat's melds for exactly this reason (see `seats` above) */}
-      <HandDisplay
-        tiles={restConcealed}
-        drawn={showWinTileInHand ? winTile : undefined}
-        drawnClassName="rounded-sm outline-2 outline-red-500"
-        melds={round.situation.melds}
-        nuki={handNuki}
-      />
-    </div>
+    <HandDisplay
+      tiles={restConcealed}
+      drawn={showWinTileInHand ? winTile : undefined}
+      drawnClassName="rounded-sm outline-2 outline-red-500"
+      melds={round.situation.melds}
+      nuki={handNuki}
+    />
   )
 
   // the strip holds this row alone with the felt off, and everything else with it up — which is
