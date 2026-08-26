@@ -186,11 +186,10 @@ function RowActions({ entry, number }: { entry: LogEntry; number: number }) {
  *  Sized in `em`, not off the log's own `--tile-w-base`: these ride inside a line of prose rather
  *  than standing in a row of their own, so they scale with the sentence. `align-middle` puts them
  *  on the text's own centre line — a tile has no baseline of its own for the line box to hang it
- *  from — and the **negative vertical margin is what keeps the row the height it was**: an
- *  inline-level box contributes its *margin* box to the line, so pulling 0.35em off each side
- *  brings a 2em-tall tile back under the 1.375 leading. Without it every wrapped line carrying a
- *  tile grew ~6px and a three-line row grew eleven. The tile draws past its own line either way,
- *  which is the point: it stays big enough to read.
+ *  from. `1.5em` wide is `2em` tall (`aspect-3/4`), which is why the row's prose is set on 2em
+ *  leading: the line box has to be the tile's own height or a sentence that wraps draws its
+ *  second line straight through the tiles on its first. A tile is worth the row being taller —
+ *  shrinking it to the text's line instead puts it under the ~20px the tile art stops reading at.
  *
  *  Nothing is done here for a screen reader on purpose: `Tile` already carries `role="img"` and
  *  the tile's translated name, so the sentence is *read out* better than it was — "discarded red
@@ -203,7 +202,7 @@ function LogSentence({ text }: { text: string }) {
         typeof part === 'string' ? (
           part
         ) : (
-          <span key={i} className="inline-flex -my-[0.35em] align-middle [--tile-w:1.5em]">
+          <span key={i} className="inline-flex align-middle [--tile-w:1.5em]">
             <Tile id={part.id} red={part.red} />
           </span>
         ),
@@ -281,7 +280,12 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
         </div>
       )}
       <div className="flex items-start gap-1">
-        <p className="min-w-0 flex-1 pt-0.5 text-xs leading-snug text-neutral-500 tabular-nums">
+        {/* `leading-[2]` is the tile's own height (`LogSentence`), not a typographic choice:
+            the sentence draws tiles inline, so a line box shorter than one overlaps the line
+            below it. Rows with no tile in their prose ride the same leading rather than each
+            row setting its own — a log column whose line spacing changed per row reads worse
+            than one that is uniformly airy. */}
+        <p className="min-w-0 flex-1 pt-0.5 text-xs leading-[2] text-neutral-500 tabular-nums">
           {/* the ordinal leads the sentence instead of holding a column of its own — it is only
               ever read against `log.rewound`'s "Rewound to entry {{number}}" */}
           <span className="mr-1.5 text-[10px] text-neutral-400">{number}</span>
