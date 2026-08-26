@@ -129,8 +129,12 @@ export function HomePage() {
                   {t('home.sourceLink')}
                 </a>
               </p>
-              <p className="font-mono break-all">
-                {t('home.buildCommit', { sha: __COMMIT_SHA__ })}
+              {/* the short sha is what shows, the whole one is the `title` (and what
+                `vite.config.ts` deliberately keeps): a bug report needs the exact build, but
+                forty hex characters wrap mid-hash on a phone and read as line noise. Seven is
+                what every git UI shows and is unambiguous in practice */}
+              <p className="font-mono" title={__COMMIT_SHA__}>
+                {t('home.buildCommit', { sha: __COMMIT_SHA__.slice(0, 7) })}
               </p>
             </footer>
           </div>
