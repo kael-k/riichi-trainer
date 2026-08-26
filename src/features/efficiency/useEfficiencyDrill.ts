@@ -194,7 +194,6 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
       log({
         key: 'log.replay',
         params: { tile: tileCode(entry.tile.id, entry.tile.red) },
-        tiles: [entry.tile],
         situation: encodeSituation({ ...base, log: table.replayed().slice(0, i) }),
       })
     })

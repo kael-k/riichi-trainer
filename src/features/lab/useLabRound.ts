@@ -91,7 +91,6 @@ export function useLabRound(situation: Situation, options: LabOptions) {
       log({
         key: 'log.lab.discard',
         params: { turn: core.round.turn, tile: tileCode(event.tile.id, event.tile.red) },
-        tiles: [event.tile],
         situation: encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength))),
       })
     }

@@ -14,8 +14,8 @@ export interface LogDetail {
   /** Rendered through the existing `UkeireTiles` (per-tile remaining counts). */
   ukeire?: UkeireTile[]
   /** Index in `tiles` where the *evidence* for the line begins — the subject tile leads, what
-   *  explains it follows past a hairline seam. Same field, same meaning as `LogEntry.seam`;
-   *  absent means the line's tiles are all one thing. */
+   *  explains it follows past a hairline seam; absent means the line's tiles are all one
+   *  thing. */
   seam?: number
   /** Draws the line as a muted section header ("Yaku", "Fu") rather than a detail line. Headers
    *  carry no tiles — they are the grouping, not a fact about the hand. */
@@ -30,13 +30,11 @@ export interface LogEntry {
   /** i18next key; translated at render time so a language switch re-renders correctly. */
   key: string
   params?: Record<string, unknown>
-  /** Tiles rendered inline after the text, e.g. the discard being described. */
+  /** Tiles drawn in a strip above the row, for **what the sentence cannot name**: the waits
+   *  behind "waiting on", the hand a shanten guess was made against, the rinshan tile a kan
+   *  drew. A tile the sentence already names is drawn by the sentence itself (`splitTileCodes`),
+   *  so putting it here as well draws it twice, one line apart. */
   tiles?: ParsedTile[]
-  /** Index in `tiles` where the *better* tile the entry names begins — the row draws a hairline
-   *  seam there, so your own choice and the one that beat it read as the two halves of a diff.
-   *  Absent means the row's tiles are all one thing. Set by whoever built `tiles`, since only it
-   *  knows which end is which. */
-  seam?: number
   /** When set, the log row gets a copy button that copies this text (e.g. tenhou notation). */
   copyText?: string
   /** Situation query string for the drill as it stood *before* the logged action — when set,

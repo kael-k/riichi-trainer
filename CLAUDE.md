@@ -663,13 +663,22 @@ is a tap on its own row.
 - **A detail line's three optional fields say what it _is_, and each has one owner.** `header`
   makes it the muted label above a list — it is a claim that a list follows, so it is written only
   when one does, and it **draws no tiles**. `tone: 'error'` is decided where the wrong-answer
-  _phrasing_ is decided (`fieldDetail`), never derived a second time. `seam` is `LogEntry.seam`'s
-  meaning on a line: the subject tile leads, the evidence follows past the rule — so a tier whose
-  evidence _is_ the subject (genbutsu) must drop it rather than draw it twice.
+  _phrasing_ is decided (`fieldDetail`), never derived a second time. `seam` splits the line's
+  tiles: the subject tile leads, the evidence follows past the rule — so a tier whose evidence
+  _is_ the subject (genbutsu) must drop it rather than draw it twice. A row has no such field;
+  only a detail line does.
 - **Ordinals are assigned before filtering**, so `log.rewound`'s "Rewound to entry {{number}}" stays
   honest.
 - **`log.dealt`/`log.dealtHand` carry no tiles** — a hand is drawn on exactly one row, the one that
   grades it.
+- **A tile is drawn once per row, and the sentence draws its own.** `splitTileCodes`
+  (`formatLogEntry.ts`) tokenizes the **already-translated** sentence and `LogSentence` draws every
+  tenhou code where it stood, so all four locales are fixed without touching the JSON
+  ([ADR-0018](docs/adr/0018-beginner-defaults-advanced-depth.md)). Two consequences: `LogEntry.tiles`
+  carries only what the sentence **cannot** name — the tenpai row's waits, the shanten hand, the
+  rinshan tile a kan drew — and a locale string must never contain a bare code (`0p`, `4z`) of its
+  own, or it silently becomes a tile. `formatLogEntry.test.ts` walks the four JSONs and fails if one
+  ever does.
 - **Its rewind/share buttons are the one sharing surface a trainer has** — no page-level copy-link.
 - The `All | Mistakes` filter is component-local `useState`: a way of reading the list now, not a
   persisted preference.

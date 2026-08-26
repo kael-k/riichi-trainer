@@ -193,5 +193,30 @@ describe('grade', () => {
       const rows = efficiencyLogRows(result, undefined, { id: HONOR + 2, red: false })
       expect(rows.some((row) => row.key === 'log.efficiency.missedKan')).toBe(true)
     })
+
+    it('leaves the tiles its own sentence names to the sentence', () => {
+      // the row's prose carries tenhou codes that `splitTileCodes` draws where they stand, so a
+      // strip above the row would be the same tiles a second time, one line apart
+      const hand = handFrom('123456789m11223p')
+      const mistake = gradeAction(statsFor(hand, 'discard', 8), 3, false)
+      const rows = efficiencyLogRows(mistake, { id: 10, red: false }, { id: 8, red: false })
+
+      for (const row of rows.filter((r) => r.key !== 'log.efficiency.tenpai')) {
+        expect(row.tiles, row.key).toBeUndefined()
+      }
+      // the waits are the exception the rule is for: nothing in "waiting on" names them
+      const tenpai = rows.find((r) => r.key === 'log.efficiency.tenpai')
+      if (tenpai) expect(tenpai.tiles?.length).toBeGreaterThan(0)
+    })
+
+    it('keeps the kan pair, whose replacement draw the sentence cannot name', () => {
+      const hand = handFrom('123456m78s22p3333z')
+      const result = gradeAction(statsFor(hand, 'kan', HONOR + 2), 4, false)
+      const rows = efficiencyLogRows(result, { id: 10, red: false }, { id: HONOR + 2, red: false })
+      expect(rows[0].tiles).toEqual([
+        { id: HONOR + 2, red: false },
+        { id: 10, red: false },
+      ])
+    })
   })
 })

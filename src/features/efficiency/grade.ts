@@ -157,7 +157,12 @@ export function discardDetail(result: TurnResult): LogDetail[] {
  *  same param shape and same tile order today's hook already produces. `drawn` is the tile drawn
  *  this turn for a plain discard, or the kita/kan's own replacement (rinshan) draw — callers of
  *  `gradeAction` for kita/kan grade before that replacement is known, so they call this once it
- *  is (see each app's `onUserDraw`). */
+ *  is (see each app's `onUserDraw`).
+ *
+ *  Only the rows whose sentence cannot name its own tiles carry `tiles`: the tenpai row's waits,
+ *  and the kita/kan pair, where the strip is the only place the rinshan replacement is drawn. A
+ *  discard's own sentence draws every tile it names (`splitTileCodes`), so a strip above it would
+ *  be the same two or three tiles a second time, one line apart. */
 export function efficiencyLogRows(
   result: TurnResult,
   drawn: ParsedTile | undefined,
@@ -170,7 +175,6 @@ export function efficiencyLogRows(
 
   if (kind === 'discard') {
     const drawnCode = drawn ? tileCode(drawn.id, drawn.red) : undefined
-    const drawnTiles = drawn ? [drawn] : []
     if (grade !== 'error') {
       rows.push({
         key: drawnCode ? 'log.efficiency.discardBestDrew' : 'log.efficiency.discardBest',
@@ -181,7 +185,6 @@ export function efficiencyLogRows(
           ukeire: yours.ukeireCount,
           shanten: yours.shanten,
         },
-        tiles: [...drawnTiles, tile],
         severity,
         detail,
       })
@@ -197,9 +200,6 @@ export function efficiencyLogRows(
           bestUkeire: best.ukeireCount,
           shanten: yours.shanten,
         },
-        tiles: [...drawnTiles, tile, { id: best.discard, red: false }],
-        // the row's last tile is the one that beat yours, so the seam falls right before it
-        seam: drawnTiles.length + 1,
         severity,
         detail,
       })
@@ -208,7 +208,6 @@ export function efficiencyLogRows(
       rows.push({
         key: missed.kind === 'kita' ? 'log.efficiency.missedKita' : 'log.efficiency.missedKan',
         params: { turn, tile: tileCode(missed.tile) },
-        tiles: [{ id: missed.tile, red: false }],
         severity: 'warning',
       })
     }

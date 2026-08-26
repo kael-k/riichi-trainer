@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { HONOR, PIN, SOU } from '../../core/tiles'
 import type { LogEntry } from '../../store/log'
 import { formatLogEntry, splitTileCodes } from './formatLogEntry'
+import en from './locales/en.json'
+import it_ from './locales/it.json'
+import ja from './locales/ja.json'
+import zh from './locales/zh.json'
 import i18n from '.'
 
 /** Only the tiles, in the order the sentence names them. */
@@ -65,6 +69,26 @@ describe('splitTileCodes', () => {
     ]
     for (const lng of ['en', 'ja', 'zh', 'it']) {
       expect(tiles(formatLogEntry(row, i18n.getFixedT(lng))), lng).toEqual(expected)
+    }
+  })
+})
+
+describe('the locales the tokenizer runs over', () => {
+  /** Every string in a translation file, with the path that reaches it. */
+  function* strings(node: unknown, path: string): Generator<[string, string]> {
+    if (typeof node === 'string') yield [path, node]
+    else if (node && typeof node === 'object')
+      for (const [key, value] of Object.entries(node)) yield* strings(value, `${path}.${key}`)
+  }
+
+  it('contains no bare tile code of its own', () => {
+    // `splitTileCodes` runs over the *finished* sentence, so a translation carrying a token
+    // shaped like a tile code has it silently drawn as a tile. Nothing does today; this is what
+    // says so the day someone writes "1z" into a string rather than passing it as a param.
+    for (const [name, locale] of Object.entries({ en, it: it_, ja, zh })) {
+      for (const [path, text] of strings(locale, name)) {
+        expect(text, path).not.toMatch(/\b(0[mps]|[1-9][mps]|[1-7]z)\b/)
+      }
     }
   })
 })

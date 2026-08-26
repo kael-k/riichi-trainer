@@ -245,8 +245,7 @@ function DetailLine({ detail }: { detail: LogDetail }) {
       {tiles.length > 0 && (
         <span className="flex items-center">
           <Tiles tiles={tiles.slice(0, seam)} />
-          {/* the subject tile, then a rule, then what explains it — the same seam a row draws
-              between your own choice and the one that beat it */}
+          {/* the subject tile, then a rule, then what explains it */}
           {seam < tiles.length && (
             <span className="ml-1.5 flex items-center border-l border-neutral-200 pl-1.5 dark:border-neutral-700">
               <Tiles tiles={tiles.slice(seam)} />
@@ -266,7 +265,6 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
   const [expanded, setExpanded] = useState(false)
   const detail = entry.detail
   const tiles = entry.tiles ?? []
-  const seam = entry.seam ?? tiles.length
   return (
     <li className="relative py-1 pr-1 pl-3">
       {/* the rail, on the list's own left edge rather than a column indented past the ordinal:
@@ -279,13 +277,7 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
         // the tiles get the row's whole width: no ordinal gutter ahead of them and no action
         // cluster beside them, which is what lets a full hand read on one line
         <div className="flex flex-wrap items-center">
-          <Tiles tiles={tiles.slice(0, seam)} />
-          {/* two tiles either side of a rule is the diff — no arrow glyph needed to say it */}
-          {seam < tiles.length && (
-            <span className="ml-1.5 flex items-center border-l border-neutral-200 pl-1.5 dark:border-neutral-700">
-              <Tiles tiles={tiles.slice(seam)} />
-            </span>
-          )}
+          <Tiles tiles={tiles} />
         </div>
       )}
       <div className="flex items-start gap-1">
