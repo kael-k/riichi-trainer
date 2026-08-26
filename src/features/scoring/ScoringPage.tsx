@@ -33,24 +33,39 @@ const FLAG_KEYS = [
   'chankan',
 ] as const
 
+/** How the answer row is packed when the strip below the board holds it and nothing else — the
+ *  boardless presentation. There it has to fit whole, and it does not at the comfortable size: the
+ *  strip is capped at 35svh, which three fields plus the submit overflow on a 667px-tall phone and
+ *  a dealer tsumo's four fields overflow on any phone. So the fields take half a line each while
+ *  the screen is too narrow for one row, and drop from 3.5rem to 3rem on a screen only as tall as
+ *  a phone — over the 44px touch target either way.
+ *
+ *  With the felt up this row shares the strip with the hand and is left exactly as it was: the
+ *  question is then the board's to answer, and that presentation stays byte-for-byte unchanged. */
+const TIGHT_LABEL = 'grow basis-[calc(50%-0.375rem)] sm:basis-0 short:basis-0'
+const TIGHT_HEIGHT = '[@media(max-height:680px)]:min-h-12'
+const TIGHT_INPUT = `${TIGHT_HEIGHT} [@media(max-height:680px)]:pt-4 [@media(max-height:680px)]:text-base`
+
 /** One numeric answer field; the value is read at submit from the form's `FormData`. */
 function NumberField({
   name,
   label,
   step,
   autoFocus,
+  tight,
 }: {
   name: string
   label: string
   step?: number
   autoFocus?: boolean
+  tight?: boolean
 }) {
   return (
     // the label is a hint inside the field rather than a word parked beside it: "Han" against an
     // empty box says the same thing in a third of the width, which is what lets the fields stand
     // in one row on anything wider than a phone held upright. It rides up to the field's top edge
     // once there is a value to read, so the question never disappears behind the answer
-    <label className="relative flex min-w-28 flex-1 flex-col">
+    <label className={`relative flex min-w-28 flex-col ${tight ? TIGHT_LABEL : 'flex-1'}`}>
       <input
         type="number"
         name={name}
@@ -61,7 +76,7 @@ function NumberField({
         // `placeholder=" "`: `:placeholder-shown` is the only pure-CSS read of "this field is
         // empty", and it needs a placeholder to shadow
         placeholder=" "
-        className="peer min-h-14 w-full rounded-lg border border-neutral-300 bg-transparent px-3 pt-5 pb-1 text-lg tabular-nums [appearance:textfield] focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:focus:border-neutral-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className={`peer min-h-14 w-full rounded-lg border border-neutral-300 bg-transparent px-3 pt-5 pb-1 text-lg tabular-nums [appearance:textfield] focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:focus:border-neutral-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${tight ? TIGHT_INPUT : ''}`}
       />
       <span className="pointer-events-none absolute top-1 left-3 text-xs text-neutral-500 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:translate-y-0 peer-focus:text-xs">
         {label}
@@ -270,6 +285,154 @@ export function ScoringPage() {
     </>
   )
 
+  // Everything the question is made of, built once here and placed by whichever presentation is
+  // up. With the felt on, all of it rides in the hand strip, the board above it carrying the
+  // round's own context. With the felt off the strip was carrying the entire page — context bar,
+  // hand, three fields and the submit — and on a phone the answer fell out of its 35svh cap while
+  // ~500px of board area sat empty above it. Off, the question stands in that empty area and the
+  // strip keeps only the answer.
+  const invalidLinkNotice = round.invalidLink && (
+    // the link named a hand that could not be rebuilt, so this one is a fresh deal — said beside
+    // the question rather than in the panel, which can be shut
+    <p className="rounded-lg border border-amber-400 p-3 text-sm text-amber-700 dark:text-amber-400">
+      {t('scoring.invalidLink')}
+    </p>
+  )
+
+  // the round/seat/dora readout the felt would otherwise carry. Only ever built for the boardless
+  // shape — with the table up every line of it is on the board itself
+  const contextBar = (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
+      <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+        {t('scoring.roundWind')} <Tile id={ctx.round} />
+      </span>
+      <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+        {t('scoring.seatWind')} <Tile id={ctx.seat} />
+        {dealer && <span className="text-neutral-500">({t('scoring.dealer')})</span>}
+      </span>
+      {round.situation.doraIndicators.length > 0 && (
+        <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+          <GlossaryTerm id="dora">{t('scoring.doraIndicator')}</GlossaryTerm>
+          {round.situation.doraIndicators.map((id, i) => (
+            <Tile key={i} id={id} />
+          ))}
+        </span>
+      )}
+      {round.situation.uraIndicators.length > 0 && (
+        <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+          <GlossaryTerm id="uraDora">{t('scoring.uraIndicator')}</GlossaryTerm>
+          {round.situation.uraIndicators.map((id, i) => (
+            <Tile key={i} id={id} />
+          ))}
+        </span>
+      )}
+      {round.situation.honba > 0 && (
+        <span>{t('scoring.honbaCount', { count: round.situation.honba })}</span>
+      )}
+      {round.situation.kita > 0 && (
+        <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
+          {t('scoring.kitaLabel')}
+          {Array.from({ length: round.situation.kita }, (_, i) => (
+            <Tile key={i} id={HONOR + 3} />
+          ))}
+        </span>
+      )}
+      <span className="flex flex-wrap items-center gap-2 text-xs">
+        {winBadge}
+        {flagBadges}
+      </span>
+    </div>
+  )
+
+  const handBlock = (
+    <div className="flex flex-col gap-2">
+      {/* which tile completed the hand decides the wait fu and menzen ron, so it is
+                    part of the question, not part of the answer — always ringed, never gated on
+                    the reveal. The slot beside the hand means "you drew this", so it is only
+                    right for a tsumo: on a ron the tile is a discard, and the board already rings
+                    it in the river it was discarded into. With no board up there is nothing to
+                    point at, so it stays here. */}
+      {/* the calls sit at the right-hand end of the hand, not on a row of their own
+                    under it — an open hand is read left to right along one line, and stacked
+                    they read as a second hand. True with the board up or down: the felt drops
+                    this seat's melds for exactly this reason (see `seats` above) */}
+      <HandDisplay
+        tiles={restConcealed}
+        drawn={showWinTileInHand ? winTile : undefined}
+        drawnClassName="rounded-sm outline-2 outline-red-500"
+        melds={round.situation.melds}
+        nuki={handNuki}
+      />
+    </div>
+  )
+
+  // the strip holds this row alone with the felt off, and everything else with it up — which is
+  // what decides whether the row may pack itself to fit
+  const tight = !settings.table
+  const answer = round.checked ? (
+    // takes the form's exact place once the hand is graded — the verdict is a floating
+    // chip now (`noticeCompact`), and the full breakdown is a tap away on the log row, so
+    // nothing needs to hold the board any more
+    <button
+      type="button"
+      onClick={round.next}
+      className="min-h-14 shrink-0 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+    >
+      {t('scoring.newHand')}
+    </button>
+  ) : (
+    // uncontrolled: the form is keyed to the hand, so a new hand remounts it empty
+    <form
+      key={serializeTenhou(round.situation.concealed)}
+      onSubmit={(e) => {
+        e.preventDefault()
+        submit(e.currentTarget)
+      }}
+      // one field per line on a phone held upright — two, packed, when this row is all the
+      // strip holds (`tight`) — and one row everywhere there is width for it: a tablet, a
+      // desktop, or a phone held sideways (`short:`, the same viewport test the board itself
+      // uses). The submit button joins the row rather than sitting under it: the answer is one
+      // thought, so it reads as one line
+      className={
+        tight
+          ? 'flex flex-wrap items-stretch gap-3 [@media(max-height:680px)]:gap-2'
+          : 'flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch short:flex-row short:flex-wrap short:items-stretch'
+      }
+    >
+      {settings.testHan && (
+        <NumberField name="han" label={t('scoring.hanLabel')} autoFocus tight={tight} />
+      )}
+      {settings.testFu && <NumberField name="fu" label={t('scoring.fuLabel')} tight={tight} />}
+      {settings.testPoints && !split && (
+        <NumberField name="points" label={singlePointsLabel} step={100} tight={tight} />
+      )}
+      {settings.testPoints && split && (
+        <>
+          <NumberField
+            name="pointsMain"
+            label={t('scoring.pointsMainLabel')}
+            step={100}
+            tight={tight}
+          />
+          <NumberField
+            name="pointsFromDealer"
+            label={t('scoring.pointsFromDealerLabel')}
+            step={100}
+            tight={tight}
+          />
+        </>
+      )}
+      <button
+        type="submit"
+        // packed, it fills whatever is left of its line upright (usually one of its own) and
+        // keeps its own width in a single row, the shape it has always had there
+        className={`min-h-14 shrink-0 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900 ${tight ? `${TIGHT_HEIGHT} grow sm:grow-0 short:grow-0` : ''}`}
+      >
+        {t('scoring.checkAnswer')}
+      </button>
+    </form>
+  )
+
   return (
     <BoardStage
       title={t('trainer.scoring.title')}
@@ -285,9 +448,8 @@ export function ScoringPage() {
       }
       chrome={<TrainerToggles {...toggles} />}
       // the table itself is opt-in (`settings.table`) — off, this is the boardless shape
-      // shanten/solo use: no `board` prop, and the round/seat/dora readout that would
-      // otherwise live on the felt moves into `hand` instead so it survives into fullscreen,
-      // where it is what the question is asking about
+      // shanten/solo use: no `board` prop, and the question moves into `children`, which the
+      // stage centres where the felt would be
       board={
         settings.table ? (
           <Table
@@ -314,128 +476,19 @@ export function ScoringPage() {
         ) : undefined
       }
       hand={
-        <div className="flex flex-col gap-4">
-          {/* the link named a hand that could not be rebuilt, so this one is a fresh deal —
-                  said beside the question rather than in the panel, which can be shut */}
-          {round.invalidLink && (
-            <p className="rounded-lg border border-amber-400 p-3 text-sm text-amber-700 dark:text-amber-400">
-              {t('scoring.invalidLink')}
-            </p>
-          )}
-          {!settings.table && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
-              <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                {t('scoring.roundWind')} <Tile id={ctx.round} />
-              </span>
-              <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                {t('scoring.seatWind')} <Tile id={ctx.seat} />
-                {dealer && <span className="text-neutral-500">({t('scoring.dealer')})</span>}
-              </span>
-              {round.situation.doraIndicators.length > 0 && (
-                <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                  <GlossaryTerm id="dora">{t('scoring.doraIndicator')}</GlossaryTerm>
-                  {round.situation.doraIndicators.map((id, i) => (
-                    <Tile key={i} id={id} />
-                  ))}
-                </span>
-              )}
-              {round.situation.uraIndicators.length > 0 && (
-                <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                  <GlossaryTerm id="uraDora">{t('scoring.uraIndicator')}</GlossaryTerm>
-                  {round.situation.uraIndicators.map((id, i) => (
-                    <Tile key={i} id={id} />
-                  ))}
-                </span>
-              )}
-              {round.situation.honba > 0 && (
-                <span>{t('scoring.honbaCount', { count: round.situation.honba })}</span>
-              )}
-              {round.situation.kita > 0 && (
-                <span className="flex items-center gap-1 [--tile-w:calc(var(--tile-w-base)*0.5)]">
-                  {t('scoring.kitaLabel')}
-                  {Array.from({ length: round.situation.kita }, (_, i) => (
-                    <Tile key={i} id={HONOR + 3} />
-                  ))}
-                </span>
-              )}
-              <span className="flex flex-wrap items-center gap-2 text-xs">
-                {winBadge}
-                {flagBadges}
-              </span>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2">
-            {/* which tile completed the hand decides the wait fu and menzen ron, so it is
-                    part of the question, not part of the answer — always ringed, never gated on
-                    the reveal. The slot beside the hand means "you drew this", so it is only
-                    right for a tsumo: on a ron the tile is a discard, and the board already rings
-                    it in the river it was discarded into. With no board up there is nothing to
-                    point at, so it stays here. */}
-            {/* the calls sit at the right-hand end of the hand, not on a row of their own
-                    under it — an open hand is read left to right along one line, and stacked
-                    they read as a second hand. True with the board up or down: the felt drops
-                    this seat's melds for exactly this reason (see `seats` above) */}
-            <HandDisplay
-              tiles={restConcealed}
-              drawn={showWinTileInHand ? winTile : undefined}
-              drawnClassName="rounded-sm outline-2 outline-red-500"
-              melds={round.situation.melds}
-              nuki={handNuki}
-            />
+        settings.table ? (
+          <div className="flex flex-col gap-4">
+            {invalidLinkNotice}
+            {handBlock}
+            {answer}
           </div>
-
-          {round.checked ? (
-            // takes the form's exact place once the hand is graded — the verdict is a floating
-            // chip now (`noticeCompact`), and the full breakdown is a tap away on the log row, so
-            // nothing needs to hold the board any more
-            <button
-              type="button"
-              onClick={round.next}
-              className="min-h-14 shrink-0 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-            >
-              {t('scoring.newHand')}
-            </button>
-          ) : (
-            // uncontrolled: the form is keyed to the hand, so a new hand remounts it empty
-            <form
-              key={serializeTenhou(round.situation.concealed)}
-              onSubmit={(e) => {
-                e.preventDefault()
-                submit(e.currentTarget)
-              }}
-              // one field per line on a phone held upright, one row everywhere there is width
-              // for it — a tablet, a desktop, or a phone held sideways (`short:`, the same
-              // viewport test the board itself uses). The submit button joins the row rather
-              // than sitting under it: the answer is one thought, so it reads as one line
-              className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch short:flex-row short:flex-wrap short:items-stretch"
-            >
-              {settings.testHan && (
-                <NumberField name="han" label={t('scoring.hanLabel')} autoFocus />
-              )}
-              {settings.testFu && <NumberField name="fu" label={t('scoring.fuLabel')} />}
-              {settings.testPoints && !split && (
-                <NumberField name="points" label={singlePointsLabel} step={100} />
-              )}
-              {settings.testPoints && split && (
-                <>
-                  <NumberField name="pointsMain" label={t('scoring.pointsMainLabel')} step={100} />
-                  <NumberField
-                    name="pointsFromDealer"
-                    label={t('scoring.pointsFromDealerLabel')}
-                    step={100}
-                  />
-                </>
-              )}
-              <button
-                type="submit"
-                className="min-h-14 shrink-0 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-              >
-                {t('scoring.checkAnswer')}
-              </button>
-            </form>
-          )}
-        </div>
+        ) : (
+          // the strip holds the answer alone. It needs a width of its own now that the hand is
+          // no longer standing in the middle of it lending it one: a `flex-col` of fields left to
+          // size themselves collapses to `min-w-28`. `100cqw` is the strip's own content box
+          // (it declares the container), capped so the row does not run the width of a desktop
+          <div className="flex w-[min(100cqw,40rem)] flex-col">{answer}</div>
+        )
       }
       noticeKey={round.lastResult ? round.totalCount : undefined}
       noticeCompact={
@@ -457,6 +510,20 @@ export function ScoringPage() {
           />
         ) : undefined
       }
-    />
+    >
+      {/* the question, posed where the felt would be. Uncapped on a screen with room — the block
+        is vertically centred and the HUD hangs off the top-left corner, so they never meet — but
+        held sideways (`short:`) the area is only as tall as a phone's short side and the HUD and
+        the verdict chip stand in the gutters either side of it. There the column is held to the
+        width the felt itself would have taken between them: `100cqh`, the same measure `Table`
+        sizes its square by. */}
+      {!settings.table && (
+        <div className="flex flex-col gap-4 short:max-w-[100cqh]">
+          {invalidLinkNotice}
+          {contextBar}
+          {handBlock}
+        </div>
+      )}
+    </BoardStage>
   )
 }
