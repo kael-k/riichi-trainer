@@ -12,7 +12,6 @@ const BARE: EfficiencyOptions = {
   aka: false,
   sanma: false,
   seats: null,
-  claims: false,
   showSeatWaits: false,
   showOpponentHands: false,
 }
@@ -62,8 +61,13 @@ describe('useEfficiencyRound', () => {
     situation.wall = completeWall([], false, false, 'probe-231')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
-    for (let i = 0; i < 20 && !result.current.finished; i++) {
-      act(() => result.current.discard(0))
+    // claims are always on now (ADR-0034): a stray opponent discard may offer the graded seat a
+    // ron/pon/chi along the way, which is not this test's concern, so decline it and move on.
+    // Looping on `drillOver` rather than `finished`: a pending claim also holds the seat at 13
+    // tiles, which `finished` cannot tell apart from the real tenpai-stop this test is after.
+    for (let i = 0; i < 40 && !result.current.drillOver; i++) {
+      if (result.current.claim) act(() => result.current.answer({ kind: 'pass' }))
+      else act(() => result.current.discard(0))
     }
     expect(result.current.finished).toBe(true)
     expect(result.current.tenpai).toBe(true)
@@ -219,17 +223,25 @@ describe('useEfficiencyRound', () => {
 
   it('situationQuery round-trips the exact round state', () => {
     const situation = emptySituation()
+    // seeded rather than left to `completeWall`'s own unseeded fallback: claims are always on now
+    // (ADR-0034), and a passed claim leaves no record in `log` (only calls/wins do) — the graded
+    // seat's own "no thanks" on a stray ron/pon/chi does not survive a round-trip through
+    // `situationQuery`, so a wall this test happens to draw such an offer on would compare two
+    // rounds that never reached the same point. A fixed seed keeps this test about the round-trip
+    // itself, not about that separate (and pre-existing, since the lab already ran claims on)
+    // engine gap — recorded in `docs/STATUS.md`.
+    situation.wall = completeWall([], false, true, 'round-trip-seed-a')
     const opts: EfficiencyOptions = {
       aka: true,
       sanma: false,
       seats: null,
-      claims: false,
       showSeatWaits: false,
       showOpponentHands: false,
     }
     const a = renderHook(() => useEfficiencyRound(situation, opts))
     act(() => a.result.current.discard(0))
     act(() => a.result.current.discard(3))
+    expect(a.result.current.claim).toBeUndefined() // this test is not about the claims flow
 
     const decoded = decodeSituation(new URLSearchParams(a.result.current.situationQuery()))
     const b = renderHook(() =>
@@ -237,7 +249,6 @@ describe('useEfficiencyRound', () => {
         aka: decoded.aka ?? false,
         sanma: decoded.sanma ?? false,
         seats: null,
-        claims: false,
         showSeatWaits: false,
         showOpponentHands: false,
       }),
@@ -285,6 +296,11 @@ describe('useEfficiencyRound', () => {
 
   it('logs one rewindable entry per discard a shared river was replayed through', () => {
     const situation = emptySituation()
+    // seeded, not left unseeded: claims are always on now (ADR-0034), and an opponent's stray
+    // claim opportunity between the two discards below would silently no-op the second one
+    // (`discard` is a no-op while a claim is pending) — this test is about the log/replay shape,
+    // not the claims flow, so a wall known not to raise one keeps it deterministic
+    situation.wall = completeWall([], false, false, 'log-replay-seed')
     const played = renderHook(() => useEfficiencyRound(situation, BARE))
     act(() => played.result.current.discard(0))
     act(() => played.result.current.discard(0))
@@ -530,9 +546,9 @@ describe('the end card and a pending claim', () => {
     return wall
   }
 
+  // claims are always on now (ADR-0034), so this is just the two-manual-seat seed
   const CLAIMS: EfficiencyOptions = {
     ...BARE,
-    claims: true,
     seats: { modes: ['manual', 'manual', 'efficiency', 'efficiency'] },
   }
 
@@ -562,6 +578,23 @@ describe('the end card and a pending claim', () => {
     expect(result.current.drillOver).toBe(false)
   })
 
+  it('leaves the second manual seat playable while the graded seat is frozen between turns', () => {
+    // the freeze `NOTE-efficiency-multi-manual-freeze.md` found: `finished` is anchored to the
+    // graded seat (0) and stays true for the whole window seat 1 (also manual) is acting in —
+    // `actingPlayable` is what the page's `canAct` reads instead (ADR-0034)
+    const situation = emptySituation()
+    situation.wall = claimWall()
+    const { result } = renderHook(() => useEfficiencyRound(situation, CLAIMS))
+
+    act(() => result.current.discard(10)) // seat 0's 9s — seat 1 draws and is due to act next
+    expect(result.current.acting).toBe(1)
+    expect(result.current.finished).toBe(true)
+    expect(result.current.actingPlayable).toBe(true)
+
+    act(() => result.current.discard(0)) // seat 1's own 5m
+    expect(result.current.claim?.seat).toBe(0)
+  })
+
   it('shows once a taken claim leads to the tenpai discard', () => {
     const situation = emptySituation()
     situation.wall = claimWall()
@@ -586,6 +619,13 @@ describe('the end card and a pending claim', () => {
       { kind: 'discard', seat: 0, tile: parseTenhou('9m')[0], fromDrawn: true, riichi: false },
     ]
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
+
+    // claims are always on now (ADR-0034): before the graded seat's own next draw, an opponent
+    // may discard into its shanpon wait and offer a ron — decline it, since this test is about
+    // the replay/drillOver timing, not the claims flow
+    while (result.current.claim) {
+      act(() => result.current.answer({ kind: 'pass' }))
+    }
 
     // the replay hands the decision back rather than grading it: one more tenpai-preserving
     // discard is the link's last turn, and the card follows it exactly as in live play

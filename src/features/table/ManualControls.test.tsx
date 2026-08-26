@@ -1,0 +1,54 @@
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import '../../features/i18n'
+import type { PendingClaim } from '../../core/round'
+import { ManualControls } from './ManualControls'
+
+/** Seat 3 throws an 8m; seat 0 can chi it with the 6m7m it holds. */
+const CLAIM: PendingClaim = {
+  seat: 0,
+  from: 3,
+  tile: { id: 7, red: false },
+  options: [{ kind: 'chi', from: [5, 6] }],
+  answers: {},
+}
+
+function controls(props: Partial<Parameters<typeof ManualControls>[0]> = {}) {
+  return (
+    <ManualControls
+      acting={0}
+      claim={undefined}
+      riichiTiles={[]}
+      riichiArmed={false}
+      onArmRiichi={vi.fn()}
+      onAnswer={vi.fn()}
+      viewSeat={0}
+      onGoTo={vi.fn()}
+      {...props}
+    />
+  )
+}
+
+describe('ManualControls', () => {
+  it('still prompts an unanswered claim once the drill is over', () => {
+    // `drillOver` is true for the whole window between the graded seat's tenpai discard and its
+    // next draw, and a replayed link lands in that window with live play still running — so an
+    // opponent really can offer that seat a call while the end card is up. The engine suspends
+    // every turn until the claim is answered, so suppressing this prompt freezes the board.
+    render(controls({ ended: true, claim: CLAIM }))
+    expect(screen.getByRole('button', { name: /Pass/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Chi/ })).toBeTruthy()
+  })
+
+  it('renders nothing once the drill is over with nothing left to answer', () => {
+    const { container } = render(controls({ ended: true, riichiTiles: [7] }))
+    expect(container.querySelectorAll('button')).toHaveLength(0)
+  })
+
+  it('offers a way back to whichever seat owes the decision', () => {
+    const onGoTo = vi.fn()
+    render(controls({ acting: 2, viewSeat: 0, onGoTo }))
+    screen.getByRole('button', { name: /Go to/ }).click()
+    expect(onGoTo).toHaveBeenCalledWith(2)
+  })
+})

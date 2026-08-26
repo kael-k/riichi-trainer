@@ -2,6 +2,11 @@
 
 **Status:** Accepted · **Date:** 2026-08-15
 **Source:** `features/settings/tableSettings.ts`, `features/settings/settingsStore.ts`
+**Amended by** [ADR-0034](0034-you-act-from-where-you-watch.md): `claims` is no longer a
+`TableSettings` field — every manual seat is simply asked now, so there is nothing left to persist
+about it — and perspective is no longer view-only in every trainer: a reader acts from the seat the
+board is drawn from, whichever manual seat that is. The rest of this ADR (seat algorithms and
+perspective itself are page state, not persisted) is unaffected.
 
 ## Context
 

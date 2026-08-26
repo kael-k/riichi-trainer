@@ -57,9 +57,6 @@ export type FoldingOptions = Settings['folding'] & {
    *  settings — see `FoldingPage`. Read at generation time to seed the handover, and live
    *  thereafter (ADR-0008): a change here never rebuilds the round. */
   seats: SeatConfig | null
-  /** Ask manual seats about other seats' discards (`TableSettings.claims`) — board-wide and
-   *  persisted, unlike `seats` itself (ADR-0015). */
-  claims: boolean
 }
 
 export interface FoldingUrl {
@@ -278,7 +275,6 @@ function playToRiichi(
   players: number,
   threats: number,
   seats: SeatConfig | null,
-  claims: boolean,
 ) {
   const match = createRound(wall, players, options)
   // the target is met, so everyone still building a hand folds: an opponent left to chase
@@ -324,7 +320,7 @@ function playToRiichi(
     match.players[seatIndex].algorithm = 'manual'
     return {
       match,
-      options: { ...options, claims },
+      options,
       seatIndex,
       handedOverAt: match.log.length,
     }
@@ -353,11 +349,10 @@ function buildRound(
   wall: ParsedTile[],
   options: BoardOptions,
   seats: SeatConfig | null = null,
-  claims = false,
 ): RoundBoard | null {
   const { sanma, threats } = options
   const players = sanma ? 3 : 4
-  const generated = playToRiichi(wall, roundOptions(wall, options), players, threats, seats, claims)
+  const generated = playToRiichi(wall, roundOptions(wall, options), players, threats, seats)
   if (!generated) return null
   const { match, options: matchOpts, seatIndex } = generated
   if (!worthwhile({ round: match, options: matchOpts }, seatIndex)) return null
@@ -385,19 +380,18 @@ function buildRound(
 async function findRound(
   options: BoardOptions,
   seats: SeatConfig | null = null,
-  claims = false,
 ): Promise<RoundBoard | null> {
   const { threats } = options
   for (let i = 0; i < 40 * threats; i++) {
     const wall = completeWall([], options.sanma, RULES.aka)
-    const built = buildRound(wall, options, seats, claims)
+    const built = buildRound(wall, options, seats)
     // the search stays a plain loop rather than being driven through `useRound`'s `{ restart }`
     // command: rejection here is `worthwhile` failing at the handover point, not a hand ending,
     // and running up to 120 full simulations through React state would cost a render apiece
     if (built) return { ...built, board: { ...options, threats } }
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
-  return threats > 1 ? findRound({ ...options, threats: threats - 1 }, seats, claims) : null
+  return threats > 1 ? findRound({ ...options, threats: threats - 1 }, seats) : null
 }
 
 /** The reveal: what each threat was really holding, and which of your discards were in its wait.
@@ -516,10 +510,10 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
   const roundActionCount = useRef(0)
   const roundTotalMs = useRef(0)
 
-  // `options.seats`/`options.claims` are read below only as the *initial* algorithm/claims seed
-  // for a freshly generated hand (`playToRiichi`'s own handover logic) — deliberately absent from
-  // this effect's deps: a later change to either must never re-search for a new hand (ADR-0008,
-  // ADR-0015). `useRound`'s own live-sync effect carries later changes onto the running match.
+  // `options.seats` is read below only as the *initial* algorithm seed for a freshly generated
+  // hand (`playToRiichi`'s own handover logic) — deliberately absent from this effect's deps: a
+  // later change to it must never re-search for a new hand (ADR-0008, ADR-0015). `useRound`'s own
+  // live-sync effect carries later changes onto the running match.
   useEffect(() => {
     const id = ++request.current
     setFailed(false)
@@ -540,10 +534,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     // a link's wall is already an accepted board, so replay it as-is; only a hand-edited one (or a
     // fresh "new situation" request) falls through to a search
     const pinned =
-      urlData.wall.length > 0 && fromLink
-        ? buildRound(urlData.wall, board, options.seats, options.claims)
-        : null
-    const found = pinned ? Promise.resolve(pinned) : findRound(board, options.seats, options.claims)
+      urlData.wall.length > 0 && fromLink ? buildRound(urlData.wall, board, options.seats) : null
+    const found = pinned ? Promise.resolve(pinned) : findRound(board, options.seats)
 
     void found.then((result) => {
       if (id !== request.current) return
@@ -643,7 +635,6 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
         algorithms: (round.options.algorithms ?? []).map(
           (algorithm, seat) => options.seats?.modes[seat] ?? algorithm,
         ),
-        claims: options.claims,
       }
     : undefined
 

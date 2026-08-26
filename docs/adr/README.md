@@ -58,12 +58,13 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0012](0012-shared-table-layer.md)                          | The React match layer reports engine events; policy lives in trainers | Accepted  |
 | [0013](0013-efficiency-split.md)                            | Efficiency splits into two routes; solo is one seat, no board | **TO REVIEW** |
 | [0014](0014-table-is-a-pure-view.md)                        | `<Table>` is a pure view with no player concept              | Accepted   |
-| [0015](0015-what-persists.md)                               | Reader preferences persist; board state does not             | Accepted   |
+| [0015](0015-what-persists.md)                               | Reader preferences persist; board state does not             | Amended by [0034](0034-you-act-from-where-you-watch.md) |
 | [0017](0017-imperative-log-rows.md)                         | Log rows are written imperatively, never from effects        | Accepted   |
 | [0029](0029-calls-on-the-hand-ring.md)                      | A seat's calls ride on its hand ring, not on the felt        | Accepted   |
 | [0030](0030-the-felt-sizes-itself.md)                       | The felt sizes itself: container units, and a scale only where there is room | Accepted   |
 | [0032](0032-one-efficiency-drill-core.md)                   | One drill core behind both efficiency hooks                  | Accepted   |
 | [0033](0033-settings-sections.md)                            | Settings sections are named for what a setting is about       | Accepted   |
+| [0034](0034-you-act-from-where-you-watch.md)                 | You act from where you watch; the felt says who owes a decision | Accepted   |
 
 ### Process and product
 
@@ -75,7 +76,7 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0020](0020-no-back-compat-pre-release.md)                  | No backward compatibility while pre-release                  | Accepted  |
 | [0031](0031-claude-md-carries-how-not-why.md)               | `CLAUDE.md` carries how, not why                             | Accepted  |
 
-Numbering runs 0001–0033 with no gaps. Take the next free number, and never reuse one — not even
+Numbering runs 0001–0034 with no gaps. Take the next free number, and never reuse one — not even
 if an ADR is later withdrawn.
 
 Vocabulary note: every ADR up to 0021 was written when the engine called one deal a "match". Since

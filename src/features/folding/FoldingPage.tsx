@@ -72,7 +72,7 @@ export function FoldingPage() {
   const sanma = useSettings((s) => s.sanma)
   // folding always shows the board (reading it is the drill); the reveal gate below
   // withholds real tile ids until `round.finished` or `showOpponentHands`
-  const { showOpponentHands, showSeatWaits, threats, opponentWins, claims, seatsEnabled } =
+  const { showOpponentHands, showSeatWaits, threats, opponentWins, seatsEnabled } =
     useTableSettings('folding')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
@@ -82,8 +82,7 @@ export function FoldingPage() {
 
   // per-seat algorithms are board state, not a preference (ADR-0015): page state with the same
   // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
-  // persisted. `claims` (above) is the one part of the old seat panel that *is* a reader
-  // preference, so it stays in settings.
+  // persisted.
   const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
 
   const options = useMemo<FoldingOptions>(() => {
@@ -97,7 +96,6 @@ export function FoldingPage() {
       showOpponentHands,
       showSeatWaits,
       seats: seatConfig,
-      claims,
     }
   }, [
     urlData,
@@ -108,7 +106,6 @@ export function FoldingPage() {
     showOpponentHands,
     showSeatWaits,
     seatConfig,
-    claims,
   ])
 
   const round = useFoldingRound(urlData, options)
@@ -292,8 +289,6 @@ export function FoldingPage() {
                 config={seatConfig}
                 onChange={setSeatConfig}
                 fallbackModes={round.algorithms}
-                claims={claims}
-                onClaimsChange={(v) => updateTable({ claims: v })}
                 viewSeat={perspective}
                 onWatch={setViewSeat}
                 read={round.seatReads[seat]}
@@ -310,12 +305,12 @@ export function FoldingPage() {
           doraIndicators={round.doraIndicators}
           wallCount={round.liveWall.length}
           honba={round.match.honba}
+          activeSeat={round.finished ? undefined : round.acting}
         />
       }
       hand={
         <div className="flex flex-col gap-4">
           <ManualControls
-            seatIndex={round.seatIndex}
             acting={round.acting}
             claim={round.claim}
             riichiTiles={round.riichiTiles()}
@@ -323,7 +318,8 @@ export function FoldingPage() {
             onArmRiichi={round.armRiichi}
             onAnswer={round.answer}
             viewSeat={perspective}
-            onReturn={() => setViewSeat(null)}
+            onGoTo={setViewSeat}
+            ended={round.finished}
           />
           {/* centred on the board above it, not left-aligned in the page: the calls hang off
                   the right of the hand, so a called hand would otherwise sit visibly off-centre

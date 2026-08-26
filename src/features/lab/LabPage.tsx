@@ -131,8 +131,7 @@ export function LabPage() {
   const { aka } = useAdvancedSettings()
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
-  const { opponentWins, showOpponentHands, showSeatWaits, claims, seatsEnabled } =
-    useTableSettings('lab')
+  const { opponentWins, showOpponentHands, showSeatWaits, seatsEnabled } = useTableSettings('lab')
   // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
   // replace the whole apps layer instead of adding one app's key to it — merge the existing
   // `apps.lab` slice in first.
@@ -141,8 +140,7 @@ export function LabPage() {
 
   // per-seat algorithms are board state, not a preference (ADR-0015): page state with the same
   // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
-  // persisted. `claims` (above) is the one part of the old seat panel that *is* a reader
-  // preference, so it stays in settings.
+  // persisted.
   const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
 
   const [wallInput, setWallInput] = useState('')
@@ -196,7 +194,6 @@ export function LabPage() {
       showOpponentHands,
       showSeatWaits,
       seats: seatConfig,
-      claims,
     }),
     [
       situation,
@@ -207,7 +204,6 @@ export function LabPage() {
       showOpponentHands,
       showSeatWaits,
       seatConfig,
-      claims,
     ],
   )
 
@@ -241,6 +237,7 @@ export function LabPage() {
     // hand and never concealed from them, wherever it sits
     concealed: !(round.finished || showOpponentHands || round.manualSeats.includes(seat)),
     points: round.match.points[seat],
+    claiming: round.claim?.from === seat,
   }))
 
   // the bottom hand follows perspective, not the drill's own graded seat: rotating to watch
@@ -368,8 +365,6 @@ export function LabPage() {
                   defaultOrientation={round.seatIndex}
                   config={seatConfig}
                   onChange={setSeatConfig}
-                  claims={claims}
-                  onClaimsChange={(v) => updateTable({ claims: v })}
                   viewSeat={perspective}
                   onWatch={setViewSeat}
                   read={round.seatReads[seat]}
@@ -386,6 +381,7 @@ export function LabPage() {
             doraIndicators={round.doraIndicators}
             wallCount={round.liveWall.length}
             honba={round.match.honba}
+            activeSeat={round.finished ? undefined : round.acting}
           />
         ) : undefined
       }
@@ -393,7 +389,6 @@ export function LabPage() {
         loaded ? (
           <div className="flex flex-col gap-4">
             <ManualControls
-              seatIndex={round.seatIndex}
               acting={round.acting}
               claim={round.claim}
               riichiTiles={round.riichiTiles()}
@@ -401,7 +396,8 @@ export function LabPage() {
               onArmRiichi={round.armRiichi}
               onAnswer={round.answer}
               viewSeat={perspective}
-              onReturn={() => setViewSeat(null)}
+              onGoTo={setViewSeat}
+              ended={round.finished}
             />
             {/* centred on the board above it, not left-aligned in the page: the calls hang off
                 the right of the hand, so a called hand would otherwise sit visibly off-centre

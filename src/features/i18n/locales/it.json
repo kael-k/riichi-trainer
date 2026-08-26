@@ -86,10 +86,8 @@
       "tsumogiri": "Scarta sempre la tessera appena pescata, senza gestire la mano.",
       "manual": "Giochi tu questo posto: scarti, chiamate e riichi sono una tua scelta."
     },
-    "claims": "Chiedimi conferma prima di chiamare gli scarti degli altri posti",
-    "playingSeat": "Turno di {{wind}}",
-    "watchingSeat": "Stai guardando {{wind}}",
-    "backToYourSeat": "Torna al tuo posto",
+    "waitingSeat": "In attesa di {{wind}}",
+    "goToSeat": "Vai a {{wind}}",
     "claimPrompt": "{{wind}}: chiamare lo scarto di {{from}}?",
     "claim": {
       "ron": "Ron",

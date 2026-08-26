@@ -35,9 +35,6 @@ export interface LabOptions {
    *  the link's own seat, every other seat on the efficiency AI). Page state (ADR-0015), not settings
    *  — see `LabPage`. */
   seats: SeatConfig | null
-  /** Ask manual seats about other seats' discards (`TableSettings.claims`) — board-wide and
-   *  persisted, unlike `seats` itself (ADR-0015). */
-  claims: boolean
   /** The seat panel's "show tenpai/waits" setting — threaded to `useRound`, which is where the
    *  per-seat cost of computing it is actually paid. */
   showSeatWaits: boolean
@@ -74,7 +71,8 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     wins: options.opponentWins,
     kiriageMangan: options.kiriageMangan,
     algorithms,
-    claims: options.claims,
+    // the lab is the free-play board: manual seats are the point, so it always asks (ADR-0034)
+    claims: true,
   }
 
   const log = useLog((s) => s.log)

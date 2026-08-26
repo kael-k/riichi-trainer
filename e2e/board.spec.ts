@@ -680,25 +680,35 @@ function twoFuritenBoard(): string {
     ...Array.from({ length: 7 }, (_, i) => `${i + 1}z`),
   ]
   const tanki = ['1m', '2m', '3m', '4p', '5p', '6p', '7p', '8p', '9p', '2s', '3s', '4s', '5s']
+  // spaced by 3, not 2: a chi needs two held tiles either side of the discard within a run of
+  // three, which needs two held tiles 1 or 2 apart — spacing every held tile 3 apart makes that
+  // impossible for *any* discard, so this hand can never react to one. Claims are always on now
+  // (ADR-0034), and replay temporarily puts every seat on manual, so an unanswered claim
+  // opportunity anywhere in the log's own window aborts the replay rather than being silently
+  // skipped — the original 2/4/6/8 spacing left seat 1's own discard (5s, a fixed part of this
+  // scenario, not junk) chi-able via this hand's 4s+6s. Honours fill the rest: never chi-able at
+  // all, and single copies here can never pon either.
   const spaced = (last: string) => [
-    '2m',
+    '1m',
     '4m',
-    '6m',
-    '8m',
-    '2p',
+    '7m',
+    '1p',
     '4p',
-    '6p',
-    '8p',
-    '2s',
+    '7p',
+    '1s',
     '4s',
-    '6s',
-    '8s',
+    '7s',
+    '2z',
+    '3z',
+    '4z',
     last,
   ]
   const deal = dealt([orphans, tanki, spaced('5m'), spaced('5p')])
-  // seat 0 draws the 14th orphan and throws it; seat 1 draws a 5s and throws it; the rest is junk,
-  // then seat 0's next draw — deliberately not an orphan, so its thirteen-sided wait still stands
-  const live = ['1z', '5s', '3p', '3s', '5m']
+  // seat 0 draws the 14th orphan and throws it; seat 1 draws a 5s and throws it; the rest is junk
+  // — 1p and 9s rather than the original 3p/3s, which seat 1's own 4-9p/2-5s blocks could chi (4p+5p
+  // makes 345p off a 3p; 2s+4s makes 234s off a 3s). Then seat 0's next draw — deliberately not an
+  // orphan, so its thirteen-sided wait still stands
+  const live = ['1z', '5s', '1p', '9s', '5m']
   return `/efficiency?wall=${tenhou([...deal, ...live])}&log=D01zTD15sT&seat=0&sanma=0`
 }
 
@@ -775,6 +785,30 @@ function tenpaiWithReplayedLogBoard(): string {
   return `/efficiency?wall=${tenhou([...deal, draw])}&log=D0${draw}T&seat=0&deadWall=1&aka=0&sanma=0`
 }
 
+/** The hand strip's *tiles*, without the ankan button that joins them whenever the hand holds
+ *  four of a kind — it sits in the same strip and answers to the same role, so counting or
+ *  clicking `getByRole('button')` raw makes any test over a randomly completed wall depend on the
+ *  hand not happening to draw a quad. Its accessible name carries the label; a tile's is the tile
+ *  alone. */
+function handTiles(handStrip: Locator): Locator {
+  return handStrip.getByRole('button').filter({ hasNotText: 'Kan' })
+}
+
+/** Waits for the hand strip to reach a full 14-tile hand, declining any claim prompt that
+ *  appears along the way — claims are always on now (ADR-0034), and the rest of this wall is
+ *  completed at random (deliberately, per `tenpaiWithReplayedLogBoard`'s own comment), so a
+ *  pair-heavy seat 0 occasionally gets offered a pon or a chi on an opponent's incidental
+ *  discard. The engine suspends every turn until that is answered, so this has to answer it
+ *  rather than merely outwait it. This test is about restart-after-replay, not the claims flow,
+ *  so it declines and keeps waiting. */
+async function waitForFullHand(page: Page, handStrip: Locator) {
+  const pass = page.getByRole('button', { name: 'Pass' })
+  await expect(async () => {
+    if (await pass.isVisible()) await pass.click()
+    await expect(handTiles(handStrip)).toHaveCount(14, { timeout: 500 })
+  }).toPass({ timeout: 10_000 })
+}
+
 test('restarting a shared-link round with a replayed log does not crash', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
@@ -786,8 +820,8 @@ test('restarting a shared-link round with a replayed log does not crash', async 
   // wait for the reader's own turn to come back around with a live draw, then tsumogiri it —
   // the hand stays on the same tenpai shape whatever was drawn, which is what reaches tenpai and
   // surfaces "New round" without pinning the live draw itself
-  await expect(handStrip.getByRole('button')).toHaveCount(14, { timeout: 10_000 })
-  await handStrip.getByRole('button').last().click()
+  await waitForFullHand(page, handStrip)
+  await handTiles(handStrip).last().click()
 
   const newRound = page.getByRole('button', { name: 'New round' })
   await expect(newRound).toBeVisible()
@@ -795,7 +829,7 @@ test('restarting a shared-link round with a replayed log does not crash', async 
 
   // a fresh hand deals in, rather than the page crashing on the old link's log replayed against a
   // brand new random wall
-  await expect(handStrip.getByRole('button')).toHaveCount(14, { timeout: 10_000 })
+  await waitForFullHand(page, handStrip)
   expect(errors).toEqual([])
 })
 

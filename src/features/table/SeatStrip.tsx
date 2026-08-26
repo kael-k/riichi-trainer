@@ -1,4 +1,4 @@
-import { HelpCircle } from 'lucide-react'
+import { Eye, HelpCircle } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InfoPopover } from '../../components/InfoPopover'
@@ -32,27 +32,35 @@ interface SeatStripProps extends SeatButtonProps {
    *  drawn beside the strip, which is what lets the wait tiles above start at its outer edge and
    *  run the whole width of the corner. */
   wind?: ReactNode
+  /** "Watch from here" — perspective is view-only, so this never touches `onChange`. Lives here
+   *  as the eye icon rather than inside `SeatButton`'s dialog: rotating the board is common enough
+   *  (the turn glow is the whole reason to do it) that it earns its own one-tap icon on the plate,
+   *  between the gear and the wind, rather than a button two taps deep in a dialog. */
+  onWatch: (seat: number) => void
 }
 
 /**
- * One seat's info strip on the felt: the settings button that opens `SeatButton`'s dialog, then
- * the algorithm badge (which belongs beside the trigger that sets it), then the furiten badge, and
- * the wait tiles above — the two hand reads together, outboard of the two seat settings, with the
- * seat's wind (`Table`'s own node, passed in) leading the bottom line. It fills
- * the corner cell on that seat's right, so the waits are drawn in full rather than trimmed to the
- * five that used to fit beside the calls, and a thirteen-sided kokushi wait wraps over two lines
- * at a size that says plainly they are not tiles in play. Sized off the board's own `--tile-w`
- * like everything else out here.
+ * One seat's info strip on the felt: the wait tiles (if shown), then a meta line for the algorithm
+ * badge and furiten chip, then a control line for the eye ("watch from here"), the settings button
+ * that opens `SeatButton`'s dialog, and the seat's wind (`Table`'s own node, passed in) — three
+ * stacked lines rather than one, which is what gives the eye room without wrapping the algorithm
+ * badge onto it or overlapping the gear's touch target: measured live at a 390px board, one line
+ * carrying wind + gear + badge + furiten had ~4px of slack left over, nowhere near a third 44px
+ * target. It fills the corner cell on that seat's right, so the waits are drawn in full rather than
+ * trimmed to the five that used to fit beside the calls, and a thirteen-sided kokushi wait wraps
+ * over two lines at a size that says plainly they are not tiles in play. Sized off the board's own
+ * `--tile-w` like everything else out here.
  */
-export function SeatStrip({ read, showWaits, wind, ...seatButtonProps }: SeatStripProps) {
+export function SeatStrip({ read, showWaits, wind, onWatch, ...seatButtonProps }: SeatStripProps) {
   const { t } = useTranslation()
-  const { seat, players, defaultOrientation, config, fallbackModes } = seatButtonProps
+  const { seat, players, defaultOrientation, config, fallbackModes, viewSeat } = seatButtonProps
   const mode = resolveSeatConfig(config, players, defaultOrientation, fallbackModes).modes[seat]
+  const yours = seat === viewSeat
 
   return (
-    // a column: the waits above, the wind and the controls on the bottom line. The tiles are the
-    // tallest thing here and the widest — put on that line they pushed the settings button and
-    // the algorithm badge off the corner
+    // a column: the waits above, then the meta line, then the wind and controls on the bottom
+    // line. The tiles are the tallest thing here and the widest — put on their own line they
+    // pushed everything else off the corner
     <div
       data-testid="seat-strip"
       data-seat={seat}
@@ -79,14 +87,10 @@ export function SeatStrip({ read, showWaits, wind, ...seatButtonProps }: SeatStr
           ))}
         </div>
       )}
-      {/* `flex-row-reverse`, so source order still reads wind-first while the wind lands at the
-          corner: it is the one thing on this line that has to sit on the felt's own edge.
-          `flex-wrap-reverse` with it: this line does overflow (a manual seat carries a furiten
-          chip and an algorithm badge beside the wind), and wrapping the usual way pushed the
-          overflow *below* the wind, which is off the felt and no longer the corner */}
-      <div className="flex flex-row-reverse flex-wrap-reverse items-center gap-[0.6cqw]">
-        {wind}
-        <SeatButton {...seatButtonProps} />
+      {/* meta line: the algorithm badge stays corner-most (`flex-row-reverse` puts the first DOM
+          child rightmost), the furiten chip inboard of it — its own line now, so it never has to
+          wrap onto the waits above it the way sharing a line with the eye/gear/wind would */}
+      <div className="flex flex-row-reverse items-center gap-[0.6cqw]">
         <span
           className={`shrink-0 rounded px-[0.6cqw] py-[0.1cqw] text-[2cqw] ${ALGO_COLOR[mode]}`}
         >
@@ -97,8 +101,10 @@ export function SeatStrip({ read, showWaits, wind, ...seatButtonProps }: SeatStr
              <body>, and the plate it would otherwise sit in is rotated with its seat — a
              `GlossaryTerm` here hung its inline hover card sideways off a seat's corner, and drew
              the word itself at the page's 16px instead of the board's own scale. This is the same
-             glossary entry either way, sized like the algorithm badge beside it, with
-             `SeatPanel`'s `after:size-11` trick keeping a real 44px target over a `cqw` box */
+             glossary entry either way, sized like the algorithm badge beside it. Its 44px target
+             anchors *upward* (`after:bottom-0`) into this line's own box rather than centring on
+             it, so it grows into the (non-interactive) waits row above instead of down onto the
+             control line below, where the eye and gear already claim the space. */
           <InfoPopover
             triggerLabel={t('glossary.ariaLabel', { term: t(GLOSSARY.furiten.labelKey) })}
             trigger={
@@ -111,11 +117,34 @@ export function SeatStrip({ read, showWaits, wind, ...seatButtonProps }: SeatStr
                 <HelpCircle className="size-[1.5cqw] shrink-0" />
               </span>
             }
-            triggerClassName="relative shrink-0 rounded bg-red-100 px-[0.6cqw] py-[0.1cqw] text-[2cqw] text-red-800 after:absolute after:top-1/2 after:left-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 dark:bg-red-900/40 dark:text-red-300"
+            triggerClassName="relative shrink-0 rounded bg-red-100 px-[0.6cqw] py-[0.1cqw] text-[2cqw] text-red-800 after:absolute after:bottom-0 after:-inset-x-[0.6cqw] after:h-11 dark:bg-red-900/40 dark:text-red-300"
             dialogTitle={t(GLOSSARY.furiten.labelKey)}
             text={t(GLOSSARY.furiten.descKey)}
             wikiUrl={GLOSSARY.furiten.wikiUrl}
           />
+        )}
+      </div>
+      {/* control line: `flex-row-reverse` again, wind first in DOM so it lands corner-most, then
+          the gear, then the eye — the same reading order as a real table's own settings, closest
+          things first from where the reader's thumb would land. */}
+      <div className="flex flex-row-reverse items-center gap-[2cqw]">
+        {wind}
+        <SeatButton {...seatButtonProps} />
+        {!yours && (
+          // omitted on the seat already watched — nothing to switch to from where you already are
+          <button
+            type="button"
+            aria-label={t('seats.sitHere')}
+            onClick={() => onWatch(seat)}
+            // the board turns underneath the felt, no dialog in the way — the whole point of the
+            // eye is that rotating is a one-tap affordance now, not two taps into a dialog.
+            // View-only: it never touches `onChange`, so it cannot re-search for a new hand or
+            // persist. Touch target matches the gear beside it: 44px tall, spanning its own box
+            // plus half the line's gap on each side, so the two never overlap
+            className="relative flex h-[8cqw] items-center justify-center text-[3cqw] text-neutral-500 after:absolute after:top-1/2 after:-inset-x-[0.9cqw] after:h-11 after:-translate-y-1/2"
+          >
+            <Eye className="size-[4cqw]" />
+          </button>
         )}
       </div>
     </div>

@@ -14,6 +14,11 @@ export interface SeatView {
   nuki?: ParsedTile[]
   /** This seat has declared riichi — drawn as a 1000-point bet stick in front of its river. */
   riichi?: boolean
+  /** The last tile in this seat's river is a discard a claim is pending on — displaced out of its
+   *  row and ringed amber, so a reader can see *what* is being asked about without a caption
+   *  duplicating what the turn glow (`activeSeat`) already says. `finishTurn` pushes a discard
+   *  onto the river before resolving reactions, so the claimed tile is always `river.at(-1)`. */
+  claiming?: boolean
   /** This seat's hand tiles, shown beside the board — omitted for the seat the board is drawn
    *  from, which has its own on-screen hand below it. The table itself doesn't gate on any
    *  setting; the caller decides both whether to pass this and whether `concealed` accompanies
@@ -52,6 +57,10 @@ interface TableProps {
   uraIndicators?: ParsedTile[]
   wallCount?: number
   honba?: number
+  /** The seat that owes a decision right now (`core/table.ts#actingSeat` — a pending claim
+   *  outranks the turn order) — lights the felt's edge on that seat's side, the one ambient signal
+   *  that the board is waiting on a person rather than sitting idle. Omit once the hand is over. */
+  activeSeat?: number
   /** Extra centre content — the scoring trainer's win-condition badges. */
   children?: ReactNode
   /** One seat's own info strip — the settings button plus its furiten/algorithm/wait reads — given
@@ -186,6 +195,7 @@ export function Table({
   uraIndicators = [],
   wallCount,
   honba,
+  activeSeat,
   children,
   seatInfo,
 }: TableProps) {
@@ -303,7 +313,7 @@ export function Table({
                       <Stick dot label={t('table.riichiStick')} />
                     </span>
                   )}
-                  <River tiles={seat.river ?? []} />
+                  <River tiles={seat.river ?? []} claiming={seat.claiming} />
                 </div>
                 {((seat.hand && seat.hand.length > 0) || seat.drawn || called) && (
                   /* anchored to the *outer* square (the `relative` box two levels up), not to the
@@ -479,6 +489,29 @@ export function Table({
             {children}
           </div>
         </div>
+        {/* the one ambient signal that the board is waiting on a person: an amber bar on the
+            felt's edge nearest whoever owes the decision, the same rotated-square-overlay trick
+            `seat-points` uses above — a transform doesn't move the box it was laid out in, so the
+            bar is pinned to a square's near edge and the square itself is turned to face the seat.
+            A sibling of the felt-grid div, not a child of it: `seat-ring` already anchors to *this*
+            box (`board`, "relative box two levels up" per its own comment) rather than the felt
+            immediately around it, and a second `relative` wrapper one level closer would have
+            quietly changed what that inset-0 resolves against for every seat's ring. So it insets
+            itself by the felt's own share instead — the same `10%` the square gives up on each
+            side to hold the revealed hands, and only when it actually gives it up, or the bar
+            lands *below* the felt in the strip those hands sit in. Still square either way, which
+            is what keeps the rotation covering it. `pointer-events-none` throughout: it must never
+            sit between the reader and a tile they are about to click. `motion-safe:` keeps the
+            pulse off under reduced motion, where the bar is still there, just static. */}
+        {activeSeat !== undefined && (
+          <span
+            data-testid="turn-mark"
+            data-seat={activeSeat}
+            className={`pointer-events-none absolute ${showsHands ? 'inset-[10%]' : 'inset-0'} ${SLOTS[slotOf[(activeSeat - seatIndex + players) % players]].spin}`}
+          >
+            <span className="absolute inset-x-[14%] bottom-[0.6cqw] h-[1.2cqw] rounded-full bg-amber-400 shadow-[0_0_2cqw] shadow-amber-400/70 motion-safe:animate-pulse" />
+          </span>
+        )}
       </div>
     </div>
   )

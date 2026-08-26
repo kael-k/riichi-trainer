@@ -18,9 +18,6 @@ export interface EfficiencyOptions {
    *  the link's own seat, every other seat on the efficiency AI). Page state (ADR-0015), not settings
    *  — see `EfficiencyPage`. */
   seats: SeatConfig | null
-  /** Ask manual seats about other seats' discards (`TableSettings.claims`) — board-wide and
-   *  persisted, unlike `seats` itself (ADR-0015). */
-  claims: boolean
   /** The seat panel's "show tenpai/waits" setting — threaded to `useRound`, which is where the
    *  per-seat cost of computing it is actually paid. */
   showSeatWaits: boolean
@@ -59,7 +56,9 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     riichi: false,
     wins: false,
     algorithms,
-    claims: options.claims,
+    // always on: a manual seat is simply asked about another seat's discard (ADR-0034) — dropped
+    // the reader-facing checkbox, which read as confusing rather than as a real choice
+    claims: true,
   }
 
   const drill = useEfficiencyDrill({

@@ -163,6 +163,15 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     snapshot?.hands[acting] ?? [],
     snapshot?.drawn?.seat === acting ? snapshot.drawn.tile : undefined,
   )
+  const actingMelds = snapshot?.melds[acting] ?? []
+  /** Whether the tiles on screen (the *acting* seat's hand) are a full, decidable 14 — what the
+   *  page's `canAct` reads instead of `!finished`. Distinct from `finished`, which stays anchored
+   *  to `seatIndex` (the graded seat) and is what freezes that seat's own hand between its own
+   *  turns; the two differ only when a second seat is manual, which is exactly the freeze
+   *  `NOTE-efficiency-multi-manual-freeze.md` found (ADR-0034): `finished` stays true for the
+   *  whole window between the graded seat's discard and its next draw, which is almost the entire
+   *  time a second manual seat is playing its own turn. */
+  const actingPlayable = hand.length + (drawn ? 1 : 0) + actingMelds.length * 3 === 14
 
   /** Writes one log row per *your own* discard the round was fast-forwarded through, so a shared
    *  link (or a rewind) arrives with the turns behind it on the record instead of a blank log —
@@ -238,7 +247,8 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     acting,
     hand,
     drawn,
-    kans: (snapshot?.melds[acting] ?? []).filter((m) => m.kind === 'ankan').map((m) => m.tiles),
+    actingPlayable,
+    kans: actingMelds.filter((m) => m.kind === 'ankan').map((m) => m.tiles),
     turn: snapshot?.turn ?? 1,
     doraIndicators: snapshot?.doraIndicators ?? [],
     rivers: snapshot?.rivers ?? [],

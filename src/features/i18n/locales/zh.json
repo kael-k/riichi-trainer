@@ -82,10 +82,8 @@
       "tsumogiri": "每巡直接打出刚摸到的牌，完全不整理手牌。",
       "manual": "这个座位由你操作——打牌、鸣牌和立直都由你决定。"
     },
-    "claims": "他家出牌时，先询问是否鸣牌",
-    "playingSeat": "轮到{{wind}}",
-    "watchingSeat": "正在观看{{wind}}",
-    "backToYourSeat": "回到你的座位",
+    "waitingSeat": "等待{{wind}}操作",
+    "goToSeat": "前往{{wind}}",
     "claimPrompt": "{{wind}}: 是否鸣{{from}}打出的牌?",
     "claim": {
       "ron": "荣和",

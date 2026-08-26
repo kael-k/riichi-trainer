@@ -42,4 +42,24 @@ describe('Table', () => {
     useSettings.setState({ showTsumogiri: true })
     expect(shades(render(table).container)).toHaveLength(1)
   })
+
+  it('lights the felt edge on the side of the seat that owes a decision, and only then', () => {
+    const seats = [{}, {}, {}, {}]
+    const idle = render(<Table seats={seats} seatIndex={0} round="E" />).container
+    expect(idle.querySelectorAll('[data-testid="turn-mark"]')).toHaveLength(0)
+
+    // the rotation is the whole point of the mark: an unturned bar lights the wrong side of the
+    // felt, so every seat's own spin is pinned here — watched from seat 1, seat 1 is the bottom
+    // edge, 2 the right, 3 the top, 0 the left
+    const spins = ['rotate-90', 'rotate-0', '-rotate-90', 'rotate-180']
+    for (const [seat, spin] of spins.entries()) {
+      const lit = render(
+        <Table seats={seats} seatIndex={1} round="E" activeSeat={seat} />,
+      ).container.querySelectorAll<HTMLElement>('[data-testid="turn-mark"]')
+      expect(lit).toHaveLength(1)
+      expect(lit[0].dataset.seat).toBe(String(seat))
+      // by word, not by substring: `rotate-90` is a substring of `-rotate-90`
+      expect(lit[0].className.split(' ')).toContain(spin)
+    }
+  })
 })

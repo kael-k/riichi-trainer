@@ -538,20 +538,21 @@ duplicates under StrictMode. Two consequences that are easy to get wrong:
   children-first, so a page that logs as its round mounts would have those rows wiped a moment later.
 
 **Per-seat table configuration** (`features/settings/tableSettings.ts`) is one schema every
-board-rendering trainer shares: `SeatConfig { modes: SeatAlgorithm[] }`, plus `TableSettings.claims`
-alongside it. **`Table` itself has no concept of a "player"** — every seat is just a seat with an
-algorithm, and the only thing that makes a seat the one you play is `'manual'`. "Your seat" is a
-trainer-level idea, not something `Table` reads or needs.
+board-rendering trainer shares: `SeatConfig { modes: SeatAlgorithm[] }`. **`Table` itself has no
+concept of a "player"** — every seat is just a seat with an algorithm, and the only thing that makes
+a seat one somebody plays is `'manual'`. "Your seat" is a trainer-level idea, not something `Table`
+reads or needs.
 
 - **Seat algorithms are board state, not a preference, and are not persisted.** `SeatConfig` is
   page state with the same lifetime as `viewSeat` — a `useState` seeded from the link, reset on
-  every new hand. The settings store holds no `modes` field. **`TableSettings.claims` is the one
-  persisted part**: it answers a question about the reader, not about the board.
-- **Perspective is not in this schema at all** — each page's own `viewSeat` `useState`, defaulting
-  to `round.seatIndex`, reset per hand, never persisted, **view-only in every trainer**: "watch from
-  here" never means "play here", which comes only from a `modes` entry of `'manual'`. The page's own
-  `hand` slot follows perspective too, not the acting seat — face-down unless that seat is manual or
-  hands are revealed, and **click-through only when perspective and the seat mid-turn agree**.
+  every new hand. The settings store holds no `modes` field.
+- **A reader acts from the seat the board is drawn from** (ADR-0034): perspective still never
+  makes a seat manual — that stays `modes`' job alone — but it now decides **which** manual seat's
+  controls are live, not merely which seat's tiles are drawn face-up. **Perspective itself is still
+  not in this schema at all** — each page's own `viewSeat` `useState`, defaulting to
+  `round.seatIndex`, reset per hand, never persisted. The page's own `hand` slot follows perspective,
+  not the acting seat — face-down unless that seat is manual or hands are revealed, and
+  **click-through only when perspective and the seat mid-turn agree**.
 - `resolveSeatConfig(config, players, defaultSeat, fallbackModes?)` guarantees at least one manual
   seat, **anchored on `defaultSeat`** (the link's `?seat=`, or the generated seat) **never on
   perspective** — with none, nothing would hand the reader a turn. `fallbackModes` overrides the
@@ -565,17 +566,34 @@ trainer-level idea, not something `Table` reads or needs.
   away from `'manual'` cannot move which seat is graded, only freeze grading in place.
 - `useTableSettings(app)`'s `seatsEnabled` only decides whether to render the panel; `seatConfig` is
   page-local and starts at `null` regardless, so nothing persisted runs under a hidden panel.
+- **Whether a manual seat is asked about another seat's discard is no longer a setting** — every
+  trainer that offers calls at all (efficiency, lab) hardcodes `RoundOptions.claims: true`; folding
+  leaves it unset, since the drill is fold-only. `RoundOptions.claims` itself, the engine-level flag
+  `claimOptions`/`answerClaim` read, is unchanged (ADR-0034).
 
-`SeatButton` is the per-seat dialog ("watch from here", offered on every seat but the one already
-watched; the efficiency/defend/manual row; the claims checkbox for manual seats), placed on the felt
-by `SeatStrip` through `Table`'s `seatInfo` prop. `ManualControls` is the shared riichi-arm button,
-claim prompt and "Playing {wind}" line; **it renders nothing in the single-manual-seat, no-claim,
-no-riichi, own-perspective case**, so every trainer mounts it unconditionally. **Watching a seat
-other than the one that would act swaps every other line out for "Watching {wind} / Back to your
-seat"** — spectating suspends the whole control surface, a pending claim included, rather than
-answering it against a hand that isn't on screen.
+`SeatButton` is the per-seat dialog (the efficiency/defend/manual row only now — "watch from here"
+moved out, see below), placed on the felt by `SeatStrip` through `Table`'s `seatInfo` prop.
+`SeatStrip` itself carries a three-line plate: the wait tiles (when shown), a meta line for the
+algorithm badge and furiten chip, and a control line with an **eye icon** ("watch from here",
+omitted on the seat already watched), the settings gear, and the wind. **`Table` also draws one
+ambient signal that owes no seat panel at all**: `activeSeat` (board truth, like `riichi`/`points`)
+lights the felt's edge nearest whoever currently owes a decision — a pending claim outranks the
+turn order (`core/table.ts#actingSeat`) — so a reader can tell the board is waiting on a person, and
+which one, without opening anything.
 
-**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0032](docs/adr/0032-one-efficiency-drill-core.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)
+`ManualControls` is the shared riichi-arm button and claim prompt; **it renders nothing once the
+hand is over with nothing left to answer, or in the single-manual-seat, no-claim, no-riichi,
+own-perspective case**, so every trainer mounts it unconditionally. **Its `ended` flag never
+outranks a pending claim** — efficiency's `drillOver` is a tile count and stays true across the
+window a replayed link lands in, where an opponent can still offer a call, and the engine suspends
+every turn until that call is answered. **Watching any seat other than the one that owes the decision
+swaps every other line out for one sentence naming that seat plus a "Go to {wind}" button** that
+rotates perspective there — the shortcut half of the turn glow's ambient half. A claimable discard
+is displaced out of its own river row and ringed amber (`SeatView.claiming`) rather than the prompt
+repeating which tile in text; the prompt itself draws each call option as the meld it would make,
+the claimed tile ringed in place, `Ron` filled/emphatic and `Pass` a ghost button.
+
+**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0032](docs/adr/0032-one-efficiency-drill-core.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0034](docs/adr/0034-you-act-from-where-you-watch.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)
 
 ### UI
 

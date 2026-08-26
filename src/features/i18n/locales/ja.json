@@ -82,10 +82,8 @@
       "tsumogiri": "毎巡、ツモった牌をそのまま切ります — 手牌の管理は一切しません。",
       "manual": "この席はあなたが操作します — 打牌・鳴き・リーチはあなたが選びます。"
     },
-    "claims": "他家の捨て牌に鳴くか毎回確認する",
-    "playingSeat": "{{wind}}の番です",
-    "watchingSeat": "{{wind}}を観戦中",
-    "backToYourSeat": "自分の席に戻る",
+    "waitingSeat": "{{wind}}の判断待ちです",
+    "goToSeat": "{{wind}}へ移動",
     "claimPrompt": "{{wind}}: {{from}}の捨て牌に鳴きますか?",
     "claim": {
       "ron": "ロン",

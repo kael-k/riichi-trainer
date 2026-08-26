@@ -86,10 +86,8 @@
       "tsumogiri": "Discards whatever it just drew, every turn — no hand management at all.",
       "manual": "You play this seat: discards, calls and riichi are your choice."
     },
-    "claims": "Ask me to call on other seats’ discards",
-    "playingSeat": "Playing {{wind}}",
-    "watchingSeat": "Watching {{wind}}",
-    "backToYourSeat": "Back to your seat",
+    "waitingSeat": "Waiting on {{wind}}",
+    "goToSeat": "Go to {{wind}}",
     "claimPrompt": "{{wind}}: call on {{from}}’s discard?",
     "claim": {
       "ron": "Ron",

@@ -169,9 +169,34 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     drill's last turn still reaches it. Verified live at 1440×900 and 390×844 against a
     wall+log link reproducing the audit scenario (the card shows pre-fix, never post).
 
+17. **A reader now acts from the seat the board is drawn from, and the felt says who owes a
+    decision** ([ADR-0034](adr/0034-you-act-from-where-you-watch.md)). Fixes the freeze
+    `plans/NOTE-efficiency-multi-manual-freeze.md` found: `useEfficiencyDrill` gained
+    `actingPlayable` (the *acting* seat's own tile-count check) so `EfficiencyPage`'s `canAct`
+    stops reading `finished` (anchored to the graded seat, which stayed true for a second manual
+    seat's whole turn). `Table` gained `activeSeat` — an amber pulse on the felt's edge nearest
+    whoever owes the decision — and `SeatView.claiming` displaces a claimable discard out of its
+    river row and rings it. `ManualControls` now gates on `viewSeat === acting` rather than
+    `viewSeat === seatIndex`: watching any other seat collapses to a "Go to {wind}" rotate button.
+    The claim prompt was rebuilt (each call drawn as the meld it would make, `Ron` emphatic,
+    `Pass` a ghost button, no restated "X discarded" caption). `TableSettings.claims` (the
+    "ask me to call" checkbox) is gone — efficiency and lab always ask, folding never does.
+    "Watch from here" moved from `SeatButton`'s dialog onto the seat's own plate as an eye icon,
+    which pushed `SeatStrip` to a three-line plate (waits, then algorithm+furiten, then
+    eye+gear+wind) so the icon's 44px target has room that doesn't overlap the gear's. New hook
+    test (`useEfficiencyRound.test.ts`) pins the two-manual-seat freeze directly; `Table.test.tsx`
+    pins all four of the turn mark's rotations, and `ManualControls.test.tsx` pins that a pending
+    claim still gets its prompt once `ended` is set (that gate deadlocked the board outright until
+    it was narrowed to `ended && !claim` — see the ADR).
+    Verified live at 390×844 and 1440×900, both themes and `prefers-reduced-motion: reduce`: the
+    mark follows the turn through all four rotations, the eye and gear each own a clean 45px hit
+    box with the plate not wrapping, and a forced pon showed the displaced ringed river tile, the
+    meld previews, and `Pass` as the quiet option.
+
 ## In flight
 
-- Nothing. All six `plans/UX-AUDIT.md` plans have landed.
+- Nothing. All six `plans/UX-AUDIT.md` plans have landed, and the multi-manual freeze the
+  UX-AUDIT session flagged (`plans/NOTE-efficiency-multi-manual-freeze.md`) is fixed — see item 17.
 - `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per
   `docs/README.md`'s one-plan-file rule. `PLAN-seat-algorithms.md`, `UX-TESTS-BUG.md` and
   `UX-SPECS.md` are all gone from root too; the mobile-layout items `UX-TESTS-BUG.md` carried are
@@ -216,6 +241,26 @@ Both re-verified present in the current tree:
   next obvious lab feature (seeding a wall from a pasted hand).
   _Fix:_ filter `hand`'s copies out first, mark red among the survivors, mirroring
   `completeWall`'s own `prefixReds` handling.
+- **A declined claim does not survive a link round-trip.** `LogEntry` only has
+  `discard`/`call`/`kita`/`ankan`/`win` — no `'pass'` kind — so a manual seat's "no thanks" on a
+  ron/pon/chi offer leaves no trace in `round.log`. Sharing the current situation (or a rewind)
+  from a point just past a declined claim, then opening that link, replays up to the same
+  discard and the live seam re-offers the identical claim rather than landing past it — the reader
+  answers the same question twice. Pre-existing (the lab already ran `claims: true` by default,
+  ADR-0034 just widened it to efficiency/lab always), surfaced while chasing test flakiness for
+  that ADR — two tests in `useEfficiencyRound.test.ts` had to move off unseeded walls specifically
+  to avoid tripping it. Low blast radius (only reachable right after declining a claim, and
+  answering it again costs nothing but a repeat tap) but a real gap if `LogEntry` is ever extended.
+  _Fix direction:_ a `'pass'` `LogEntry` kind, or fold declines into the existing kinds' shape.
+- **A link replayed to a tenpai discard opens with the end card up, then takes it back.**
+  `useEfficiencyDrill`'s `drillOver` is `tenpai || snapshot.ended`, and `tenpai` rides on
+  `finished` — a tile count, true for the whole window between the graded seat's discard and its
+  next draw. A shared link whose last replayed entry reached tenpai therefore lands inside that
+  window with the card already up (documented and intended, ADR-0032/PLAN-ux-6), but live play is
+  still running behind it, so the card disappears again the moment that seat draws. Cosmetic only
+  since ADR-0034 narrowed `ManualControls`' `ended` gate to `ended && !claim` — before that, a
+  claim arriving in the same window had no prompt and froze the board.
+  _Fix direction:_ if it is worth fixing at all, `drillOver` would have to latch rather than derive.
 
 ### Maintenance notes
 

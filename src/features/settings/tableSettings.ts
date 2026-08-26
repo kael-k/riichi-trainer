@@ -80,11 +80,6 @@ export interface TableSettings {
    *  per concept beats a narrower one with a special case, and switching it on is the reader
    *  choosing to spoil their own drill. */
   showSeatWaits: boolean
-  /** Ask manual seats about pon/chi/ron on other seats' discards (`RoundOptions.claims`). Stays
-   *  match-wide and persisted (ADR-0015, unlike the per-seat algorithms themselves — see `SeatConfig`)
-   *  since it answers a question about the reader, not about the board. Off in the graded drills,
-   *  which ask one question per turn; on in the free-play lab. */
-  claims: boolean
 }
 
 /** One id per board-rendering app. `lab` is the statistical lab (plan 01-07); it has no page yet
@@ -101,38 +96,30 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    claims: false,
   },
   efficiencySolo: {
     opponentWins: false,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    claims: false,
   },
   folding: {
     opponentWins: false,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    claims: false,
   },
   scoring: {
     opponentWins: true,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    claims: false,
   },
   lab: {
     opponentWins: false,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
-    // the lab is the free-play board: manual seats are the point there, so it ships with the
-    // claim prompts on. Per-seat `modes` themselves are never a settings default — they are page
-    // state seeded from the link (ADR-0015), same as every other app
-    claims: true,
   },
 }
 

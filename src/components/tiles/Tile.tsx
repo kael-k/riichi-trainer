@@ -197,17 +197,25 @@ export function HandDisplay({
 /** One discard. A tsumogiri (straight off the draw, never in the hand) is greyed, the usual
  *  convention; a ronned tile is ringed where it lies, which is what says "this hand was won off
  *  a discard" without a label. Both overlays go on the tile itself rather than the sideways
- *  wrapper, so a riichi declared on that tile rotates them along with the face. */
-function Discard({ tile }: { tile: RiverTile }) {
+ *  wrapper, so a riichi declared on that tile rotates them along with the face. `claiming` nudges
+ *  it toward its own discarder (a positive `translate-y` in the river's own unrotated frame — row
+ *  0 sits nearest the felt centre, later rows grow toward the seat's own edge, so "down" here is
+ *  "away from the centre") and rings it amber, the same shape the `win` outline already uses one
+ *  hue over: a claimable discard reads as displaced rather than needing a caption to say which
+ *  tile the prompt below is about. */
+function Discard({ tile, claiming }: { tile: RiverTile; claiming?: boolean }) {
   const { showTsumogiri } = useAdvancedSettings()
   const face = (
-    <span className="relative flex">
+    <span className={`relative flex ${claiming ? 'translate-y-[22%]' : ''}`}>
       <Tile id={tile.id} red={tile.red} />
       {tile.tsumogiri && showTsumogiri && (
         <span className="pointer-events-none absolute inset-0 rounded-[10%] bg-neutral-500/50" />
       )}
       {tile.win && (
         <span className="pointer-events-none absolute inset-0 rounded-[10%] outline-2 outline-red-500" />
+      )}
+      {claiming && (
+        <span className="pointer-events-none absolute inset-0 rounded-[10%] outline-2 outline-amber-500" />
       )}
     </span>
   )
@@ -223,8 +231,20 @@ function Discard({ tile }: { tile: RiverTile }) {
  *  themselves are still six: they wrap into whatever width the caller gives this box (twelve
  *  tiles' worth, there) with a gap between the pair, so reading order and the six-tile beat a
  *  player counts a river by both survive. The caller owns the width, since a river that widens
- *  as it fills walks the hand below it across the screen. */
-export function River({ tiles, wide }: { tiles: RiverTile[]; wide?: boolean }) {
+ *  as it fills walks the hand below it across the screen.
+ *
+ *  `claiming` marks the *last* tile as the one a claim is pending on (`finishTurn` pushes a
+ *  discard before resolving reactions, so the claimed tile is always the river's own last one) —
+ *  one boolean rather than an index, since there is never more than one live claim at a time. */
+export function River({
+  tiles,
+  wide,
+  claiming,
+}: {
+  tiles: RiverTile[]
+  wide?: boolean
+  claiming?: boolean
+}) {
   const rows: RiverTile[][] = []
   for (let i = 0; i < tiles.length; i += 6) rows.push(tiles.slice(i, i + 6))
   return (
@@ -232,7 +252,11 @@ export function River({ tiles, wide }: { tiles: RiverTile[]; wide?: boolean }) {
       {rows.map((row, i) => (
         <div key={i} className="flex items-center">
           {row.map((tile, j) => (
-            <Discard key={j} tile={tile} />
+            <Discard
+              key={j}
+              tile={tile}
+              claiming={claiming && i === rows.length - 1 && j === row.length - 1}
+            />
           ))}
         </div>
       ))}

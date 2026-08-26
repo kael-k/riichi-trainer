@@ -15,7 +15,6 @@ const TABLE_BARE: TableRoundOptions = {
   aka: false,
   sanma: false,
   seats: null,
-  claims: false,
   showSeatWaits: false,
   showOpponentHands: false,
 }

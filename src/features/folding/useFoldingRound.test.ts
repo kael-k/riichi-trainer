@@ -25,7 +25,6 @@ const OPTIONS: FoldingOptions = {
   showOpponentHands: false,
   showSeatWaits: false,
   seats: null,
-  claims: false,
 }
 
 /** The wall from the report that named both bugs — a called riichi declaration tile. */

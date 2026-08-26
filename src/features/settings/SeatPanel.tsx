@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { WINDS } from '../situation/urlCodec'
-import { SegmentedButton, SettingRow } from './SettingsDialog'
+import { SegmentedButton } from './SettingsDialog'
 import { resolveSeatConfig, withSeatMode, type SeatConfig } from './tableSettings'
 import type { SeatAlgorithm } from '../../core/policy'
 
@@ -22,26 +22,20 @@ export interface SeatButtonProps {
    *  overrides the generic `'efficiency'` default `resolveSeatConfig` would otherwise show. */
   fallbackModes?: readonly SeatAlgorithm[]
   /** The seat the board is currently drawn from — purely a display concern (which seat reads as
-   *  "your side" in this dialog); perspective itself is the page's own ephemeral state, not this
-   *  component's. */
+   *  "your side" in this dialog, gating the manual-only filter below); perspective itself is the
+   *  page's own ephemeral state, not this component's. */
   viewSeat: number
-  /** "Watch from here" — perspective is view-only, so this never touches `onChange`. */
-  onWatch: (seat: number) => void
   /** Only your own seat may be manual. The graded drills that own their board (folding) grade
    *  exactly one seat's discards against exactly one hand, so a second manual seat has nothing
    *  defined to score — the algorithm choice is still offered for every seat. */
   ownSeatOnlyManual?: boolean
-  /** Ask this manual seat about other seats' discards (`TableSettings.claims`) — board-wide and
-   *  persisted (ADR-0015), so it is threaded in and out separately from `config`/`onChange`, which
-   *  carry only the per-seat algorithms (page state, ADR-0015). */
-  claims: boolean
-  onClaimsChange: (claims: boolean) => void
 }
 
 /**
- * One seat's own settings, behind one icon sitting at that seat's mark on the board: which side
- * you watch from, and how the seat is played (`SeatAlgorithm`). One button per seat rather than a
- * single table-wide panel — a seat's rules are read and changed while looking at that seat.
+ * One seat's own settings, behind one icon sitting at that seat's mark on the board: how the seat
+ * is played (`SeatAlgorithm`). One button per seat rather than a single table-wide panel — a
+ * seat's rules are read and changed while looking at that seat. "Watch from here" lives beside
+ * this button now (`SeatStrip`'s own eye icon), not inside this dialog.
  *
  * Rendered only where `useTableSettings` says the panel is offered at all (`seatsEnabled`), which
  * is the Advanced gate everywhere except the lab. Setting every seat to an AI would leave nobody
@@ -56,10 +50,7 @@ export function SeatButton({
   onChange,
   fallbackModes,
   viewSeat,
-  onWatch,
   ownSeatOnlyManual = false,
-  claims,
-  onClaimsChange,
 }: SeatButtonProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -101,8 +92,13 @@ export function SeatButton({
         // the box hugs the icon (`h-[8cqw]` is the line height the wind beside it aligns to, not a
         // square): with a `min-w-[8cqw]` it carried 2cqw of empty box on each side, which read as
         // gap and put the algorithm badge visibly further from the button than the wind is. The
-        // spacing is the plate's and the strip's own `gap` now, where it can be tuned
-        className={`relative flex h-[8cqw] items-center justify-center gap-[0.4cqw] text-[3cqw] font-semibold after:absolute after:top-1/2 after:left-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 ${
+        // spacing is the plate's and the strip's own `gap` now, where it can be tuned.
+        // The 44px touch target is centred vertically (`top-1/2 -translate-y-1/2`) but spans only
+        // its own box plus half the strip's gap on each side (`-inset-x-[0.9cqw]`), not a
+        // side-agnostic square: the eye button now sits right beside this one at the same size,
+        // and a centred 44px square would overlap it by as much as it missed the wind on the
+        // other side.
+        className={`relative flex h-[8cqw] items-center justify-center gap-[0.4cqw] text-[3cqw] font-semibold after:absolute after:top-1/2 after:-inset-x-[0.9cqw] after:h-11 after:-translate-y-1/2 ${
           yours ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
         }`}
       >
@@ -130,25 +126,6 @@ export function SeatButton({
                 </button>
               </div>
               <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-                {/* nothing to say about the seat you're already looking at — a "your side" label
-                    read as filler next to every other seat's real "Watch from here" button, so
-                    this seat's row is dropped entirely rather than left empty */}
-                {!yours && (
-                  <button
-                    type="button"
-                    // the board turns underneath the dialog, and the dialog is what covers it
-                    // — the whole point of the press is to look at the new view. View-only: it
-                    // never touches `onChange`, so it cannot re-search for a new hand or persist
-                    onClick={() => {
-                      onWatch(seat)
-                      setOpen(false)
-                    }}
-                    className="min-h-11 w-fit rounded-lg border border-neutral-300 px-3 text-sm font-medium dark:border-neutral-700"
-                  >
-                    {t('seats.sitHere')}
-                  </button>
-                )}
-
                 <div className="flex flex-col gap-2">
                   <span className="text-xs font-medium text-neutral-500">
                     {t('seats.playedBy')}
@@ -173,20 +150,6 @@ export function SeatButton({
                   </div>
                   <p className="text-sm text-neutral-500">{t(`seats.modeHint.${mode}`)}</p>
                 </div>
-
-                {/* board-wide, but it only ever affects a seat a person plays — so it is shown
-                    where that decision is actually made rather than buried in the app's own
-                    settings dialog */}
-                {mode === 'manual' && (
-                  <SettingRow label={t('seats.claims')}>
-                    <input
-                      type="checkbox"
-                      checked={claims}
-                      onChange={(e) => onClaimsChange(e.target.checked)}
-                      className="size-5"
-                    />
-                  </SettingRow>
-                )}
               </div>
             </div>
           </div>,

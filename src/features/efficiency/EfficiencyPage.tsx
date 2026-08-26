@@ -14,7 +14,7 @@ import { ManualControls } from '../table/ManualControls'
 import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useSettings } from '../settings/settingsStore'
-import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
+import { useTableSettings, type SeatConfig } from '../settings/tableSettings'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { EFFICIENCY_VERDICT_TEXT_KEY, efficiencyVerdictSeverity } from './grade'
@@ -28,23 +28,13 @@ function accuracy(lost: number, total: number): number {
 export function EfficiencyPage() {
   const { t } = useTranslation()
   const situation = useUrlData(decodeSituation)
-  const rawTable = useSettings((s) => s.table)
-  const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
   const { aka } = useAdvancedSettings()
-  const { showOpponentHands, showSeatWaits, claims, seatsEnabled } = useTableSettings('efficiency')
-  // `update` only merges at the section level, so a patch of `{ apps: {...} }` would otherwise
-  // replace the whole apps layer instead of adding one app's key to it — merge the existing
-  // `apps.efficiency` slice in first.
-  const updateTable = (patch: Partial<TableSettings>) =>
-    update('table', {
-      apps: { ...rawTable.apps, efficiency: { ...rawTable.apps.efficiency, ...patch } },
-    })
+  const { showOpponentHands, showSeatWaits, seatsEnabled } = useTableSettings('efficiency')
 
   // per-seat algorithms are board state, not a preference (ADR-0015): page state with the same
   // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
-  // persisted. `claims` (above) is the one part of the old seat panel that *is* a reader
-  // preference, so it stays in settings.
+  // persisted.
   const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
 
   // situation overrides pin round behavior so shared links reproduce exactly
@@ -53,11 +43,10 @@ export function EfficiencyPage() {
       aka: situation.aka ?? aka,
       sanma: situation.sanma ?? sanma,
       seats: seatConfig,
-      claims,
       showSeatWaits,
       showOpponentHands,
     }),
-    [situation, aka, sanma, seatConfig, claims, showSeatWaits, showOpponentHands],
+    [situation, aka, sanma, seatConfig, showSeatWaits, showOpponentHands],
   )
 
   const round = useEfficiencyRound(situation, options)
@@ -95,7 +84,10 @@ export function EfficiencyPage() {
     perspective === round.drawnSeat ? round.drawn : undefined,
   )
   const bottomConcealed = !viewingManual && !showOpponentHands
-  const canAct = perspective === round.acting && !round.finished
+  // `actingPlayable`, not `!round.finished`: `finished` is anchored to the graded seat and stays
+  // true for the whole window a second manual seat plays its own turn in — the freeze
+  // `NOTE-efficiency-multi-manual-freeze.md` found (ADR-0034)
+  const canAct = perspective === round.acting && round.actingPlayable
   const bottomMelds =
     perspective === round.acting
       ? round.kans.map((tiles) => ({ kind: 'ankan' as const, tiles }))
@@ -109,11 +101,13 @@ export function EfficiencyPage() {
     // where HandDisplay, in the page's own `hand` slot, already sits, and that seat's calls go
     // with it (`bottomMelds` above) rather than on the felt: they belong beside the hand they
     // were called into, at a size that reads against it
+    const claiming = round.claim?.from === seat
     if (seat === perspective) {
       return {
         river,
         riichi: round.riichi[seat],
         points: round.match.points[seat],
+        claiming,
       }
     }
     return {
@@ -124,6 +118,7 @@ export function EfficiencyPage() {
       hand: round.hands[seat],
       concealed: !mine && !showOpponentHands,
       points: round.match.points[seat],
+      claiming,
     }
   })
 
@@ -181,8 +176,6 @@ export function EfficiencyPage() {
                 defaultOrientation={round.seatIndex}
                 config={seatConfig}
                 onChange={setSeatConfig}
-                claims={claims}
-                onClaimsChange={(v) => updateTable({ claims: v })}
                 viewSeat={perspective}
                 onWatch={setViewSeat}
                 read={round.seatReads[seat]}
@@ -199,6 +192,7 @@ export function EfficiencyPage() {
           doraIndicators={round.doraIndicators}
           wallCount={round.liveWall.length}
           honba={round.match.honba}
+          activeSeat={round.drillOver ? undefined : round.acting}
         />
       }
       // one graded choice per notice: `cumulativeTotal` counts exactly those, so a re-render
@@ -245,7 +239,6 @@ export function EfficiencyPage() {
       hand={
         <div className="flex flex-col gap-4">
           <ManualControls
-            seatIndex={round.seatIndex}
             acting={round.acting}
             claim={round.claim}
             riichiTiles={round.riichiTiles()}
@@ -253,7 +246,8 @@ export function EfficiencyPage() {
             onArmRiichi={round.armRiichi}
             onAnswer={round.answer}
             viewSeat={perspective}
-            onReturn={() => setViewSeat(null)}
+            onGoTo={setViewSeat}
+            ended={round.drillOver}
           />
           {/* centred on the board above it, not left-aligned in the page: the calls hang off
                   the right of the hand, so a called hand would otherwise sit visibly off-centre

@@ -15,7 +15,6 @@ const BARE: LabOptions = {
   showOpponentHands: false,
   showSeatWaits: false,
   seats: null,
-  claims: false,
 }
 
 /** Seat 0's pinned 13-tile hand: nine man kinds plus two honor kinds — 11 distinct kinds. */
@@ -71,6 +70,12 @@ describe('useLabRound', () => {
     const firstTurn = result.current.turn
 
     act(() => result.current.discard(result.current.hand.length)) // tsumogiri
+
+    // claims are always on now (ADR-0034): a stray opponent discard may offer the graded seat a
+    // ron/pon/chi along the way, which is not this test's concern, so decline it and move on
+    while (result.current.claim) {
+      act(() => result.current.answer({ kind: 'pass' }))
+    }
 
     expect(result.current.turn).toBeGreaterThan(firstTurn)
     expect(result.current.ranked).not.toBe(firstRanked)
