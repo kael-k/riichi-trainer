@@ -394,7 +394,12 @@ export function BoardStage({
                     // size containment would make this box ignore its own content and collapse, and
                     // `100cqh` belongs to `Table`'s square, which a flow page does not have.
                     'relative flex min-h-0 flex-1 items-start justify-center px-2 pt-2 pb-16 [container-type:inline-size] roomy:min-h-36 roomy:flex-initial roomy:px-4 roomy:pt-4'
-                  : 'relative flex min-h-0 flex-1 items-center justify-center [container-type:size] roomy:p-4'
+                  : // `short:py-1`: held sideways this area is the whole viewport height, so the
+                    // square sits flush on the screen's top edge and the seat drawn there has its
+                    // hand ring, its melds and their shadows cut off by it. The padding is on the
+                    // size container, so `100cqh` is the room inside it and the square gives the
+                    // 8px back rather than overflowing — it is 4px of air, not a scale change.
+                    'relative flex min-h-0 flex-1 items-center justify-center [container-type:size] short:py-1 roomy:p-4'
               }
             >
               {board ? (
