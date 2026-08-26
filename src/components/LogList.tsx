@@ -2,7 +2,7 @@ import { Check, ChevronDown, Copy, RotateCcw, Share2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { formatLogDetail, formatLogEntry } from '../features/i18n/formatLogEntry'
+import { formatLogDetail, formatLogEntry, splitTileCodes } from '../features/i18n/formatLogEntry'
 import { useTermName } from '../features/i18n/useTermName'
 import { copyText } from '../lib/clipboard'
 import { useLog, type LogDetail, type LogEntry, type LogSeverity } from '../store/log'
@@ -179,6 +179,39 @@ function RowActions({ entry, number }: { entry: LogEntry; number: number }) {
   )
 }
 
+/** A formatted sentence with the tiles it names drawn where their codes were: "discarded 0p" and
+ *  "drew 4z" are expert shorthand, and this is the one surface a beginner reads their mistakes off
+ *  (ADR-0018, ADR-0027).
+ *
+ *  Sized in `em`, not off the log's own `--tile-w-base`: these ride inside a line of prose rather
+ *  than standing in a row of their own, so they scale with the sentence. `align-middle` puts them
+ *  on the text's own centre line — a tile has no baseline of its own for the line box to hang it
+ *  from — and the **negative vertical margin is what keeps the row the height it was**: an
+ *  inline-level box contributes its *margin* box to the line, so pulling 0.35em off each side
+ *  brings a 2em-tall tile back under the 1.375 leading. Without it every wrapped line carrying a
+ *  tile grew ~6px and a three-line row grew eleven. The tile draws past its own line either way,
+ *  which is the point: it stays big enough to read.
+ *
+ *  Nothing is done here for a screen reader on purpose: `Tile` already carries `role="img"` and
+ *  the tile's translated name, so the sentence is *read out* better than it was — "discarded red
+ *  five of circles" rather than "discarded 0p". An `aria-label` over the whole line would put the
+ *  codes back for exactly the readers who can least afford them. */
+function LogSentence({ text }: { text: string }) {
+  return (
+    <>
+      {splitTileCodes(text).map((part, i) =>
+        typeof part === 'string' ? (
+          part
+        ) : (
+          <span key={i} className="inline-flex -my-[0.35em] align-middle [--tile-w:1.5em]">
+            <Tile id={part.id} red={part.red} />
+          </span>
+        ),
+      )}
+    </>
+  )
+}
+
 function Tiles({ tiles }: { tiles: NonNullable<LogEntry['tiles']> }) {
   return (
     <>
@@ -260,7 +293,7 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
           {/* the ordinal leads the sentence instead of holding a column of its own — it is only
               ever read against `log.rewound`'s "Rewound to entry {{number}}" */}
           <span className="mr-1.5 text-[10px] text-neutral-400">{number}</span>
-          {formatLogEntry(entry, t)}
+          <LogSentence text={formatLogEntry(entry, t)} />
         </p>
         <div className="flex shrink-0 items-center">
           <RowActions entry={entry} number={number} />

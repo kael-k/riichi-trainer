@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it } from 'vitest'
 import '../features/i18n'
-import { useLog, type LogDetail } from '../store/log'
+import { useLog, type LogDetail, type LogEntry } from '../store/log'
 import { LogList } from './LogList'
 
 /** The list reads `useSearchParams` for its rewind button, so it only renders inside a router. */
@@ -15,6 +15,16 @@ function renderLog(detail: LogDetail[]) {
     </MemoryRouter>,
   )
   return utils
+}
+
+function renderEntry(entry: Omit<LogEntry, 'id'>) {
+  useLog.setState({ entries: [] })
+  useLog.getState().log(entry)
+  return render(
+    <MemoryRouter>
+      <LogList />
+    </MemoryRouter>,
+  )
 }
 
 /** The detail lines only exist once the row is expanded — the chevron is the only way in. */
@@ -95,5 +105,21 @@ describe('LogList detail lines', () => {
 
     expect(container.querySelectorAll('svg[role="img"]')).toHaveLength(1)
     expect(container.querySelectorAll('.border-l')).toHaveLength(0)
+  })
+})
+
+describe('LogList sentences', () => {
+  beforeEach(() => useLog.setState({ entries: [] }))
+
+  it('draws the tiles a sentence names instead of their tenhou codes', () => {
+    const { container } = renderEntry({
+      key: 'log.efficiency.discardMistakeDrew',
+      params: { turn: 4, drawn: '4z', tile: '0p', yours: 57, best: '3z', bestUkeire: 68 },
+    })
+
+    // three codes in, three tile faces out — and not one of them left as text
+    expect(container.querySelectorAll('svg[role="img"]')).toHaveLength(3)
+    expect(container.textContent).not.toContain('0p')
+    expect(container.textContent).toContain('Turn 4')
   })
 })

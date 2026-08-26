@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import type { LogDetail, LogEntry } from '../../store/log'
 import { WINDS } from '../situation/urlCodec'
@@ -151,4 +152,28 @@ export function formatLogDetail(
     return t('log.scoring.detailLine', { label, value })
   }
   return t(detail.key, detail.params)
+}
+
+/** A tile named inside an already-formatted sentence: a suited digit (`0m`/`0p`/`0s` being the red
+ *  five) or an honour, which only ever run `1z`–`7z`. Nothing else in this prose reads as one —
+ *  the numbers it carries (turn, ukeire, points, a clock's `0:02.345`) are never followed straight
+ *  by a suit letter, and no locale string contains the shape either. */
+const TILE_CODE = /\b(0[mps]|[1-9][mps]|[1-7]z)\b/
+
+/** Splits a formatted sentence into its prose and the tiles it names, so the log can draw them
+ *  rather than leave `0p` and `4z` on screen — expert shorthand a beginner cannot read
+ *  ([ADR-0018](../../../docs/adr/0018-beginner-defaults-advanced-depth.md)).
+ *
+ *  Tokenizing the finished sentence rather than giving `LogEntry` tile slots is deliberate: the
+ *  codes are unambiguous, and slots would touch every log call site and every special case above
+ *  for no rendering gain. It is locale-independent for the same reason — every translation
+ *  receives its codes through the same params, so all four are fixed without touching the JSON. */
+export function splitTileCodes(text: string): (string | ParsedTile)[] {
+  // one capture group, so `split` alternates prose, code, prose, code…; the pattern guarantees
+  // `parseTenhou` finds exactly one tile in a code
+  return text
+    .split(TILE_CODE)
+    .flatMap<string | ParsedTile>((part, i) =>
+      i % 2 === 0 ? (part ? [part] : []) : parseTenhou(part),
+    )
 }
