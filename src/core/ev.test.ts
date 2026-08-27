@@ -250,6 +250,62 @@ describe('the push and fold branches', () => {
   })
 })
 
+describe('the objective', () => {
+  /** South 4, and this seat is last by a mile — where placement and points stop agreeing. */
+  function allLast(tenhou: string, threats: ThreatView[] = []): SeatView {
+    return viewOf(tenhou, threats, {
+      match: createMatch(false, {
+        prevalentWind: HONOR + 1,
+        round: 4,
+        points: [8000, 32000, 30000, 30000],
+      }),
+    })
+  }
+
+  it('still adds up: every entry is the sum of its own terms in either currency', () => {
+    const view = allLast(FOURTEEN, [threatOf('1z2z3z')])
+    for (const objective of ['points', 'placement'] as const) {
+      for (const entry of rankDiscards(view, { model: statistical, objective })) {
+        const sum = entry.terms.reduce((total, term) => total + term.points, 0)
+        expect(entry.ev).toBeCloseTo(sum, 9)
+        for (const term of entry.terms)
+          expect(term.points).toBeCloseTo(term.probability * term.value, 9)
+      }
+    }
+  })
+
+  it('reports in the currency it was asked for, and they are not the same number', () => {
+    const view = allLast(TENPAI)
+    const points = rankDiscards(view, { model: statistical, objective: 'points' })[0]
+    const placement = rankDiscards(view, { model: statistical, objective: 'placement' })[0]
+    // result points run to a few tens over a whole hanchan where hand points run to thousands
+    expect(Math.abs(placement.ev)).toBeLessThan(Math.abs(points.ev) / 10)
+  })
+
+  // the reason a deal-in term carries its seat: under placement the same points lost to the seat
+  // above you and to the seat below you are two different decisions
+  it('cares which seat it deals into, but only under placement', () => {
+    const above = allLast(FOURTEEN, [threatOf('1z2z3z', 1)])
+    const below = allLast(FOURTEEN, [threatOf('1z2z3z', 3)])
+    const dealInOf = (view: SeatView, objective: 'points' | 'placement'): number => {
+      const ranked = rankDiscards(view, { model: statistical, objective })
+      const term = ranked.flatMap((entry) => entry.terms).find((each) => each.kind === 'dealIn')
+      return term!.value
+    }
+    expect(dealInOf(above, 'points')).toBeCloseTo(dealInOf(below, 'points'), 9)
+    expect(dealInOf(above, 'placement')).not.toBeCloseTo(dealInOf(below, 'placement'), 6)
+  })
+
+  it('leaves the points objective exactly where it was', () => {
+    const view = viewOf(FOURTEEN, [threatOf('1z2z3z')])
+    const implicit = rankDiscards(view, { model: statistical })
+    const explicit = rankDiscards(view, { model: statistical, objective: 'points' })
+    expect(explicit.map((entry) => [entry.tile, entry.ev])).toEqual(
+      implicit.map((entry) => [entry.tile, entry.ev]),
+    )
+  })
+})
+
 describe('the riichi declaration', () => {
   it('declares on a good wait with the hand still to run', () => {
     expect(riichiWorthIt(declared(TENPAI, 60), { model: houou })).toBe(true)

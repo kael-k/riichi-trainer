@@ -7,6 +7,7 @@
 //   source   https://github.com/chienshyong/houou-statistics/blob/80dc535dc7eab1a0faf18a2fbcfe72db2067976a/results/WaitDistribution.csv
 //            https://github.com/chienshyong/houou-statistics/blob/80dc535dc7eab1a0faf18a2fbcfe72db2067976a/results/BetaoirCost.csv
 //            https://github.com/chienshyong/houou-statistics/blob/80dc535dc7eab1a0faf18a2fbcfe72db2067976a/results/HandScore.csv
+//            https://github.com/chienshyong/houou-statistics/blob/80dc535dc7eab1a0faf18a2fbcfe72db2067976a/results/Variance.csv
 //   commit   80dc535dc7eab1a0faf18a2fbcfe72db2067976a (2023-11-25)
 //   upstream forked from https://github.com/Euophrys/houou-analysis (MIT). No code is copied here, only
 //            aggregate counts, which are measured facts rather than expression.
@@ -135,21 +136,86 @@ export const HOUOU_FOLD_COST = {
  */
 export const HOUOU_HAND_SCORE = {
   dealer: {
-    ron: [10900, 6944, 7012, 6994, 7114, 7248, 7350, 7473, 7581, 7775, 7946, 8136, 8371, 8491, 8777, 9060, 9150, 9430, 14000],
-    tsumo: [13767, 9552, 9548, 9660, 9791, 9859, 10005, 10078, 10184, 10394, 10484, 10745, 10831, 11099, 11288, 11522, 12133, 11106, 8475],
-    ronSamples: [4, 2230, 5595, 10342, 16283, 22150, 25990, 27148, 25320, 21638, 16842, 12325, 8201, 5163, 2857, 1276, 448, 70, 3],
-    tsumoSamples: [9, 2729, 6979, 13279, 20643, 27193, 30634, 31222, 28274, 23316, 17817, 12797, 8095, 4948, 2602, 1127, 289, 47, 4],
-    damaRon: [8142, 8485, 7936, 7557, 7325, 7515, 7495, 7495, 7532, 7421, 7491, 7450, 7444, 7525, 7755, 7722, 7753, 8145, 8597],
-    damaRonSamples: [12, 167, 448, 1077, 2123, 3767, 5909, 7900, 9495, 10794, 11004, 10244, 9421, 7959, 6476, 5166, 4008, 2572, 549],
+    ron: [
+      10900, 6944, 7012, 6994, 7114, 7248, 7350, 7473, 7581, 7775, 7946, 8136, 8371, 8491, 8777,
+      9060, 9150, 9430, 14000,
+    ],
+    tsumo: [
+      13767, 9552, 9548, 9660, 9791, 9859, 10005, 10078, 10184, 10394, 10484, 10745, 10831, 11099,
+      11288, 11522, 12133, 11106, 8475,
+    ],
+    ronSamples: [
+      4, 2230, 5595, 10342, 16283, 22150, 25990, 27148, 25320, 21638, 16842, 12325, 8201, 5163,
+      2857, 1276, 448, 70, 3,
+    ],
+    tsumoSamples: [
+      9, 2729, 6979, 13279, 20643, 27193, 30634, 31222, 28274, 23316, 17817, 12797, 8095, 4948,
+      2602, 1127, 289, 47, 4,
+    ],
+    damaRon: [
+      8142, 8485, 7936, 7557, 7325, 7515, 7495, 7495, 7532, 7421, 7491, 7450, 7444, 7525, 7755,
+      7722, 7753, 8145, 8597,
+    ],
+    damaRonSamples: [
+      12, 167, 448, 1077, 2123, 3767, 5909, 7900, 9495, 10794, 11004, 10244, 9421, 7959, 6476, 5166,
+      4008, 2572, 549,
+    ],
   },
   nonDealer: {
-    ron: [5106, 4827, 4855, 4911, 4986, 5099, 5202, 5289, 5423, 5554, 5685, 5805, 5985, 6034, 6320, 6580, 6658, 7340, 6600],
-    tsumo: [6652, 6535, 6640, 6673, 6816, 6873, 6959, 7071, 7218, 7322, 7428, 7592, 7776, 7999, 8125, 8568, 8933, 9456, 10633],
-    ronSamples: [293, 7109, 17094, 32009, 47991, 61663, 70140, 69652, 62183, 51121, 38788, 27238, 17617, 10349, 5210, 2045, 464, 40, 3],
-    tsumoSamples: [263, 6934, 16943, 31390, 47835, 61031, 67728, 65851, 57813, 46622, 34541, 23851, 14886, 8564, 4007, 1458, 283, 9, 3],
-    damaRon: [3743, 4752, 4763, 4241, 4136, 4137, 4144, 4156, 4213, 4304, 4339, 4420, 4536, 4652, 4790, 4826, 4916, 5193, 5483],
-    damaRonSamples: [40, 262, 1122, 2623, 5759, 10934, 17637, 24694, 30450, 34419, 34758, 33392, 29810, 24903, 20507, 16279, 12622, 8290, 1688],
+    ron: [
+      5106, 4827, 4855, 4911, 4986, 5099, 5202, 5289, 5423, 5554, 5685, 5805, 5985, 6034, 6320,
+      6580, 6658, 7340, 6600,
+    ],
+    tsumo: [
+      6652, 6535, 6640, 6673, 6816, 6873, 6959, 7071, 7218, 7322, 7428, 7592, 7776, 7999, 8125,
+      8568, 8933, 9456, 10633,
+    ],
+    ronSamples: [
+      293, 7109, 17094, 32009, 47991, 61663, 70140, 69652, 62183, 51121, 38788, 27238, 17617, 10349,
+      5210, 2045, 464, 40, 3,
+    ],
+    tsumoSamples: [
+      263, 6934, 16943, 31390, 47835, 61031, 67728, 65851, 57813, 46622, 34541, 23851, 14886, 8564,
+      4007, 1458, 283, 9, 3,
+    ],
+    damaRon: [
+      3743, 4752, 4763, 4241, 4136, 4137, 4144, 4156, 4213, 4304, 4339, 4420, 4536, 4652, 4790,
+      4826, 4916, 5193, 5483,
+    ],
+    damaRonSamples: [
+      40, 262, 1122, 2623, 5759, 10934, 17637, 24694, 30450, 34419, 34758, 33392, 29810, 24903,
+      20507, 16279, 12622, 8290, 1688,
+    ],
   },
+} as const
+
+/**
+ * How much a seat's score still has left to move, measured: the mean and standard deviation of
+ * (final score − score right now), by which round it is and where the seat currently stands.
+ *
+ * This is the houou model's placement-odds input. Read it as "a 2nd-place seat in East 2 finishes
+ * within about this much of where it stands", and integrate the four seats against each other for
+ * rank probabilities (`core/placement.ts`).
+ *
+ * Indexed `[rank - 1][round]`, round 0-7 being East 1 through South 4 of a four-player hanchan.
+ * Units converted from Tenhou score deltas (hundreds) to points at extraction, and rounded — the
+ * source's own precision is far beyond what a rank integral can use.
+ *
+ * source `analyzers/variance.py`.
+ */
+export const HOUOU_SWING = {
+  mean: [
+    [-216, -167, -281, -255, -366, -315, -266, -178],
+    [183, 68, 141, 102, 87, 135, 148, 187],
+    [105, 165, 193, 205, 241, 202, 202, 163],
+    [26, 43, 88, 90, 176, 117, 47, -50],
+  ],
+  stddev: [
+    [13982, 13138, 11915, 10671, 9381, 7981, 6353, 4087],
+    [14367, 13383, 12381, 11171, 9899, 8502, 6903, 4787],
+    [14298, 13715, 12659, 11515, 10302, 8900, 7203, 4994],
+    [14756, 13939, 13020, 11924, 10829, 9443, 7764, 5354],
+  ],
 } as const
 
 /** What the source file says about itself, and what the riichi tables above imply. `width` is the
@@ -165,5 +231,7 @@ export const HOUOU_PRIOR_META = {
   /** P(a riichi waits on SOME tile of this rank), index 1-9, measured by a different analyzer over
    *  the same database (`results/DorasobaDanger.csv`). Index 0 is unused: the honour buckets there overlap
    *  in a way the analyzer does not document. Divide by three for one specific tile. */
-  waitByRank: [0.000000, 0.123013, 0.176435, 0.214472, 0.236693, 0.259276, 0.242748, 0.213208, 0.165195, 0.109451],
+  waitByRank: [
+    0.0, 0.123013, 0.176435, 0.214472, 0.236693, 0.259276, 0.242748, 0.213208, 0.165195, 0.109451,
+  ],
 } as const

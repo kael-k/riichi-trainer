@@ -1,5 +1,6 @@
 import { UNIFORM_PRIOR, type ShapePrior } from './dealIn'
-import { HOUOU_FOLD_COST, HOUOU_HAND_SCORE, HOUOU_PRIOR } from './hououPrior'
+import { HOUOU_FOLD_COST, HOUOU_HAND_SCORE, HOUOU_PRIOR, HOUOU_SWING } from './hououPrior'
+import { totalRounds, type Swing } from './placement'
 import { ronValue, type ScoringRules } from './score'
 import { NUM_TILE_TYPES, type TileId } from './tiles'
 
@@ -17,6 +18,12 @@ import { NUM_TILE_TYPES, type TileId } from './tiles'
  * only weight either takes is `prior`. Table status is not in here either — points, placement and
  * honba are decision-layer input (`plans/EV-3` §8), so an evaluation does not change when the score
  * does, which is what keeps two models comparable on one board.
+ *
+ * The one exception, and it is the exception `plans/EV-3` §8 names: **the placement-odds function
+ * is a property of the EV model.** Each supplies `swing` — how much a seat's score still has to
+ * move before the match ends — and `core/placement.ts` integrates the seats against each other
+ * from there. It is still not table status leaking downward: `swing` is asked about a rank and a
+ * round, never about a hand, and the probability layers never see either.
  */
 export type EvModelName = 'statistical' | 'houou'
 
@@ -66,6 +73,13 @@ export interface EvModel {
    * arithmetic, and it is paid whether or not the hand wins.
    */
   riichiUplift(handValue: number, board: BoardCost): number
+  /**
+   * How much a seat's score still has left to move: the mean and standard deviation of
+   * `final − now`, for a seat sitting `rank`-th with `round` rounds of the hanchan already behind
+   * it (East 1 is 0). The placement objective's whole input — `core/placement.ts` turns four of
+   * these into rank probabilities.
+   */
+  swing(rank: number, round: number, rules: ScoringRules): Swing
   /** `null` when the model may speak about this ruleset, else the reason it may not — which the UI
    *  must show rather than swapping models silently (`plans/EV-5` §2.11). */
   unsupported(sanma: boolean): string | null
@@ -207,6 +221,45 @@ export const STATISTICAL: EvModel = {
     return handValue * (2 ** han - 1)
   },
 
+  /**
+   * A round of mahjong as one point transfer, and the rest of the match as a sum of them — the
+   * pure derivation `plans/EV-5` §2.10 owed.
+   *
+   * Nothing distinguishes the seats a priori, so each round one of them wins a hand worth `V` and
+   * one pays it: a given seat gains `V` with probability `1/n`, loses it with probability `1/n`,
+   * and is untouched otherwise. That is mean zero and variance `2/n × E[V²]` per round, and
+   * `roundsLeft` independent rounds add their variances.
+   *
+   * `E[V²]` comes from the same han distribution `dealInCost` integrates, with one difference: it
+   * takes no board, because the spread of a *future* round cannot depend on this hand's unseen
+   * pool. The dora term is the ruleset alone — one indicator showing points at one kind of the
+   * thirty-four, and a riichi hand's ura at another — so each of the fourteen tiles carries
+   * `2/34` of a han in expectation. Dealership averages over who the winner turns out to be.
+   *
+   * Not modelled, and each of them widens the real spread: yakuman, honba and riichi sticks, the
+   * noten penalty, and the fact that a dealer's repeat makes rounds outnumber the hanchan's own
+   * count. Measured against `houou`'s own table the two land within about a tenth of each other,
+   * which is the check `evModel.test.ts` pins — and neither reads the other to get there.
+   */
+  swing(_rank, round, rules) {
+    const roundsLeft = Math.max(1, totalRounds(rules.sanma) - round)
+    const players = rules.sanma ? 3 : 4
+    const perTile = 2 / NUM_TILE_TYPES
+    let square = 0
+    for (let extra = 0; extra <= WINNING_HAND_SIZE; extra++) {
+      const weight = binomial(WINNING_HAND_SIZE, extra, perTile)
+      if (weight === 0) continue
+      const han = 1 + TYPICAL_CLOSED_YAKU_HAN + extra
+      // the winner is the dealer one time in `players`, and a dealer's hand is worth half again
+      const value =
+        (ronValue(han, CLOSED_RON_FU, true, rules) +
+          (players - 1) * ronValue(han, CLOSED_RON_FU, false, rules)) /
+        players
+      square += weight * value * value
+    }
+    return { mean: 0, stddev: Math.sqrt((2 / players) * square * roundsLeft) }
+  },
+
   unsupported: () => null,
 }
 
@@ -273,6 +326,21 @@ export const HOUOU: EvModel = {
     const riichi = nearestSample(table.ron, table.ronSamples, turn)
     const dama = nearestSample(table.damaRon, table.damaRonSamples, turn)
     return riichi !== null && dama !== null ? Math.max(0, riichi - dama) : 0
+  },
+
+  /**
+   * What a seat's score was measured to do from here: the mean and spread of `final − now` by
+   * which round it is and where the seat currently stands, straight off `Variance.csv`.
+   *
+   * The measurement already carries everything the derived version has to leave out — dealer
+   * repeats, sticks, penalties, yakuman — and it carries the regression the derived version cannot
+   * see at all: a leader's mean is negative and everybody else's is positive, because the seats
+   * ahead are the ones with something to lose.
+   */
+  swing(rank, round, _rules) {
+    const row = clamp(rank - 1, 0, HOUOU_SWING.mean.length - 1)
+    const column = clamp(round, 0, HOUOU_SWING.mean[row].length - 1)
+    return { mean: HOUOU_SWING.mean[row][column], stddev: HOUOU_SWING.stddev[row][column] }
   },
 
   unsupported: (sanma) =>

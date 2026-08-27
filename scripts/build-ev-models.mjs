@@ -30,6 +30,7 @@ const CSV = 'results/WaitDistribution.csv'
 const CALIBRATION_CSV = 'results/DorasobaDanger.csv'
 const FOLD_CSV = 'results/BetaoirCost.csv'
 const SCORE_CSV = 'results/HandScore.csv'
+const VARIANCE_CSV = 'results/Variance.csv'
 
 /** Turn axis of `BetaoirCost.csv`, which samples every second turn. */
 const FOLD_TURNS = [4, 6, 8, 10, 12, 14, 16, 18]
@@ -46,6 +47,9 @@ const FOLD_MATCHUPS = [
   'D vs ND ND ND',
   'ND vs D ND ND',
 ]
+
+/** Rounds of a four-player hanchan, in the order `Variance.csv` indexes them: East 1-4, South 1-4. */
+const VARIANCE_ROUNDS = 8
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'core', 'hououPrior.ts')
 
@@ -310,20 +314,56 @@ ${matrix}
 ${indent(depth)}],`
 }
 
+/**
+ * `Variance.csv` is a plain header-and-rows frame: `Round,Position,Mean,Stddev`, where the moments
+ * are of the *remaining* swing — final score minus the score right now — measured in Tenhou score
+ * deltas (hundreds of points), the same unit `BetaoirCost.csv` uses. `Position` carries the four
+ * current ranks alongside several Ahead/Behind buckets and an `All` row; only the ranks are taken,
+ * since that is the axis a placement-odds function indexes by.
+ */
+function variance(text) {
+  const mean = [[], [], [], []]
+  const stddev = [[], [], [], []]
+  for (const line of text.trim().split(/\r?\n/).slice(1)) {
+    const [round, position, m, sd] = line.split(',')
+    const rank = Number(position)
+    if (!Number.isInteger(rank) || rank < 1 || rank > 4) continue
+    mean[rank - 1][Number(round)] = Math.round(Number(m) * 100)
+    stddev[rank - 1][Number(round)] = Math.round(Number(sd) * 100)
+  }
+  for (const rank of mean.concat(stddev)) {
+    if (rank.length !== VARIANCE_ROUNDS || rank.some((v) => !Number.isFinite(v))) {
+      throw new Error(
+        `${VARIANCE_CSV}: expected ${VARIANCE_ROUNDS} rounds per rank, got ${rank.length}`,
+      )
+    }
+  }
+  return { mean, stddev }
+}
+
+const swing = variance(await read(VARIANCE_CSV))
+
 const text = await read(CSV)
 const byRank = waitByRank(await read(CALIBRATION_CSV))
 
 const foldFrames = parseIndexedFrames(await read(FOLD_CSV))
 // four frames: the calls case and its counts, then the riichi case and its counts
-if (foldFrames.length !== 4) throw new Error(`${FOLD_CSV}: expected 4 frames, got ${foldFrames.length}`)
+if (foldFrames.length !== 4)
+  throw new Error(`${FOLD_CSV}: expected 4 frames, got ${foldFrames.length}`)
 const [, , foldValues, foldCounts] = foldFrames
-if (foldValues.label !== 'riichiturn') throw new Error(`${FOLD_CSV}: frame 3 is ${foldValues.label}`)
+if (foldValues.label !== 'riichiturn')
+  throw new Error(`${FOLD_CSV}: frame 3 is ${foldValues.label}`)
 const fold = foldCost(foldValues, foldCounts)
 
 const scoreFrames = parseIndexedFrames(await read(SCORE_CSV))
 const [dealerScores, dealerCounts, nonDealerScores, nonDealerCounts] = scoreFrames
 if (dealerScores.label !== 'turndealer' || nonDealerScores.label !== 'turnnondealer') {
-  throw new Error(`${SCORE_CSV}: frames are ${scoreFrames.slice(0, 4).map((f) => f.label).join(', ')}`)
+  throw new Error(
+    `${SCORE_CSV}: frames are ${scoreFrames
+      .slice(0, 4)
+      .map((f) => f.label)
+      .join(', ')}`,
+  )
 }
 const dealerScore = handScore(dealerScores, dealerCounts)
 const nonDealerScore = handScore(nonDealerScores, nonDealerCounts)
@@ -360,6 +400,7 @@ writeFileSync(
 //   source   https://github.com/${REPO}/blob/${COMMIT}/${CSV}
 //            https://github.com/${REPO}/blob/${COMMIT}/${FOLD_CSV}
 //            https://github.com/${REPO}/blob/${COMMIT}/${SCORE_CSV}
+//            https://github.com/${REPO}/blob/${COMMIT}/${VARIANCE_CSV}
 //   commit   ${COMMIT} (${COMMIT_DATE})
 //   upstream forked from https://github.com/${UPSTREAM} (MIT). No code is copied here, only
 //            aggregate counts, which are measured facts rather than expression.
@@ -455,6 +496,29 @@ export const HOUOU_HAND_SCORE = {
   },
 } as const
 
+/**
+ * How much a seat's score still has left to move, measured: the mean and standard deviation of
+ * (final score − score right now), by which round it is and where the seat currently stands.
+ *
+ * This is the houou model's placement-odds input. Read it as "a 2nd-place seat in East 2 finishes
+ * within about this much of where it stands", and integrate the four seats against each other for
+ * rank probabilities (\`core/placement.ts\`).
+ *
+ * Indexed \`[rank - 1][round]\`, round 0-7 being East 1 through South 4 of a four-player hanchan.
+ * Units converted from Tenhou score deltas (hundreds) to points at extraction, and rounded — the
+ * source's own precision is far beyond what a rank integral can use.
+ *
+ * source \`analyzers/variance.py\`.
+ */
+export const HOUOU_SWING = {
+  mean: [
+${swing.mean.map((row) => `    [${row.join(', ')}],`).join('\n')}
+  ],
+  stddev: [
+${swing.stddev.map((row) => `    [${row.join(', ')}],`).join('\n')}
+  ],
+} as const
+
 /** What the source file says about itself, and what the riichi tables above imply. \`width\` is the
  *  expected number of distinct tile kinds a riichi waits on. */
 export const HOUOU_PRIOR_META = {
@@ -477,5 +541,12 @@ console.log(OUT)
 console.log(`  riichi: ${riichiTotals.hands} hands, ${riichiTotals.waitKinds} wait kinds`)
 console.log(`  implied width: ${riichiTotals.width.toFixed(4)} kinds`)
 console.log(`  fold cost: ${FOLD_MATCHUPS.length} matchups over turns ${FOLD_TURNS.join('/')}`)
-console.log(`  hand score: riichi ron ${nonDealerScore.ron[9]} non-dealer / ${dealerScore.ron[9]} dealer at turn 9`)
-console.log(`  riichi uplift at turn 9: ${nonDealerScore.ron[9] - nonDealerScore.damaRon[9]} non-dealer`)
+console.log(
+  `  hand score: riichi ron ${nonDealerScore.ron[9]} non-dealer / ${dealerScore.ron[9]} dealer at turn 9`,
+)
+console.log(
+  `  swing: 1st in East 1 sd ${swing.stddev[0][0]}, 1st in South 4 sd ${swing.stddev[0][7]}`,
+)
+console.log(
+  `  riichi uplift at turn 9: ${nonDealerScore.ron[9] - nonDealerScore.damaRon[9]} non-dealer`,
+)

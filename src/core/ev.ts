@@ -2,7 +2,14 @@ import type { SeatView } from './algorithm'
 import { combineThreats, dealInRisk, type DealInRisk } from './dealIn'
 import { evaluateDiscards } from './efficiency'
 import { tileCount } from './hand'
-import { STATISTICAL, type BoardCost, type EvModel, type ThreatCost } from './evModel'
+import {
+  STATISTICAL,
+  type BoardCost,
+  type EvModel,
+  type EvModelName,
+  type ThreatCost,
+} from './evModel'
+import { expectedResult, ranks, roundIndex } from './placement'
 import { discardOutlooks, handOutlook, type Outlook, type ScoringContext } from './probability'
 import type { ScoringRules } from './score'
 import { doraFromIndicator, inTileSet, NUM_TILE_TYPES, type TileId } from './tiles'
@@ -43,9 +50,16 @@ import { TILES_PER_KIND } from './wall'
  * an advance-only DP that understates (`plans/EV-1` §6), which biases the comparison toward
  * folding.
  *
- * Everything here is points. Placement is a switch this layer is shaped for and does not yet
- * carry: the identity stays linear in a per-outcome value function, so swapping points for
- * placement utility is a substitution at one seam rather than a rewrite (`plans/EV-3` §8).
+ * **The currency is a switch, and it is one substitution rather than a second identity.** Every
+ * term is a probability times a *value*, and `valuer` is what a value means: under `'points'` a
+ * point swing is worth itself, under `'placement'` it is worth the change in expected Tenhou
+ * result it buys (`core/placement.ts`). Nothing below this layer knows which — that is what keeps
+ * two models comparable on one board (`plans/EV-3` §8), and it is why the identity has to stay
+ * linear in the value function.
+ *
+ * A consumer of these numbers must say which objective produced them. They are not the same
+ * quantity in different units: eight thousand points is eight result points to a comfortable seat
+ * and nearly ten to a last-place seat in South 4, which is the whole reason the switch exists.
  */
 
 /** One line of the arithmetic, in the shape a reader can check: how often, times how much. */
@@ -71,8 +85,27 @@ export interface DiscardEv {
   terms: EvTerm[]
 }
 
+/** What a seat is playing for. `'points'` maximises the score; `'placement'` maximises the Tenhou
+ *  result the score is likely to end at, which is the currency most real riichi argument happens
+ *  in — and the one that makes a hopeless hand in South 4 worth pushing. */
+export type EvObjective = 'points' | 'placement'
+
+/** How a seat prices: which model supplies the costs, and what it is trying to maximise. Two
+ *  orthogonal switches, which is exactly why they are a per-seat record rather than more members
+ *  of `SeatAlgorithm` — the union would be their cross product (ADR-0037). */
+export interface EvSeat {
+  model: EvModelName
+  objective: EvObjective
+}
+
+/** What a seat runs on unless something says otherwise: the model that can explain itself from
+ *  first principles (ADR-0018), playing for points. */
+export const DEFAULT_EV_SEAT: EvSeat = { model: 'statistical', objective: 'points' }
+
 export interface EvOptions {
   model?: EvModel
+  /** Default `'points'`. */
+  objective?: EvObjective
   /** Above this shanten the win side runs the collapsed chain — `probability.ts`' own default. */
   maxShanten?: number
   /** Price every held tile rather than the candidate union. Off by default: the union is what
@@ -115,6 +148,7 @@ export function rankDiscards(view: SeatView, opts: EvOptions = {}): DiscardEv[] 
     throw new Error(`rankDiscards: needs the hand mid-turn, got ${tileCount(view.hand)} tiles`)
   }
   const model = opts.model ?? STATISTICAL
+  const value = valuer(view, model, opts.objective ?? 'points')
   const { board, threats, risks, combined } = context(view, model)
   const notWinning = model.giveUpCost(threats, board)
 
@@ -128,7 +162,18 @@ export function rankDiscards(view: SeatView, opts: EvOptions = {}): DiscardEv[] 
   })
 
   const priced = candidates.map((tile) =>
-    price(tile, view, model, board, threats, risks, combined, outlooks.get(tile), notWinning),
+    price(
+      tile,
+      view,
+      model,
+      value,
+      board,
+      threats,
+      risks,
+      combined,
+      outlooks.get(tile),
+      notWinning,
+    ),
   )
   // total order: expected points, then the safer tile, then the lower id — never sort stability
   priced.sort((a, b) => b.ev - a.ev || a.dealIn - b.dealIn || a.tile - b.tile)
@@ -145,6 +190,7 @@ export function rankDiscards(view: SeatView, opts: EvOptions = {}): DiscardEv[] 
  */
 export function riichiWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
   const model = opts.model ?? STATISTICAL
+  const value = valuer(view, model, opts.objective ?? 'points')
   const { board } = context(view, model)
   // the thirteen-tile hand as it now stands: this is asked *after* the discard, so there is
   // nothing left to choose and nothing to rank — asking `rankDiscards` here would take a tile out
@@ -154,8 +200,12 @@ export function riichiWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
     maxShanten: opts.maxShanten,
     scoring: scoringContext(view),
   })
-  const value = outlook.score ?? 0
-  return outlook.soloWin * (model.riichiUplift(value, board) + RIICHI_STICK) > RIICHI_STICK
+  const won = outlook.score ?? 0
+  // the stick is paid whether or not the hand wins, and under placement the two halves are not
+  // each other's negative — a thousand points off a comfortable lead is not what a thousand
+  // points onto a desperate one is worth
+  const gained = value(model.riichiUplift(won, board) + RIICHI_STICK)
+  return outlook.soloWin * gained + value(-RIICHI_STICK) > 0
 }
 
 /**
@@ -216,6 +266,7 @@ function price(
   tile: TileId,
   view: SeatView,
   model: EvModel,
+  value: Value,
   board: BoardCost,
   threats: readonly ThreatCost[],
   risks: readonly DealInRisk[][],
@@ -226,7 +277,7 @@ function price(
   const terms: EvTerm[] = []
   const honba = view.match.honba * 300
   const win = outlook?.soloWin ?? 0
-  const winValue = (outlook?.score ?? 0) + honba + view.match.riichiSticks * RIICHI_STICK
+  const winValue = value((outlook?.score ?? 0) + honba + view.match.riichiSticks * RIICHI_STICK)
   if (outlook) {
     terms.push({ kind: 'win', probability: win, value: winValue, points: win * winValue })
   }
@@ -235,40 +286,41 @@ function price(
   for (let j = 0; j < threats.length; j++) {
     const probability = risks[j][tile].probability
     if (probability === 0) continue
-    const value = -(model.dealInCost(threats[j], board) + honba)
-    terms.push({
-      kind: 'dealIn',
-      probability,
-      value,
-      points: probability * value,
-      seat: view.threats[j].seat,
-    })
+    // the points go *to* that seat, which is worth naming under the placement objective: dealing
+    // into the seat above you and dealing into the seat below you are the same points and are not
+    // remotely the same decision
+    const seat = view.threats[j].seat
+    const cost = value(-(model.dealInCost(threats[j], board) + honba), seat)
+    terms.push({ kind: 'dealIn', probability, value: cost, points: probability * cost, seat })
   }
 
   // and the turns after it. This turn's own tile is already priced above, so the walk starts one
   // turn in, with the hand having survived the tile it just threw
-  const cost = dealInPrice(model, threats, board, honba)
+  // averaged over the threats, so no one seat is the recipient — the later turns are priced as a
+  // loss to this seat and nothing more
+  const loss = value(-dealInPrice(model, threats, board, honba))
   const alive = (1 - combined[tile].probability) * (1 - board.tsumoChance)
   const later = laterCost(
     turnRisks('push', view, combined, board, board.drawsLeft - 1),
     board,
-    cost,
+    loss,
     alive,
   )
   if (later.points !== 0) {
     terms.push({
       kind: 'danger',
       probability: later.probability,
-      value: -cost,
+      value: loss,
       points: later.points,
     })
   }
 
+  const givenUp = value(notWinning)
   terms.push({
     kind: 'notWinning',
     probability: 1 - win,
-    value: notWinning,
-    points: (1 - win) * notWinning,
+    value: givenUp,
+    points: (1 - win) * givenUp,
   })
 
   return {
@@ -353,12 +405,13 @@ function turnRisks(
  * threat that tsumos, or a deal-in that has already happened, ends it.
  *
  * `alive` is how likely the hand is to reach the first turn of the sequence, which is 1 for a
- * fold priced from this turn and less for a push whose own throw has already been charged.
+ * fold priced from this turn and less for a push whose own throw has already been charged. `loss`
+ * arrives already valued under the objective — negative, because it is a loss.
  */
 function laterCost(
   risks: readonly number[],
   board: BoardCost,
-  cost: number,
+  loss: number,
   alive = 1,
 ): { probability: number; points: number; terms: EvTerm[] } {
   let probability = 0
@@ -366,12 +419,12 @@ function laterCost(
   for (const risk of risks) {
     const reached = alive * risk
     if (reached !== 0) {
-      terms.push({ kind: 'dealIn', probability: reached, value: -cost, points: -reached * cost })
+      terms.push({ kind: 'dealIn', probability: reached, value: loss, points: reached * loss })
     }
     probability += reached
     alive *= (1 - risk) * (1 - board.tsumoChance)
   }
-  return { probability, points: -probability * cost, terms }
+  return { probability, points: probability * loss, terms }
 }
 
 /** What one deal-in costs, averaged over the threats on the board, honba included. Shared by both
@@ -403,13 +456,14 @@ function dealInPrice(
  */
 export function foldEv(view: SeatView, opts: EvOptions = {}): DiscardEv {
   const model = opts.model ?? STATISTICAL
+  const value = valuer(view, model, opts.objective ?? 'points')
   const { board, threats, combined } = context(view, model)
-  const cost = dealInPrice(model, threats, board, view.match.honba * 300)
+  const loss = value(-dealInPrice(model, threats, board, view.match.honba * 300))
 
   const risks = turnRisks('safe', view, combined, board, board.drawsLeft)
-  const { terms } = laterCost(risks, board, cost)
+  const { terms } = laterCost(risks, board, loss)
 
-  const notWinning = model.giveUpCost(threats, board)
+  const notWinning = value(model.giveUpCost(threats, board))
   terms.push({ kind: 'notWinning', probability: 1, value: notWinning, points: notWinning })
 
   // the tile it throws *now* is still the safest one in hand: the sequence above says what the
@@ -423,6 +477,47 @@ export function foldEv(view: SeatView, opts: EvOptions = {}): DiscardEv {
     ev: terms.reduce((sum, term) => sum + term.points, 0),
     dealIn: combined[tile]?.probability ?? 0,
     terms,
+  }
+}
+
+/** What a swing of `delta` points is worth to the deciding seat. `to` names the seat the points
+ *  move *to*, when there is one — under placement that is half the answer, and under points it
+ *  makes no difference at all. */
+type Value = (delta: number, to?: number) => number
+
+/**
+ * The one place the objective enters, and the reason it is one place: every term of the identity
+ * is a probability times a value, so a different currency is a different `Value` and nothing else.
+ *
+ * `'points'` is the identity function. `'placement'` asks the model how much every seat's score
+ * still has to move (`EvModel.swing`), integrates the seats against each other for rank odds, and
+ * returns the change in expected Tenhou result the swing buys (`core/placement.ts`). That is
+ * non-linear in a way points is not: the same eight thousand points is worth more to a seat that
+ * is one hand short of third than to one already comfortable, which is what makes a placement seat
+ * push a hand a points seat folds.
+ *
+ * The integral is rebuilt per call rather than cached against `delta`, because a swing big enough
+ * to matter is usually a swing big enough to move somebody's rank, and the model's own table is
+ * indexed by rank.
+ */
+function valuer(view: SeatView, model: EvModel, objective: EvObjective): Value {
+  if (objective === 'points') return (delta) => delta
+
+  const scores = view.match.points
+  const round = roundIndex(view.match, view.sanma)
+  const rules = scoringRules(view)
+  const resultAt = (points: readonly number[]): number => {
+    const rank = ranks(points)
+    const swings = points.map((_, seat) => model.swing(rank[seat], round, rules))
+    return expectedResult(points, swings, view.seat, view.sanma)
+  }
+
+  const base = resultAt(scores)
+  return (delta, to) => {
+    const next = [...scores]
+    next[view.seat] += delta
+    if (to !== undefined && to !== view.seat && next[to] !== undefined) next[to] -= delta
+    return resultAt(next) - base
   }
 }
 
