@@ -16,6 +16,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "tiles": "node scripts/build-tile-sprite.mjs",
+    "build-ev-models": "node scripts/build-ev-models.mjs",
     "format": "prettier --write .",
     "ui-test": "playwright test"
   },
