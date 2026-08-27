@@ -112,6 +112,13 @@ P = 1 − Π_j ( 1 − p_j )
 
 which is where this model differs materially from `assessDiscards`, which takes the worst tier
 across threats and says so in its own comment ("slightly optimistic — the real risk is the union").
+The product assumes independence, and it is not exact: two threats hold shapes out of one shared
+tile pool, so their waits are correlated (they cannot hold the same copies). The honest form
+enumerates hypotheses **jointly** — and it is affordable: the hypothesis space is roughly 140 per
+threat, so two threats are ~15k compatible-pair checks (sub-millisecond, interactive), three
+threats are ~2M (on-demand only, ~10–50 ms). Plan: `combineThreats` takes the joint path for up to
+two threats and falls back to the product for three, the cost measured at build. The product stays
+as the fallback, read as the approximation it is.
 
 ## 6. Worked example
 
@@ -173,12 +180,21 @@ hanchan logs. Closed-riichi block, computed this session:
 137 567 enumerated + 4 894 complex waits = **142 461**, which is the file's own `Total riichi`
 exactly. The enumeration is complete and each hand is counted once.
 
-**The indexing convention.** Rows are ranks, and each shape is indexed by the **lowest tile it waits
-on**: ryanmen is nonzero only at ranks 1–6, sanmenchan only at 1–3, penchan only at 3 and 7, kanchan
-at 2–8. That zero pattern is strong evidence but it is an inference — **confirm it against the
-repository's own `analyzers/` before shipping a number that depends on it.** Expanding by the
-convention gives what the model actually wants, hands whose wait set *contains* each rank (all three
-numbered suits aggregated):
+**The indexing convention — confirmed against the analyzer source 2026-08-27.** Rows are ranks, and
+each shape is indexed by the **lowest tile it waits on** (`wait_distribution.py` writes
+`loc[wait[0]%10, shape]`): ryanmen is nonzero only at ranks 1–6, sanmenchan only at 1–3, penchan
+only at 3 and 7, kanchan at 2–8. Three extraction caveats the confirmation surfaced:
+
+- The ryanmen/shanpon split is an **ukeire threshold** (`uke >= 5` counts as ryanmen), not a shape
+  test — a true ryanmen with four or more of its copies already visible lands in the shanpon
+  matrix. The prior misclassifies a little at high visibility.
+- Honour tanki is bucketed `honor / honor 1 / honor 2` by copies visible **across all four rivers**,
+  not the threat's — the per-rank table already integrates a visibility signal.
+- Shanpon is a 10×10 wait-pair matrix; the per-rank column below is its marginal — extraction must
+  sum the matrix, not read a column.
+
+Expanding by the convention gives what the model actually wants, hands whose wait set *contains*
+each rank (all three numbered suits aggregated):
 
 | Rank | sanmenchan | ryanmen | penchan | kanchan | tanki | shanpon | total  |
 | ---- | ---------- | ------- | ------- | ------- | ----- | ------- | ------ |
@@ -200,6 +216,16 @@ Unconditionally (nothing visible, no river known), a specific middle tile such a
 riichi's waits about `33 617 / 3 / 137 567 ≈ 8.1 %` of the time. That is the **ceiling** for a tile
 about which nothing is known; the threat's own river then knocks hypotheses out and brings a real
 non-suji down toward the published 5–6%.
+
+### The river is evidence — the v2 seam
+
+The prior is static: it does not change with what the threat discarded. But the river *is* evidence
+about the hand — a riichi declared on 8p makes near-8p waits likelier (`RiichiTile.csv`), a tile
+outside an early discard is measurably safer (`Sotogawa.csv`), an honour tedashi narrows the shape
+(`TedashiReading.csv`). The weight formula admits this as a likelihood factor without changing
+shape: `weight(w) = prior(shape, rank) × L(w | river) × A(w)/A_neutral(w)`, with `L ≡ 1` in v1.
+The published tables give `L` per hypothesis class; the Bayes form is recorded now so v2 is a
+table drop-in, not a redesign.
 
 ## 8. The correction the prototype exposed — read this before implementing
 

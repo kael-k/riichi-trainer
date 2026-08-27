@@ -196,6 +196,11 @@ game than mahjong — one where hands never improve sideways — and it therefor
 probability, uniformly and in the same direction for every candidate discard. That last clause is
 what makes it usable for ranking even though it is biased as an absolute.
 
+A middle path exists between the two extremes and is recorded for a later measurement: **bounded
+widening** — follow a shanten-preserving draw only when the new hand's ukeire exceeds the old by a
+stated margin, and cap the sideways moves per path (one covers the common `4577p` case). Cost sits
+somewhere between the two rows above; where exactly is a build-time measurement.
+
 Full 14-way ranking, advance-only, one memo shared across all fourteen candidates:
 
 | Root hand  | Nodes  | Whole ranking |
@@ -235,6 +240,13 @@ assumes neither happens. Model it as a survival curve `s(u)` = P(the hand is sti
 `u`), and truncate the DP against it. Exhaustive draws are roughly 17% of hands; the rest end on
 somebody's win, distributed over the turns.
 
+The curve is per-model. The houou model reads it off measurement: `RiichiWinrate.csv`'s outcome
+blocks (ron, tsumo, ryuukyoku, opponent tsumo, lateral movement, deal-in — row axis resolved in
+`EV-5` §2.3) decompose how hands end per turn, and `s(u)` falls out directly. The statistical
+model may not look it up; its pure derivation runs the same DP for the other three seats as
+independent one-player hands and takes P(someone completes first) — expensive (one DP per
+opponent), approximate (independence), but fully combinatorial.
+
 ### Correction 2 — ron uplift (pushes the number up)
 
 `P_solo` counts only tsumo. In real play a large share of wins are ron. For a tenpai hand this is
@@ -265,6 +277,10 @@ export interface Outlook {
   win: number[]
   /** Expected points conditional on winning. */
   score: number
+  /** Coarse outcome distribution: P(win paying at least t) per threshold in `opts.thresholds`.
+   *  The high-value tail (yakuman routes included — `scoreHand` prices them at the leaf) is what
+   *  lets the decider re-weight under placement utility without the DP knowing table status. */
+  winAtLeast: number[]
   /** false when the collapsed chain ran instead of the DP. */
   exact: boolean
 }
@@ -274,6 +290,11 @@ export function discardOutlooks(hand, seen, sanma, draws, opts?): Map<TileId, Ou
 ```
 
 - `opts.objective`: `'win' | 'tenpai' | 'score'` — §7 says this cannot be implicit.
+- The unseen pool is a seam, not a constant: `u(t)` may be fractional **weights** rather than
+  counts. Two recorded uses — wall reading (an opponent showing no souzu by turn 6 is information
+  about what is left; `WallReading.csv` measures it) and red fives (a small mass on "this unseen 5
+  is red", from the ruleset's aka count minus visible reds, fixing the `EV-5` §1.10 score bias at
+  the leaf). v1 uses plain counts; the type must not forbid weights.
 - `opts.maxShanten` defaults to **2**. Above it, the state collapses to `(shanten, ukeire, draws)`
   and the same recurrence runs over that reduced chain with `exact: false`.
 - `discardOutlooks` shares **one** memo across all fourteen candidates — measured at 25–30% off both

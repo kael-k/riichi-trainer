@@ -72,11 +72,25 @@ figure agreed before the measurement, which was a per-root number mistaken for a
 | Relationship to danger | `danger.ts` untouched. The new model sits beside it; folding keeps grading on `rank === 0` by default     |
 | Exactness ceiling      | Exact ≤ 2-shanten interactive, 3-shanten on demand, collapsed beyond                                     |
 | Efficiency algorithm   | Stays ukeire-only, by definition. EV is a *different* algorithm reading both layers                      |
-| Currency               | Points EV, never placement EV — the engine models no round sequencing ([ADR-0023](../docs/adr/0023-round-inside-match.md)) |
+| Currency               | Points EV by default; placement EV is a **switchable objective**, no longer deferred — the placement-odds function is a property of the EV model, not of engine sequencing |
+| EV model               | The named unit of swappable weights: `statistical` (pure combinatorics) and `houou` (empirical) at build, `ippan` (average-room player) future. **Per-seat and live**, mirroring `PlayerState.algorithm` (ADR-0008); a registry of pure data modules with provenance headers |
+| Objective × model      | Two orthogonal switches, **both per-seat**: what a seat maximises (points / placement) vs how it estimates probabilities and costs (the EV model). A lab table may mix a points-optimising seat with a placement-optimising one; a drill grades against the graded seat's objective. Under placement, the value function is fixed by the ruleset (Tenhou rank points + uma), not a parameter |
+| Decision scope         | The `'ev'` decider prices **every** decision point through the EV identity: discard (push/fold), calls, kita, riichi, win/decline, and kyuushu kyuuhai |
+| Evaluator output       | A distribution, not a scalar: `P(win)`, `E[score\|win]`, and a high-value tail, so the decider can re-weight under placement utility without the evaluator knowing table status |
+| Licence (houou data)   | Extract data tables with attribution: the CSVs are measured facts, the analyzer code descends from MIT-licensed `Euophrys/houou-analysis`, and no code is copied. Both repos cited, commit pinned |
+| Wait-prior indexing    | Confirmed against `wait_distribution.py` (lowest waited tile); three extraction caveats recorded in `EV-2` §7 |
 
 Recorded for later, raised during planning: an advanced setting letting the folding trainer grade on
 probability instead of tier, and an EV trainer as a sibling of the efficiency trainer. Both want
-these models to exist and be calibrated first.
+these models to exist and be calibrated first. The EV trainer grades against the model the
+learner's seat runs — `statistical` by default (explainable from first principles, ADR-0018),
+switchable under Advanced. Recorded in refinement: the statistical model's three
+posture flavours — `balanced` (shipped first), `aggressive`, `defensive` — which change only the
+push/fold decision and are deferred (`EV-3` §8); and the lab requirement — the full statistics of
+all three EV functions (offense, defense, push/fold) shown per seat under that seat's selected EV
+model. Two more recorded ideas: a lab generator that searches for boards where the two EV models'
+top discards *disagree* (the disagreement is the product — `EV-4`), and the backtest validation
+session (`EV-5` §2.13).
 
 ## What the next wave would build
 
@@ -85,14 +99,28 @@ Not part of this one. Listed so the documents have a target to be a specificatio
 1. `src/core/probability.ts` — the offense DP (`EV-1` §9 gives the signatures).
 2. `src/core/dealIn.ts` — the defense enumeration (`EV-2` §10).
 3. The empirical prior table with its provenance header, extracted from
-   `chienshyong/houou-statistics`.
+   `chienshyong/houou-statistics` — by a **committed extraction script** that reads the CSVs and
+   emits the TS tables (shanpon matrix marginalisation, the `EV-2` §7 caveats, the provenance
+   header), so the tables are reproducible build artifacts, not hand-copied numbers.
 4. A fourth `SeatAlgorithm`, `'ev'` — one object literal plus one union member, zero engine edits
-   ([ADR-0009](../docs/adr/0009-decision-seam.md)).
-5. A new ADR superseding ADR-0004; `CLAUDE.md`, `docs/STRUCTURE.md` and `docs/STATUS.md` updates.
+   ([ADR-0009](../docs/adr/0009-decision-seam.md)). It is the **decider**: it calls the two
+   evaluators and applies the objective and the table status (`SeatView.match`, already live).
+5. The **EV model registry** (`statistical`, `houou`) and its per-seat plumbing: a `PlayerState`
+   field beside `algorithm`, `RoundOptions` seeding, `SeatView` exposure, a `SeatConfig` selector —
+   the same path `algorithm` already walks, live flips included.
+6. **Kyuushu kyuuhai engine support** — abortive draw (first turn, no calls, 9+ distinct
+   terminals/honours) plus a new `Algorithm` decision point. This one *does* touch `round.ts`, and
+   `round.golden.test.ts` hashes move as a deliberate act ([ADR-0016](../docs/adr/0016-testing-strategy.md)).
+7. A new ADR superseding ADR-0004; `CLAUDE.md`, `docs/STRUCTURE.md` and `docs/STATUS.md` updates.
 
 ## Out of scope, deliberately
 
-- **Neural anything.** Permanent.
+- **Neural in the statistical model, or as any number's explanation.** The lab always keeps at
+  least one fully decomposable EV model — that is the project's point. Within those limits a
+  black-box EV model is admissible: same code interface, browser-feasible, provenance header, and
+  a *comparison* surface, never the explanation. Recorded candidate: the houou placement MLP
+  (`util/placement_calculator.py`, ~10k weights, trivial in-browser cost) as the houou model's
+  placement-odds function, beside the closed-form integration — choice deferred to build.
 - **An in-repo simulation harness for priors** — the published measurement is better data than this
   engine's own naive `efficiency` seats would generate.
 - **Touching `danger.ts`, `policy.ts`, `algorithm.ts` or `round.ts`** while the models are being
@@ -100,13 +128,12 @@ Not part of this one. Listed so the documents have a target to be a specificatio
 
 ## Deferred, not excluded
 
-- **Placement / pt EV.** Genuinely wanted — it is what akochan optimises and it is the currency in
-  which most real riichi decisions are argued. It is **gated on round sequencing**, which
-  [ADR-0023](../docs/adr/0023-round-inside-match.md) currently rules out: no `nextRound()`, no
-  dealer rotation, no honba increment, no payouts, no end-of-match detection. So the ordering is
-  sequencing first, placement EV second, and points EV in the meantime — see `EV-3` §8, which is
-  written as a prerequisite rather than a refusal. Whether sequencing lands is a separate decision
-  with its own ADR, and it is a bigger one than this whole model.
+- **Round sequencing.** Placement EV is **not** gated on it — the placement-odds function belongs
+  to the EV model (`EV-3` §8): the houou model derives it from measured final-score distributions
+  (`Variance.csv`, `AllLast.csv`), the statistical model computes it as a pure random walk over the
+  remaining rounds (derivation owed, `EV-5` §2.10). Sequencing stays deferred because only two
+  things need it — full-match trainers and self-derived placement data — and no in-round decision
+  needs either. ADR-0023 untouched; that decision is unchanged in size and remains its own ADR.
 
 ## For the next session
 
@@ -114,10 +141,21 @@ The state this session leaves behind, so the next one does not re-derive it:
 
 - **Settled and measured:** the cost boundary (§ above), the two recurrences (`EV-1` §4), the
   hypothesis enumeration and its single furiten rule (`EV-2` §3–4), the extracted wait-shape prior
-  and its indexing convention (`EV-2` §7), the availability-ratio correction (`EV-2` §8).
-- **Decide first, before any code:** the licence question (`EV-5` §2.1) — it blocks the empirical
-  layer and nothing else; and the default objective (`EV-5` §2.4), because it changes what the
-  module's signature even means.
+  and its indexing convention — **confirmed against the analyzer source**, caveats included
+  (`EV-2` §7) — and the availability-ratio correction (`EV-2` §8).
+- **Settled in refinement:** the licence question (`EV-5` §2.1 — extract with attribution), the
+  default objective (points; placement a switch), table status as decision-layer input only
+  (`SeatView.match`, already plumbed), the EV model as a per-seat live field, every decision point
+  priced by EV (kyuushu kyuuhai included, engine support in scope), the evaluator's
+  distribution-shaped output, the ruleset compatibility matrix with a UI-explained fallback
+  (`EV-5` §2.11), main-thread-first computation (`EV-5` §2.6), tier-by-default folding with a
+  future EV-grading option (`EV-5` §2.8), and a settings-configurable grading band (`EV-5` §2.5).
+- **Still open:** the pure-statistical placement-odds derivation (`EV-5` §2.10 — owed maths, no
+  decision pending, blocks only the placement switch under the statistical model); memo lifetime
+  (`EV-5` §2.7 — deferred to a **dedicated benchmark session** producing a measurement script and
+  a markdown report; fresh-per-ranking is the build default and the lean); and the posture
+  mechanism (`EV-5` §2.12 — each flavour an EV model derived from `balanced`; what each optimises
+  is an open investigation, deferred with no risk since `balanced` ships first).
 - **Biggest unbuilt piece:** pricing a fold over the *rest of the hand* rather than one turn
   (`EV-3` §5, `EV-5` §1.8). Until it exists, push and fold cannot honestly be compared.
 - **Cheapest first build:** `EV-2`. It is microseconds, it needs no DP, its validation check

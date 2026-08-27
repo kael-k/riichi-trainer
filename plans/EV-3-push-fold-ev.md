@@ -40,6 +40,9 @@ which is to say **folding is not a separate branch of the model, it is the same 
 on a hand that has given up on `P_win`.** That is worth building in from the start: one expression,
 not two code paths that can disagree.
 
+And every comparison the decider makes follows `policy.ts` discipline: explicit tie-breaks and a
+stated float epsilon, never sort stability — ADR-0009's purity rule covers the arithmetic too.
+
 ## 3. Every term, and where it comes from
 
 | Term                   | Source                                                          | Available today?                    |
@@ -86,6 +89,14 @@ be evaluated over the *rest of the hand*, not the next discard — the same mult
 
 That is the single largest piece of unbuilt work in this document, and `EV-5` records it as such.
 
+One shortcut is already measured, and it changes the build order: `BetaoirCost.csv` is exactly this
+quantity — points lost while folding, by turn, dealer and threat count. The **houou model's v1 fold
+price is a table read** (units pinned at extraction), so push and fold can be compared before the
+recursion exists. The recursion is still owed twice over: for the statistical model, which may not
+read the table, and for the lab, which needs the number decomposed into terms. And the push side is
+per-turn in the same way: a pushed hand that has not yet won must survive every later turn, so the
+honest `EV(push)` integrates the rest of the hand too — the §2 identity prices one turn of it.
+
 ## 6. The riichi declaration, which has a closed form
 
 Declaring riichi is the one decision with a published shortcut, and it is a good worked example of
@@ -106,47 +117,78 @@ The engine already deducts the 1000 and adds the stick inside `finishTurn`, and
 `canDeclareRiichi(state, options, seat)` already gates legality — so the only missing half is the
 *choice*, which is what an EV algorithm would supply.
 
-## 7. Calls and kita, sketched
+The honest version compares against the alternative branch, and both branches have measured data:
+declare (the rates above) vs stay dama (`DamaWinrate.csv` by wait and turn; `OikakeWinrate.csv`
+when someone else declares first). A riichi decision that prices only the declare branch is half a
+decision.
 
-Not designed here; noted so the seam is known to admit them.
+## 7. Calls, kita and kyuushu kyuuhai — in scope
+
+Settled in refinement: the `'ev'` decider prices **every** decision point through the §2 identity,
+not only the push/fold discard.
 
 - **Call (pon/chi).** `EV(call) − EV(pass)`, where calling changes `P_win` (usually up, via
-  shanten), `value_win` (usually down, via losing menzen and riichi) and `P_dealin` over the rest of
-  the hand (up, because an open hand is committed). Today `chooseCall` in `policy.ts` calls whenever
-  the meld strictly lowers shanten *and* `hasYakuRoute` still holds — a sound rule that an EV model
-  would refine rather than replace.
+  shanten), `value_win` (usually down, via losing menzen and riichi) and `P_dealin` over the rest
+  of the hand (up, because an open hand is committed). Today `chooseCall` in `policy.ts` calls
+  whenever the meld strictly lowers shanten *and* `hasYakuRoute` still holds — a sound rule that
+  the EV decider refines rather than replaces, for its own seat only.
 - **Kita.** Already graded against `evaluateDiscards`' own north entry in `useEfficiencyRound.ts`,
   which is a shanten-and-ukeire comparison. The EV version prices the dora against the tempo.
+- **Win/decline.** Declining a cheap tsumo for a better wait is the DP's internal `max` read
+  externally; `Algorithm.win` already has the seam. Declining a ron also creates a furiten state
+  (temporary, or permanent in riichi) — the decline branch's EV prices that state, not only the
+  wait improvement.
+- **Kyuushu kyuuhai.** `EV(keep the hand)` against `EV(abort)` (≈ 0 this hand, adjusted for
+  dealership and honba) under the current objective — the motivating case for table status at the
+  decision layer (East 3 comfortable vs South 4 desperate). Requires engine support that does not
+  exist: an abortive-draw ryuukyoku and a new `Algorithm` decision point. Both are in the wave's
+  scope; `round.golden.test.ts` hashes move as a deliberate act (ADR-0016). It is evaluated at the
+  decision (push/fold) layer like every other decision point, never by the offense evaluator
+  alone: the full identity includes the combinatorial deal-in and noten terms even under the
+  statistical model, so `EV(keep)` can go negative under either model — what differs between the
+  models is degree (combinatorial vs measured hazard and fold terms), not kind. Ruleset pin for
+  the build: Tenhou practice — the abort is a ryuukyoku with honba +1 and the dealership rotating;
+  `EV(abort)` pricing depends on that choice, so the engine pins it rather than assuming it.
 
-## 8. Points EV now; placement EV once sequencing exists
+## 8. Points by default; placement a switch — and the odds belong to the EV model
 
-akochan — the best-known non-neural engine — optimises **final placement point EV**: it converts
-every decision into a change in expected `[90, 45, 0, −135]`-style rank points, which is why it will
-take a wildly −EV-in-points line in All Last to secure a placement. That is the currency most real
-riichi argument happens in, and it is a legitimate long-term target for this project, not something
-to be ruled out.
+Settled in refinement round 2, superseding this section's original "gated on sequencing" framing.
 
-**It is gated, though, and the gate is large.** [ADR-0023](../docs/adr/0023-round-inside-match.md)
-models `MatchState` as carry-in context and nothing else: no `nextRound()`, no dealer rotation, no
-honba increment, no payouts, no riichi-stick collection, no end-of-match detection. Placement EV is
-a function of settled points across a whole hanchan, and every one of those is missing. The
-dependency chain is:
+The currency is a **switch**, orthogonal to the EV model: what a seat maximises (points, or final
+placement) vs how it estimates probabilities and costs. **Points is the default** — stable,
+explainable, and the currency every validation band in `EV-1` is written in. Placement is the
+currency most real riichi argument happens in — it is what akochan optimises, and why it takes
+wildly −EV-in-points lines in All Last — and it is a position of the switch, not a future wave.
 
-```
-round sequencing  →  settled points per round  →  a placement distribution
-                  →  pt weights  →  placement EV
-```
+Two fixed points and one per-model function:
 
-Only the last two steps belong to this model. The first two are a separate wave with its own ADR,
-and a bigger one than everything in these five documents combined.
+- **The placement value function is fixed by the ruleset**, not a parameter: Tenhou rank points
+  plus uma (`[135, 65, −5, −210]`-style). No free knobs.
+- **Table status is decision-layer input only.** Points, placement, round, honba, dealer and
+  sticks all arrive live through `SeatView.match`; `turn` is in `SeatView`. The probability layers
+  never see them — an evaluation does not change when the score does, which is what keeps two EV
+  models comparable on one board.
+- **The placement-odds function — P(final rank | match state) — is a property of the EV model.**
+  The houou model derives it from measurement: `Variance.csv` (final-score mean and spread by round
+  and position) integrated for rank odds, anchored by `AllLast.csv` in South 4 and calibrated
+  against `CoinflipRatio.csv`. A second, black-box candidate is admitted under the refined neural
+  rule (PLAN "Out of scope"): porting the repo's trained placement MLP
+  (`util/placement_calculator.py`, ~10k weights, trivial in-browser cost) — likely more accurate,
+  never explainable, the choice deferred to build. The statistical model must compute it purely: each remaining hand as
+  a point-transfer random variable whose moments come from the combinatorics (per-hand expectation
+  from the `EV-1` DP, spread from the score distribution it already prices), final scores as sums,
+  rank odds by integration. That derivation is owed (`EV-5` §2.10) and blocks only the placement
+  switch under the statistical model.
 
-**Until then: points, stated as points, labelled as points.** A trainer that says "this discard is
-worth +340 points" is making a claim it can support. One that says "+1.2 pt" would not be — and the
-failure would be silent, which is the worst kind.
+**Posture.** The statistical model defines three flavours — `balanced`, `aggressive`, `defensive` —
+which change **only the push/fold decision**, never the probability layers. `balanced` ships first;
+the other two are deferred, and their mechanism is constrained in advance to a risk transform over
+the identity's own terms (e.g. EV ± κ·σ of the outcome distribution), never a typed-in adjustment
+table (`EV-5` §2.12).
 
-The design consequence for the model built now: keep the EV identity in §2 **linear in a per-outcome
-value function**, so that swapping `points` for `pt(placement | points)` later is a substitution at
-one seam rather than a rewrite. Do not bake points into the probability layers.
+The design rule stands, now load-bearing: keep the §2 identity **linear in a per-outcome value
+function**, so swapping points for `pt(placement | points)` is a substitution at one seam. Do not
+bake points into the probability layers — and do not bake table status into them either.
 
 ## 9. What this would look like on screen
 
