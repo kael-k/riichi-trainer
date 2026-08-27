@@ -18,6 +18,7 @@ import { parseTenhou, tileCode, type TileId } from './tiles'
  * - `kita`: `K` seat.
  * - `ankan`: `A` seat tileCode.
  * - `win`: `W` seat (from | `T` for tsumo).
+ * - `abort`: `Q` seat — kyuushu kyuuhai, the only abortive draw modelled.
  */
 
 const CALL_KIND_CHARS: Record<'pon' | 'chi', string> = { pon: 'P', chi: 'H' }
@@ -39,6 +40,8 @@ function encodeEntry(entry: LogEntry): string {
       return `A${entry.seat}${tileCode(entry.tile)}`
     case 'win':
       return `W${entry.seat}${entry.from ?? 'T'}`
+    case 'abort':
+      return `Q${entry.seat}`
   }
 }
 
@@ -125,6 +128,11 @@ export function decodeLog(s: string): LogEntry[] {
       if (fromChar !== 'T' && from === undefined) break
       log.push({ kind: 'win', seat, from })
       i += 3
+    } else if (kind === 'Q') {
+      const seat = digitAt(s, i + 1)
+      if (seat === undefined) break
+      log.push({ kind: 'abort', seat })
+      i += 2
     } else {
       break
     }

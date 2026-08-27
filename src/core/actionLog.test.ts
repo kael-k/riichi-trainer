@@ -44,6 +44,7 @@ describe('encodeLog / decodeLog', () => {
       { kind: 'ankan', seat: 2, tile: MAN },
       { kind: 'win', seat: 0, from: undefined },
       { kind: 'win', seat: 1, from: 0 },
+      { kind: 'abort', seat: 3 },
     ]
     expect(decodeLog(encodeLog(log))).toEqual(log)
   })

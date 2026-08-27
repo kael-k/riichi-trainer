@@ -228,7 +228,10 @@ function boardHandsOf(match: RoundState, reveal: boolean): ParsedTile[][] {
 
 /** Rules the drill is always simulated under. Fixed rather than settings, so a link carries as
  *  little as possible — change one of these and old links change meaning. */
-const RULES = { aka: true, calls: true, riichi: true } as const
+// `abortiveDraws: false` — the drill is a search for a board with somebody in riichi, and an
+// abortive draw at the very first turn ends the hand before there is one. Fold-only, so a manual
+// seat has nothing to abort either.
+const RULES = { aka: true, calls: true, riichi: true, abortiveDraws: false } as const
 
 /** What a board is built from: everything that changes what a given wall deals, and so everything
  *  a link has to carry alongside the wall. */

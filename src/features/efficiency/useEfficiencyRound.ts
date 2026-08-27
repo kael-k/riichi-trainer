@@ -56,6 +56,9 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     // efficiency reads no danger, so an opponent's riichi here was decoration, not signal
     riichi: false,
     wins: false,
+    // same reasoning as `wins`: an abortive draw ends the hand on a rule rather than on a discard
+    // this drill grades, and the drill grades exactly three actions
+    abortiveDraws: false,
     algorithms,
     // left unset (off): the drill grades exactly three actions — discard, kita, closed kan — and
     // a pon/chi is none of them, so a manual seat is never asked about another seat's discard

@@ -32,6 +32,8 @@ export function useEfficiencySoloRound(situation: Situation, options: SoloOption
     calls: false,
     riichi: false,
     wins: false,
+    // as above: nothing here should end the hand except the drill's own tenpai stop
+    abortiveDraws: false,
     // one seat, and it is always yours: there is no other side to sit at
     algorithms: ['manual'],
   }

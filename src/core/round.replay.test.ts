@@ -54,11 +54,10 @@ function project(state: RoundState) {
     turn: state.turn,
     match: state.match,
     pendingDraw: state.pendingDraw,
-    claim: state.claim && {
-      seat: state.claim.seat,
-      from: state.claim.from,
-      tile: state.claim.tile,
-    },
+    claim:
+      state.claim?.kind === 'discard'
+        ? { seat: state.claim.seat, from: state.claim.from, tile: state.claim.tile }
+        : state.claim,
     liveWallLength: state.liveWall.length,
     doraIndicators: state.doraIndicators,
     players: state.players.map((p) => ({
@@ -253,7 +252,7 @@ describe('replayLog', () => {
     const consumed = replayLog(fresh, options, truncatedLog)
 
     expect(fresh.claim?.seat).toBe(1)
-    expect(fresh.claim?.from).toBe(0)
+    expect(fresh.claim?.kind === 'discard' && fresh.claim.from).toBe(0)
     expect(fresh.players[1].missedWin).toBe(false) // no pass was invented
     expect(consumed).toBe(truncatedLog.length)
 

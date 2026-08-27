@@ -92,6 +92,15 @@ export function useLabRound(situation: Situation, options: LabOptions) {
         situation: encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength))),
       })
     }
+    // the one ending a reader can cause without discarding anything, so it gets its own row —
+    // otherwise a hand that stopped at turn 1 leaves the log saying nothing about why
+    if (event.kind === 'abort') {
+      log({
+        key: 'log.lab.abort',
+        params: { turn: core.round.turn, seat: event.seat },
+        situation: encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength))),
+      })
+    }
     // read both once per turn, not from render — evaluateDiscards/assessDiscards are real work
     if (event.kind === 'draw' && manualSeats.includes(event.seat) && turn) {
       setAnalysis({ ranked: turn.ranked, danger: turn.danger })

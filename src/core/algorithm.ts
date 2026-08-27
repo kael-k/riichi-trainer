@@ -1,7 +1,7 @@
 import type { Meld } from './agari'
 import type { ThreatView } from './danger'
 import { evaluateDiscards, isBestDiscard } from './efficiency'
-import { foldEv, rankDiscards, riichiWorthIt } from './ev'
+import { abortWorthIt, foldEv, rankDiscards, riichiWorthIt } from './ev'
 import { EV_MODELS, type EvModel } from './evModel'
 import type { Hand } from './hand'
 import type { MatchState } from './match'
@@ -104,6 +104,16 @@ export interface Algorithm {
   win(view: SeatView, candidate: WinCandidate): boolean
   /** Sanma only: pull a held north? */
   kita(view: SeatView): boolean
+  /**
+   * The opening hand holds nine or more distinct terminals and honours and nobody has called:
+   * abort it? `round.ts` has already checked the legality (`canDeclareKyuushu`), so this is the
+   * choice alone.
+   *
+   * The three hand-written algorithms all decline, and that is the reason `round.golden.test.ts`'s
+   * frozen hashes do not move for the rule existing: none of them has anything to price the two
+   * branches with. Only an EV seat does.
+   */
+  abort(view: SeatView): boolean
 }
 
 const efficiency: Algorithm = {
@@ -126,6 +136,9 @@ const efficiency: Algorithm = {
     const north = ranked.find((o) => o.discard === NORTH)
     return north !== undefined && isBestDiscard(north, ranked[0])
   },
+  // ukeire says nothing about whether a hand is worth playing at all — it ranks the discards of
+  // whatever hand it is handed. Declining is this algorithm staying inside its own definition.
+  abort: () => false,
 }
 
 const defense: Algorithm = {
@@ -140,6 +153,8 @@ const defense: Algorithm = {
   // a folding seat is leaving the hand, not chasing dora
   win: () => false,
   kita: () => false,
+  // it would gladly be out of this hand, but it has no way to price what aborting gives up
+  abort: () => false,
 }
 
 /** Lowest-id tile currently held — dependency-free, deterministic fallback for `tsumogiri` on the
@@ -166,6 +181,7 @@ const tsumogiri: Algorithm = {
   riichi: () => false,
   win: () => false,
   kita: () => false,
+  abort: () => false,
 }
 
 /**
@@ -176,8 +192,8 @@ const tsumogiri: Algorithm = {
  * hand-copied literals would be the same code twice with one word changed, which is a worse way of
  * saying "these are the same decider with different weights" than a parameter is.
  *
- * **Only the discard and the riichi declaration are priced through the identity.** The other three
- * decision points are honest stand-ins, and each says what it is standing in for:
+ * **The discard, the riichi declaration and the abortive draw are priced through the identity.**
+ * The other three decision points are honest stand-ins, and each says what it is standing in for:
  *
  * - `call` keeps `chooseCall`'s rule — a meld that lowers shanten and leaves a yaku route — with
  *   one EV-shaped guard on top: a seat facing a declared threat will not open a hand that does not
@@ -188,6 +204,9 @@ const tsumogiri: Algorithm = {
  *   should not decline.
  * - `kita` reuses `efficiency`'s comparison. The EV version prices the dora against the tempo, and
  *   that is `plans/EV-3` §7's, not this wave's.
+ *
+ * `abort` is `EV(keep) < 0`, which is the identity read against a branch worth exactly nothing —
+ * see `abortWorthIt` for the two ceilings that answer ships with.
  */
 function evPlayer(model: EvModel): Algorithm {
   return {
@@ -215,6 +234,7 @@ function evPlayer(model: EvModel): Algorithm {
     },
     riichi: (view) => riichiWorthIt(view, { model }),
     win: () => true,
+    abort: (view) => abortWorthIt(view, { model }),
     kita: (view) => {
       const ranked = evaluateDiscards(view.hand, view.seen, view.sanma)
       const north = ranked.find((o) => o.discard === NORTH)

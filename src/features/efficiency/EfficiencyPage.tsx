@@ -117,7 +117,7 @@ export function EfficiencyPage() {
     // where HandDisplay, in the page's own `hand` slot, already sits, and that seat's calls go
     // with it (`bottomMelds` above) rather than on the felt: they belong beside the hand they
     // were called into, at a size that reads against it
-    const claiming = round.claim?.from === seat
+    const claiming = round.claim?.kind === 'discard' && round.claim.from === seat
     if (seat === perspective) {
       return {
         river,

@@ -132,6 +132,21 @@ export function isFuriten(waitTiles: TileId[], river: RiverTile[]): boolean {
   return river.some((t) => waitTiles.includes(t.id))
 }
 
+/** Distinct terminals and honours held — the count kyuushu kyuuhai is measured in. Kinds, not
+ *  copies: three 1m in the opening hand is one of the nine, which is the whole reason the rule
+ *  needs a helper rather than a `reduce` at the call site. */
+export function kyuushuKinds(hand: Hand): number {
+  let kinds = 0
+  for (let id = 0; id < hand.counts.length; id++) {
+    if (hand.counts[id] > 0 && isTerminalOrHonor(id)) kinds++
+  }
+  return kinds
+}
+
+/** How many of them make the hand abortable. Nine is the rule everywhere this project models; it
+ *  is here rather than inline so `round.ts` and any UI that explains the offer read one number. */
+export const KYUUSHU_KINDS = 9
+
 export interface Call {
   kind: 'pon' | 'chi'
   /** The caller's own tiles that join the discard, in ascending order. */

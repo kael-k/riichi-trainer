@@ -6,6 +6,7 @@ import { ManualControls, manualControlsVisible } from './ManualControls'
 
 /** Seat 3 throws an 8m; seat 0 can chi it with the 6m7m it holds. */
 const CLAIM: PendingClaim = {
+  kind: 'discard',
   seat: 0,
   from: 3,
   tile: { id: 7, red: false },

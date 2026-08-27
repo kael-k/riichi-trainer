@@ -149,6 +149,38 @@ export function riichiWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
   return outlook.soloWin * (model.riichiUplift(value, board) + RIICHI_STICK) > RIICHI_STICK
 }
 
+/**
+ * What playing this hand out is worth, both branches weighed: the better of the best push and the
+ * fold. Exported because it is what an abort decision is made of, and a screen showing the decision
+ * has to be able to show the number it compared.
+ *
+ * Needs the fourteen-tile hand, for `rankDiscards`' reason.
+ */
+export function keepEv(view: SeatView, opts: EvOptions = {}): number {
+  const push = rankDiscards(view, opts)[0]
+  const fold = foldEv(view, opts)
+  return push ? Math.max(push.ev, fold.ev) : fold.ev
+}
+
+/**
+ * Whether to take the abortive draw on a kyuushu kyuuhai hand, priced through the same identity.
+ *
+ * `EV(abort)` is **zero**. Under the ruleset this engine pins (Tenhou practice: a ryuukyoku with
+ * honba +1 and the dealership rotating) nobody pays and nobody collects, so the whole decision is
+ * whether playing the hand out is worth more than nothing.
+ *
+ * **Two ceilings, both stated rather than hidden.** A hand with nine distinct terminals and honours
+ * is four or more shanten, which is above `probability.ts`' exact ceiling — the collapsed chain
+ * runs and prices *no win value at all*, so `EV(keep)` is dominated by the give-up term and comes
+ * out negative for almost every legal kyuushu hand. That is close to how the hand is really played,
+ * but it is arithmetic rather than a judgement, and it stops being one only when the win side can
+ * price a 4-shanten hand. And a dealer that aborts gives up a dealership the points objective
+ * cannot price at all, because nothing in this engine sequences to a next round (ADR-0023).
+ */
+export function abortWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
+  return keepEv(view, opts) < 0
+}
+
 /** The tiles worth pricing: the fastest few, plus the safest few. Duplicates collapse, so a tile
  *  that is both is counted once and the union is usually smaller than the sum. */
 function candidateUnion(view: SeatView, combined: DealInRisk[]): TileId[] {

@@ -237,7 +237,7 @@ export function LabPage() {
     // hand and never concealed from them, wherever it sits
     concealed: !(round.finished || showOpponentHands || round.manualSeats.includes(seat)),
     points: round.match.points[seat],
-    claiming: round.claim?.from === seat,
+    claiming: round.claim?.kind === 'discard' && round.claim.from === seat,
   }))
 
   // the bottom hand follows perspective, not the drill's own graded seat: rotating to watch

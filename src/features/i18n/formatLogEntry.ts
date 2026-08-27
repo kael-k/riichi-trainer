@@ -96,6 +96,12 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
     }
     return t('log.folding.dealIn', { wind: t(`wind.${WINDS[seat]}`), points, tile })
   }
+  // same shape as `log.folding.dealIn` above: the seat is logged as a raw number and the wind
+  // name is resolved here, so a language switch re-translates it
+  if (entry.key === 'log.lab.abort') {
+    const { turn, seat } = entry.params as unknown as { turn: number; seat: number }
+    return t('log.lab.abort', { turn, wind: t(`wind.${WINDS[seat]}`) })
+  }
   if (EFFICIENCY_SHANTEN_KEYS.has(entry.key)) {
     const shanten = (entry.params as { shanten?: number } | undefined)?.shanten
     const shantenSuffix =

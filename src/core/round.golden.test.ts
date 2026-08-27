@@ -36,6 +36,8 @@ function serialize(events: RoundEvent[]): string {
           return `win:${e.win.seat}:${e.win.from ?? 'tsumo'}:${e.win.score.payments.total}:${e.win.score.yaku.map((y) => y.name).join(',')}`
         case 'exhaustive':
           return 'exhaustive'
+        case 'abort':
+          return `abort:${e.seat}:${e.reason}`
       }
     })
     .join('|')

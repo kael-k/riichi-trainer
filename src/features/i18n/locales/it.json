@@ -99,6 +99,12 @@
       "chi": "Chi",
       "pass": "Passa"
     },
+    "abortPrompt": "{{wind}}: annullare la mano?",
+    "abort": {
+      "question": "Nove orfani — {{kinds}} terminali e onori distinti.",
+      "confirm": "Annulla",
+      "decline": "Continua"
+    },
     "riichi": "Riichi",
     "riichiHint": "Ora scarta una di queste:"
   },
@@ -485,6 +491,7 @@
       "ukeireLegend": "I numeri sotto le tessere: copie rimaste nel muro"
     },
     "lab": {
+      "abort": "Turno {{turn}}: {{wind}} dichiara nove orfani — la mano è annullata",
       "discard": "Turno {{turn}}: scartato {{tile}}"
     },
     "folding": {

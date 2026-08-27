@@ -95,6 +95,12 @@
       "chi": "吃",
       "pass": "过"
     },
+    "abortPrompt": "{{wind}}: 是否流局?",
+    "abort": {
+      "question": "九种九牌 — 幺九牌{{kinds}}种。",
+      "confirm": "流局",
+      "decline": "继续"
+    },
     "riichi": "立直",
     "riichiHint": "请打出以下任意一张:"
   },
@@ -383,6 +389,7 @@
       "ukeireLegend": "牌下方数字：牌山中剩余张数"
     },
     "lab": {
+      "abort": "第{{turn}}巡: {{wind}}宣告九种九牌,本局流局",
       "discard": "第{{turn}}巡: 打出{{tile}}"
     },
     "folding": {

@@ -99,6 +99,12 @@
       "chi": "Chi",
       "pass": "Pass"
     },
+    "abortPrompt": "{{wind}}: abort the hand?",
+    "abort": {
+      "question": "Nine orphans — {{kinds}} distinct terminals and honours.",
+      "confirm": "Abort",
+      "decline": "Play on"
+    },
     "riichi": "Riichi",
     "riichiHint": "Now discard one of:"
   },
@@ -485,6 +491,7 @@
       "ukeireLegend": "Numbers under each tile: copies left in the wall"
     },
     "lab": {
+      "abort": "Turn {{turn}}: {{wind}} declared nine orphans — the hand is abandoned",
       "discard": "Turn {{turn}}: discarded {{tile}}"
     },
     "folding": {

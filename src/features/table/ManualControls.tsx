@@ -95,6 +95,37 @@ export function ManualControls({
     )
   }
 
+  // kyuushu kyuuhai: the acting seat's own offer, not a reaction to anybody's discard, so it
+  // draws no tiles and names no other seat — only how many terminals and honours it is made of
+  if (claim?.kind === 'abort') {
+    return (
+      <div
+        data-testid="abort-prompt"
+        role="group"
+        aria-label={t('seats.abortPrompt', { wind: t(`wind.${WINDS[claim.seat]}`) })}
+        className="flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 p-2 dark:bg-amber-950/30"
+      >
+        <span className="text-sm font-medium">
+          {t('seats.abort.question', { kinds: claim.kinds })}
+        </span>
+        <button
+          type="button"
+          onClick={() => onAnswer({ kind: 'abort' })}
+          className="min-h-11 rounded-lg bg-amber-600 px-3 text-sm font-medium text-white dark:bg-amber-500"
+        >
+          {t('seats.abort.confirm')}
+        </button>
+        <button
+          type="button"
+          onClick={() => onAnswer({ kind: 'pass' })}
+          className="min-h-11 rounded-lg border border-neutral-300 px-4 text-sm font-medium text-neutral-500 dark:border-neutral-700 dark:text-neutral-400"
+        >
+          {t('seats.abort.decline')}
+        </button>
+      </div>
+    )
+  }
+
   if (claim) {
     return (
       <div

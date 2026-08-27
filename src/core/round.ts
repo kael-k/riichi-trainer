@@ -1,9 +1,17 @@
 import { decompose, type Meld } from './agari'
-import { ALGORITHMS, type SeatView, type WinCandidate } from './algorithm'
+import { ALGORITHMS, type AIAlgorithm, type SeatView, type WinCandidate } from './algorithm'
 import type { ThreatView } from './danger'
 import { addTile, createHand, removeTile, type Hand } from './hand'
 import type { MatchState } from './match'
-import { availableCalls, isFuriten, waits, type Call, type SeatAlgorithm } from './policy'
+import {
+  availableCalls,
+  isFuriten,
+  KYUUSHU_KINDS,
+  kyuushuKinds,
+  waits,
+  type Call,
+  type SeatAlgorithm,
+} from './policy'
 import { scoreHand, type ScoreResult } from './score'
 import { shanten } from './shanten'
 import { HONOR, NUM_TILE_TYPES, type ParsedTile, type RiverTile, type TileId } from './tiles'
@@ -60,6 +68,13 @@ export interface RoundOptions {
    *  none calls or rons without being asked (`claimOptions`/`answerClaim`). More than one seat
    *  can be `'manual'` at once — four manual seats is one person playing the whole table. */
   algorithms?: readonly SeatAlgorithm[]
+  /** Let a seat abort the hand on kyuushu kyuuhai — nine or more distinct terminals and honours
+   *  in an opening hand nobody has called on. **On by default**, because it is a rule of the game
+   *  rather than a permission: the graded drills turn it off for the same reason they turn `wins`
+   *  off, an ending the reader did not cause. The frozen golden hashes do not move for it either
+   *  way — `efficiency`, `defense` and `tsumogiri` all decline, so only an `'ev-*'` seat (or a
+   *  manual one, which is *asked*) ever aborts a hand. */
+  abortiveDraws?: boolean
   /** Ask manual seats what to do with *other* seats' discards — ron, pon, chi. Off by default,
    *  and deliberately: the graded drills ask one question per turn ("what do you discard"), and a
    *  trainer that interrupted every ponnable tile with a prompt would be grading a different
@@ -129,11 +144,20 @@ export interface ClaimOption {
  *  included — which is what puts the seat in temporary furiten, exactly as declining costs an AI
  *  seat its ron. */
 export type ClaimAnswer =
-  { kind: 'pass' } | { kind: 'ron' } | { kind: 'pon' | 'chi'; from: TileId[] }
+  { kind: 'pass' } | { kind: 'ron' } | { kind: 'pon' | 'chi'; from: TileId[] } | { kind: 'abort' }
 
-/** The decision the board is waiting on. While `RoundState.claim` is set the turn is suspended
- *  mid-discard: nobody draws, nobody discards, and `answerClaim` is the only way forward. */
-export interface PendingClaim {
+/**
+ * The decision the board is waiting on. While `RoundState.claim` is set the turn is suspended:
+ * nobody draws, nobody discards, and `answerClaim` is the only way forward.
+ *
+ * Two shapes, because there are two moments the engine has to stop and ask a manual seat something
+ * it cannot decide for itself — a reaction to somebody else's discard, and the acting seat's own
+ * abortive draw. They share the suspension and `answerClaim`, not their contents.
+ */
+export type PendingClaim = PendingDiscardClaim | PendingAbort
+
+export interface PendingDiscardClaim {
+  kind: 'discard'
   /** Seat being asked right now. */
   seat: number
   /** Seat that made the discard. */
@@ -146,6 +170,18 @@ export interface PendingClaim {
   answers: Record<number, ClaimAnswer>
 }
 
+/** The acting seat's own kyuushu kyuuhai offer, raised by `beginTurn` the moment its first draw
+ *  lands. One seat, one question: nobody else reacts to it, so there is no `answers` map and no
+ *  restart — `answerClaim` either ends the hand or hands the turn straight back, still mid-draw. */
+export interface PendingAbort {
+  kind: 'abort'
+  /** Seat being asked — always the seat whose turn it is. */
+  seat: number
+  /** How many distinct terminals and honours the hand holds. It is what makes the offer legal,
+   *  and it is the one number a prompt wants to show. */
+  kinds: number
+}
+
 export type RoundEvent =
   | { kind: 'draw'; seat: number; tile: ParsedTile }
   | { kind: 'discard'; seat: number; tile: RiverTile }
@@ -153,6 +189,10 @@ export type RoundEvent =
   | { kind: 'call'; seat: number; from: number; meld: Meld }
   | { kind: 'win'; win: WinRecord }
   | { kind: 'exhaustive' }
+  /** An abortive draw: the hand is over with nobody winning and nobody noten. `reason` is the
+   *  only one modelled, and it is named rather than implied so a second one can be added without
+   *  every reader having to guess which. */
+  | { kind: 'abort'; seat: number; reason: 'kyuushu' }
   | { kind: 'kita'; seat: number; tile: ParsedTile | undefined }
   | { kind: 'ankan'; seat: number; tile: TileId; replacement: ParsedTile | undefined }
 
@@ -163,13 +203,16 @@ export type RoundEvent =
  *  hardcodes `chankan: false`); no `pass`/decline — a claim nobody answered is already derivable
  *  by comparing who *could* have claimed against who's in the log (`resolveReactions` already does
  *  exactly this for `missedWin`), so logging silence would only be logging what `replayLog`
- *  (below) can already recompute. */
+ *  (below) can already recompute. An `abort` entry is the one decision that ends the hand without
+ *  anyone winning, and it is logged for the same reason a win is: nothing else in the log says the
+ *  hand stopped there rather than being truncated. */
 export type LogEntry =
   | { kind: 'discard'; seat: number; tile: ParsedTile; fromDrawn: boolean; riichi: boolean }
   | { kind: 'call'; seat: number; from: number; call: Call }
   | { kind: 'kita'; seat: number }
   | { kind: 'ankan'; seat: number; tile: TileId }
   | { kind: 'win'; seat: number; from?: number }
+  | { kind: 'abort'; seat: number }
 
 export interface RoundState {
   /** A copy of `RoundOptions.match`, taken once by `createRound` — the caller's own object is
@@ -219,7 +262,10 @@ export interface RoundState {
   /** A manual seat's outstanding decision on the discard just made. Set only while the turn is
    *  suspended; `beginTurn`/`finishTurn` are no-ops until `answerClaim` clears it. */
   claim?: PendingClaim
-  ended?: 'win' | 'exhaustive'
+  /** `'abort'` is a ryuukyoku that is **not** an exhaustive draw: no seat is noten and nobody
+   *  pays, so it stays a value of its own rather than borrowing `'exhaustive'`, which a future
+   *  settlement would price wrongly. */
+  ended?: 'win' | 'exhaustive' | 'abort'
   win?: WinRecord
 }
 
@@ -615,7 +661,53 @@ export function beginTurn(
 
   const win = tryWin(state, state.seat, options, tile, true)
   if (win && !declineTsumo) return [...events, ...endWith(state, win)]
+
+  // kyuushu kyuuhai, asked *after* the tsumo check: a dealt thirteen-orphan kokushi is nine
+  // distinct terminals and a completed hand at once, and the win outranks the abort. A manual
+  // seat is asked rather than decided for, exactly like riichi, which suspends the turn with its
+  // fourteenth tile still in hand — `answerClaim` either ends the hand or hands the turn back.
+  if (canDeclareKyuushu(state, options, state.seat)) {
+    if (player.algorithm === 'manual') {
+      state.claim = { kind: 'abort', seat: state.seat, kinds: kyuushuKinds(player.hand) }
+      return events
+    }
+    if (ALGORITHMS[player.algorithm].abort(seatView(state, options, state.seat))) {
+      return [...events, ...abortRound(state, state.seat)]
+    }
+  }
   return events
+}
+
+/**
+ * Whether `seat` may abort the hand on kyuushu kyuuhai right now: its own first draw of the hand,
+ * with nobody having called anything, holding nine or more distinct terminals and honours.
+ *
+ * The legality half only — same split `canDeclareRiichi` makes, so a UI button can never offer a
+ * declaration `answerClaim` would then refuse. Read *after* the draw, with the fourteenth tile
+ * still in hand.
+ *
+ * "First draw, uninterrupted" is `river.length === 0` on this seat plus no melds anywhere, not
+ * `state.turn === 1`: seats are served in index order while the turn counter increments on the
+ * *dealer's* seat, so with a dealer other than seat 0 the counter moves in the middle of the
+ * opening go-around. Nukidora is deliberately not disqualifying — a kita is not a call, and it
+ * leaves no meld behind.
+ */
+export function canDeclareKyuushu(state: RoundState, options: RoundOptions, seat: number): boolean {
+  const player = state.players[seat]
+  return (
+    (options.abortiveDraws ?? true) &&
+    player.drawn !== undefined &&
+    player.river.length === 0 &&
+    state.players.every((p) => p.melds.length === 0) &&
+    kyuushuKinds(player.hand) >= KYUUSHU_KINDS
+  )
+}
+
+/** Ends the hand with nobody winning and nobody noten. */
+function abortRound(state: RoundState, seat: number): RoundEvent[] {
+  state.ended = 'abort'
+  state.log.push({ kind: 'abort', seat })
+  return [{ kind: 'abort', seat, reason: 'kyuushu' }]
 }
 
 /** Replacement draw off the dead wall's far end, backfilled from the live wall tail so the dead
@@ -875,7 +967,14 @@ function resolveReactions(
       answers[other] = { kind: 'pass' }
       continue
     }
-    state.claim = { seat: other, from: discarder, tile: entry, options: claims, answers }
+    state.claim = {
+      kind: 'discard',
+      seat: other,
+      from: discarder,
+      tile: entry,
+      options: claims,
+      answers,
+    }
     return []
   }
   state.claim = undefined
@@ -987,6 +1086,14 @@ export function answerClaim(
 ): RoundEvent[] {
   const claim = state.claim
   if (!claim) return []
+  if (claim.kind === 'abort') {
+    state.claim = undefined
+    // anything but an abort carries the turn straight on: the seat still holds its fourteenth
+    // tile and still owes a discard, which is exactly where `beginTurn` suspended it. Nothing
+    // else has to be undone, and declining costs the seat nothing — unlike a passed ron, an
+    // abortive draw nobody took leaves no furiten behind
+    return answer.kind === 'abort' ? abortRound(state, claim.seat) : []
+  }
   claim.answers[claim.seat] = answer
   state.claim = undefined
   return resolveReactions(state, options, claim.from, claim.tile, claim.answers)
@@ -1002,6 +1109,15 @@ export function answerClaim(
 export function reconsiderClaim(state: RoundState, options: RoundOptions): RoundEvent[] {
   const claim = state.claim
   if (!claim) return []
+  if (claim.kind === 'abort') {
+    // still manual: the question is still theirs, so the offer stays on the table
+    if (isManual(state, claim.seat)) return []
+    state.claim = undefined
+    const algorithm = state.players[claim.seat].algorithm as AIAlgorithm
+    return ALGORITHMS[algorithm].abort(seatView(state, options, claim.seat))
+      ? abortRound(state, claim.seat)
+      : []
+  }
   delete claim.answers[claim.seat]
   state.claim = undefined
   return resolveReactions(state, options, claim.from, claim.tile, claim.answers)
@@ -1093,7 +1209,10 @@ export function replayLog(
     // wall. Only when `options.claims` was really on can the log legitimately end exactly here
     // because nobody had answered yet.
     let resolved = false
-    while (state.claim) {
+    // an abort offer is nobody's reaction to a discard, so it is not this loop's to answer: it is
+    // raised by `beginTurn` and answered in the turn body below, which is also where a resumed
+    // replay picks one up
+    while (state.claim?.kind === 'discard') {
       const claim = state.claim
       if (i >= log.length) {
         if (!resolved && options.claims && state.liveWall.length > 0) return false
@@ -1143,6 +1262,21 @@ export function replayLog(
     if (state.ended) {
       if (acceptsTsumo) i++
       break
+    }
+
+    // every replayed seat is forced manual, so `beginTurn` raises the kyuushu offer for seats
+    // that were on an algorithm in live play and declined it silently. The log says which took
+    // it; nothing at all is a decline, exactly the way a claim nobody answered is a pass. The one
+    // case that is not a decline is the log running out here with the seat *really* manual — the
+    // original recording stopped with the offer still on the table, and inventing an answer for
+    // it would land past the decision the link was shared at.
+    if (state.claim?.kind === 'abort') {
+      const offered = log[i]
+      const taken = offered?.kind === 'abort' && offered.seat === seat
+      if (!taken && i >= log.length && originalAlgorithms[seat] === 'manual') break
+      emit(answerClaim(state, replayOptions, { kind: taken ? 'abort' : 'pass' }))
+      if (taken) i++
+      if (state.ended) break
     }
 
     // a kita/ankan pull draws a replacement, and — for an *AI*-decided seat — `beginTurn`'s own
@@ -1226,7 +1360,7 @@ function pickTile(player: PlayerState, id: TileId): ParsedTile {
 export interface RoundOutcome {
   state: RoundState
   events: RoundEvent[]
-  ended: 'win' | 'exhaustive' | 'stopped'
+  ended: 'win' | 'exhaustive' | 'abort' | 'stopped'
 }
 
 /**

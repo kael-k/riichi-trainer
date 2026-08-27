@@ -95,6 +95,12 @@
       "chi": "チー",
       "pass": "パス"
     },
+    "abortPrompt": "{{wind}}: 流局にしますか?",
+    "abort": {
+      "question": "九種九牌 — 么九牌{{kinds}}種。",
+      "confirm": "流局",
+      "decline": "続行"
+    },
     "riichi": "リーチ",
     "riichiHint": "次のいずれかを捨ててください:"
   },
@@ -383,6 +389,7 @@
       "ukeireLegend": "牌の下の数字: 山に残っている枚数"
     },
     "lab": {
+      "abort": "{{turn}}巡目: {{wind}}が九種九牌で流局",
       "discard": "{{turn}}巡目: {{tile}}を切った"
     },
     "folding": {

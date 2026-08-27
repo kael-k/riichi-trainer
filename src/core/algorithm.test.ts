@@ -90,6 +90,7 @@ describe('a new algorithm needs nothing from round.ts', () => {
       },
       call: () => null,
       riichi: () => false,
+      abort: () => false,
       win: () => true,
       kita: () => false,
     }

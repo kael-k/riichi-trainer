@@ -7,6 +7,7 @@ import {
   beginTurn,
   callAnkan,
   callKita,
+  canDeclareKyuushu,
   canDeclareRiichi,
   claimOptions,
   createRound,
@@ -14,9 +15,12 @@ import {
   finishTurn,
   NORTH,
   playRound,
+  reconsiderClaim,
+  replayLog,
   stepRound,
   threatViews,
   wallDrawnCount,
+  type PendingDiscardClaim,
   type RoundEvent,
   type RoundOptions,
   type RoundState,
@@ -33,6 +37,14 @@ import {
   wallWithHand,
   wallWithHands,
 } from './wall'
+
+/** The pending claim as a reaction to a discard, which is what every claim in this file is —
+ *  `PendingClaim` is a union since kyuushu kyuuhai suspends the turn through the same field. */
+function discardClaim(state: RoundState): PendingDiscardClaim {
+  const claim = state.claim
+  if (claim?.kind !== 'discard') throw new Error('no discard claim pending')
+  return claim
+}
 
 /** A yonma wall dealing these hands to seats 0, 1, … and filling the rest off `seed`. Hands are
  *  no longer contiguous in the wall (4/4/4+1, `dealtIndices`), so a test that wants an exact shape
@@ -678,8 +690,8 @@ describe('manual claims', () => {
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
 
     expect(state.claim?.seat).toBe(1)
-    expect(state.claim?.from).toBe(0)
-    const pon = state.claim?.options.find((o) => o.kind === 'pon')
+    expect(state.claim?.kind === 'discard' && state.claim.from).toBe(0)
+    const pon = discardClaim(state).options.find((o) => o.kind === 'pon')
     expect(pon?.from).toEqual([SOU + 8, SOU + 8])
   })
 
@@ -700,7 +712,7 @@ describe('manual claims', () => {
     finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
 
     expect(state.claim?.seat).toBe(1)
-    expect(state.claim?.options.some((o) => o.kind === 'ron')).toBe(true)
+    expect(discardClaim(state).options.some((o) => o.kind === 'ron')).toBe(true)
 
     answerClaim(state, options, { kind: 'pass' })
 
@@ -790,7 +802,7 @@ describe('manual claims', () => {
     const state = createRound(wall, 4, options)
     beginTurn(state, options)
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
-    const pon = state.claim?.options.find((o) => o.kind === 'pon')
+    const pon = discardClaim(state).options.find((o) => o.kind === 'pon')
     expect(pon).toBeDefined()
 
     answerClaim(state, options, { kind: 'pon', from: pon!.from })
@@ -1074,5 +1086,117 @@ describe('RoundState.log', () => {
     expect(callKita(state, options, 1)).toEqual([]) // seat 1 is not the acting seat
     expect(callAnkan(state, 1, MAN)).toEqual([])
     expect(state.log).toHaveLength(0)
+  })
+})
+
+describe('kyuushu kyuuhai', () => {
+  /** Nine distinct terminals and honours (1m 9m 1p 9p 1s 9s 1z 2z 3z), three shanten by every
+   *  path — legal to abort, nowhere near a win, so the fourteenth tile can never end the hand
+   *  first and change what is being tested. */
+  const KYUUSHU = '1119m199p199s123z'
+
+  function kyuushuRound(seed: string, options: RoundOptions): RoundState {
+    return createRound(handsWall(seed, KYUUSHU), 4, options)
+  }
+
+  it('lets an EV seat abort the hand, and logs it', () => {
+    const options: RoundOptions = { ...YONMA, algorithms: ['ev-statistical'] }
+    const state = kyuushuRound('kyuushu-ev', options)
+    const events = beginTurn(state, options)
+
+    expect(events.at(-1)).toEqual({ kind: 'abort', seat: 0, reason: 'kyuushu' })
+    expect(state.ended).toBe('abort')
+    expect(state.log.at(-1)).toEqual({ kind: 'abort', seat: 0 })
+  })
+
+  it('is declined by every hand-written algorithm, which is why the golden hashes hold', () => {
+    for (const algorithm of ['efficiency', 'defense', 'tsumogiri'] as const) {
+      const options: RoundOptions = { ...YONMA, algorithms: [algorithm] }
+      const state = kyuushuRound('kyuushu-ai', options)
+      const events = beginTurn(state, options)
+
+      expect(events.some((e) => e.kind === 'abort')).toBe(false)
+      expect(state.ended).toBeUndefined()
+    }
+  })
+
+  it('asks a manual seat instead of deciding, and suspends the turn while it waits', () => {
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
+    const state = kyuushuRound('kyuushu-manual', options)
+    beginTurn(state, options)
+
+    expect(state.claim).toEqual({ kind: 'abort', seat: 0, kinds: 9 })
+    // the same suspension a claim on a discard gets: nothing draws and nothing discards
+    expect(beginTurn(state, options)).toEqual([])
+    expect(finishTurn(state, options)).toEqual([])
+    expect(tileCount(state.players[0].hand)).toBe(14)
+
+    const events = answerClaim(state, options, { kind: 'abort' })
+    expect(events).toEqual([{ kind: 'abort', seat: 0, reason: 'kyuushu' }])
+    expect(state.ended).toBe('abort')
+  })
+
+  it('hands the turn straight back when declined, and never offers it again', () => {
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
+    const state = kyuushuRound('kyuushu-decline', options)
+    beginTurn(state, options)
+
+    expect(answerClaim(state, options, { kind: 'pass' })).toEqual([])
+    expect(state.claim).toBeUndefined()
+    expect(state.ended).toBeUndefined()
+    // still mid-turn with its fourteenth tile, exactly where `beginTurn` suspended it
+    expect(tileCount(state.players[0].hand)).toBe(14)
+    expect(canDeclareKyuushu(state, options, 0)).toBe(true)
+
+    // and once the seat has discarded, its own first draw is behind it for good
+    finishTurn(state, options, { tile: state.players[0].concealed[0], fromDrawn: false })
+    expect(canDeclareKyuushu(state, options, 0)).toBe(false)
+  })
+
+  it('is not offered at all with abortive draws turned off', () => {
+    const options: RoundOptions = { ...YONMA, abortiveDraws: false, algorithms: manual(0) }
+    const state = kyuushuRound('kyuushu-off', options)
+    beginTurn(state, options)
+
+    expect(state.claim).toBeUndefined()
+    expect(canDeclareKyuushu(state, options, 0)).toBe(false)
+  })
+
+  it('reconsiders when the seat being asked stops being manual mid-offer', () => {
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
+    const state = kyuushuRound('kyuushu-flip', options)
+    beginTurn(state, options)
+    expect(state.claim?.kind).toBe('abort')
+
+    // still manual: the question is still theirs
+    expect(reconsiderClaim(state, options)).toEqual([])
+    expect(state.claim?.kind).toBe('abort')
+
+    state.players[0].algorithm = 'ev-statistical'
+    expect(reconsiderClaim(state, options)).toEqual([{ kind: 'abort', seat: 0, reason: 'kyuushu' }])
+    expect(state.ended).toBe('abort')
+  })
+
+  it('replays off the log, for the seats that took it and the ones that did not', () => {
+    const options: RoundOptions = { ...YONMA, algorithms: ['ev-statistical'] }
+    const wall = handsWall('kyuushu-replay', KYUUSHU)
+    const played = createRound(wall, 4, options)
+    beginTurn(played, options)
+    expect(played.ended).toBe('abort')
+
+    const fresh = createRound(wall, 4, options)
+    replayLog(fresh, options, played.log)
+    expect(fresh.ended).toBe('abort')
+    expect(fresh.log).toEqual(played.log)
+
+    // and a log that does not name the abort replays a hand that carried on, even though replay
+    // forces every seat manual and so raises the offer for all of them
+    const declined = createRound(wall, 4, { ...options, algorithms: ['efficiency'] })
+    beginTurn(declined, options)
+    finishTurn(declined, options)
+    const carriedOn = createRound(wall, 4, { ...options, algorithms: ['efficiency'] })
+    replayLog(carriedOn, options, declined.log)
+    expect(carriedOn.ended).toBeUndefined()
+    expect(carriedOn.players[0].river.length).toBe(1)
   })
 })
