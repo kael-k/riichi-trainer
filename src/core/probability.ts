@@ -82,6 +82,12 @@ export interface OutlookOptions {
   /** Point thresholds for `Outlook.winAtLeast`, ascending. Empty by default, and it costs nothing
    *  when empty. */
   thresholds?: readonly number[]
+  /** Which discards `discardOutlooks` prices, when the caller has already narrowed them. Everything
+   *  held, by default. A decider that has prefiltered its candidates passes them here rather than
+   *  calling `handOutlook` per candidate: the `HandCaches` are shared across a whole ranking and
+   *  they are where the shanten probes are, so five separate calls cost more than one ranking of
+   *  fourteen. */
+  candidates?: readonly TileId[]
   scoring?: ScoringContext
 }
 
@@ -162,8 +168,10 @@ export function discardOutlooks(
 ): Map<TileId, Outlook> {
   const caches = freshCaches()
   const outlooks = new Map<TileId, Outlook>()
+  const wanted = opts.candidates ? new Set(opts.candidates) : null
   for (let id = 0; id < NUM_TILE_TYPES; id++) {
     if (hand.counts[id] === 0) continue
+    if (wanted && !wanted.has(id)) continue
     removeTile(hand, id)
     outlooks.set(id, solve(hand, seen, sanma, draws, opts, caches))
     addTile(hand, id)

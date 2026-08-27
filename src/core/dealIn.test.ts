@@ -217,9 +217,11 @@ describe('dealInRisk', () => {
       expect(both[ids('2p')[0]].probability).toBeGreaterThan(0)
     })
 
-    it('passes one threat through untouched, and handles none at all', () => {
+    it('passes one threat through untouched, and answers 34 zeroes for none at all', () => {
       expect(combineThreats([first])).toBe(first)
-      expect(combineThreats([])).toEqual([])
+      const none = combineThreats([])
+      expect(none).toHaveLength(NUM_TILE_TYPES)
+      expect(none.every((risk) => risk.probability === 0 && risk.terms.length === 0)).toBe(true)
     })
 
     it('carries the terms of every threat, each stamped with the seat it belongs to', () => {

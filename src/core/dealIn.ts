@@ -401,7 +401,9 @@ function waysToHold(hypothesis: Hypothesis, unseen: Uint8Array): number {
  * compatible-pair checks); it is not built. Read this as the approximation it is.
  */
 export function combineThreats(risks: DealInRisk[][]): DealInRisk[] {
-  if (risks.length === 0) return []
+  // 34 entries in tile order whatever it is given, so a caller can always index by `TileId` — a
+  // board with nobody in riichi is a board where every tile is safe, not one with no tiles on it
+  if (risks.length === 0) return emptyRisks()
   if (risks.length === 1) return risks[0]
   const combined: DealInRisk[] = []
   for (let id = 0; id < NUM_TILE_TYPES; id++) {
