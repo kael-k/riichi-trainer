@@ -74,17 +74,33 @@
       "efficiency": "効率",
       "defense": "守備",
       "tsumogiri": "ツモ切り",
-      "ev-statistical": "EV（理論）",
-      "ev-houou": "EV（鳳凰）",
+      "ev": "EV",
       "manual": "手動"
     },
     "modeHint": {
       "efficiency": "毎巡、最も効率の良い牌を切ります。",
       "defense": "降り: リーチ中の相手全員に対して最も安全な牌を切ります。",
       "tsumogiri": "毎巡、ツモった牌をそのまま切ります — 手牌の管理は一切しません。",
-      "ev-statistical": "期待点で押し引きを決めます。すべての価格は見えていない牌から導きます。",
-      "ev-houou": "期待点で押し引きを決めます。すべての価格は天鳳鳳凰卓の統計から取ります。",
+      "ev": "期待値で押し引きを決めます。計算の各項がすべて残ります。",
       "manual": "この席はあなたが操作します — 打牌・鳴き・リーチはあなたが選びます。"
+    },
+    "evModelLabel": "EVモデル",
+    "evModel": {
+      "statistical": "理論",
+      "houou": "鳳凰"
+    },
+    "evModelHint": {
+      "statistical": "すべての価格を見えていない牌から導きます。相手の手を安く見積もるため、統計モデルが引くところで押します。",
+      "houou": "すべての価格を天鳳鳳凰卓の統計から取ります。四人打ち専用——三人打ちのデータはありません。"
+    },
+    "evObjectiveLabel": "目的",
+    "evObjective": {
+      "points": "点数",
+      "placement": "順位"
+    },
+    "evObjectiveHint": {
+      "points": "点数を最大化します。安定していて、数値を確かめやすい単位です。",
+      "placement": "最終順位を最大化します。同じ点数でも、順位を上げられる席にはより高い価値がつきます。"
     },
     "waitingSeat": "{{wind}}の判断待ちです",
     "goToSeat": "{{wind}}へ移動",

@@ -1,5 +1,6 @@
 import { decompose, type Meld } from './agari'
 import { ALGORITHMS, type AIAlgorithm, type SeatView, type WinCandidate } from './algorithm'
+import { DEFAULT_EV_SEAT, type EvSeat } from './ev'
 import type { ThreatView } from './danger'
 import { addTile, createHand, removeTile, type Hand } from './hand'
 import type { MatchState } from './match'
@@ -68,6 +69,11 @@ export interface RoundOptions {
    *  none calls or rons without being asked (`claimOptions`/`answerClaim`). More than one seat
    *  can be `'manual'` at once — four manual seats is one person playing the whole table. */
   algorithms?: readonly SeatAlgorithm[]
+  /** Seeds each player's `PlayerState.ev` — how an `'ev'` seat prices, model and objective — the
+   *  same way `algorithms` seeds the algorithm itself, and with the same rule: seeding only, the
+   *  live value moves on the player. A seat with no entry starts on `DEFAULT_EV_SEAT`, and every
+   *  non-`'ev'` seat carries one and ignores it. */
+  ev?: readonly (EvSeat | undefined)[]
   /** Let a seat abort the hand on kyuushu kyuuhai — nine or more distinct terminals and honours
    *  in an opening hand nobody has called on. **On by default**, because it is a rule of the game
    *  rather than a permission: the graded drills turn it off for the same reason they turn `wins`
@@ -116,6 +122,10 @@ export interface PlayerState {
    *  never chooses for that seat — ignored, too, once `riichiAt` is set (riichi locks every later
    *  discard to tsumogiri regardless of algorithm). */
   algorithm: SeatAlgorithm
+  /** How this seat prices when its algorithm is `'ev'`. LIVE, exactly like `algorithm`: change the
+   *  model or the objective mid-hand and the next decision obeys, no redeal. Always set, on every
+   *  seat, so nothing downstream has to default an optional field. */
+  ev: EvSeat
 }
 
 export interface WinRecord {
@@ -269,7 +279,7 @@ export interface RoundState {
   win?: WinRecord
 }
 
-function createPlayer(algorithm: SeatAlgorithm = 'efficiency'): PlayerState {
+function createPlayer(algorithm: SeatAlgorithm = 'efficiency', ev = DEFAULT_EV_SEAT): PlayerState {
   return {
     hand: createHand(),
     concealed: [],
@@ -279,6 +289,7 @@ function createPlayer(algorithm: SeatAlgorithm = 'efficiency'): PlayerState {
     nuki: [],
     missedWin: false,
     algorithm,
+    ev,
   }
 }
 
@@ -331,7 +342,9 @@ export function createRound(
 
   const state: RoundState = {
     match: { ...options.match, points: [...options.match.points] },
-    players: Array.from({ length: players }, (_, seat) => createPlayer(options.algorithms?.[seat])),
+    players: Array.from({ length: players }, (_, seat) =>
+      createPlayer(options.algorithms?.[seat], options.ev?.[seat]),
+    ),
     wall: full,
     liveWall: dealable,
     liveWallSnapshot: [],
@@ -480,6 +493,7 @@ function seatView(state: RoundState, options: RoundOptions, seat: number): SeatV
     doraIndicators: state.doraIndicators,
     sanma: options.sanma,
     match: state.match,
+    ev: player.ev,
     get seen() {
       return (seenCache ??= seenBy(state, player))
     },

@@ -136,6 +136,9 @@ export function useRound(input: UseRoundInput) {
   // joined, not the array itself: a caller builds this fresh from its settings on every render, so
   // an identity dep would redeal the board each time it rendered
   const algorithmsKey = input.options.algorithms?.join()
+  // same reasoning, and same effect: an `'ev'` seat's model and objective are live board state,
+  // not a redeal (ADR-0008)
+  const evKey = input.options.ev?.map((seat) => `${seat?.model}/${seat?.objective}`).join()
 
   const handler = useRef<RoundEventHandler | undefined>(input.onEvent)
   handler.current = input.onEvent
@@ -297,7 +300,9 @@ export function useRound(input: UseRoundInput) {
   /** The board for the current inputs, building it only if this exact round has not been built. */
   function ensureBuilt(): TableCore {
     const already =
-      core.current && builtFor.current?.wall === input.wall && builtFor.current?.count === restartCount
+      core.current &&
+      builtFor.current?.wall === input.wall &&
+      builtFor.current?.count === restartCount
     if (already) return core.current!
     builtFor.current = { wall: input.wall, count: restartCount }
     return build()
@@ -348,13 +353,23 @@ export function useRound(input: UseRoundInput) {
         changed = true
       }
     })
+    input.options.ev?.forEach((ev, seat) => {
+      const player = c.round.players[seat]
+      if (!ev || !player) return
+      if (player.ev.model !== ev.model || player.ev.objective !== ev.objective) {
+        player.ev = ev
+        // deliberately not `changed`: repricing a seat is not a reason to re-resolve a pending
+        // claim or to drive the board on. The next decision that seat makes reads the new value,
+        // which is the whole of what "live" means here
+      }
+    })
     if (!changed) return
     if (c.round.claim && !isManual(c.round, c.round.claim.seat)) {
       reconsiderClaim(c.round, c.options)
     }
     void drive(c)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [algorithmsKey, input.options.claims])
+  }, [algorithmsKey, evKey, input.options.claims])
 
   // a reveal setting alone must not rebuild (that would redeal) — re-snapshot the board as it
   // stands, which is what makes toggling one live rather than waiting for the next discard

@@ -78,17 +78,33 @@
       "efficiency": "Efficienza",
       "defense": "Difesa",
       "tsumogiri": "Tsumogiri",
-      "ev-statistical": "EV (formula)",
-      "ev-houou": "EV (houou)",
+      "ev": "EV",
       "manual": "Manuale"
     },
     "modeHint": {
       "efficiency": "Gioca lo scarto più efficiente ad ogni turno.",
       "defense": "Si difende: scarta la tessera più sicura contro ogni riichi in corso.",
       "tsumogiri": "Scarta sempre la tessera appena pescata, senza gestire la mano.",
-      "ev-statistical": "Spinge o si ritira in base ai punti attesi, con ogni prezzo dedotto dalle tessere che nessuno ha visto.",
-      "ev-houou": "Spinge o si ritira in base ai punti attesi, con ogni prezzo misurato su partite houou di Tenhou.",
+      "ev": "Spinge o si ritira in base al valore atteso, con ogni termine del calcolo scritto per esteso.",
       "manual": "Giochi tu questo posto: scarti, chiamate e riichi sono una tua scelta."
+    },
+    "evModelLabel": "Modello EV",
+    "evModel": {
+      "statistical": "Formula",
+      "houou": "Houou"
+    },
+    "evModelHint": {
+      "statistical": "Ogni prezzo dedotto dalle tessere che nessuno ha visto. Valuta poco le mani avversarie, quindi spinge dove il modello misurato si ritira.",
+      "houou": "Ogni prezzo misurato su partite houou di Tenhou. Solo a quattro giocatori — non esistono dati a tre."
+    },
+    "evObjectiveLabel": "Obiettivo",
+    "evObjective": {
+      "points": "Punti",
+      "placement": "Piazzamento"
+    },
+    "evObjectiveHint": {
+      "points": "Massimizza il punteggio. Stabile, ed è l’unità in cui ogni cifra è più facile da verificare.",
+      "placement": "Massimizza il piazzamento finale, così gli stessi punti valgono di più per un posto che ha un piazzamento da guadagnare."
     },
     "waitingSeat": "In attesa di {{wind}}",
     "goToSeat": "Vai a {{wind}}",

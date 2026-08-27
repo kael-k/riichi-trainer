@@ -4,17 +4,18 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { WINDS } from '../situation/urlCodec'
 import { SegmentedButton } from './SettingsDialog'
-import { resolveSeatConfig, withSeatMode, type SeatConfig } from './tableSettings'
+import { resolveSeatConfig, withSeatEv, withSeatMode, type SeatConfig } from './tableSettings'
+import { DEFAULT_EV_SEAT, type EvObjective } from '../../core/ev'
+import type { EvModelName } from '../../core/evModel'
 import type { SeatAlgorithm } from '../../core/policy'
 
-const MODES: SeatAlgorithm[] = [
-  'efficiency',
-  'defense',
-  'tsumogiri',
-  'ev-statistical',
-  'ev-houou',
-  'manual',
-]
+const MODES: SeatAlgorithm[] = ['efficiency', 'defense', 'tsumogiri', 'ev', 'manual']
+
+/** The two orthogonal switches an `'ev'` seat carries. They are here rather than in `MODES`
+ *  because they are not algorithms: every combination is the same decider reading a different
+ *  price list in a different currency (ADR-0037). */
+const EV_MODELS: EvModelName[] = ['statistical', 'houou']
+const EV_OBJECTIVES: EvObjective[] = ['points', 'placement']
 
 export interface SeatButtonProps {
   /** The seat this button configures. */
@@ -77,6 +78,7 @@ export function SeatButton({
   }, [open])
 
   const mode = resolved.modes[seat] ?? 'efficiency'
+  const ev = resolved.ev?.[seat] ?? DEFAULT_EV_SEAT
   const manualCount = resolved.modes.filter((m) => m === 'manual').length
   const yours = seat === viewSeat
 
@@ -148,7 +150,10 @@ export function SeatButton({
                         // stops the go-round loop and the hand would play itself out
                         disabled={mode === 'manual' && option !== 'manual' && manualCount === 1}
                         onClick={() =>
-                          onChange({ modes: withSeatMode(config?.modes ?? [], seat, option) })
+                          onChange({
+                            modes: withSeatMode(config?.modes ?? [], seat, option),
+                            ev: config?.ev,
+                          })
                         }
                       >
                         {t(`seats.mode.${option}`)}
@@ -157,6 +162,60 @@ export function SeatButton({
                   </div>
                   <p className="text-sm text-neutral-500">{t(`seats.modeHint.${mode}`)}</p>
                 </div>
+                {/* only an EV seat has anything to price with, so the two rows appear with it
+                    rather than sitting greyed out under every other algorithm */}
+                {mode === 'ev' && (
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-medium text-neutral-500">
+                        {t('seats.evModelLabel')}
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {EV_MODELS.map((option) => (
+                          <SegmentedButton
+                            key={option}
+                            active={ev.model === option}
+                            onClick={() =>
+                              onChange({
+                                modes: config?.modes ?? [],
+                                ev: withSeatEv(config?.ev, seat, { model: option }),
+                              })
+                            }
+                          >
+                            {t(`seats.evModel.${option}`)}
+                          </SegmentedButton>
+                        ))}
+                      </div>
+                      <p className="text-sm text-neutral-500">
+                        {t(`seats.evModelHint.${ev.model}`)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-medium text-neutral-500">
+                        {t('seats.evObjectiveLabel')}
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {EV_OBJECTIVES.map((option) => (
+                          <SegmentedButton
+                            key={option}
+                            active={ev.objective === option}
+                            onClick={() =>
+                              onChange({
+                                modes: config?.modes ?? [],
+                                ev: withSeatEv(config?.ev, seat, { objective: option }),
+                              })
+                            }
+                          >
+                            {t(`seats.evObjective.${option}`)}
+                          </SegmentedButton>
+                        ))}
+                      </div>
+                      <p className="text-sm text-neutral-500">
+                        {t(`seats.evObjectiveHint.${ev.objective}`)}
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>,

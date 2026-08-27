@@ -59,7 +59,8 @@ export function useLabRound(situation: Situation, options: LabOptions) {
   // seat's algorithm live must freeze grading in place (ADR-0008), not move it to whichever other seat
   // the panel happens to have marked manual — so this never goes through `options.seats`
   const seatIndex = linkSeat
-  const algorithms = resolveSeatConfig(options.seats, players, seatIndex).modes
+  const seats = resolveSeatConfig(options.seats, players, seatIndex)
+  const algorithms = seats.modes
   const manualSeats = algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
   const prevalentWind = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const roundOptions: RoundOptions = {
@@ -71,6 +72,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     wins: options.opponentWins,
     kiriageMangan: options.kiriageMangan,
     algorithms,
+    ev: seats.ev,
     // the lab is the free-play board: manual seats are the point, so it always asks (ADR-0034)
     claims: true,
   }

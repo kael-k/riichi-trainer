@@ -74,17 +74,33 @@
       "efficiency": "效率",
       "defense": "防守",
       "tsumogiri": "摸切",
-      "ev-statistical": "EV（理论）",
-      "ev-houou": "EV（凤凰）",
+      "ev": "EV",
       "manual": "手动"
     },
     "modeHint": {
       "efficiency": "每巡打出效率最高的牌。",
       "defense": "防守：对所有立直的对手打出最安全的牌。",
       "tsumogiri": "每巡直接打出刚摸到的牌，完全不整理手牌。",
-      "ev-statistical": "按期待点数决定推还是退，所有数值都由未见牌推导而来。",
-      "ev-houou": "按期待点数决定推还是退，所有数值都取自天凤凤凰桌的统计。",
+      "ev": "按期望值决定推还是退,并保留计算的每一项。",
       "manual": "这个座位由你操作——打牌、鸣牌和立直都由你决定。"
+    },
+    "evModelLabel": "EV模型",
+    "evModel": {
+      "statistical": "理论",
+      "houou": "凤凰"
+    },
+    "evModelHint": {
+      "statistical": "所有数值都由未见牌推导而来。它把对手的手牌估得偏低,因此在统计模型选择退的地方它会推。",
+      "houou": "所有数值都取自天凤凤凰桌的统计。仅限四人打——没有三人打的数据。"
+    },
+    "evObjectiveLabel": "目标",
+    "evObjective": {
+      "points": "点数",
+      "placement": "顺位"
+    },
+    "evObjectiveHint": {
+      "points": "最大化点数。稳定,也是最容易核对的单位。",
+      "placement": "最大化最终顺位,因此同样的点数对有顺位可争的座位更有价值。"
     },
     "waitingSeat": "等待{{wind}}操作",
     "goToSeat": "前往{{wind}}",

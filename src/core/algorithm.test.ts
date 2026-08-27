@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ALGORITHMS, type Algorithm, type SeatView } from './algorithm'
+import { DEFAULT_EV_SEAT } from './ev'
 import { createHand, handFromTenhou } from './hand'
 import { createMatch } from './match'
 import { HONOR, NUM_TILE_TYPES, parseTenhou } from './tiles'
@@ -30,6 +31,7 @@ function baseView(overrides: Partial<SeatView> = {}): SeatView {
     seen: new Uint8Array(NUM_TILE_TYPES),
     threats: [],
     furiten: false,
+    ev: DEFAULT_EV_SEAT,
     ...overrides,
   }
 }

@@ -1,3 +1,4 @@
+import { DEFAULT_EV_SEAT, type EvSeat } from '../../core/ev'
 import type { SeatAlgorithm } from '../../core/policy'
 import { useSettings } from './settingsStore'
 
@@ -15,6 +16,11 @@ import { useSettings } from './settingsStore'
 export interface SeatConfig {
   /** Indexed by seat; a seat past the end falls back to the default for its position. */
   modes: SeatAlgorithm[]
+  /** How each `'ev'` seat prices — model and objective. Same indexing and the same lifetime as
+   *  `modes`; a seat with no entry runs `DEFAULT_EV_SEAT`, and a seat on any other algorithm
+   *  carries whatever is here and ignores it, so switching to `'ev'` and back does not lose the
+   *  reader's choice. */
+  ev?: (EvSeat | undefined)[]
 }
 
 /** `SeatConfig` filled in for a real table: every seat named, and at least one manual seat
@@ -39,7 +45,8 @@ export function resolveSeatConfig(
       (seat === defaultSeat ? 'manual' : 'efficiency'),
   )
   if (!modes.includes('manual')) modes[defaultSeat] = 'manual'
-  return { modes }
+  const ev = Array.from({ length: players }, (_, seat) => config?.ev?.[seat] ?? DEFAULT_EV_SEAT)
+  return { modes, ev }
 }
 
 /** `modes` with `seat` set to `mode`, built off the *raw* array rather than a resolved one — a
@@ -53,6 +60,18 @@ export function withSeatMode(
 ): SeatAlgorithm[] {
   const next = [...modes]
   next[seat] = mode
+  return next
+}
+
+/** The same patch for one seat's EV settings, and the same rule: built off the raw array, and
+ *  only the keys the reader actually touched. */
+export function withSeatEv(
+  ev: readonly (EvSeat | undefined)[] | undefined,
+  seat: number,
+  patch: Partial<EvSeat>,
+): (EvSeat | undefined)[] {
+  const next = [...(ev ?? [])]
+  next[seat] = { ...DEFAULT_EV_SEAT, ...next[seat], ...patch }
   return next
 }
 

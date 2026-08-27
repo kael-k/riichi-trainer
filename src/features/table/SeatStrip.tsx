@@ -16,10 +16,7 @@ const ALGO_COLOR: Record<SeatAlgorithm, string> = {
   efficiency: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
   defense: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
   tsumogiri: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-  // the two EV seats share one colour: they are the same decider, and what separates them is
-  // which model prices it — a distinction the badge's own text already carries
-  'ev-statistical': 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-  'ev-houou': 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  ev: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
   manual: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
 }
 

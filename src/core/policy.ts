@@ -13,15 +13,13 @@ import { HONOR, isDragon, isTerminalOrHonor, suitOf, type RiverTile, type TileId
  *  instead. The dispatch itself (`ALGORITHMS`, one object per AI style) lives in
  *  `core/algorithm.ts`, built on the pure functions below.
  *
- *  The two `'ev-*'` styles push or fold by expected points (`core/ev.ts`), and they are two keys
- *  rather than one style with a setting beside it because **the EV model is what they differ by**:
- *  `statistical` derives its prices from combinatorics, `houou` reads them off measured logs, and
- *  a seat runs one or the other the same way it runs one algorithm or another — flip it mid-hand
- *  and the next turn obeys. A separate per-seat field would buy nothing at two models; it earns
- *  itself when a second orthogonal switch (the objective, a posture) makes the union a cross
- *  product. */
-export type SeatAlgorithm =
-  'efficiency' | 'defense' | 'tsumogiri' | 'manual' | 'ev-statistical' | 'ev-houou'
+ *  `'ev'` pushes or folds by expected value (`core/ev.ts`), and **how** it prices is not part of
+ *  this union: an EV seat carries an `EvSeat` beside its algorithm (`PlayerState.ev`) naming the
+ *  model and the objective. That was two keys, `'ev-statistical'` and `'ev-houou'`, while the model
+ *  was the only thing an EV seat could differ by — ADR-0037 wrote down the trigger for moving it
+ *  off the union, and the placement objective is that trigger: two models times two objectives is a
+ *  cross product, and a cross product is a record, not four names. */
+export type SeatAlgorithm = 'efficiency' | 'defense' | 'tsumogiri' | 'manual' | 'ev'
 
 /**
  * The moves `core/algorithm.ts`'s `AIAlgorithm`s are written in terms of. Every function here

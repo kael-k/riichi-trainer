@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { SeatView } from './algorithm'
 import type { ThreatView } from './danger'
-import { foldEv, rankDiscards, riichiWorthIt, tsumoChance, type DiscardEv } from './ev'
+import {
+  DEFAULT_EV_SEAT,
+  foldEv,
+  rankDiscards,
+  riichiWorthIt,
+  tsumoChance,
+  type DiscardEv,
+} from './ev'
 import { EV_MODELS } from './evModel'
 import { handFromTenhou, handToTiles } from './hand'
 import { createMatch } from './match'
@@ -60,6 +67,7 @@ function viewOf(
     seen,
     threats,
     furiten: false,
+    ev: DEFAULT_EV_SEAT,
     ...overrides,
   }
 }

@@ -1,8 +1,16 @@
 import type { Meld } from './agari'
 import type { ThreatView } from './danger'
 import { evaluateDiscards, isBestDiscard } from './efficiency'
-import { abortWorthIt, foldEv, rankDiscards, riichiWorthIt } from './ev'
-import { EV_MODELS, type EvModel } from './evModel'
+import {
+  abortWorthIt,
+  DEFAULT_EV_SEAT,
+  foldEv,
+  rankDiscards,
+  riichiWorthIt,
+  type EvOptions,
+  type EvSeat,
+} from './ev'
+import { EV_MODELS } from './evModel'
 import type { Hand } from './hand'
 import type { MatchState } from './match'
 import { chooseCall, chooseDiscard, chooseFold, type Call, type SeatAlgorithm } from './policy'
@@ -66,6 +74,12 @@ export interface SeatView {
    *  is the same object `RoundState.match` holds, not a snapshot taken at deal time. Nothing in
    *  this wave reads it — it exists so a future algorithm (EV) has somewhere real to. */
   readonly match: MatchState
+
+  /** How this seat prices, when it is an `'ev'` seat: which model supplies the costs and what it
+   *  is maximising. Live, like `algorithm` itself — flip either mid-hand and the next decision
+   *  obeys. Every other algorithm carries it and ignores it, which is cheaper than an optional
+   *  field every reader has to default. */
+  readonly ev: EvSeat
 
   readonly seen: Uint8Array
   readonly threats: readonly ThreatView[]
@@ -184,13 +198,19 @@ const tsumogiri: Algorithm = {
   abort: () => false,
 }
 
+/** What the identity is asked with, read off the seat rather than baked into the algorithm: the
+ *  model supplying the prices and the currency it is pricing in. */
+function evOptions(view: SeatView): EvOptions {
+  const seat = view.ev ?? DEFAULT_EV_SEAT
+  return { model: EV_MODELS[seat.model], objective: seat.objective }
+}
+
 /**
- * Push or fold by expected points, priced through `core/ev.ts`'s identity under one EV model.
+ * Push or fold by expected value, priced through `core/ev.ts`'s identity.
  *
- * This is the one algorithm built by a function rather than written out as its own literal, and
- * the reason is what the two of them differ by: nothing except the model supplying the prices. Two
- * hand-copied literals would be the same code twice with one word changed, which is a worse way of
- * saying "these are the same decider with different weights" than a parameter is.
+ * One algorithm, not four: which model prices it and which currency it prices in are the seat's
+ * own `EvSeat`, read fresh on every decision, so both are live in exactly the way the algorithm
+ * itself is (ADR-0008).
  *
  * **The discard, the riichi declaration and the abortive draw are priced through the identity.**
  * The other three decision points are honest stand-ins, and each says what it is standing in for:
@@ -208,39 +228,37 @@ const tsumogiri: Algorithm = {
  * `abort` is `EV(keep) < 0`, which is the identity read against a branch worth exactly nothing —
  * see `abortWorthIt` for the two ceilings that answer ships with.
  */
-function evPlayer(model: EvModel): Algorithm {
-  return {
-    discard: (view) => {
-      const ranked = rankDiscards(view, { model })
-      const push = ranked[0]
-      const fold = foldEv(view, { model })
-      // a fold is a real branch, not the tail of the ranking: it gives up the win term entirely
-      // and spends the hand's safe tiles in order, so it can beat every push without any single
-      // discard looking wrong
-      const tile = push !== undefined && push.ev >= fold.ev ? push.tile : fold.tile
-      return { tile, fromDrawn: tile === view.drawn?.id }
-    },
-    call: (view, tile, fromKamicha) => {
-      const call = chooseCall(
-        view.hand,
-        view.melds,
-        tile,
-        fromKamicha,
-        view.prevalentWind,
-        view.seatWind,
-      )
-      if (call === null || view.threats.length === 0) return call
-      return callReachesTenpai(view, call) ? call : null
-    },
-    riichi: (view) => riichiWorthIt(view, { model }),
-    win: () => true,
-    abort: (view) => abortWorthIt(view, { model }),
-    kita: (view) => {
-      const ranked = evaluateDiscards(view.hand, view.seen, view.sanma)
-      const north = ranked.find((o) => o.discard === NORTH)
-      return north !== undefined && isBestDiscard(north, ranked[0])
-    },
-  }
+const ev: Algorithm = {
+  discard: (view) => {
+    const opts = evOptions(view)
+    const push = rankDiscards(view, opts)[0]
+    const fold = foldEv(view, opts)
+    // a fold is a real branch, not the tail of the ranking: it gives up the win term entirely
+    // and spends the hand's safe tiles in order, so it can beat every push without any single
+    // discard looking wrong
+    const tile = push !== undefined && push.ev >= fold.ev ? push.tile : fold.tile
+    return { tile, fromDrawn: tile === view.drawn?.id }
+  },
+  call: (view, tile, fromKamicha) => {
+    const call = chooseCall(
+      view.hand,
+      view.melds,
+      tile,
+      fromKamicha,
+      view.prevalentWind,
+      view.seatWind,
+    )
+    if (call === null || view.threats.length === 0) return call
+    return callReachesTenpai(view, call) ? call : null
+  },
+  riichi: (view) => riichiWorthIt(view, evOptions(view)),
+  win: () => true,
+  abort: (view) => abortWorthIt(view, evOptions(view)),
+  kita: (view) => {
+    const ranked = evaluateDiscards(view.hand, view.seen, view.sanma)
+    const north = ranked.find((o) => o.discard === NORTH)
+    return north !== undefined && isBestDiscard(north, ranked[0])
+  },
 }
 
 /** Whether taking this call leaves the hand tenpai — the cheap stand-in for pricing it. The two
@@ -261,6 +279,5 @@ export const ALGORITHMS: Record<AIAlgorithm, Algorithm> = {
   efficiency,
   defense,
   tsumogiri,
-  'ev-statistical': evPlayer(EV_MODELS.statistical),
-  'ev-houou': evPlayer(EV_MODELS.houou),
+  ev,
 }

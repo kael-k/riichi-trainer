@@ -78,17 +78,33 @@
       "efficiency": "Efficiency",
       "defense": "Defend",
       "tsumogiri": "Tsumogiri",
-      "ev-statistical": "EV (formula)",
-      "ev-houou": "EV (houou)",
+      "ev": "EV",
       "manual": "Manual"
     },
     "modeHint": {
       "efficiency": "Plays the most efficient discard every turn.",
       "defense": "Folds — plays the safest tile against every seat in riichi.",
       "tsumogiri": "Discards whatever it just drew, every turn — no hand management at all.",
-      "ev-statistical": "Pushes or folds by expected points, every price derived from the tiles nobody has seen.",
-      "ev-houou": "Pushes or folds by expected points, every price measured over Tenhou houou games.",
+      "ev": "Pushes or folds by expected value, with every term of the arithmetic written down.",
       "manual": "You play this seat: discards, calls and riichi are your choice."
+    },
+    "evModelLabel": "EV model",
+    "evModel": {
+      "statistical": "Formula",
+      "houou": "Houou"
+    },
+    "evModelHint": {
+      "statistical": "Every price derived from the tiles nobody has seen. It prices opponents cheap, so it pushes where the measured model folds.",
+      "houou": "Every price measured over Tenhou houou games. Four-player only — there is no three-player data."
+    },
+    "evObjectiveLabel": "Playing for",
+    "evObjective": {
+      "points": "Points",
+      "placement": "Placement"
+    },
+    "evObjectiveHint": {
+      "points": "Maximises the score. Stable, and the currency every figure is easiest to check in.",
+      "placement": "Maximises where the match is likely to finish, so the same points are worth more to a seat with a place to gain."
     },
     "waitingSeat": "Waiting on {{wind}}",
     "goToSeat": "Go to {{wind}}",

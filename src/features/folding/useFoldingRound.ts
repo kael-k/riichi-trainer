@@ -638,6 +638,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
         algorithms: (round.options.algorithms ?? []).map(
           (algorithm, seat) => options.seats?.modes[seat] ?? algorithm,
         ),
+        // same rule for how a seat prices: only the seats the panel actually names
+        ev: options.seats?.ev,
       }
     : undefined
 

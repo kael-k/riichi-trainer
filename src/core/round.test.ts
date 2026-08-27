@@ -1100,7 +1100,7 @@ describe('kyuushu kyuuhai', () => {
   }
 
   it('lets an EV seat abort the hand, and logs it', () => {
-    const options: RoundOptions = { ...YONMA, algorithms: ['ev-statistical'] }
+    const options: RoundOptions = { ...YONMA, algorithms: ['ev'] }
     const state = kyuushuRound('kyuushu-ev', options)
     const events = beginTurn(state, options)
 
@@ -1172,13 +1172,13 @@ describe('kyuushu kyuuhai', () => {
     expect(reconsiderClaim(state, options)).toEqual([])
     expect(state.claim?.kind).toBe('abort')
 
-    state.players[0].algorithm = 'ev-statistical'
+    state.players[0].algorithm = 'ev'
     expect(reconsiderClaim(state, options)).toEqual([{ kind: 'abort', seat: 0, reason: 'kyuushu' }])
     expect(state.ended).toBe('abort')
   })
 
   it('replays off the log, for the seats that took it and the ones that did not', () => {
-    const options: RoundOptions = { ...YONMA, algorithms: ['ev-statistical'] }
+    const options: RoundOptions = { ...YONMA, algorithms: ['ev'] }
     const wall = handsWall('kyuushu-replay', KYUUSHU)
     const played = createRound(wall, 4, options)
     beginTurn(played, options)

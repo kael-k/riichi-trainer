@@ -43,7 +43,8 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
   // seat's algorithm live must freeze grading in place (ADR-0008), not move it to whichever other seat
   // the panel happens to have marked manual — so this never goes through `options.seats`
   const seatIndex = linkSeat
-  const algorithms = resolveSeatConfig(options.seats, players, seatIndex).modes
+  const seats = resolveSeatConfig(options.seats, players, seatIndex)
+  const algorithms = seats.modes
   const manualSeats = algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
   const prevalentWind = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const roundOptions: RoundOptions = {
@@ -60,6 +61,7 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     // this drill grades, and the drill grades exactly three actions
     abortiveDraws: false,
     algorithms,
+    ev: seats.ev,
     // left unset (off): the drill grades exactly three actions — discard, kita, closed kan — and
     // a pon/chi is none of them, so a manual seat is never asked about another seat's discard
     // here (ADR-0035, amending ADR-0034's "efficiency and lab hardcode claims: true"). Ron was

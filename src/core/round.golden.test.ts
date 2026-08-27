@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createMatch } from './match'
+import { HONOR } from './tiles'
 import { playRound, type RoundEvent, type RoundOptions } from './round'
 
 /**
@@ -121,9 +122,13 @@ describe('match golden determinism', () => {
    * Both models are checked, because two models that always chose the same tile would not be worth
    * shipping two of.
    */
-  it.each(['ev-statistical', 'ev-houou'] as const)('%s plays a different hand', (algorithm) => {
+  it.each(['statistical', 'houou'] as const)('an ev seat on %s plays a different hand', (model) => {
     const seed = 'golden-0'
-    const evSeat: RoundOptions = { ...YONMA, algorithms: [algorithm] }
+    const evSeat: RoundOptions = {
+      ...YONMA,
+      algorithms: ['ev'],
+      ev: [{ model, objective: 'points' }],
+    }
     const played = hash(serialize(playRound(seed, 4, evSeat).events))
     expect(played).not.toBe(GOLDEN[seed][0])
     // and it is still deterministic: same seed, same seat, same hand
@@ -132,8 +137,44 @@ describe('match golden determinism', () => {
 
   it('the two EV models do not play the same hand as each other', () => {
     const seed = 'golden-3'
-    const pure = playRound(seed, 4, { ...YONMA, algorithms: ['ev-statistical'] })
-    const measured = playRound(seed, 4, { ...YONMA, algorithms: ['ev-houou'] })
+    const evSeat = (model: 'statistical' | 'houou'): RoundOptions => ({
+      ...YONMA,
+      algorithms: ['ev'],
+      ev: [{ model, objective: 'points' }],
+    })
+    const pure = playRound(seed, 4, evSeat('statistical'))
+    const measured = playRound(seed, 4, evSeat('houou'))
     expect(hash(serialize(measured.events))).not.toBe(hash(serialize(pure.events)))
+  })
+
+  /**
+   * The other half of the cross product, and the reason the model moved off `SeatAlgorithm`: a
+   * seat playing for placement is the same decider on the same prices, and it must still reach a
+   * different hand — otherwise the objective is a label rather than a switch.
+   *
+   * The board is South 4 with this seat **leading**, which is where the two currencies were
+   * measured to disagree. Behind, they do not: a hopeless seat pushes under both, because points
+   * already say a hand worth nothing costs nothing to chase. A lead is what placement can protect
+   * and points cannot see — 44000 with three seats behind is a first place worth more than any
+   * hand on the table, and the seat starts declining risk it would otherwise take.
+   */
+  it('an ev seat playing for placement does not play the same hand as one playing for points', () => {
+    const allLast = createMatch(false, {
+      prevalentWind: HONOR + 1,
+      round: 4,
+      points: [44000, 12000, 12000, 32000],
+    })
+    const evSeat = (objective: 'points' | 'placement'): RoundOptions => ({
+      ...YONMA,
+      match: allLast,
+      algorithms: ['ev'],
+      ev: [{ model: 'houou', objective }],
+    })
+    const diverged = ['golden-12', 'golden-19'].filter(
+      (seed) =>
+        hash(serialize(playRound(seed, 4, evSeat('placement')).events)) !==
+        hash(serialize(playRound(seed, 4, evSeat('points')).events)),
+    )
+    expect(diverged).toEqual(['golden-12', 'golden-19'])
   })
 })
