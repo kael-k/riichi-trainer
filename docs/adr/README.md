@@ -41,6 +41,7 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0021](0021-action-log-replay.md)                           | Shared links replay a full action log, not your own river    | Accepted  |
 | [0006](0006-one-match-engine.md)                            | One match engine; trainers differ only by stop condition     | Accepted  |
 | [0023](0023-round-inside-match.md)                          | A round is one deal; a match is the game it sits inside      | Accepted  |
+| [0038](0038-kyuushu-is-a-rule-not-a-permission.md)          | Kyuushu kyuuhai is a rule of the game, not a permission      | Accepted  |
 
 ### Seats and algorithms
 
@@ -51,6 +52,8 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0009](0009-decision-seam.md)                               | The decision seam: `ALGORITHMS` over a curated `SeatView`    | Accepted  |
 | [0010](0010-match-wide-permissions.md)                      | Permissions are match-wide flags on `MatchOptions`           | Accepted  |
 | [0011](0011-at-least-one-manual-seat.md)                    | At least one seat stays manual                               | Superseded by [0012](0012-shared-table-layer.md) |
+| [0037](0037-the-ev-seat-decides.md)                         | An EV seat decides through one identity; its model may not borrow | Amended by [0039](0039-the-currency-is-a-switch.md) |
+| [0039](0039-the-currency-is-a-switch.md)                    | The currency is a switch; an EV seat carries its model as a field | Accepted  |
 
 ### App layer
 

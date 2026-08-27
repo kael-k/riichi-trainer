@@ -1,7 +1,7 @@
 # Status
 
-_Last synthesised: 2026-08-27, against the git history through the second EV-model wave
-(`plans/PLAN-ev-model.md`)._
+_Last synthesised: 2026-08-27, against the git history through the third EV-model wave
+(`plans/PLAN-ev-model.md`), which finishes its next-wave list._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
@@ -251,7 +251,8 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     other**, or the answer is a third model nobody chose. `core/ev.ts` is `plans/EV-3`'s push/fold
     identity over both probability halves, with folding as the same expression at `P(win) = 0`
     rather than a second code path, and every discard carrying its own terms. Two new
-    `SeatAlgorithm` members, `'ev-statistical'` and `'ev-houou'`, are the only consumers; the seat
+    `SeatAlgorithm` members, `'ev-statistical'` and `'ev-houou'` (one `'ev'` key plus a per-seat
+    field since item 21), are the only consumers; the seat
     panel and all four locales carry them. **Nothing defaults to either**, so the golden hashes
     stay frozen — and three new golden cases prove the seat genuinely decides rather than falling
     through to `efficiency`.
@@ -271,13 +272,61 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     `HOUOU_OPEN_PRIOR` is unreachable by construction rather than merely unwired, since riichi
     needs a closed hand and a `ThreatView` is only built for a declared seat.
 
-    Still unbuilt from the plan: `plans/EV-3` §5's multi-turn safety recursion (both branches are
+    Still unbuilt after this wave: `plans/EV-3` §5's multi-turn safety recursion (both branches are
     priced over the rest of the hand, but roughly), the per-seat EV-model _field_ (deferred with
     its reasoning in the ADR), kyuushu kyuuhai, the placement objective, and any trainer surface.
+    **All five landed in item 21.**
+
+21. **The EV wave finishes: a currency, a sixth decision point and a screen**
+    ([ADR-0038](adr/0038-kyuushu-is-a-rule-not-a-permission.md),
+    [ADR-0039](adr/0039-the-currency-is-a-switch.md), the second amending
+    [ADR-0037](adr/0037-the-ev-seat-decides.md)). Everything left on
+    `plans/PLAN-ev-model.md`'s next-wave list, in five commits.
+
+    **Kyuushu kyuuhai** is the one piece that edits `round.ts`. It ships as a rule of the game
+    rather than a permission — `RoundOptions.abortiveDraws` defaults on, the three graded drills
+    turn it off the way they turn `wins` off — and the twenty frozen golden hashes **do not move**,
+    because `efficiency`, `defense` and `tsumogiri` all decline it: none of them has anything to
+    price the two branches with. `PendingClaim` became a union so a manual seat's offer could ride
+    the suspension a claim already uses, `RoundState.ended` gained `'abort'` (nobody is noten and
+    nobody pays), and a link reproduces it.
+
+    **Both branches of the identity are now integrated turn by turn** (`plans/EV-3` §5, the largest
+    single unbuilt piece in the design and the gate it named). A folding hand's safe tiles are
+    replenished out of the unseen pool, which is what stops a long fold reading as a hand that runs
+    out of genbutsu and then throws its worst tile to the end. Measured against one riichi with
+    three genbutsu in hand: three free turns and then ~3.7% a turn, where the published betaori
+    figures are 3-5%.
+
+    **The placement objective** is one substitution rather than a second identity: every term is a
+    probability times a value, and what a value _means_ is the objective. `core/placement.ts` holds
+    the integral and the ruleset and no weights; each model supplies the moments. `Variance.csv` is
+    newly extracted for the measured side, and the pure side's derivation — `plans/EV-5` §2.10's
+    owed maths — is a round-per-round random walk off the han distribution `dealInCost` already
+    integrates. The two agree on shape and disagree in a known direction: derived spread is
+    0.72-0.87 of measured and decays as exactly `sqrt(rounds left)` where the measured side decays
+    faster, and only the measured side sees a leader regress toward the field.
+
+    **The EV model moved off `SeatAlgorithm`** at exactly the trigger ADR-0037 wrote down for it:
+    `'ev-statistical'`/`'ev-houou'` became `'ev'` plus `PlayerState.ev: EvSeat { model, objective }`,
+    live in the same way the algorithm is, with two rows in the seat dialog and all four locales.
+
+    **The lab has an EV panel**, the first surface in the app to read `core/ev.ts` at all: both
+    branches, every candidate, every term as a probability, a value and their product on one line.
+    On demand rather than per turn — an exact ranking is hundreds of milliseconds — and stamped with
+    the discard count so a stale answer is recognisable. Verified in WebKit and Chrome
+    (`e2e/lab.spec.ts`).
+
+    Findings worth not re-deriving: an EV seat aborts almost every legal kyuushu hand, because a
+    kyuushu hand is 4+ shanten and the collapsed chain prices no win at all — arithmetic rather than
+    judgement, and stated as a ceiling. And the objective changes which hand gets played only where
+    there is something to protect: a seat that is _behind_ plays the same hand under both
+    currencies, because points already say a hand worth nothing costs nothing to chase.
 
 ## In flight
 
-- Nothing. All six `plans/UX-AUDIT.md` plans have landed, and the multi-manual freeze the
+- Nothing. `plans/PLAN-ev-model.md`'s next-wave list is complete; what the EV work still owes is
+  two measurement sessions, listed under Open questions. All six `plans/UX-AUDIT.md` plans have landed, and the multi-manual freeze the
   UX-AUDIT session flagged (`plans/NOTE-efficiency-multi-manual-freeze.md`) is fixed — see item 17.
 - `PLAN-match-context.md` went with T7 and `UX-TABLE.md` with the pass above, per
   `docs/README.md`'s one-plan-file rule. `PLAN-seat-algorithms.md`, `UX-TESTS-BUG.md` and
@@ -346,8 +395,10 @@ Both re-verified present in the current tree:
 
 ### Maintenance notes
 
-- **`useFoldingRound.test.ts`'s "next() deals a different hand" is flaky** — seen failing roughly
-  once in six full runs, green on ~10 consecutive runs of the file alone. `loading` is
+- **`useFoldingRound.test.ts` is flaky in two places, same cause** — "next() deals a different
+  hand" and "a mid-hand link replays the discards behind it, and logs them", each seen failing
+  roughly once in six _full_ runs and never in ~10 consecutive runs of the file alone. Both go
+  through the file's own `deal()` helper, which waits on `loading`. `loading` is
   `!failed && (searching || …)`, so a generation that exhausts its attempt budget clears `loading`
   while leaving the _previous_ round in state; the test's `waitFor(loading === false)` then
   compares an unchanged hand against itself. The product path is fine — `FoldingPage` renders
@@ -389,12 +440,11 @@ Not decided, deliberately not guessed:
 
 Recorded so they stop being re-proposed:
 
-- **Push/fold grading, and an `'ev'` seat algorithm.** The two probability layers now exist
-  (shipped item 19), but nothing decides with them. Items 4-7 of `plans/PLAN-ev-model.md`'s
-  next-wave list are deliberately not started: the `'ev'` `SeatAlgorithm`, the per-seat EV-model
-  registry, kyuushu kyuuhai engine support, and the trainer surfaces. `plans/EV-3` states the
-  gate — push and fold cannot honestly be compared until folding is priced over the rest of the
-  hand rather than one turn, which is the largest unbuilt piece in the design.
+- **Push/fold _grading_.** The models exist, decide, and have a screen (items 19-21), but no
+  trainer grades against them: folding still grades on `rank === 0` and always will by default
+  ([ADR-0004](adr/0004-ordinal-danger.md), `plans/EV-5` §2.8). An EV trainer, and an Advanced
+  option letting folding grade on probability instead of tier, both want the models calibrated
+  first — which is the backtest below.
 - **Reading a silent tenpai.** `dealIn.ts` refuses to speak about a seat that has not declared, and
   should keep refusing until the much weaker inference behind it is built (`plans/EV-5` §1.4).
 - **Round sequencing** — `nextRound()`, dealer rotation, honba/repeat increment, payout settlement,

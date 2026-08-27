@@ -220,6 +220,32 @@ only): with `wins: false` the engine never even asks an algorithm's `win`. A man
 is never an explicit choice — `beginTurn` wins the instant the draw completes the hand. Whether
 these four need a finer per-algorithm split is open (`docs/STATUS.md`).
 
+**`abortiveDraws` is a fifth `RoundOptions` field and is deliberately _not_ one of those four**
+(ADR-0038). They gate what a seat may do; this one says which ruleset is being played, like `sanma`
+or `kiriageMangan` — so it defaults **on**, and the three graded drills turn it off for the reason
+they turn `wins` off. See kyuushu kyuuhai below.
+
+**Kyuushu kyuuhai.** Nine or more distinct terminals and honours (`kyuushuKinds`, `KYUUSHU_KINDS` in
+`policy.ts`) on a seat's own first draw with nobody having melded, and the hand may be abandoned.
+
+- **"First draw, uninterrupted" is `river.length === 0` plus no melds anywhere, never `turn === 1`**:
+  seats are served in index order while the turn counter increments on the _dealer's_ seat, so with
+  a dealer other than seat 0 that counter moves mid-go-around. A kita is not a call and does not
+  disqualify. `canDeclareKyuushu` is the legality half alone, exactly like `canDeclareRiichi`.
+- **`beginTurn` asks after the tsumo check**, because a dealt thirteen-orphan kokushi is nine
+  distinct terminals and a completed hand at once, and the win outranks the abort.
+- **`efficiency`, `defense` and `tsumogiri` all decline**, so the golden hashes do not move even
+  though the rule is on by default. Only an `'ev'` seat decides it (`EV(keep) < 0`) and only a
+  manual seat is asked.
+- `RoundState.ended` gains **`'abort'`**, not `'exhaustive'`: nobody is noten and nobody pays.
+- A manual seat's offer rides `RoundState.claim`, which is now a **union** — `PendingDiscardClaim`
+  (restartable, multi-seat) and `PendingAbort` (one seat, one question, no `answers` map). They
+  share the suspension and `answerClaim` and nothing else. **Declining leaves no furiten behind**
+  and returns the turn exactly where `beginTurn` suspended it, fourteenth tile still in hand.
+- `LogEntry`/`actionLog` carry it (`Q` + seat) so a link reproduces it. Replay forces every seat
+  manual, so `replayLog` raises the offer for seats that declined it silently in live play —
+  nothing in the log is a decline, the way a claim nobody answered is a pass.
+
 **The riichi river mark is derived, not a one-shot flag.** `finishTurn` writes `entry.riichi` when
 `player.riichiAt === player.river.length` — true for the declaration and again for the seat's next
 discard after a call popped the declaration tile out of the river. The mark says where a seat's
@@ -261,22 +287,23 @@ still holds**; without that guard a shanten-chaser opens itself into hands that 
 
 ### The decision seam (`core/algorithm.ts`)
 
-Five decision points — discard, pon/chi, riichi declaration, take-a-win, kita — are one dispatch
-table: `ALGORITHMS: Record<AIAlgorithm, Algorithm>`. `AIAlgorithm` is `SeatAlgorithm` minus
-`'manual'`, which is **never a key here** — `round.ts` short-circuits on `isManual` before ever
-reaching `ALGORITHMS`. Its five call sites are `ALGORITHMS[player.algorithm].<method>(view, …)`.
+Six decision points — discard, pon/chi, riichi declaration, take-a-win, kita, abortive draw — are
+one dispatch table: `ALGORITHMS: Record<AIAlgorithm, Algorithm>`. `AIAlgorithm` is `SeatAlgorithm`
+minus `'manual'`, which is **never a key here** — `round.ts` short-circuits on `isManual` before
+ever reaching `ALGORITHMS`. Its call sites are `ALGORITHMS[player.algorithm].<method>(view, …)`.
 
 - Adding an algorithm is one ~10-line object literal plus its `AIAlgorithm` member; nothing in
-  `round.ts` changes. **No base class, no `Partial` merge** — the three hand-written ones are
-  independent literals. The **one exception** is `'ev-statistical'`/`'ev-houou'`, built by a
-  function from one EV model each: they differ by nothing but which model prices them, and two
-  copied literals would say that worse than a parameter does.
-- **The EV model is a key, not a field.** Two members of `SeatAlgorithm`, so a seat runs one the way
-  it runs any algorithm, live flips and seat panel included. `plans/PLAN-ev-model.md` specifies a
-  `PlayerState` field instead; at two models that is five plumbing sites buying nothing, and it
-  earns itself when the objective or a posture makes the union a cross product (ADR-0037).
-- An `'ev'` seat prices **the discard and the riichi declaration** through the identity. `call`,
-  `win` and `kita` are stand-ins that each name what they stand in for in the code.
+  `round.ts` changes. **No base class, no `Partial` merge** — all five are independent literals.
+- **The EV model and the objective are a per-seat field, not keys.** One `'ev'` member, and
+  `PlayerState.ev: EvSeat { model, objective }` beside `algorithm` — live in exactly the same way
+  (flip either mid-hand and the next decision obeys), seeded by `RoundOptions.ev`, exposed on
+  `SeatView.ev`, read fresh by `evOptions(view)` on every decision. It was two keys while the model
+  was the only axis; the objective made it a cross product, which is the trigger ADR-0037 wrote
+  down and ADR-0039 acted on. **Every seat carries an `EvSeat` and every non-`'ev'` seat ignores
+  it** — an optional field is a default every reader has to remember.
+- An `'ev'` seat prices **the discard, the riichi declaration and the abortive draw** through the
+  identity. `call`, `win` and `kita` are stand-ins that each name what they stand in for in the
+  code.
 - `Algorithm.discard` returns `{ tile, fromDrawn }`. `fromDrawn` is the algorithm's **advisory** read
   of tedashi vs tsumogiri (it decides at the kind level and never sees redness); `finishTurn`
   re-derives the river's actual flag from the tile `pickTile` really resolves, so the returned slot
@@ -291,11 +318,12 @@ score }`, already priced by `tryWin` before it asks. `defense.win` is `() => fal
 - `SeatView.concealed`/`drawn` name the tiles as actually held while `hand` stays counts-only for
   the maths. `SeatView.dealer` is `seatWind === HONOR`.
 - **`SeatView.match` is the same object `RoundState.match` holds**, not a snapshot, so a mid-round
-  riichi's 1000-point deduction is visible to whoever reads it next. Nothing reads it today.
+  riichi's 1000-point deduction is visible to whoever reads it next. `ev.ts` reads it — honba and
+  sticks always, and every seat's points under the placement objective.
 - Still rejected as fields: dora-in-hand (a helper over `concealed` + `doraIndicators`) and per-seat
   discard counts (already `players[i].river.length`).
 
-**Why:** [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0023](docs/adr/0023-round-inside-match.md)
+**Why:** [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0023](docs/adr/0023-round-inside-match.md)
 
 ### The table layer (`core/table.ts` + `features/table/useRound.ts`)
 
@@ -427,14 +455,15 @@ no danger markers before the answer, threats up to `players - 1`.
 
 **Why:** [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0005](docs/adr/0005-walls-not-seeds.md)
 
-### The EV model (`core/dealIn.ts`, `probability.ts`, `evModel.ts`, `ev.ts`)
+### The EV model (`core/dealIn.ts`, `probability.ts`, `evModel.ts`, `ev.ts`, `placement.ts`)
 
-Four pure modules beside the tier model, not replacing it: two that measure, one that prices, one
-that decides. The chain is one-way — `dealIn`/`probability` → `evModel` → `ev` → `algorithm.ts` —
-and `danger.ts`, `policy.ts` and `round.ts` are untouched by all of it. **No trainer reads any of
-it**; the only consumer is the two `'ev-*'` seats. Their specification is `plans/EV-1`–`EV-5`, and
-the `plans/RECAP-*` files record where the measurements disagreed with it; what follows is only
-what the code does today.
+Five pure modules beside the tier model, not replacing it: two that measure, one that prices, one
+that decides, one that says what a finish is worth. The chain is one-way —
+`dealIn`/`probability` → `evModel` → `ev` → `algorithm.ts`, with `placement.ts` hanging off `ev.ts`
+— and `danger.ts` and `policy.ts` are untouched by all of it. Two consumers: an `'ev'` seat, and
+the **lab's EV panel** (`core/table.ts#evOf`, on demand only). Their specification is
+`plans/EV-1`–`EV-5`, and the `plans/RECAP-*` files record where the measurements disagreed with it;
+what follows is only what the code does today.
 
 **Every number is measured, derived, or stated — and which it is has to be visible where it
 lives.** Derived is combinatorics over the unseen tiles. Measured is extracted by
@@ -504,18 +533,56 @@ derived deal-in cost would be a third model nobody chose.
   at about **half** the measured one, and the direction is known: the pure model prices opponents
   cheap, so it pushes where the measured one folds.
 - `houou.unsupported(sanma)` returns the reason it may not speak, never a silent swap.
+- **`swing` is the one function allowed to see the table**, and only through a rank and a round —
+  never a hand. It is the placement objective's whole input: the mean and spread of `final − now`.
+  `houou` reads `HOUOU_SWING` (`Variance.csv`); `statistical` derives it as a round-per-round
+  random walk, `2/n × E[V²]` of variance per round off the same han distribution `dealInCost`
+  integrates. They land within 0.72-0.87 of each other, the derived side narrower and decaying as
+  exactly `sqrt(rounds left)` where the measured side decays faster — and only the measured side
+  sees a leader regress toward the field. All three are pinned as tests, none is a tolerance.
 
 **`ev.ts` is the decision layer, and folding is not a second code path.** `EV(fold)` is `EV(push)`
 with `P(win)` at zero and the tiles taken from the safe end of the hand instead of the useful end.
 Every priced discard carries its terms — probability, value, product — which is the whole reason to
-prefer a formula. Three ceilings are stated in the module: a pushing hand's later turns are priced
-at the **average danger of the tiles it holds** (never at the tile going now — that makes one
-genbutsu buy safety for a hand not yet played), a folding hand's safe tiles are never replenished,
-and the win value comes from an advance-only DP that understates.
+prefer a formula.
+
+**Both branches are integrated over the rest of the hand, turn by turn.** `turnRisks` produces the
+sequence of per-turn risks a policy faces and `laterCost` discounts it by the chance the hand is
+still going; both branches share it, and share `dealInPrice`.
+
+- `'push'` throws what the shape needs, priced at the **average danger of the tiles held** — never
+  at the tile going now, which makes one genbutsu buy safety for a hand not yet played.
+- `'safe'` throws the cheaper of the safest tile in hand and the one just drawn, so a folding hand
+  is **replenished** out of the unseen pool and a held safe tile is spent only on the turns it beats
+  the draw. Measured against one riichi with three genbutsu: the first three turns cost nothing and
+  the rest settle at ~3.7% a turn, where `plans/EV-3` §5 quotes 3-5%.
+- **Two ceilings remain and are stated in the module.** A pushing hand may not change its mind
+  mid-sequence — switching needs P(win) from turn `t` onward and `Outlook` carries one scalar, not
+  a curve. And the win value comes from an advance-only DP that understates.
+
+**The currency is a switch, and it is one substitution rather than a second identity.** Every term
+is a probability times a _value_, and `valuer` is what a value means: `'points'` is the identity
+function (every figure bit-for-bit what it was), `'placement'` is the change in expected Tenhou
+result the swing buys. `core/placement.ts` holds the integral and the ruleset and **no weights** —
+the moments belong to each model, which is what keeps the no-borrowing rule intact while both share
+one integral.
+
+- **The value function is fixed by the ruleset, not a parameter**: 25000/30000 with uma ±10/±20
+  (sanma 35000/40000, +15/0/−15). No free knobs.
+- Rank odds are four independent normals integrated against each other over a 257-point Simpson
+  grid. **Independence is the stated approximation** — points move between seats, so the four are
+  exactly negatively correlated in their sum. Same shape as `combineThreats`, same reason.
+- **A deal-in term names the seat the points go _to_.** Under points that changes nothing; under
+  placement, dealing into the seat above you and the seat below you are not the same decision.
+- **Whoever shows these numbers must say which objective produced them.** They are not one quantity
+  in two units: eight thousand points is eight result points to a comfortable seat and nearly ten to
+  a last-place seat in South 4.
+- Measured: a seat that is _behind_ plays the same hand under both currencies (points already say a
+  hand worth nothing costs nothing to chase); a seat with a **lead to protect** diverges.
 
 - **Table status enters here and nowhere below.** Honba, sticks and dealership are read off
-  `SeatView.match`; the probability layers never see them, or two models stop being comparable on
-  one board.
+  `SeatView.match` — and every seat's points, under the placement objective. The probability layers
+  never see any of it, or two models stop being comparable on one board.
 - **`rankDiscards` needs the hand mid-turn and throws otherwise.** `Algorithm.riichi` is asked
   _after_ the discard, so its view holds thirteen tiles — `riichiWorthIt` prices that hand directly.
   Ranking from it would leave a twelve-tile hand the DP can never complete, which is minutes per
@@ -523,8 +590,17 @@ and the win value comes from an advance-only DP that understates.
 - The cheap path is the **candidate union** alone (fastest by ukeire ∪ safest against the board):
   an `'ev'` seat plays a ~460ms hand against `efficiency`'s ~40ms with the DP exact to 2-shanten.
   Capping the look-ahead and collapsing 2-shanten as well was measured, and removed.
+- **`abortWorthIt` is `EV(keep) < 0`** — `EV(abort)` is zero under the pinned ruleset. Two ceilings
+  it names: a kyuushu hand is 4+ shanten, so the collapsed chain prices no win at all and the answer
+  is dominated by the give-up term; and a dealer's forfeited dealership needs round sequencing.
 
-**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md)
+**`core/table.ts#evOf` is the only surface**, and it is **on demand, never a getter beside
+`ranked`/`danger`**: those are a handful of milliseconds and this is hundreds at 2-shanten, so a
+board that priced every turn on the chance somebody looked would be a board nobody wants to play
+on. The lab's panel asks for it and stamps the answer with the discard count, so a stale one is
+recognisable rather than quietly wrong about the turn before.
+
+**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md)
 
 ### Tenhou notation + situation URLs (the shared DSL)
 
@@ -651,7 +727,10 @@ duplicates under StrictMode. Two consequences that are easy to get wrong:
   children-first, so a page that logs as its round mounts would have those rows wiped a moment later.
 
 **Per-seat table configuration** (`features/settings/tableSettings.ts`) is one schema every
-board-rendering trainer shares: `SeatConfig { modes: SeatAlgorithm[] }`. **`Table` itself has no
+board-rendering trainer shares: `SeatConfig { modes: SeatAlgorithm[]; ev?: EvSeat[] }` — how each
+seat is played, and for an `'ev'` seat how it prices (model and objective, `withSeatEv` patching it
+off the raw array the same way `withSeatMode` does; a seat switched away from `'ev'` and back keeps
+its choice). **`Table` itself has no
 concept of a "player"** — every seat is just a seat with an algorithm, and the only thing that makes
 a seat one somebody plays is `'manual'`. "Your seat" is a trainer-level idea, not something `Table`
 reads or needs.
