@@ -28,6 +28,24 @@ const COMMIT_DATE = '2023-11-25'
 const UPSTREAM = 'Euophrys/houou-analysis'
 const CSV = 'results/WaitDistribution.csv'
 const CALIBRATION_CSV = 'results/DorasobaDanger.csv'
+const FOLD_CSV = 'results/BetaoirCost.csv'
+const SCORE_CSV = 'results/HandScore.csv'
+
+/** Turn axis of `BetaoirCost.csv`, which samples every second turn. */
+const FOLD_TURNS = [4, 6, 8, 10, 12, 14, 16, 18]
+/** The matchups the fold table carries, `me vs each threat`, D = dealer. Every one of them is a
+ *  column of the riichi frame; the calls frame (nobody in riichi) is not extracted, since a
+ *  `ThreatView` is only ever built for a declared seat. */
+const FOLD_MATCHUPS = [
+  'D vs ND',
+  'ND vs ND',
+  'ND vs D',
+  'D vs ND ND',
+  'ND vs ND ND',
+  'ND vs D ND',
+  'D vs ND ND ND',
+  'ND vs D ND ND',
+]
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'core', 'hououPrior.ts')
 
@@ -84,6 +102,92 @@ function cell(frame, row, column) {
   const index = frame.columns.indexOf(column)
   if (index < 0) throw new Error(`no column ${column}`)
   return values[index]
+}
+
+/**
+ * `BetaoirCost.csv` and `HandScore.csv` are pandas frames appended to one file with a real index
+ * label (`callturn`, `turndealer`) rather than the empty first cell `WaitDistribution.csv` uses, so
+ * they need their own split: a line whose first cell is not a number starts a frame.
+ *
+ * Values may be blank where upstream divided by a zero count; they come back as `null` rather than
+ * `NaN` so the emitted table can say "not measured here" and the model can fall back.
+ */
+function parseIndexedFrames(text) {
+  const frames = []
+  let current = null
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue
+    const cells = line.split(',')
+    while (cells.length && cells[cells.length - 1] === '') cells.pop()
+    if (cells.length === 0) continue
+    if (Number.isNaN(Number(cells[0]))) {
+      current = { label: cells[0], columns: cells.slice(1), rows: new Map() }
+      frames.push(current)
+      continue
+    }
+    if (!current) throw new Error(`data row outside any frame: ${line}`)
+    current.rows.set(
+      cells[0],
+      cells.slice(1).map((cell) => (cell === '' ? null : Number(cell))),
+    )
+  }
+  return frames
+}
+
+/** One column of an indexed frame, down a stated row axis. `null` stays `null`. */
+function column(frame, rows, name) {
+  const index = frame.columns.indexOf(name)
+  if (index < 0) throw new Error(`no column ${name} in frame ${frame.label}`)
+  return rows.map((row) => {
+    const values = frame.rows.get(String(row))
+    if (!values) throw new Error(`no row ${row} in frame ${frame.label}`)
+    return values[index] ?? null
+  })
+}
+
+/**
+ * What giving up on a hand costs, per turn, per matchup — `analyzers/betaori_cost.py` over the
+ * same database.
+ *
+ * **Units are pinned here** (plans/EV-3 §5 asks for exactly that): the analyzer sums Tenhou's `sc`
+ * score deltas, which are in HUNDREDS of points, so a raw -19.5 is -1950 points.
+ *
+ * **What it measures, and what it does not.** The sample is every seat that neither won nor dealt
+ * in, and on an exhaustive draw only the noten ones — so this is the cost of *not winning and
+ * being noten*: opponents' tsumo payments plus the noten penalty. **Deal-ins are excluded by
+ * construction**, which makes it exactly the complement of the deal-in term rather than a whole
+ * fold price: `EV(fold)` is this plus `P(deal in while folding) × value_j`, never this alone.
+ */
+function foldCost(values, counts) {
+  const cost = {}
+  const samples = {}
+  for (const matchup of FOLD_MATCHUPS) {
+    cost[matchup] = column(values, FOLD_TURNS, matchup).map((v) =>
+      v === null ? null : Math.round(v * 100),
+    )
+    samples[matchup] = column(counts, FOLD_TURNS, matchup).map((v) => v ?? 0)
+  }
+  return { cost, samples }
+}
+
+/**
+ * What a riichi hand pays, per turn of declaration, from `analyzers/hand_score.py`. Points as
+ * scored — riichi and honba sticks excluded upstream, yakuman excluded upstream, ura and dora
+ * included because these are real wins off real logs.
+ *
+ * `ron` is the deal-in cost `plans/EV-3` §4 calls `value_j`, conditioned the way §4's option 2 asks
+ * for: by the threat's dealership and by the turn they declared. `tsumo` is the winner's whole
+ * take, before the three-way split — what the payer owes is the model's arithmetic, not the table's.
+ */
+function handScore(values, counts) {
+  const turns = Array.from({ length: 19 }, (_, i) => i)
+  const round = (v) => (v === null ? null : Math.round(v))
+  return {
+    ron: column(values, turns, 'riichi ron').map(round),
+    tsumo: column(values, turns, 'riichi tsumo').map(round),
+    ronSamples: column(counts, turns, 'riichi ron').map((v) => v ?? 0),
+    tsumoSamples: column(counts, turns, 'riichi tsumo').map((v) => v ?? 0),
+  }
 }
 
 /**
@@ -206,6 +310,21 @@ ${indent(depth)}],`
 
 const text = await read(CSV)
 const byRank = waitByRank(await read(CALIBRATION_CSV))
+
+const foldFrames = parseIndexedFrames(await read(FOLD_CSV))
+// four frames: the calls case and its counts, then the riichi case and its counts
+if (foldFrames.length !== 4) throw new Error(`${FOLD_CSV}: expected 4 frames, got ${foldFrames.length}`)
+const [, , foldValues, foldCounts] = foldFrames
+if (foldValues.label !== 'riichiturn') throw new Error(`${FOLD_CSV}: frame 3 is ${foldValues.label}`)
+const fold = foldCost(foldValues, foldCounts)
+
+const scoreFrames = parseIndexedFrames(await read(SCORE_CSV))
+const [dealerScores, dealerCounts, nonDealerScores, nonDealerCounts] = scoreFrames
+if (dealerScores.label !== 'turndealer' || nonDealerScores.label !== 'turnnondealer') {
+  throw new Error(`${SCORE_CSV}: frames are ${scoreFrames.slice(0, 4).map((f) => f.label).join(', ')}`)
+}
+const dealerScore = handScore(dealerScores, dealerCounts)
+const nonDealerScore = handScore(nonDealerScores, nonDealerCounts)
 const { frames, scalars } = parseFrames(text)
 if (frames.length !== 4) throw new Error(`expected 4 frames, got ${frames.length}`)
 const [riichiSimple, riichiShanpon, openSimple, openShanpon] = frames
@@ -223,15 +342,22 @@ if (riichiTotals.hands + scalars['Complex waits'] !== scalars['Total riichi']) {
 }
 
 const n = (value) => value.toLocaleString('en-US')
+/** A TS array literal, `null` where upstream divided by a zero count. */
+const arr = (values) => `[${values.map((v) => (v === null ? 'null' : v)).join(', ')}]`
+const matchups = (table, depth) =>
+  FOLD_MATCHUPS.map((m) => `${indent(depth)}'${m}': ${arr(table[m])},`).join('\n')
 
 writeFileSync(
   OUT,
   `// GENERATED by scripts/build-ev-models.mjs — do not edit by hand.
 //
-// Wait-shape counts for a seat that has declared riichi, measured over Tenhou houou four-player
+// The measured half of the houou EV model: wait-shape counts for a seat that has declared riichi,
+// what giving up on a hand costs, and what a riichi hand pays — all over Tenhou houou four-player
 // hanchan logs.
 //
 //   source   https://github.com/${REPO}/blob/${COMMIT}/${CSV}
+//            https://github.com/${REPO}/blob/${COMMIT}/${FOLD_CSV}
+//            https://github.com/${REPO}/blob/${COMMIT}/${SCORE_CSV}
 //   commit   ${COMMIT} (${COMMIT_DATE})
 //   upstream forked from https://github.com/${UPSTREAM} (MIT). No code is copied here, only
 //            aggregate counts, which are measured facts rather than expression.
@@ -267,6 +393,62 @@ export const HOUOU_OPEN_PRIOR: ShapePrior = {
 ${literal(open, 2)}
 }
 
+/**
+ * What it costs to give up on a hand while somebody is in riichi: points, by the turn you are
+ * deciding on and by who is threatening whom.
+ *
+ * Keys are \`me vs each threat\`, D for dealer and ND for not, threats in the order upstream writes
+ * them (the dealer first when one of them is the dealer). Values are per entry of \`turns\`, and
+ * negative — they are losses.
+ *
+ * **This is not the whole fold price.** The measurement excludes every seat that dealt in, so what
+ * is here is opponents' tsumo payments plus the noten penalty, and nothing else. Add the deal-in
+ * term to it: \`EV(fold) = HOUOU_FOLD_COST + P(deal in while folding) × HOUOU_HAND_SCORE.ron\`.
+ *
+ * \`samples\` is the hand count behind each cell. Some are tiny — two hands in one turn-4 cell — so
+ * a reader of this table must check them before believing a number.
+ *
+ * source \`analyzers/betaori_cost.py\`, units converted from Tenhou score deltas (hundreds) to
+ * points at extraction.
+ */
+export const HOUOU_FOLD_COST = {
+  turns: [${FOLD_TURNS.join(', ')}],
+  cost: {
+${matchups(fold.cost, 4)}
+  },
+  samples: {
+${matchups(fold.samples, 4)}
+  },
+} as const
+
+/**
+ * What a riichi hand pays when it wins, by the turn it declared — the deal-in cost \`plans/EV-3\` §4
+ * calls \`value_j\`, conditioned by the threat's dealership as that section's option 2 asks for.
+ *
+ * Points as scored: riichi and honba sticks are excluded upstream, yakuman are excluded upstream,
+ * and ura and dora are included because these are real wins off real logs rather than a shape
+ * priced by a scorer. \`ron\` is what the discarder pays. \`tsumo\` is the winner's whole take before
+ * the three-way split, so a payer's share is arithmetic on top of it, not a figure in this table.
+ *
+ * Indexed by turn 0-18 directly. The early turns are thin — check \`ronSamples\`.
+ *
+ * source \`analyzers/hand_score.py\`.
+ */
+export const HOUOU_HAND_SCORE = {
+  dealer: {
+    ron: ${arr(dealerScore.ron)},
+    tsumo: ${arr(dealerScore.tsumo)},
+    ronSamples: ${arr(dealerScore.ronSamples)},
+    tsumoSamples: ${arr(dealerScore.tsumoSamples)},
+  },
+  nonDealer: {
+    ron: ${arr(nonDealerScore.ron)},
+    tsumo: ${arr(nonDealerScore.tsumo)},
+    ronSamples: ${arr(nonDealerScore.ronSamples)},
+    tsumoSamples: ${arr(nonDealerScore.tsumoSamples)},
+  },
+} as const
+
 /** What the source file says about itself, and what the riichi tables above imply. \`width\` is the
  *  expected number of distinct tile kinds a riichi waits on. */
 export const HOUOU_PRIOR_META = {
@@ -288,3 +470,5 @@ export const HOUOU_PRIOR_META = {
 console.log(OUT)
 console.log(`  riichi: ${riichiTotals.hands} hands, ${riichiTotals.waitKinds} wait kinds`)
 console.log(`  implied width: ${riichiTotals.width.toFixed(4)} kinds`)
+console.log(`  fold cost: ${FOLD_MATCHUPS.length} matchups over turns ${FOLD_TURNS.join('/')}`)
+console.log(`  hand score: riichi ron ${nonDealerScore.ron[9]} non-dealer / ${dealerScore.ron[9]} dealer at turn 9`)
