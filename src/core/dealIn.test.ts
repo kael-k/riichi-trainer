@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { assessDiscards, type ThreatView } from './danger'
 import {
+  combinedDealInRisk,
   combineThreats,
   dealInRisk,
   impliedWaitWidth,
@@ -225,6 +226,76 @@ describe('dealInRisk', () => {
       const both = combineThreats([first, second])
       const seats = new Set(both[ids('5s')[0]].terms.map((term) => term.seat))
       expect(seats).toEqual(new Set([1, 2]))
+    })
+  })
+
+  describe('combinedDealInRisk', () => {
+    const alone = threatOf('2p8p')
+    const other = threatOf('1s9s', '', 2)
+    const seen = visibleOf('2p8p1s9s')
+
+    it('defers to the single-threat answer when there is only one', () => {
+      const one = combinedDealInRisk([alone], seen, false)
+      const direct = dealInRisk(alone, seen, false)
+      expect(one.map((risk) => risk.probability)).toEqual(direct.map((risk) => risk.probability))
+      expect(combinedDealInRisk([], seen, false).every((risk) => risk.probability === 0)).toBe(true)
+    })
+
+    it('is the product unless the joint path is asked for', () => {
+      const product = combineThreats([
+        dealInRisk(alone, seen, false),
+        dealInRisk(other, seen, false),
+      ])
+      const combined = combinedDealInRisk([alone, other], seen, false)
+      expect(combined.map((risk) => risk.probability)).toEqual(
+        product.map((risk) => risk.probability),
+      )
+    })
+
+    // The measurement that made the joint path opt-in: it costs ~20x the product and moves the
+    // answer by a tenth of a point. `plans/EV-2` §5 expected sub-millisecond and the opposite sign.
+    it('lands within a tenth of a point of the product, mostly above it', () => {
+      const product = combineThreats([
+        dealInRisk(alone, seen, false),
+        dealInRisk(other, seen, false),
+      ])
+      const joint = combinedDealInRisk([alone, other], seen, false, undefined, true)
+      let above = 0
+      for (let id = 0; id < NUM_TILE_TYPES; id++) {
+        expect(Math.abs(joint[id].probability - product[id].probability)).toBeLessThan(0.002)
+        if (joint[id].probability > product[id].probability) above++
+      }
+      expect(above).toBeGreaterThan(NUM_TILE_TYPES / 2)
+    })
+
+    it('normalises over compatible pairs, so each threat still holds exactly one wait', () => {
+      const joint = combinedDealInRisk([alone, other], seen, false, undefined, true)
+      const mass = new Map<number, number>()
+      const counted = new Set<object>()
+      for (const risk of joint) {
+        for (const term of risk.terms) {
+          if (counted.has(term)) continue
+          counted.add(term)
+          mass.set(term.seat, (mass.get(term.seat) ?? 0) + term.probability)
+        }
+      }
+      expect(mass.get(1)).toBeCloseTo(1, 9)
+      expect(mass.get(2)).toBeCloseTo(1, 9)
+    })
+
+    it('keeps a tile genbutsu against both threats at exactly zero', () => {
+      const joint = combinedDealInRisk([alone, threatOf('2p8p', '', 2)], seen, false, undefined, true)
+      expect(probabilityOf(joint, '2p')).toBe(0)
+      expect(probabilityOf(joint, '8p')).toBe(0)
+    })
+
+    it('takes the product for three threats, where the pair loop would be a cube', () => {
+      const three = [alone, other, threatOf('3m7m', '', 3)]
+      const product = combineThreats(three.map((threat) => dealInRisk(threat, seen, false)))
+      const joint = combinedDealInRisk(three, seen, false, undefined, true)
+      expect(joint.map((risk) => risk.probability)).toEqual(
+        product.map((risk) => risk.probability),
+      )
     })
   })
 

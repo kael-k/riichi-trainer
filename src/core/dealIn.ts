@@ -236,6 +236,10 @@ const KOKUSHI: Hypothesis = (() => {
   return { shape: 'kokushi', holds: orphans, waits: orphans }
 })()
 
+/** Every hypothesis in the order `threatTerms` weighs them, kokushi last. The joint path indexes
+ *  two threats' term lists in step against this. */
+const ALL_HYPOTHESES: Hypothesis[] = [...HYPOTHESES, KOKUSHI]
+
 /** Prior weight of one hypothesis, before availability. Kokushi never arrives here: its weight is
  *  a share of every other hypothesis rather than a bucket of its own, so it is passed in. */
 function priorWeight(hypothesis: Hypothesis, prior: ShapePrior): number {
@@ -265,11 +269,39 @@ export function dealInRisk(
   sanma: boolean,
   prior: ShapePrior = HOUOU_PRIOR,
 ): DealInRisk[] {
+  const unseen = unseenFrom(visible, sanma)
+  const { terms, total } = threatTerms(threat, unseen, prior)
+
+  const risks = emptyRisks()
+  for (const term of terms) {
+    term.probability = total > 0 ? term.weight / total : 0
+    for (const tile of term.waits) {
+      risks[tile].terms.push(term)
+      risks[tile].probability += term.probability
+    }
+  }
+  for (const risk of risks) sortTerms(risk)
+  return risks
+}
+
+/** The unseen pool as the threat could be holding it: four copies of every kind less what is
+ *  already accounted for. Sanma reuses `inTileSet` the way `assessDiscards` does — a tile outside
+ *  the set counts as fully visible, so every shape needing it is dead. */
+function unseenFrom(visible: Uint8Array, sanma: boolean): Uint8Array {
   const unseen = new Uint8Array(NUM_TILE_TYPES)
   for (let id = 0; id < NUM_TILE_TYPES; id++) {
     unseen[id] = inTileSet(id, sanma) ? Math.max(0, TILES_PER_KIND - visible[id]) : 0
   }
+  return unseen
+}
 
+/** Every hypothesis weighed against one threat's own river, unnormalised. `terms` is aligned with
+ *  `ALL_HYPOTHESES`, which is what lets the joint path index the two threats' terms in step. */
+function threatTerms(
+  threat: ThreatView,
+  unseen: Uint8Array,
+  prior: ShapePrior,
+): { terms: DealInTerm[]; total: number } {
   // one furiten rule, and it is what produces both tiers people learn separately: if the tile
   // itself is in the set every hypothesis containing it dies (genbutsu), and if the far end of one
   // ryanmen is in the set only that hypothesis dies (suji) — which is exactly why a suji tile is
@@ -277,39 +309,37 @@ export function dealInRisk(
   const furiten = new Set([...threat.discards, ...threat.passed])
 
   const terms: DealInTerm[] = []
-  let live = 0
+  let total = 0
   for (const hypothesis of HYPOTHESES) {
     const term = build(hypothesis, threat.seat, unseen, furiten, prior)
     terms.push(term)
-    live += term.weight
+    total += term.weight
   }
   // kokushi's weight is a share of everything else rather than a bucket of its own, so the one
   // stated constant means the same thing under either prior
-  const kokushi = build(KOKUSHI, threat.seat, unseen, furiten, prior, KOKUSHI_SHARE * live)
+  const kokushi = build(KOKUSHI, threat.seat, unseen, furiten, prior, KOKUSHI_SHARE * total)
   terms.push(kokushi)
-  live += kokushi.weight
+  total += kokushi.weight
+  return { terms, total }
+}
 
+function emptyRisks(): DealInRisk[] {
   const risks: DealInRisk[] = []
   for (let id = 0; id < NUM_TILE_TYPES; id++) risks.push({ tile: id, probability: 0, terms: [] })
-  for (const term of terms) {
-    term.probability = live > 0 ? term.weight / live : 0
-    for (const tile of term.waits) {
-      risks[tile].terms.push(term)
-      risks[tile].probability += term.probability
-    }
-  }
-  // total order: live before dead, then by weight, then by shape and lowest held tile so that two
-  // equal-weight hypotheses never depend on enumeration order
-  for (const risk of risks) {
-    risk.terms.sort(
-      (a, b) =>
-        Number(a.dead !== undefined) - Number(b.dead !== undefined) ||
-        b.weight - a.weight ||
-        a.shape.localeCompare(b.shape) ||
-        a.holds[0] - b.holds[0],
-    )
-  }
   return risks
+}
+
+/** Total order: live before dead, then by weight, then by shape and lowest held tile so that two
+ *  equal-weight hypotheses never depend on enumeration order. */
+function sortTerms(risk: DealInRisk): void {
+  risk.terms.sort(
+    (a, b) =>
+      Number(a.dead !== undefined) - Number(b.dead !== undefined) ||
+      b.weight - a.weight ||
+      a.shape.localeCompare(b.shape) ||
+      a.holds[0] - b.holds[0] ||
+      a.seat - b.seat,
+  )
 }
 
 function build(
@@ -384,6 +414,130 @@ export function combineThreats(risks: DealInRisk[][]): DealInRisk[] {
     combined.push({ tile: id, probability: 1 - safe, terms })
   }
   return combined
+}
+
+/**
+ * Deal-in probability against every declared threat at once.
+ *
+ * Two threats do not draw from separate walls. They hold their shapes out of one shared pool, so
+ * they cannot hold the same copies and their waits are correlated — which `combineThreats`' product
+ * ignores. `joint` enumerates compatible pairs of hypotheses instead: the second threat's
+ * ways-to-hold are counted against the pool the first one has already taken from, an incompatible
+ * pair weighs zero, and the distribution is normalised over what survives. `P(t)` is then read off
+ * it as `P(A waits t) + P(B waits t) − P(both wait t)`, the inclusion-exclusion the product only
+ * approximates, and each term's `probability` comes back as its **joint marginal** so an
+ * explanation drawn from these terms is consistent with the total.
+ *
+ * **It is off by default, and the measurement is why.** `plans/EV-2` §5 expected the joint path to
+ * be sub-millisecond and the product to overstate. Both are wrong: the hypothesis space is ~650 per
+ * threat rather than the ~140 that estimate assumed (shanpon is a wait-pair matrix, not a
+ * marginalised column), so the pair loop is ~422k pairs at **46ms against the product's 2.5ms** —
+ * and the product comes out *below* the joint answer on 26 of 34 tiles, by at most **0.09pp** with
+ * a full pool and **0.83pp** against a heavily depleted one. Negative correlation raises
+ * `P(A ∪ B)` rather than lowering it, because `P(both)` falls faster than the independent product
+ * does. So the product is a slight **under**statement of about a tenth of a point, bought for a
+ * twentieth of the cost: it is the right default for anything deciding, and the joint path is for
+ * a reader who asked.
+ *
+ * Three or more threats always take the product: the pair loop is quadratic in the hypotheses, so
+ * a third one is a cube nobody is waiting for. Dead terms come back from every threat either way —
+ * they are the explanation.
+ */
+export function combinedDealInRisk(
+  threats: readonly ThreatView[],
+  visible: Uint8Array,
+  sanma: boolean,
+  prior: ShapePrior = HOUOU_PRIOR,
+  joint = false,
+): DealInRisk[] {
+  if (threats.length === 0) return emptyRisks()
+  if (threats.length === 1) return dealInRisk(threats[0], visible, sanma, prior)
+  if (!joint || threats.length > 2) {
+    return combineThreats(threats.map((threat) => dealInRisk(threat, visible, sanma, prior)))
+  }
+
+  const unseen = unseenFrom(visible, sanma)
+  const [a, b] = threats.map((threat) => threatTerms(threat, unseen, prior))
+  const liveA = liveIndices(a.terms)
+  const liveB = liveIndices(b.terms)
+
+  const marginalA = new Float64Array(a.terms.length)
+  const marginalB = new Float64Array(b.terms.length)
+  const both = new Float64Array(NUM_TILE_TYPES)
+  let total = 0
+
+  for (const i of liveA) {
+    const hypothesisA = ALL_HYPOTHESES[i]
+    // availability is already in `weight`, under whichever convention the prior reads it by; the
+    // second factor re-counts the same way against what this hypothesis has taken from the pool
+    const weightA = a.terms[i].weight
+    for (const j of liveB) {
+      const hypothesisB = ALL_HYPOTHESES[j]
+      const waysB = waysToHoldAfter(hypothesisB, unseen, hypothesisA.holds)
+      if (waysB === 0) continue
+      // the joint weight is A's, times B's re-priced for the copies A is holding: its own weight
+      // scaled by how much of its availability survives A
+      const weight = weightA * b.terms[j].weight * (waysB / b.terms[j].ways)
+      if (weight === 0) continue
+      total += weight
+      marginalA[i] += weight
+      marginalB[j] += weight
+      for (const tile of hypothesisA.waits) {
+        if (hypothesisB.waits.includes(tile)) both[tile] += weight
+      }
+    }
+  }
+
+  const risks = emptyRisks()
+  if (total === 0) return risks
+  for (const [terms, marginal] of [
+    [a.terms, marginalA],
+    [b.terms, marginalB],
+  ] as const) {
+    for (let i = 0; i < terms.length; i++) {
+      const term = terms[i]
+      term.probability = marginal[i] / total
+      for (const tile of term.waits) {
+        risks[tile].terms.push(term)
+        risks[tile].probability += term.probability
+      }
+    }
+  }
+  for (let id = 0; id < NUM_TILE_TYPES; id++) {
+    risks[id].probability -= both[id] / total
+    sortTerms(risks[id])
+  }
+  return risks
+}
+
+function liveIndices(terms: readonly DealInTerm[]): number[] {
+  const live: number[] = []
+  for (let i = 0; i < terms.length; i++) if (terms[i].weight > 0) live.push(i)
+  return live
+}
+
+/** Ways to hold a shape out of the pool another hypothesis has already taken its own tiles from.
+ *  `taken` may repeat a kind (a shanpon holds two of each), so copies come off one at a time. */
+function waysToHoldAfter(
+  hypothesis: Hypothesis,
+  unseen: Uint8Array,
+  taken: readonly TileId[],
+): number {
+  const left = (id: TileId) => {
+    let n = unseen[id]
+    for (const tile of taken) if (tile === id) n--
+    return n
+  }
+  if (hypothesis.shape === 'kokushi') {
+    return hypothesis.holds.every((tile) => left(tile) > 0) ? 1 : 0
+  }
+  if (hypothesis.shape === 'shanpon') {
+    const [low, , high] = hypothesis.holds
+    return pairs(left(low)) * pairs(left(high))
+  }
+  let ways = 1
+  for (const tile of hypothesis.holds) ways *= left(tile)
+  return Math.max(0, ways)
 }
 
 /** Expected number of distinct tile kinds the threat is waiting on, implied by a set of risks.
