@@ -267,7 +267,16 @@ table: `ALGORITHMS: Record<AIAlgorithm, Algorithm>`. `AIAlgorithm` is `SeatAlgor
 reaching `ALGORITHMS`. Its five call sites are `ALGORITHMS[player.algorithm].<method>(view, …)`.
 
 - Adding an algorithm is one ~10-line object literal plus its `AIAlgorithm` member; nothing in
-  `round.ts` changes. **No base class, no `Partial` merge** — the three are independent literals.
+  `round.ts` changes. **No base class, no `Partial` merge** — the three hand-written ones are
+  independent literals. The **one exception** is `'ev-statistical'`/`'ev-houou'`, built by a
+  function from one EV model each: they differ by nothing but which model prices them, and two
+  copied literals would say that worse than a parameter does.
+- **The EV model is a key, not a field.** Two members of `SeatAlgorithm`, so a seat runs one the way
+  it runs any algorithm, live flips and seat panel included. `plans/PLAN-ev-model.md` specifies a
+  `PlayerState` field instead; at two models that is five plumbing sites buying nothing, and it
+  earns itself when the objective or a posture makes the union a cross product (ADR-0037).
+- An `'ev'` seat prices **the discard and the riichi declaration** through the identity. `call`,
+  `win` and `kita` are stand-ins that each name what they stand in for in the code.
 - `Algorithm.discard` returns `{ tile, fromDrawn }`. `fromDrawn` is the algorithm's **advisory** read
   of tedashi vs tsumogiri (it decides at the kind level and never sees redness); `finishTurn`
   re-derives the river's actual flag from the tile `pickTile` really resolves, so the returned slot
@@ -286,7 +295,7 @@ score }`, already priced by `tryWin` before it asks. `defense.win` is `() => fal
 - Still rejected as fields: dora-in-hand (a helper over `concealed` + `doraIndicators`) and per-seat
   discard counts (already `players[i].river.length`).
 
-**Why:** [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0023](docs/adr/0023-round-inside-match.md)
+**Why:** [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0023](docs/adr/0023-round-inside-match.md)
 
 ### The table layer (`core/table.ts` + `features/table/useRound.ts`)
 
@@ -366,7 +375,11 @@ anything anyone discarded after they declared without being ronned. Both derive 
 `RoundState.discards`, **not `player.river`** — `finishTurn` pops a claimed discard out of the
 river, and it is still a tile that seat threw. `threatViews(state)` builds the `ThreatView[]` from
 it and is exported from `round.ts` itself, since `chooseFold` needs the exact same view the folding
-trainer grades against.
+trainer grades against. It also carries `riichiTurn` — of no use to the tiers, but the EV model's
+measured deal-in cost is conditioned on it, since a turn-3 riichi and a turn-13 riichi are not
+worth the same. A `ThreatView` is **only ever built for a declared seat**, and riichi needs a
+closed hand, so one can never describe an open hand: `HOUOU_OPEN_PRIOR` is unreachable until
+open-tenpai reading exists, not merely unwired.
 
 **Generation** (`playToRiichi` + folding's own `findRound`) searches fresh random walls for a hand
 worth drilling, yields between attempts, and **falls back to fewer threats** rather than failing.
@@ -414,11 +427,14 @@ no danger markers before the answer, threats up to `players - 1`.
 
 **Why:** [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0005](docs/adr/0005-walls-not-seeds.md)
 
-### The EV model (`core/dealIn.ts` + `core/probability.ts`) — additive, read by nothing
+### The EV model (`core/dealIn.ts`, `probability.ts`, `evModel.ts`, `ev.ts`)
 
-Two pure modules beside the tier model, not replacing it. **Nothing imports them**: `danger.ts`,
-`policy.ts`, `algorithm.ts` and `round.ts` are untouched, and no trainer reads either. Their
-specification is `plans/EV-1`–`EV-5`; what follows is only what the code does today.
+Four pure modules beside the tier model, not replacing it: two that measure, one that prices, one
+that decides. The chain is one-way — `dealIn`/`probability` → `evModel` → `ev` → `algorithm.ts` —
+and `danger.ts`, `policy.ts` and `round.ts` are untouched by all of it. **No trainer reads any of
+it**; the only consumer is the two `'ev-*'` seats. Their specification is `plans/EV-1`–`EV-5`, and
+the `plans/RECAP-*` files record where the measurements disagreed with it; what follows is only
+what the code does today.
 
 **Every number is measured, derived, or stated — and which it is has to be visible where it
 lives.** Derived is combinatorics over the unseen tiles. Measured is extracted by
@@ -445,7 +461,12 @@ each by `prior × availability`. Points worth not re-deriving wrong:
 - **Dead terms are returned, not filtered.** "1p is a tanki, a shanpon or a kokushi and nothing
   else, because the 3p wall killed every run" needs the crossed-out shapes to say it.
 - `combineThreats` is the union `1 - Π(1 - p)`, an approximation: threats draw from one shared pool
-  so their waits are correlated. The joint enumeration is affordable for two threats and unbuilt.
+  so their waits are correlated. It returns **34 entries whatever it is given** — a board with
+  nobody in riichi is one where every tile is safe, not one with no tiles on it.
+- The joint two-threat enumeration is built and **off by default** (`combinedDealInRisk(…, joint)`).
+  Measured at 46ms against the product's 2.5ms, moving the answer by at most 0.09pp on a full pool
+  and 0.83pp on a depleted one — and _upward_, not down: `plans/EV-2` §5 predicted both the cost and
+  the sign wrong. The product decides; the joint path is for a reader who asked.
 
 **`handOutlook` / `discardOutlooks`** (`probability.ts`) work backwards from the end of the hand.
 
@@ -466,7 +487,44 @@ each by `prior × availability`. Points worth not re-deriving wrong:
   availability-weighted average of where each improving draw lands, not the best one — the best
   overstates a 2-shanten win probability by 190%, the average by 9-31%, and it is exact at tenpai.
 
-**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md)
+**The prices are the EV model, and the two of them may not borrow from each other** (`evModel.ts`).
+`EV_MODELS` holds `statistical` (every price derived from combinatorics) and `houou` (every price
+measured over the same houou logs `hououPrior.ts` comes from). Each supplies a prior, a deal-in
+cost, a give-up cost, a riichi uplift and a ruleset declaration — a measured fold price against a
+derived deal-in cost would be a third model nobody chose.
+
+- **The give-up cost excludes deal-ins**, by construction on both sides: it is opponents' tsumo
+  payments plus the noten penalty. Deal-ins are priced per turn against the tile actually thrown,
+  and adding them twice is the easiest mistake the interface invites.
+- The measured tables carry **per-cell sample counts** and some cells hold two hands, so a thin cell
+  steps to the nearest turn that is not thin (`MIN_SAMPLES`).
+- **The pure model has exactly one place it cannot be pure**, and it is a stated constant:
+  `TYPICAL_CLOSED_YAKU_HAN`. Hand value comes from choices, not tiles — pricing an opponent as
+  fourteen random tiles says tanyao happens in 0.03% of hands. The derived deal-in cost still lands
+  at about **half** the measured one, and the direction is known: the pure model prices opponents
+  cheap, so it pushes where the measured one folds.
+- `houou.unsupported(sanma)` returns the reason it may not speak, never a silent swap.
+
+**`ev.ts` is the decision layer, and folding is not a second code path.** `EV(fold)` is `EV(push)`
+with `P(win)` at zero and the tiles taken from the safe end of the hand instead of the useful end.
+Every priced discard carries its terms — probability, value, product — which is the whole reason to
+prefer a formula. Three ceilings are stated in the module: a pushing hand's later turns are priced
+at the **average danger of the tiles it holds** (never at the tile going now — that makes one
+genbutsu buy safety for a hand not yet played), a folding hand's safe tiles are never replenished,
+and the win value comes from an advance-only DP that understates.
+
+- **Table status enters here and nowhere below.** Honba, sticks and dealership are read off
+  `SeatView.match`; the probability layers never see them, or two models stop being comparable on
+  one board.
+- **`rankDiscards` needs the hand mid-turn and throws otherwise.** `Algorithm.riichi` is asked
+  _after_ the discard, so its view holds thirteen tiles — `riichiWorthIt` prices that hand directly.
+  Ranking from it would leave a twelve-tile hand the DP can never complete, which is minutes per
+  round and then the heap.
+- The cheap path is the **candidate union** alone (fastest by ukeire ∪ safest against the board):
+  an `'ev'` seat plays a ~460ms hand against `efficiency`'s ~40ms with the DP exact to 2-shanten.
+  Capping the look-ahead and collapsing 2-shanten as well was measured, and removed.
+
+**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md)
 
 ### Tenhou notation + situation URLs (the shared DSL)
 

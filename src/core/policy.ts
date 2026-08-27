@@ -21,12 +21,7 @@ import { HONOR, isDragon, isTerminalOrHonor, suitOf, type RiverTile, type TileId
  *  itself when a second orthogonal switch (the objective, a posture) makes the union a cross
  *  product. */
 export type SeatAlgorithm =
-  | 'efficiency'
-  | 'defense'
-  | 'tsumogiri'
-  | 'manual'
-  | 'ev-statistical'
-  | 'ev-houou'
+  'efficiency' | 'defense' | 'tsumogiri' | 'manual' | 'ev-statistical' | 'ev-houou'
 
 /**
  * The moves `core/algorithm.ts`'s `AIAlgorithm`s are written in terms of. Every function here

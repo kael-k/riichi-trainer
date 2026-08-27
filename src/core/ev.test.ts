@@ -87,7 +87,8 @@ describe('rankDiscards', () => {
     for (const entry of rankDiscards(viewOf(FOURTEEN), { model: statistical })) {
       const sum = entry.terms.reduce((total, term) => total + term.points, 0)
       expect(entry.ev).toBeCloseTo(sum, 9)
-      for (const term of entry.terms) expect(term.points).toBeCloseTo(term.probability * term.value, 9)
+      for (const term of entry.terms)
+        expect(term.points).toBeCloseTo(term.probability * term.value, 9)
     }
   })
 

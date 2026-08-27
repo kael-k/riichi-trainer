@@ -153,12 +153,7 @@ export const STATISTICAL: EvModel = {
       if (weight === 0) continue
       value +=
         weight *
-        ronValue(
-          1 + TYPICAL_CLOSED_YAKU_HAN + extra,
-          CLOSED_RON_FU,
-          threat.dealer,
-          board.rules,
-        )
+        ronValue(1 + TYPICAL_CLOSED_YAKU_HAN + extra, CLOSED_RON_FU, threat.dealer, board.rules)
     }
     return value
   },

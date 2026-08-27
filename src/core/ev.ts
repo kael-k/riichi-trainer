@@ -149,7 +149,6 @@ export function riichiWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
   return outlook.soloWin * (model.riichiUplift(value, board) + RIICHI_STICK) > RIICHI_STICK
 }
 
-
 /** The tiles worth pricing: the fastest few, plus the safest few. Duplicates collapse, so a tile
  *  that is both is counted once and the union is usually smaller than the sum. */
 function candidateUnion(view: SeatView, combined: DealInRisk[]): TileId[] {

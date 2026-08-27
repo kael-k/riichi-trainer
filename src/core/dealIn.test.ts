@@ -286,7 +286,13 @@ describe('dealInRisk', () => {
     })
 
     it('keeps a tile genbutsu against both threats at exactly zero', () => {
-      const joint = combinedDealInRisk([alone, threatOf('2p8p', '', 2)], seen, false, undefined, true)
+      const joint = combinedDealInRisk(
+        [alone, threatOf('2p8p', '', 2)],
+        seen,
+        false,
+        undefined,
+        true,
+      )
       expect(probabilityOf(joint, '2p')).toBe(0)
       expect(probabilityOf(joint, '8p')).toBe(0)
     })
@@ -295,9 +301,7 @@ describe('dealInRisk', () => {
       const three = [alone, other, threatOf('3m7m', '', 3)]
       const product = combineThreats(three.map((threat) => dealInRisk(threat, seen, false)))
       const joint = combinedDealInRisk(three, seen, false, undefined, true)
-      expect(joint.map((risk) => risk.probability)).toEqual(
-        product.map((risk) => risk.probability),
-      )
+      expect(joint.map((risk) => risk.probability)).toEqual(product.map((risk) => risk.probability))
     })
   })
 

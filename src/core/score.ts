@@ -177,12 +177,7 @@ function basicPoints(
  * Same limit brackets and the same rounding as a real win, so the two never disagree about what
  * 4 han 30 fu is worth.
  */
-export function ronValue(
-  han: number,
-  fu: number,
-  dealer: boolean,
-  rules: ScoringRules,
-): number {
+export function ronValue(han: number, fu: number, dealer: boolean, rules: ScoringRules): number {
   const { basic } = basicPoints(han, fu, rules.kiriageMangan)
   return roundUp100((dealer ? 6 : 4) * basic)
 }

@@ -1,6 +1,6 @@
 # Status
 
-_Last synthesised: 2026-08-27, against the git history through the first EV-model wave
+_Last synthesised: 2026-08-27, against the git history through the second EV-model wave
 (`plans/PLAN-ev-model.md`)._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
@@ -151,7 +151,7 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
 15. **The HUD is a strip above the board; the chip is top-centre** (`PLAN-ux-5`) — the desktop
     HUD's left-gutter float (four cramped lines on a laptop window) is gone: every viewport but
     `short:` takes the portrait shape, a full-width strip above the board (`StatusCard`'s `strip`
-    layout), at ~5-7% of the height-limited square. Held sideways the HUD floats in the *right*
+    layout), at ~5-7% of the height-limited square. Held sideways the HUD floats in the _right_
     gutter, the slot the verdict chip vacated — the chip is top-centre and transient in every
     shape now. `--stage-max` lost the 6rem HUD-gutter term. Measured on WebKit at the audit's
     eight viewports plus 667×375: one line everywhere but a portrait phone, chip and landscape
@@ -173,7 +173,7 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
 17. **A reader now acts from the seat the board is drawn from, and the felt says who owes a
     decision** ([ADR-0034](adr/0034-you-act-from-where-you-watch.md)). Fixes the freeze
     `plans/NOTE-efficiency-multi-manual-freeze.md` found: `useEfficiencyDrill` gained
-    `actingPlayable` (the *acting* seat's own tile-count check) so `EfficiencyPage`'s `canAct`
+    `actingPlayable` (the _acting_ seat's own tile-count check) so `EfficiencyPage`'s `canAct`
     stops reading `finished` (anchored to the graded seat, which stayed true for a second manual
     seat's whole turn). `Table` gained `activeSeat` — an amber pulse on the felt's edge nearest
     whoever owes the decision — and `SeatView.claiming` displaces a claimable discard out of its
@@ -233,8 +233,7 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     so the empirical tables are a reproducible artifact rather than hand-copied numbers; the ~8 GB
     log database behind those CSVs is deliberately not a build input.
 
-    **Purely additive: nothing imports either module.** `danger.ts`, `policy.ts`, `algorithm.ts`
-    and `round.ts` are untouched and `round.golden.test.ts` does not move.
+    **Wave 1 was purely additive; wave 2 (item 20) added the decider that reads them.**
 
     Four findings that revise the plan's own specification, all recorded in the ADR: the shanpon
     prior must stay a wait-pair matrix (marginalising it reproduces the source's wait width as 1.61
@@ -243,8 +242,38 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     plan expected; the DP's node counts in the plan were of a weaker DP that follows one discard
     instead of maximising over all shanten-minimal ones; and the collapsed chain has to walk an
     availability-weighted average rather than the best draw, which cuts a 190% overstatement to
-    9-31%. Calibration is against `DorasobaDanger.csv`, a *different* analyzer over the same
+    9-31%. Calibration is against `DorasobaDanger.csv`, a _different_ analyzer over the same
     database, which the model matches within 10% for ranks 1-8.
+
+20. **The EV seat decides** ([ADR-0037](adr/0037-the-ev-seat-decides.md)). `core/evModel.ts` is the
+    swappable price unit — `statistical` derives every figure from combinatorics, `houou` reads
+    every figure off the measured tables — under one rule: **neither may borrow a number from the
+    other**, or the answer is a third model nobody chose. `core/ev.ts` is `plans/EV-3`'s push/fold
+    identity over both probability halves, with folding as the same expression at `P(win) = 0`
+    rather than a second code path, and every discard carrying its own terms. Two new
+    `SeatAlgorithm` members, `'ev-statistical'` and `'ev-houou'`, are the only consumers; the seat
+    panel and all four locales carry them. **Nothing defaults to either**, so the golden hashes
+    stay frozen — and three new golden cases prove the seat genuinely decides rather than falling
+    through to `efficiency`.
+
+    Two more measured tables extracted the same reproducible way: `BetaoirCost.csv` (what giving
+    up costs, units pinned at extraction — the analyzer's Tenhou score deltas are hundreds of
+    points, and its sample excludes every seat that dealt in, so it is the complement of the
+    deal-in term and never a whole fold price) and `HandScore.csv` (what a riichi hand pays, by
+    declaration turn and dealership — 5554 points non-dealer at turn 9, against the 5-6k rule of
+    thumb).
+
+    Findings worth not re-deriving: the pure model **cannot** price an opponent's hand, because
+    hand value comes from choices rather than tiles — one stated han covers it and the derived cost
+    still lands at half the measured one, in a known direction; the joint two-threat enumeration
+    costs 46ms against the product's 2.5ms and moves the answer by under a tenth of a point,
+    _upward_ rather than down as `plans/EV-2` §5 predicted, so it ships off by default; and
+    `HOUOU_OPEN_PRIOR` is unreachable by construction rather than merely unwired, since riichi
+    needs a closed hand and a `ThreatView` is only built for a declared seat.
+
+    Still unbuilt from the plan: `plans/EV-3` §5's multi-turn safety recursion (both branches are
+    priced over the rest of the hand, but roughly), the per-seat EV-model _field_ (deferred with
+    its reasoning in the ADR), kyuushu kyuuhai, the placement objective, and any trainer surface.
 
 ## In flight
 
