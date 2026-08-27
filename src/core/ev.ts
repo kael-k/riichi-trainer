@@ -5,7 +5,7 @@ import { tileCount } from './hand'
 import { STATISTICAL, type BoardCost, type EvModel, type ThreatCost } from './evModel'
 import { discardOutlooks, handOutlook, type Outlook, type ScoringContext } from './probability'
 import type { ScoringRules } from './score'
-import { HONOR, inTileSet, NUM_TILE_TYPES, type TileId } from './tiles'
+import { doraFromIndicator, inTileSet, NUM_TILE_TYPES, type TileId } from './tiles'
 import { TILES_PER_KIND } from './wall'
 
 /**
@@ -27,12 +27,21 @@ import { TILES_PER_KIND } from './wall'
  * tiles drawn from the safe end of the hand instead of the useful end, which is what stops the two
  * branches from ever disagreeing about a term they share.
  *
- * **Three ceilings, all of them stated rather than hidden.** The push side prices its own later
- * turns by assuming the hand keeps throwing tiles about as dangerous as this one — the honest
- * version re-solves the hand every turn, which is `plans/EV-3` §5's unbuilt multi-turn recursion.
- * A folding hand's safe tiles are spent cheapest-first and never replenished, so a long fold is
- * priced pessimistically. And the win value comes from an advance-only DP that understates
- * (`plans/EV-1` §6), which biases the whole comparison toward folding.
+ * **Both branches are integrated over the rest of the hand, turn by turn** (`plans/EV-3` §5).
+ * `turnRisks` produces the sequence of per-turn risks each policy faces and `laterCost` discounts
+ * it by the chance the hand is still going, so the question the trainer is actually about — *is
+ * this tile more dangerous than the safest tile I will still be holding in three turns* — is one
+ * the model can answer. A folding hand's safe tiles are replenished out of the unseen pool, which
+ * is what stops a long fold being priced as a hand that runs out of genbutsu and then throws its
+ * worst tile every turn to the end.
+ *
+ * **Two ceilings remain, both stated rather than hidden.** A pushing hand may not change its mind:
+ * the sequence it is priced against is "keep throwing what the shape needs" for every turn left,
+ * where a real hand folds the moment folding is cheaper. Letting it switch needs the win
+ * probability *from turn t onward*, and `Outlook` carries one scalar for the whole hand rather
+ * than a per-draw curve (`plans/RECAP-IMPLEMENTATION-1-3.md` §2.6). And the win value comes from
+ * an advance-only DP that understates (`plans/EV-1` §6), which biases the comparison toward
+ * folding.
  *
  * Everything here is points. Placement is a switch this layer is shaped for and does not yet
  * carry: the identity stays linear in a per-outcome value function, so swapping points for
@@ -236,17 +245,22 @@ function price(
     })
   }
 
-  // and the turns after it, at what a hand that keeps pushing actually throws — not at this
-  // tile's own danger, which would make a hand that spends one genbutsu look safe for the rest of
-  // the hand it has not yet played
-  const perTurn = pushingDanger(view, combined)
-  const later = laterDanger(perTurn, board, threats, model, honba)
-  if (later !== 0) {
+  // and the turns after it. This turn's own tile is already priced above, so the walk starts one
+  // turn in, with the hand having survived the tile it just threw
+  const cost = dealInPrice(model, threats, board, honba)
+  const alive = (1 - combined[tile].probability) * (1 - board.tsumoChance)
+  const later = laterCost(
+    turnRisks('push', view, combined, board, board.drawsLeft - 1),
+    board,
+    cost,
+    alive,
+  )
+  if (later.points !== 0) {
     terms.push({
       kind: 'danger',
-      probability: perTurn,
-      value: later / Math.max(perTurn, Number.EPSILON),
-      points: later,
+      probability: later.probability,
+      value: -cost,
+      points: later.points,
     })
   }
 
@@ -267,86 +281,142 @@ function price(
 }
 
 /**
- * How dangerous a turn is for a hand that keeps pushing: the average over every tile it holds.
+ * The risk the hand faces on each of the turns still to come, under one of two policies — the
+ * recursion `plans/EV-3` §5 asks for, and the reason it asks: the question a player has is not
+ * "is this tile dangerous" but "is it more dangerous than the safest tile I will still be holding
+ * in three turns", and only a *sequence* can answer that.
  *
- * Not the tile being thrown right now, which is the trap — a hand that happens to have one
- * genbutsu would otherwise price its whole remaining life at zero, and a pushing hand spends that
- * genbutsu once and then throws whatever its shape needs. Averaging over the hand is the cheap
- * stand-in for "what will this hand be throwing three turns from now", and it is the half
- * `plans/EV-3` §5 wants replaced by a real recursion.
+ * `'push'` throws what the shape needs, priced at the average over the tiles the hand holds.
+ * Pricing it at the tile going now is the trap — a hand that happens to have one genbutsu would
+ * price its whole remaining life at zero, and a pushing hand spends that genbutsu once and then
+ * throws whatever it has to.
+ *
+ * `'safe'` throws the safest tile available: the safest still in hand, or the one just drawn when
+ * that is safer. The draw is what **replenishes** a folding hand, and it is why a held safe tile
+ * is spent fractionally rather than one per turn — it goes only on the turns it is genuinely the
+ * cheaper of the two. The sequence it produces is free while the genbutsu last and then settles at
+ * whatever the unseen pool can keep supplying, which is where the published betaori figures
+ * (3-5% a turn, `plans/EV-3` §5) come from and roughly where this lands.
+ *
+ * The one approximation inside it: the count of safe tiles left is carried as an expectation and
+ * indexed by its floor, rather than the model branching on which tile was actually thrown. That
+ * would be a tree with a node per turn per tile, for a distinction the sorted profile already
+ * smooths over.
  */
-function pushingDanger(view: SeatView, combined: DealInRisk[]): number {
+function turnRisks(
+  policy: 'push' | 'safe',
+  view: SeatView,
+  combined: DealInRisk[],
+  board: BoardCost,
+  turns: number,
+): number[] {
   const held = heldTiles(view)
-  if (held.length === 0) return 0
-  let total = 0
-  for (const tile of held) total += combined[tile].probability
-  return total / held.length
+  if (held.length === 0 || turns <= 0) return []
+
+  if (policy === 'push') {
+    let total = 0
+    for (const tile of held) total += combined[tile].probability
+    return Array<number>(turns).fill(total / held.length)
+  }
+
+  const profile = held.map((tile) => combined[tile].probability).sort((a, b) => a - b)
+  let pool = 0
+  for (let id = 0; id < NUM_TILE_TYPES; id++) pool += board.unseen[id]
+
+  const risks: number[] = []
+  let spent = 0
+  for (let turn = 0; turn < turns; turn++) {
+    const inHand = profile[Math.min(Math.floor(spent), profile.length - 1)]
+    if (pool === 0) {
+      risks.push(inHand)
+      spent++
+      continue
+    }
+    let thrown = 0
+    let spends = 0
+    for (let id = 0; id < NUM_TILE_TYPES; id++) {
+      const copies = board.unseen[id]
+      if (copies === 0) continue
+      const share = copies / pool
+      const drawn = combined[id].probability
+      thrown += share * Math.min(inHand, drawn)
+      if (drawn >= inHand) spends += share
+    }
+    risks.push(thrown)
+    spent += spends
+  }
+  return risks
 }
 
 /**
- * What the turns after this one cost, at that level of danger.
+ * What a sequence of per-turn risks costs, discounted by the chance the hand is still going: a
+ * threat that tsumos, or a deal-in that has already happened, ends it.
  *
- * Each later turn is discounted by the chance the hand is still going: a threat that tsumos, or a
- * deal-in that has already happened, ends it.
+ * `alive` is how likely the hand is to reach the first turn of the sequence, which is 1 for a
+ * fold priced from this turn and less for a push whose own throw has already been charged.
  */
-function laterDanger(
-  perTurn: number,
+function laterCost(
+  risks: readonly number[],
   board: BoardCost,
-  threats: readonly ThreatCost[],
+  cost: number,
+  alive = 1,
+): { probability: number; points: number; terms: EvTerm[] } {
+  let probability = 0
+  const terms: EvTerm[] = []
+  for (const risk of risks) {
+    const reached = alive * risk
+    if (reached !== 0) {
+      terms.push({ kind: 'dealIn', probability: reached, value: -cost, points: -reached * cost })
+    }
+    probability += reached
+    alive *= (1 - risk) * (1 - board.tsumoChance)
+  }
+  return { probability, points: -probability * cost, terms }
+}
+
+/** What one deal-in costs, averaged over the threats on the board, honba included. Shared by both
+ *  branches on purpose: a push and a fold that disagreed about what dealing in costs would not be
+ *  comparable at all. */
+function dealInPrice(
   model: EvModel,
+  threats: readonly ThreatCost[],
+  board: BoardCost,
   honba: number,
 ): number {
-  if (threats.length === 0 || perTurn === 0) return 0
+  if (threats.length === 0) return 0
   let cost = 0
   for (const threat of threats) cost += model.dealInCost(threat, board) + honba
-  cost /= threats.length
-
-  let total = 0
-  let alive = 1 - perTurn
-  for (let turn = 1; turn < board.drawsLeft; turn++) {
-    alive *= 1 - board.tsumoChance
-    total -= alive * perTurn * cost
-    alive *= 1 - perTurn
-  }
-  return total
+  return cost / threats.length
 }
 
 /**
- * The fold branch: give up on the hand and spend the safe tiles, cheapest first.
+ * The fold branch: give up on the hand and stay safe for the rest of it.
  *
- * A folding hand does not throw one tile, it throws every tile it has left, so the price is the
- * whole sequence — which is the question a player actually faces (`plans/EV-3` §5: not "is this
- * tile safe" but "can I stay safe for the rest of the hand"). Safe tiles are never replenished
- * here, and a real hand draws more of them, so a long fold is priced pessimistically.
+ * A folding hand does not throw one tile, it throws every tile it has left and every tile it draws
+ * on the way, so the price is the whole sequence — `turnRisks('safe')` walks it, spending the
+ * hand's own safe tiles only on the turns they beat the draw. That replenishment is the half
+ * `plans/EV-3` §5 named as the largest unbuilt piece of this design; without it a long fold was
+ * priced as a hand that runs out of genbutsu and then throws its worst tile every turn to the end.
+ *
+ * The turn-by-turn terms are kept rather than collapsed into one: "these turns are free and then
+ * it costs about this much each" is the shape of the answer, not a footnote to it.
  */
 export function foldEv(view: SeatView, opts: EvOptions = {}): DiscardEv {
   const model = opts.model ?? STATISTICAL
   const { board, threats, combined } = context(view, model)
-  const honba = view.match.honba * 300
+  const cost = dealInPrice(model, threats, board, view.match.honba * 300)
 
-  const safest = heldTiles(view).sort(
-    (a, b) => combined[a].probability - combined[b].probability || a - b,
-  )
-  let cost = 0
-  for (const threat of threats) cost += model.dealInCost(threat, board) + honba
-  cost /= Math.max(threats.length, 1)
+  const risks = turnRisks('safe', view, combined, board, board.drawsLeft)
+  const { terms } = laterCost(risks, board, cost)
 
-  const terms: EvTerm[] = []
-  let alive = 1
-  for (let turn = 0; turn < board.drawsLeft; turn++) {
-    // out of safe tiles: keep throwing the least bad one still named
-    const tile = safest[Math.min(turn, safest.length - 1)]
-    if (tile === undefined) break
-    const probability = combined[tile].probability
-    const points = -alive * probability * cost
-    if (points !== 0) {
-      terms.push({ kind: 'dealIn', probability: alive * probability, value: -cost, points })
-    }
-    alive *= (1 - probability) * (1 - board.tsumoChance)
-  }
   const notWinning = model.giveUpCost(threats, board)
   terms.push({ kind: 'notWinning', probability: 1, value: notWinning, points: notWinning })
 
+  // the tile it throws *now* is still the safest one in hand: the sequence above says what the
+  // rest of the fold costs, not which tile leads it
+  const safest = heldTiles(view).sort(
+    (a, b) => combined[a].probability - combined[b].probability || a - b,
+  )
   const tile = safest[0] ?? 0
   return {
     tile,
@@ -377,7 +447,7 @@ function context(
       drawsLeft: Math.floor(view.wallLeft / players),
       rules: scoringRules(view),
       unseen,
-      dora: view.doraIndicators.map((indicator) => nextTile(indicator.id)),
+      dora: view.doraIndicators.map((indicator) => doraFromIndicator(indicator.id)),
       tsumoChance: tsumoChance(risks, unseen, pool),
     },
     threats: threatCosts(view),
@@ -428,16 +498,4 @@ function scoringContext(view: SeatView): ScoringContext {
     melds: [...view.melds],
     kita: view.nuki,
   }
-}
-
-/** The dora an indicator points at: the next tile in its own cycle, wrapping inside the suit, the
- *  four winds and the three dragons. */
-function nextTile(indicator: TileId): TileId {
-  if (indicator < HONOR) {
-    const suit = Math.floor(indicator / 9) * 9
-    return suit + ((indicator - suit + 1) % 9)
-  }
-  const winds = HONOR + 4
-  if (indicator < winds) return HONOR + ((indicator - HONOR + 1) % 4)
-  return winds + ((indicator - winds + 1) % 3)
 }

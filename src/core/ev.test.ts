@@ -78,6 +78,17 @@ function declared(tenhou: string, wallLeft: number): SeatView {
   return view
 }
 
+/** The unseen pool as `ev.ts` derives it, for a test that has to undo the walk's own discounting. */
+function unseenOf(view: SeatView): Uint8Array {
+  const unseen = new Uint8Array(NUM_TILE_TYPES)
+  for (let id = 0; id < NUM_TILE_TYPES; id++) unseen[id] = TILES_PER_KIND - view.seen[id]
+  return unseen
+}
+
+function poolOf(view: SeatView): number {
+  return unseenOf(view).reduce((total, copies) => total + copies, 0)
+}
+
 function evOf(ranked: DiscardEv[], tenhou: string): DiscardEv | undefined {
   return ranked.find((entry) => entry.tile === ids(tenhou)[0])
 }
@@ -184,6 +195,58 @@ describe('the push and fold branches', () => {
   it('costs nothing to fold with no threats but the noten penalty', () => {
     const fold = foldEv(viewOf(TERMINALS), { model: statistical })
     expect(fold.ev).toBe(-1500)
+  })
+
+  // `plans/EV-3` §5: the price of folding is the whole sequence, not this turn's tile. The turns
+  // the hand's own genbutsu cover cost nothing and come first; after that the rate is set by what
+  // the unseen pool keeps supplying, and the published betaori band is 3-5% a turn.
+  it('prices the fold turn by turn: free while the genbutsu last, then a steady rate', () => {
+    const threat = threatOf('1z2z3z')
+    const view = viewOf(TERMINALS, [threat], { wallLeft: 48 })
+    const fold = foldEv(view, { model: statistical })
+    const priced = fold.terms.filter((term) => term.kind === 'dealIn')
+    expect(priced.length).toBeGreaterThan(3)
+
+    // the hand holds 1z 2z 3z, all three in their river, so its first turns are genbutsu and are
+    // charged nothing at all — a fold with three safe tiles in hand is three turns of breathing
+    // room, not a per-turn constant
+    const drawsLeft = Math.floor(48 / 4)
+    expect(priced.length).toBeLessThan(drawsLeft)
+
+    // every term prices the same deal-in, so the whole sequence lives in the probabilities
+    const cost = priced.map((term) => term.points / term.probability)
+    expect(cost.every((each) => Math.abs(each - cost[0]) < 1e-9)).toBe(true)
+
+    // and the steady rate, undoing the survival discount the walk applies as it goes
+    let alive = 1
+    for (const term of priced) {
+      const risk = term.probability / alive
+      expect(risk).toBeGreaterThan(0.02)
+      expect(risk).toBeLessThan(0.06)
+      alive *= 1 - term.probability / alive
+      alive *=
+        1 -
+        tsumoChance(
+          [dealInRisk(threat, view.seen, false, statistical.prior)],
+          unseenOf(view),
+          poolOf(view),
+        )
+    }
+  })
+
+  // the half that was missing before: a folding hand draws more safe tiles, so a fatter unseen
+  // pool is a cheaper fold even though the hand and the threat are identical
+  it('replenishes safe tiles out of the unseen pool', () => {
+    const threat = threatOf('1z2z3z')
+    const short = viewOf(TERMINALS, [threat], { wallLeft: 12 })
+    const long = viewOf(TERMINALS, [threat], { wallLeft: 12 })
+    // same number of turns to survive; the only difference is how much of the wall is unaccounted
+    // for, which is what the draw can bring
+    for (let id = 0; id < NUM_TILE_TYPES; id++) short.seen[id] = TILES_PER_KIND
+    for (const tile of handToTiles(short.hand)) short.seen[tile.id] = TILES_PER_KIND
+    expect(foldEv(long, { model: statistical }).ev).toBeGreaterThan(
+      foldEv(short, { model: statistical }).ev,
+    )
   })
 })
 
