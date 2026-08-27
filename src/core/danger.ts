@@ -45,6 +45,13 @@ export interface ThreatView {
    *  so it may not ron them now either. Empty on the turn the declaration lands, and the reason
    *  late folding gets easier: this set only grows. */
   passed: TileId[]
+  /** The turn the declaration landed on (`PlayerState.riichiTurn`, which counts go-arounds off
+   *  the dealer's seat — the same convention the measured tables were aggregated on). The tier
+   *  model has no use for it; the EV model's measured deal-in cost is conditioned on it, because a
+   *  turn-3 riichi and a turn-13 riichi are not worth the same. Optional so a hand-built view
+   *  stays a three-field object — `threatViews` always sets it, and a view without it prices the
+   *  threat at the turn being asked about instead. */
+  riichiTurn?: number
 }
 
 export interface ThreatDanger {

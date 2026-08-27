@@ -169,6 +169,24 @@ function basicPoints(
   return { basic: raw }
 }
 
+/**
+ * What a closed ron of this han and fu pays, without a hand to score.
+ *
+ * `scoreHand` prices a hand you can see; this prices one you cannot — the EV model's derived
+ * deal-in cost, where han comes out of a combinatorial expectation rather than off a yaku list.
+ * Same limit brackets and the same rounding as a real win, so the two never disagree about what
+ * 4 han 30 fu is worth.
+ */
+export function ronValue(
+  han: number,
+  fu: number,
+  dealer: boolean,
+  rules: ScoringRules,
+): number {
+  const { basic } = basicPoints(han, fu, rules.kiriageMangan)
+  return roundUp100((dealer ? 6 : 4) * basic)
+}
+
 function roundUp100(n: number): number {
   return Math.ceil(n / 100) * 100
 }

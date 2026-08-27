@@ -396,7 +396,7 @@ export function threatViews(state: RoundState): ThreatView[] {
       if (d.seat === seat) discards.push(d.tile.id)
       if (declaredAt >= 0 && i > declaredAt) passed.push(d.tile.id)
     })
-    return [{ seat, discards, passed }]
+    return [{ seat, discards, passed, riichiTurn: declarer.riichiTurn }]
   })
 }
 

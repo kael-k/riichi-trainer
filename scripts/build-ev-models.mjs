@@ -187,6 +187,8 @@ function handScore(values, counts) {
     tsumo: column(values, turns, 'riichi tsumo').map(round),
     ronSamples: column(counts, turns, 'riichi ron').map((v) => v ?? 0),
     tsumoSamples: column(counts, turns, 'riichi tsumo').map((v) => v ?? 0),
+    damaRon: column(values, turns, 'dama ron').map(round),
+    damaRonSamples: column(counts, turns, 'dama ron').map((v) => v ?? 0),
   }
 }
 
@@ -440,12 +442,16 @@ export const HOUOU_HAND_SCORE = {
     tsumo: ${arr(dealerScore.tsumo)},
     ronSamples: ${arr(dealerScore.ronSamples)},
     tsumoSamples: ${arr(dealerScore.tsumoSamples)},
+    damaRon: ${arr(dealerScore.damaRon)},
+    damaRonSamples: ${arr(dealerScore.damaRonSamples)},
   },
   nonDealer: {
     ron: ${arr(nonDealerScore.ron)},
     tsumo: ${arr(nonDealerScore.tsumo)},
     ronSamples: ${arr(nonDealerScore.ronSamples)},
     tsumoSamples: ${arr(nonDealerScore.tsumoSamples)},
+    damaRon: ${arr(nonDealerScore.damaRon)},
+    damaRonSamples: ${arr(nonDealerScore.damaRonSamples)},
   },
 } as const
 
@@ -472,3 +478,4 @@ console.log(`  riichi: ${riichiTotals.hands} hands, ${riichiTotals.waitKinds} wa
 console.log(`  implied width: ${riichiTotals.width.toFixed(4)} kinds`)
 console.log(`  fold cost: ${FOLD_MATCHUPS.length} matchups over turns ${FOLD_TURNS.join('/')}`)
 console.log(`  hand score: riichi ron ${nonDealerScore.ron[9]} non-dealer / ${dealerScore.ron[9]} dealer at turn 9`)
+console.log(`  riichi uplift at turn 9: ${nonDealerScore.ron[9] - nonDealerScore.damaRon[9]} non-dealer`)
