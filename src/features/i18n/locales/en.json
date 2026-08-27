@@ -78,12 +78,16 @@
       "efficiency": "Efficiency",
       "defense": "Defend",
       "tsumogiri": "Tsumogiri",
+      "ev-statistical": "EV (formula)",
+      "ev-houou": "EV (houou)",
       "manual": "Manual"
     },
     "modeHint": {
       "efficiency": "Plays the most efficient discard every turn.",
       "defense": "Folds — plays the safest tile against every seat in riichi.",
       "tsumogiri": "Discards whatever it just drew, every turn — no hand management at all.",
+      "ev-statistical": "Pushes or folds by expected points, every price derived from the tiles nobody has seen.",
+      "ev-houou": "Pushes or folds by expected points, every price measured over Tenhou houou games.",
       "manual": "You play this seat: discards, calls and riichi are your choice."
     },
     "waitingSeat": "Waiting on {{wind}}",

@@ -1,9 +1,12 @@
 import type { Meld } from './agari'
 import type { ThreatView } from './danger'
 import { evaluateDiscards, isBestDiscard } from './efficiency'
+import { foldEv, rankDiscards, riichiWorthIt } from './ev'
+import { EV_MODELS, type EvModel } from './evModel'
 import type { Hand } from './hand'
 import type { MatchState } from './match'
 import { chooseCall, chooseDiscard, chooseFold, type Call, type SeatAlgorithm } from './policy'
+import { shanten } from './shanten'
 import type { ScoreResult } from './score'
 import { HONOR, type ParsedTile, type RiverTile, type TileId } from './tiles'
 
@@ -165,6 +168,79 @@ const tsumogiri: Algorithm = {
   kita: () => false,
 }
 
+/**
+ * Push or fold by expected points, priced through `core/ev.ts`'s identity under one EV model.
+ *
+ * This is the one algorithm built by a function rather than written out as its own literal, and
+ * the reason is what the two of them differ by: nothing except the model supplying the prices. Two
+ * hand-copied literals would be the same code twice with one word changed, which is a worse way of
+ * saying "these are the same decider with different weights" than a parameter is.
+ *
+ * **Only the discard and the riichi declaration are priced through the identity.** The other three
+ * decision points are honest stand-ins, and each says what it is standing in for:
+ *
+ * - `call` keeps `chooseCall`'s rule — a meld that lowers shanten and leaves a yaku route — with
+ *   one EV-shaped guard on top: a seat facing a declared threat will not open a hand that does not
+ *   reach tenpai on the call. Pricing a call properly means re-solving the melded hand through the
+ *   DP, and the call gate runs for every seat on every discard (`plans/EV-5` §1.9).
+ * - `win` takes every win offered. Declining prices a furiten branch — temporary, or permanent
+ *   under riichi — that nothing models yet, and a decider that cannot price the cost of declining
+ *   should not decline.
+ * - `kita` reuses `efficiency`'s comparison. The EV version prices the dora against the tempo, and
+ *   that is `plans/EV-3` §7's, not this wave's.
+ */
+function evPlayer(model: EvModel): Algorithm {
+  return {
+    discard: (view) => {
+      const ranked = rankDiscards(view, { model })
+      const push = ranked[0]
+      const fold = foldEv(view, { model })
+      // a fold is a real branch, not the tail of the ranking: it gives up the win term entirely
+      // and spends the hand's safe tiles in order, so it can beat every push without any single
+      // discard looking wrong
+      const tile = push !== undefined && push.ev >= fold.ev ? push.tile : fold.tile
+      return { tile, fromDrawn: tile === view.drawn?.id }
+    },
+    call: (view, tile, fromKamicha) => {
+      const call = chooseCall(
+        view.hand,
+        view.melds,
+        tile,
+        fromKamicha,
+        view.prevalentWind,
+        view.seatWind,
+      )
+      if (call === null || view.threats.length === 0) return call
+      return callReachesTenpai(view, call) ? call : null
+    },
+    riichi: (view) => riichiWorthIt(view, { model }),
+    win: () => true,
+    kita: (view) => {
+      const ranked = evaluateDiscards(view.hand, view.seen, view.sanma)
+      const north = ranked.find((o) => o.discard === NORTH)
+      return north !== undefined && isBestDiscard(north, ranked[0])
+    },
+  }
+}
+
+/** Whether taking this call leaves the hand tenpai — the cheap stand-in for pricing it. The two
+ *  tiles the meld uses leave the concealed hand and the claimed tile joins them from outside, so
+ *  what is left is one meld heavier and two tiles lighter. */
+function callReachesTenpai(view: SeatView, call: Call): boolean {
+  const hand = { counts: Uint8Array.from(view.hand.counts), melds: view.hand.melds + 1 }
+  for (const own of call.from) {
+    if (hand.counts[own] === 0) return false
+    hand.counts[own]--
+  }
+  return shanten(hand) === 0
+}
+
 /** One object per AI algorithm. Adding a new one is this object plus its own `AIAlgorithm` member
  *  — nothing in `round.ts` changes. */
-export const ALGORITHMS: Record<AIAlgorithm, Algorithm> = { efficiency, defense, tsumogiri }
+export const ALGORITHMS: Record<AIAlgorithm, Algorithm> = {
+  efficiency,
+  defense,
+  tsumogiri,
+  'ev-statistical': evPlayer(EV_MODELS.statistical),
+  'ev-houou': evPlayer(EV_MODELS.houou),
+}

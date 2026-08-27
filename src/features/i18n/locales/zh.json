@@ -74,12 +74,16 @@
       "efficiency": "效率",
       "defense": "防守",
       "tsumogiri": "摸切",
+      "ev-statistical": "EV（理论）",
+      "ev-houou": "EV（凤凰）",
       "manual": "手动"
     },
     "modeHint": {
       "efficiency": "每巡打出效率最高的牌。",
       "defense": "防守：对所有立直的对手打出最安全的牌。",
       "tsumogiri": "每巡直接打出刚摸到的牌，完全不整理手牌。",
+      "ev-statistical": "按期待点数决定推还是退，所有数值都由未见牌推导而来。",
+      "ev-houou": "按期待点数决定推还是退，所有数值都取自天凤凤凰桌的统计。",
       "manual": "这个座位由你操作——打牌、鸣牌和立直都由你决定。"
     },
     "waitingSeat": "等待{{wind}}操作",

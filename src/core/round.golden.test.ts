@@ -109,4 +109,29 @@ describe('match golden determinism', () => {
     expect(hash(serialize(playRound(seed, 4, YONMA).events))).toBe(wantYonma)
     expect(hash(serialize(playRound(seed, 3, SANMA).events))).toBe(wantSanma)
   })
+
+  /**
+   * The other half of the guarantee. The frozen hashes above say a new algorithm changed nothing
+   * for the seats that were not asked to run it; this says the new algorithm is genuinely deciding
+   * rather than quietly falling through to `efficiency` — a seeded wall played with one `'ev-*'`
+   * seat must diverge from the same wall played without one.
+   *
+   * Both models are checked, because two models that always chose the same tile would not be worth
+   * shipping two of.
+   */
+  it.each(['ev-statistical', 'ev-houou'] as const)('%s plays a different hand', (algorithm) => {
+    const seed = 'golden-0'
+    const evSeat: RoundOptions = { ...YONMA, algorithms: [algorithm] }
+    const played = hash(serialize(playRound(seed, 4, evSeat).events))
+    expect(played).not.toBe(GOLDEN[seed][0])
+    // and it is still deterministic: same seed, same seat, same hand
+    expect(hash(serialize(playRound(seed, 4, evSeat).events))).toBe(played)
+  })
+
+  it('the two EV models do not play the same hand as each other', () => {
+    const seed = 'golden-3'
+    const pure = playRound(seed, 4, { ...YONMA, algorithms: ['ev-statistical'] })
+    const measured = playRound(seed, 4, { ...YONMA, algorithms: ['ev-houou'] })
+    expect(hash(serialize(measured.events))).not.toBe(hash(serialize(pure.events)))
+  })
 })

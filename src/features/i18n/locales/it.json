@@ -78,12 +78,16 @@
       "efficiency": "Efficienza",
       "defense": "Difesa",
       "tsumogiri": "Tsumogiri",
+      "ev-statistical": "EV (formula)",
+      "ev-houou": "EV (houou)",
       "manual": "Manuale"
     },
     "modeHint": {
       "efficiency": "Gioca lo scarto più efficiente ad ogni turno.",
       "defense": "Si difende: scarta la tessera più sicura contro ogni riichi in corso.",
       "tsumogiri": "Scarta sempre la tessera appena pescata, senza gestire la mano.",
+      "ev-statistical": "Spinge o si ritira in base ai punti attesi, con ogni prezzo dedotto dalle tessere che nessuno ha visto.",
+      "ev-houou": "Spinge o si ritira in base ai punti attesi, con ogni prezzo misurato su partite houou di Tenhou.",
       "manual": "Giochi tu questo posto: scarti, chiamate e riichi sono una tua scelta."
     },
     "waitingSeat": "In attesa di {{wind}}",
