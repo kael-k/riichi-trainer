@@ -1,6 +1,7 @@
 # Status
 
-_Last synthesised: 2026-08-26, against the git history through the UX-audit plans (`plans/UX-AUDIT.md`)._
+_Last synthesised: 2026-08-27, against the git history through the first EV-model wave
+(`plans/PLAN-ev-model.md`)._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
@@ -219,6 +220,32 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     unreachable in efficiency, are deleted, and its multi-manual-seat freeze test is kept,
     decoupled from claims (it was never really about them).
 
+19. **The EV model's two halves exist, and read nothing**
+    ([ADR-0036](adr/0036-probability-beside-the-tiers.md), amending
+    [ADR-0004](adr/0004-ordinal-danger.md)). `core/dealIn.ts` gives deal-in probability per tile
+    against a declared seat by enumerating every wait shape it could hold, weighting each by how
+    common it is and by how many ways it could physically be held out of the unseen tiles, and
+    crossing out what their own discards rule out — returning the crossed-out terms too, since the
+    decomposition is the whole reason it exists beside `danger.ts`'s tiers. `core/probability.ts`
+    gives win probability and expected score from a one-player DP over the unseen pool, priced at
+    every winning leaf by `scoreHand` itself. `npm run build-ev-models` fetches
+    `chienshyong/houou-statistics` at a pinned commit and emits the committed `core/hououPrior.ts`,
+    so the empirical tables are a reproducible artifact rather than hand-copied numbers; the ~8 GB
+    log database behind those CSVs is deliberately not a build input.
+
+    **Purely additive: nothing imports either module.** `danger.ts`, `policy.ts`, `algorithm.ts`
+    and `round.ts` are untouched and `round.golden.test.ts` does not move.
+
+    Four findings that revise the plan's own specification, all recorded in the ADR: the shanpon
+    prior must stay a wait-pair matrix (marginalising it reproduces the source's wait width as 1.61
+    kinds against its true 1.78); one memo shared across a ranking's candidates is unsound, and the
+    sound sharing — everything depending on the hand alone — is worth 5.4x rather than the 30% the
+    plan expected; the DP's node counts in the plan were of a weaker DP that follows one discard
+    instead of maximising over all shanten-minimal ones; and the collapsed chain has to walk an
+    availability-weighted average rather than the best draw, which cuts a 190% overstatement to
+    9-31%. Calibration is against `DorasobaDanger.csv`, a *different* analyzer over the same
+    database, which the model matches within 10% for ranks 1-8.
+
 ## In flight
 
 - Nothing. All six `plans/UX-AUDIT.md` plans have landed, and the multi-manual freeze the
@@ -321,6 +348,10 @@ Not decided, deliberately not guessed:
   turn it off for the AI too. Known coarseness; no forcing case yet.
 - **Zero-manual boards** — watching a hand play itself out. Deferred to the lab with its own
   step/autoplay controls ([ADR-0011](adr/0011-at-least-one-manual-seat.md)).
+- **Two benchmark/validation sessions the EV work owes**, both deliberately out of scope of the
+  wave that shipped item 19: the memo-lifetime measurement (`plans/EV-5` §2.7 — fresh per ranking
+  is the shipped default and the lean) and the backtest against real houou logs (§2.13), which is
+  the only thing that would turn "is the model any good" from an opinion into a number.
 - **Which browser-test framework** — Playwright, Cypress, Puppeteer, Selenium. `UX-TESTS-BUG.md`
   says pick one and stick to it. Lab tests are explicitly out of scope until the lab's design
   settles.
@@ -329,9 +360,14 @@ Not decided, deliberately not guessed:
 
 Recorded so they stop being re-proposed:
 
-- **EV, deal-in probabilities, win-rate modelling, push/fold grading** —
-  [ADR-0004](adr/0004-ordinal-danger.md). Unblocked by the match state below, deliberately not
-  adopted with it.
+- **Push/fold grading, and an `'ev'` seat algorithm.** The two probability layers now exist
+  (shipped item 19), but nothing decides with them. Items 4-7 of `plans/PLAN-ev-model.md`'s
+  next-wave list are deliberately not started: the `'ev'` `SeatAlgorithm`, the per-seat EV-model
+  registry, kyuushu kyuuhai engine support, and the trainer surfaces. `plans/EV-3` states the
+  gate — push and fold cannot honestly be compared until folding is priced over the rest of the
+  hand rather than one turn, which is the largest unbuilt piece in the design.
+- **Reading a silent tenpai.** `dealIn.ts` refuses to speak about a seat that has not declared, and
+  should keep refusing until the much weaker inference behind it is built (`plans/EV-5` §1.4).
 - **Round sequencing** — `nextRound()`, dealer rotation, honba/repeat increment, payout settlement,
   the winner collecting riichi sticks, end-of-match detection. `MatchState` is carry-in context
   plus the one within-round mutation (riichi); nothing steps between rounds

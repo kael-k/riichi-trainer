@@ -1,12 +1,16 @@
 # ADR-0004 — Danger is ordinal; no EV, deal-in rates, or push/fold grading
 
-**Status:** Accepted · **TO REVIEW** · **Date:** 2026-08-12
+**Status:** Accepted · **Date:** 2026-08-12
+**Amended by** [ADR-0036](0036-probability-beside-the-tiers.md): the project-wide ban on EV,
+deal-in rates and win-rate modelling is lifted on the condition this ADR named — measure them.
+The tier model and its `rank === 0` grading below are unchanged and stay in force; the
+**TO REVIEW** flag is discharged there rather than by editing this text.
 **Source:** `core/danger.ts` (the model's own opening comment)
 
 ## Context
 
 Published betaori tables exist, and it is tempting to show "this tile deals in 5.2% of the time".
-But a number typed in from memory becomes a number the user *learns*. The repo has no simulation
+But a number typed in from memory becomes a number the user _learns_. The repo has no simulation
 harness to derive real rates from, and inventing one is worse than showing none.
 
 ## Decision
@@ -21,7 +25,7 @@ Judged on **public information only** — what a threat actually holds is never 
 what makes a correct-but-unlucky discard still grade correct.
 
 **Out of scope, project-wide:** expected value, deal-in probabilities, win-rate modelling, and
-grading the push/fold decision itself. If real rates are ever wanted, *measure* them by simulation
+grading the push/fold decision itself. If real rates are ever wanted, _measure_ them by simulation
 over the reachable hand space; do not type them in.
 
 ## Consequences

@@ -30,7 +30,8 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0002](0002-determinism-and-tenhou-notation.md)             | Determinism, and tenhou notation as the interchange format   | Accepted  |
 | [0003](0003-hand-counts-only.md)                            | `Hand` stores counts; redness travels beside it              | Superseded by [0022](0022-stored-redness.md) |
 | [0022](0022-stored-redness.md)                              | Redness is stored on the player, not inferred from counts    | Accepted  |
-| [0004](0004-ordinal-danger.md)                              | Danger is ordinal — no EV, deal-in rates, or push/fold grading | **TO REVIEW** |
+| [0004](0004-ordinal-danger.md)                              | Danger is ordinal — no EV, deal-in rates, or push/fold grading | Amended by [0036](0036-probability-beside-the-tiers.md) |
+| [0036](0036-probability-beside-the-tiers.md)                | Probability sits beside the tiers; every number measured or derived | Accepted  |
 | [0005](0005-walls-not-seeds.md)                             | Boards are shared as explicit validated walls, not seeds     | Accepted  |
 | [0024](0024-real-dealing-order.md)                          | The wall's leading block is a real deal: 4/4/4+1             | Accepted  |
 | [0028](0028-dead-wall-stacks.md)                            | The dead wall is seven stacks, not three blocks              | Accepted  |

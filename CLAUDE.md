@@ -43,6 +43,7 @@ npx vitest run -t "finishes"         # tests matching a name
 npm run lint                         # oxlint
 npm run build                        # tsc -b + vite build
 npm run tiles                        # regenerate SVG tile sprite (only when tiles change; output is committed)
+npm run build-ev-models              # regenerate core/hououPrior.ts from the pinned houou CSVs (output is committed)
 npm run format                       # prettier
 ```
 
@@ -412,6 +413,60 @@ The algorithm badge has no setting at all — every seat's mode is always shown,
 no danger markers before the answer, threats up to `players - 1`.
 
 **Why:** [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0005](docs/adr/0005-walls-not-seeds.md)
+
+### The EV model (`core/dealIn.ts` + `core/probability.ts`) — additive, read by nothing
+
+Two pure modules beside the tier model, not replacing it. **Nothing imports them**: `danger.ts`,
+`policy.ts`, `algorithm.ts` and `round.ts` are untouched, and no trainer reads either. Their
+specification is `plans/EV-1`–`EV-5`; what follows is only what the code does today.
+
+**Every number is measured, derived, or stated — and which it is has to be visible where it
+lives.** Derived is combinatorics over the unseen tiles. Measured is extracted by
+`npm run build-ev-models` from `chienshyong/houou-statistics` at a pinned commit into the
+**generated, committed** `core/hououPrior.ts`, which carries source, commit and retrieval date in
+its own header; the ~8 GB log database those CSVs came from is not a build input and buys nothing
+short of a backtest. Stated is a chosen constant in hand-written code, named as chosen — there is
+exactly one, `KOKUSHI_SHARE`, because the source analyzer buries kokushi in a `complex waits`
+bucket it never breaks down.
+
+**`dealInRisk(threat, visible, sanma, prior?)`** enumerates every shape a declared seat could hold,
+by what it **holds** rather than what it waits on so each hypothesis is produced once, and weights
+each by `prior × availability`. Points worth not re-deriving wrong:
+
+- **Availability enters as a ratio to its neutral value** under a measured prior, never as an
+  absolute. The counts were measured over real boards and already integrate typical availability;
+  multiplying by an absolute count of ways-to-hold counts it twice, hardest for the shapes with the
+  most tiles. `UNIFORM_PRIOR` takes the raw count instead — it has no measured level to preserve.
+- **Shanpon is a wait-pair matrix and stays one.** It waits on two kinds, so one-wait hypotheses
+  carrying the same mass reproduce the source's wait width as 1.61 kinds against its true 1.78.
+- **One furiten rule produces both tiers people learn separately**: every wait in their discards is
+  `dead: 'genbutsu'`, one of the others is `'furiten'` — which for a ryanmen is exactly suji, and
+  for a shanpon is not, which is why the field is not named `'suji'`.
+- **Dead terms are returned, not filtered.** "1p is a tanki, a shanpon or a kokushi and nothing
+  else, because the 3p wall killed every run" needs the crossed-out shapes to say it.
+- `combineThreats` is the union `1 - Π(1 - p)`, an approximation: threats draw from one shared pool
+  so their waits are correlated. The joint enumeration is affordable for two threats and unbuilt.
+
+**`handOutlook` / `discardOutlooks`** (`probability.ts`) work backwards from the end of the hand.
+
+- **Advance-only**: a draw is followed only when it strictly lowers shanten, so the model is exact
+  about a slightly smaller game than mahjong and **understates** win probability. The `max` at a
+  fourteen-tile node runs over every shanten-minimal discard — that max is where the model lives,
+  and following one discard instead makes it a greedy chain.
+- **`soloWin` is not a win rate and must never be shown with a percent sign.** The hazard and ron
+  corrections do not exist, so no corrected field ships at all.
+- **`objective` is not a presentation detail**: win, tenpai and score name different discards, and
+  every figure is reported under the chosen policy. Whatever consumes this says which on screen.
+- **Node values are never shared across the candidates of a ranking** — two candidates reach the
+  same hand having drawn different things, so their pools differ. What is shared is everything
+  depending on the hand alone (improving tiles, best discards, leaf scores), which is where the
+  shanten probes are: 5.4x, and a 2-shanten ranking at ~89ms against ~10ms at tenpai.
+- Above `maxShanten` (default **2**) a collapsed chain runs and `exact` is `false`; it prices no
+  win, so `score`/`winAtLeast` come back undefined rather than zero. It walks an
+  availability-weighted average of where each improving draw lands, not the best one — the best
+  overstates a 2-shanten win probability by 190%, the average by 9-31%, and it is exact at tenpai.
+
+**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md)
 
 ### Tenhou notation + situation URLs (the shared DSL)
 

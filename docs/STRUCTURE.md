@@ -22,6 +22,9 @@ Pure TypeScript. Zero dependencies, no React, no imports from `features/` or `co
 | `yaku.ts`       | Yaku detection over a decomposition                                                                   |
 | `score.ts`      | `scoreHand` — han/fu/points; `null` means "no yaku"                                                   |
 | `danger.ts`     | `assessDiscards` — ordinal danger tiers ([ADR-0004](adr/0004-ordinal-danger.md))                       |
+| `dealIn.ts`     | `dealInRisk` — deal-in probability by wait-hypothesis enumeration ([ADR-0036](adr/0036-probability-beside-the-tiers.md)) |
+| `hououPrior.ts` | **Generated** (`npm run build-ev-models`) — measured wait-shape counts `dealIn.ts` reads               |
+| `probability.ts` | `handOutlook`, `discardOutlooks` — win probability and expected score, the one-player DP             |
 | `policy.ts`     | The pure maths algorithms are written in: `chooseDiscard`, `chooseFold`, `chooseCall`, `waits`, …     |
 | `algorithm.ts`  | The decision seam: `SeatView`, `Algorithm`, `ALGORITHMS` ([ADR-0009](adr/0009-decision-seam.md))       |
 | `round.ts`      | The round engine (one deal): `createRound`/`beginTurn`/`finishTurn`/`playRound`/`stepRound`, claims, `isManual` |
@@ -33,6 +36,10 @@ Pure TypeScript. Zero dependencies, no React, no imports from `features/` or `co
 round is one deal, a match is the game. ADRs written before it (0006, 0007, 0009, 0010, 0012) say
 `MatchState`/`MatchOptions`/`useMatch` for what the code now calls `RoundState`/`RoundOptions`/
 `useRound`; the decisions stand, only the words moved.
+
+`dealIn.ts` and `probability.ts` are **additive and read by nothing** — the EV model's two halves,
+built before anything consumes them ([ADR-0036](adr/0036-probability-beside-the-tiers.md)). Their
+specification is `plans/EV-1`–`EV-5`.
 
 `round.golden.test.ts` freezes an event-stream hash per seed — the regression net for any change
 to a tie-break ([ADR-0016](adr/0016-testing-strategy.md)). `round.test.ts`'s census is the other
@@ -95,6 +102,8 @@ Shared:
 | `src/routes/`                     | Route table and home page                                      |
 | `src/assets/tiles/sprite.svg`     | Generated, **committed** — `npm run tiles` regenerates          |
 | `scripts/build-tile-sprite.mjs`   | The generator (FluffyStuff assets, CC0)                        |
+| `src/core/hououPrior.ts`          | Generated, **committed** — `npm run build-ev-models` regenerates |
+| `scripts/build-ev-models.mjs`     | The generator (houou-statistics CSVs at a pinned commit)       |
 | `.github/workflows/deploy.yml`    | Build and deploy to Pages — **does not run lint or tests yet** (see STATUS) |
 
 ## Dependency direction
