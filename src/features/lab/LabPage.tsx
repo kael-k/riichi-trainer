@@ -7,6 +7,8 @@ import { HandDisplay, Tile, UkeireTiles, WallDetails } from '../../components/ti
 import { BackButton } from '../../components/TrainerControls'
 import type { SafetyTier, TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
+import type { DiscardEv, EvTerm } from '../../core/ev'
+import type { SeatEv } from '../../core/table'
 import type { LogEntry } from '../../core/round'
 import { parseTenhou, serializeTenhouOrdered, tileCode, type ParsedTile } from '../../core/tiles'
 import { validateWall, wallWithHand, type WallError } from '../../core/wall'
@@ -53,6 +55,62 @@ function RankedRow({ option }: { option: DiscardOption }) {
         </span>
       </div>
       <UkeireTiles tiles={option.ukeireTiles} />
+    </div>
+  )
+}
+
+/** How a term reads on screen: how often, times how much, equals what goes into the total. Kept
+ *  to three cells so a reader can check the multiplication by eye, which is the whole reason to
+ *  prefer a formula to a network that would be more accurate (`plans/EV-3` §9). */
+function EvTermRow({ term, seats }: { term: EvTerm; seats: number[] }) {
+  const { t } = useTranslation()
+  const seat = term.seat === undefined ? '' : ` (${t(`wind.${WINDS[term.seat]}`)})`
+  return (
+    <div className="flex items-baseline justify-between gap-2 tabular-nums">
+      <span className="text-neutral-500">
+        {t(`lab.evTerm.${term.kind}`)}
+        {seats.length > 1 ? seat : ''}
+      </span>
+      <span className="text-neutral-500">
+        {(term.probability * 100).toFixed(1)}% × {Math.round(term.value)}
+      </span>
+      <span className={term.points < 0 ? 'text-red-600 dark:text-red-400' : ''}>
+        {term.points >= 0 ? '+' : ''}
+        {Math.round(term.points)}
+      </span>
+    </div>
+  )
+}
+
+/** One priced branch: the tile, what it is worth, and every term underneath it. `plans/EV-3` §9's
+ *  screen — the fold row is the same shape as a push row because it is the same expression with
+ *  `P(win)` at zero, not a second kind of answer. */
+function EvRow({
+  entry,
+  label,
+  chosen,
+  seats,
+}: {
+  entry: DiscardEv
+  label: string
+  chosen: boolean
+  seats: number[]
+}) {
+  return (
+    <div className={`py-1 ${chosen ? '' : 'opacity-70'}`}>
+      <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-medium">
+        <Tile id={entry.tile} />
+        <span className="text-neutral-500">{label}</span>
+        <span className="tabular-nums">
+          {entry.ev >= 0 ? '+' : ''}
+          {Math.round(entry.ev)}
+        </span>
+      </div>
+      <div className="flex flex-col gap-0.5 pl-1 text-xs">
+        {entry.terms.map((term, i) => (
+          <EvTermRow key={i} term={term} seats={seats} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -253,6 +311,11 @@ export function LabPage() {
   const bottomConcealed = !(round.finished || showOpponentHands || viewingManual)
   const canAct = perspective === round.acting && !round.finished
 
+  // the priced turn is kept until the board moves rather than recomputed: it is the expensive
+  // answer on this page, and it is an answer about one particular turn. `at` is what says which
+  const [ev, setEv] = useState<(SeatEv & { at: number }) | null>(null)
+  const fresh = ev && ev.at === round.discardCount ? ev : null
+
   const wallError = situation.wallError
   const loaded = situation.wall.length > 0 && !wallError
   const riichiTiles = loaded ? round.riichiTiles() : []
@@ -340,6 +403,54 @@ export function LabPage() {
                 <DangerRow key={entry.tile} entry={entry} seats={threatSeats} />
               ))}
             </div>
+          </div>
+
+          {/* asked for rather than computed every turn: an exact ranking is hundreds of
+              milliseconds where the two lists above are a handful, and a board that priced every
+              turn on the chance somebody looked would be a board nobody wants to play on */}
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-neutral-500">{t('lab.ev')}</span>
+            {fresh ? (
+              <div className="flex flex-col gap-1 rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+                <p className="text-xs text-neutral-500">
+                  {t('lab.evUnder', {
+                    wind: t(`wind.${WINDS[fresh.seat]}`),
+                    model: t(`seats.evModel.${fresh.model}`),
+                    objective: t(`seats.evObjective.${fresh.objective}`),
+                  })}
+                </p>
+                {fresh.unsupported && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {t('lab.evUnsupported', { reason: fresh.unsupported })}
+                  </p>
+                )}
+                <div className="max-h-64 overflow-y-auto">
+                  {fresh.push.map((entry) => (
+                    <EvRow
+                      key={entry.tile}
+                      entry={entry}
+                      label={t('lab.evPush')}
+                      chosen={fresh.best === 'push' && entry === fresh.push[0]}
+                      seats={threatSeats}
+                    />
+                  ))}
+                  <EvRow
+                    entry={fresh.fold}
+                    label={t('lab.evFold')}
+                    chosen={fresh.best === 'fold'}
+                    seats={threatSeats}
+                  />
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEv(round.priceTurn())}
+                className="min-h-11 w-fit rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
+              >
+                {t('lab.priceTurn')}
+              </button>
+            )}
           </div>
         </>
       )}

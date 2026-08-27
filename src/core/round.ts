@@ -464,8 +464,11 @@ export function threatViews(state: RoundState): ThreatView[] {
  *  only their own first read (same discipline as `core/table.ts#analysisOf`'s `TableAnalysis`).
  *  Lives here rather than in `algorithm.ts` itself so that module never has to import `RoundState`
  *  back from this one — `algorithm.ts` imports nothing from `round.ts`, `round.ts` imports
- *  `ALGORITHMS` from `algorithm.ts`, and importing back would be a cycle. */
-function seatView(state: RoundState, options: RoundOptions, seat: number): SeatView {
+ *  `ALGORITHMS` from `algorithm.ts`, and importing back would be a cycle.
+ *
+ *  Exported for `core/table.ts#evOf`: the EV layer prices the seat the same way an algorithm sees
+ *  it, and a screen showing that arithmetic must be reading the same view the decision does. */
+export function seatView(state: RoundState, options: RoundOptions, seat: number): SeatView {
   const player = state.players[seat]
   let seenCache: Uint8Array | undefined
   let threatsCache: ThreatView[] | undefined

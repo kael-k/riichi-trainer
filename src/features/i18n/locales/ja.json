@@ -389,7 +389,19 @@
       "tileSet": "このルールに含まれない牌です({{tile}})"
     },
     "ranking": "打牌ランキング",
-    "danger": "危険度"
+    "danger": "危険度",
+    "ev": "期待値",
+    "priceTurn": "この巡目を計算",
+    "evUnder": "{{wind}}、{{model}}モデル、{{objective}}重視。",
+    "evUnsupported": "このモデルにはこのルールのデータがありません: {{reason}}。",
+    "evPush": "押し",
+    "evFold": "引き",
+    "evTerm": {
+      "win": "和了",
+      "dealIn": "放銃",
+      "danger": "以降の巡目",
+      "notWinning": "不和了"
+    }
   },
   "log": {
     "rewound": "{{number}}件目の記録まで巻き戻しました",

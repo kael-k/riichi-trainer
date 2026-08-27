@@ -8,7 +8,7 @@ import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { BACK_TILE } from '../folding/useFoldingRound'
 import { encodeSituation, matchOverrides, WINDS, type Situation } from '../situation/urlCodec'
-import { splitDrawn } from '../../core/table'
+import { evOf, splitDrawn, type SeatEv } from '../../core/table'
 import { useRound, type RoundEventContext } from '../table/useRound'
 
 /**
@@ -199,6 +199,24 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     kita: table.kita,
     kan: table.kan,
     restart: table.restart,
+    /**
+     * The acting seat's whole push/fold arithmetic, priced on demand under that seat's own EV
+     * model and objective — `plans/EV-3` §9's screen, as data.
+     *
+     * A function rather than a value, and not computed at the draw the way `ranked`/`danger` are:
+     * an exact ranking is hundreds of milliseconds at 2-shanten, so pricing every turn on the
+     * chance somebody looked would make the board unpleasant to play on. `at` stamps it with how
+     * many tiles have been discarded, so a caller can tell an answer about *this* turn from one
+     * left over from the last.
+     */
+    priceTurn: (): (SeatEv & { at: number }) | null => {
+      const core = table.core
+      if (!core) return null
+      const priced = evOf(core, acting)
+      return priced && { ...priced, at: core.round.discards.length }
+    },
+    /** What `priceTurn`'s own stamp is compared against. */
+    discardCount: snapshot?.rivers.reduce((total, river) => total + river.length, 0) ?? 0,
     situationQuery: () => encodeSituation(table.situation(seatIndex)),
   }
 }

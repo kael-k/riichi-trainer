@@ -1,10 +1,13 @@
 import type { Meld } from './agari'
 import { assessDiscards, type TileDanger } from './danger'
 import { evaluateDiscards, type DiscardOption } from './efficiency'
-import type { Hand } from './hand'
+import { foldEv, rankDiscards, type DiscardEv, type EvObjective } from './ev'
+import { EV_MODELS, type EvModelName } from './evModel'
+import { tileCount, type Hand } from './hand'
 import {
   concealedTiles,
   isManual,
+  seatView,
   seenBy as seenByMatch,
   stepRound,
   threatViews,
@@ -242,6 +245,52 @@ export function seatRead(state: RoundState, seat: number, sanma: boolean): SeatR
  *  into one that cannot be broken. `seen` is likewise read at build time.
  *
  *  Still per-moment: build a new one after the board moves rather than reusing an old one. */
+/** One seat's whole push/fold arithmetic, priced under that seat's own EV model and objective —
+ *  `plans/EV-3` §9's screen, as data. Both branches, every candidate, every term. */
+export interface SeatEv {
+  seat: number
+  model: EvModelName
+  objective: EvObjective
+  /** Best first, exactly as the seat itself would rank them. */
+  push: DiscardEv[]
+  fold: DiscardEv
+  /** Which branch the seat would actually take — the same comparison `ALGORITHMS.ev` makes. */
+  best: 'push' | 'fold'
+  /** Why the model may not speak about this ruleset, when it may not (`plans/EV-5` §2.11). Never
+   *  a silent swap: the numbers below it were still produced by the model that was asked. */
+  unsupported: string | null
+}
+
+/**
+ * Prices `seat` through the EV identity, on demand.
+ *
+ * **On demand, and not from a getter beside `ranked`/`danger`,** because this is not the same
+ * order of cost: an exact ranking is hundreds of milliseconds at 2-shanten where the other two are
+ * a handful. A board that priced every turn on the chance somebody looked would be a board nobody
+ * wants to play on. Whoever renders it asks for it.
+ *
+ * `null` when the seat is not mid-turn — `rankDiscards` needs the fourteen-tile hand and refuses
+ * anything else, for the reason ADR-0037 records.
+ */
+export function evOf(core: TableCore, seat: number): SeatEv | null {
+  const player = core.round.players[seat]
+  if (tileCount(player.hand) % 3 !== 2) return null
+  const view = seatView(core.round, core.options, seat)
+  const { model, objective } = player.ev
+  const opts = { model: EV_MODELS[model], objective }
+  const push = rankDiscards(view, opts)
+  const fold = foldEv(view, opts)
+  return {
+    seat,
+    model,
+    objective,
+    push,
+    fold,
+    best: push[0] !== undefined && push[0].ev >= fold.ev ? 'push' : 'fold',
+    unsupported: EV_MODELS[model].unsupported(core.options.sanma),
+  }
+}
+
 export function analysisOf(core: TableCore, seat: number): TableAnalysis {
   const player = core.round.players[seat]
   const hand: Hand = {

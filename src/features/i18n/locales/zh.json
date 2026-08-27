@@ -389,7 +389,19 @@
       "tileSet": "不属于当前规则的牌({{tile}})"
     },
     "ranking": "出牌排行",
-    "danger": "危险等级"
+    "danger": "危险等级",
+    "ev": "期望值",
+    "priceTurn": "计算本巡",
+    "evUnder": "{{wind}},{{model}}模型,以{{objective}}为目标。",
+    "evUnsupported": "该模型没有此规则的数据: {{reason}}。",
+    "evPush": "推",
+    "evFold": "退",
+    "evTerm": {
+      "win": "和牌",
+      "dealIn": "放铳",
+      "danger": "之后各巡",
+      "notWinning": "未和"
+    }
   },
   "log": {
     "rewound": "已撤回到第 {{number}} 条记录",

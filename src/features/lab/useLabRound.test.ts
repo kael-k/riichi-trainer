@@ -135,3 +135,44 @@ describe('useLabRound', () => {
     }
   })
 })
+
+describe('priceTurn', () => {
+  /** The lab's own copy of `plans/EV-3` §9: both branches, every candidate, every term, stamped
+   *  with the turn it is about. */
+  it('prices both branches for the acting seat, under that seat’s own model and objective', () => {
+    const situation: Situation = {
+      ...emptySituation(),
+      wall: wallWithHand(0, HAND, false, false, 'lab-ev-seed'),
+    }
+    const { result } = renderHook(() => useLabRound(situation, BARE))
+    const priced = result.current.priceTurn()
+
+    expect(priced).not.toBeNull()
+    expect(priced!.seat).toBe(result.current.acting)
+    expect(priced!.model).toBe('statistical')
+    expect(priced!.objective).toBe('points')
+    expect(priced!.push.length).toBeGreaterThan(0)
+    expect(['push', 'fold']).toContain(priced!.best)
+    // the stamp is what tells an answer about this turn from one left over from the last
+    expect(priced!.at).toBe(result.current.discardCount)
+
+    // every entry decomposes, which is the whole reason to show it rather than the number alone
+    for (const entry of [...priced!.push, priced!.fold]) {
+      const sum = entry.terms.reduce((total, term) => total + term.points, 0)
+      expect(entry.ev).toBeCloseTo(sum, 9)
+    }
+  })
+
+  it('goes stale the moment the board moves, rather than answering about the wrong turn', () => {
+    const situation: Situation = {
+      ...emptySituation(),
+      wall: wallWithHand(0, HAND, false, false, 'lab-ev-stale-seed'),
+    }
+    const { result } = renderHook(() => useLabRound(situation, BARE))
+    const priced = result.current.priceTurn()!
+    expect(priced.at).toBe(result.current.discardCount)
+
+    act(() => result.current.discard(0))
+    expect(result.current.discardCount).not.toBe(priced.at)
+  })
+})

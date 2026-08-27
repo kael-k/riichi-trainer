@@ -491,7 +491,19 @@
       "tileSet": "a tile that isn't part of this ruleset ({{tile}})"
     },
     "ranking": "Discard ranking",
-    "danger": "Danger tiers"
+    "danger": "Danger tiers",
+    "ev": "Expected value",
+    "priceTurn": "Price this turn",
+    "evUnder": "{{wind}}, {{model}} model, playing for {{objective}}.",
+    "evUnsupported": "This model has no data for this ruleset: {{reason}}.",
+    "evPush": "push",
+    "evFold": "fold",
+    "evTerm": {
+      "win": "win",
+      "dealIn": "deal in",
+      "danger": "later turns",
+      "notWinning": "no win"
+    }
   },
   "log": {
     "rewound": "Rewound to entry {{number}}",

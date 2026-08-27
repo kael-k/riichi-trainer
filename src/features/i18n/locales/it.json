@@ -491,7 +491,19 @@
       "tileSet": "una tessera che non fa parte di questo regolamento ({{tile}})"
     },
     "ranking": "Classifica scarti",
-    "danger": "Livelli di pericolo"
+    "danger": "Livelli di pericolo",
+    "ev": "Valore atteso",
+    "priceTurn": "Calcola questo turno",
+    "evUnder": "{{wind}}, modello {{model}}, obiettivo {{objective}}.",
+    "evUnsupported": "Questo modello non ha dati per queste regole: {{reason}}.",
+    "evPush": "spingi",
+    "evFold": "ritirati",
+    "evTerm": {
+      "win": "vittoria",
+      "dealIn": "servito",
+      "danger": "turni successivi",
+      "notWinning": "nessuna vittoria"
+    }
   },
   "log": {
     "rewound": "Tornato indietro alla voce {{number}}",
