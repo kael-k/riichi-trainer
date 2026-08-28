@@ -146,17 +146,31 @@ export function kyuushuKinds(hand: Hand): number {
 export const KYUUSHU_KINDS = 9
 
 export interface Call {
-  kind: 'pon' | 'chi'
-  /** The caller's own tiles that join the discard, in ascending order. */
+  kind: 'pon' | 'chi' | 'minkan'
+  /** The caller's own tiles that join the discard, in ascending order — three of the same kind
+   *  for a `'minkan'`, same as `'pon'` doubled. */
   from: TileId[]
 }
 
-/** Every pon/chi this hand could legally make on `tile`; chi only from the player to the left.
- *  Exported for the human claim prompt (`round.ts#claimOptions`), which offers exactly the calls
- *  the AI weighs here rather than deriving a second, drifting notion of what is legal. */
-export function availableCalls(hand: Hand, tile: TileId, fromKamicha: boolean): Call[] {
+/** Every pon/chi (and, with `calledKan` on, minkan) this hand could legally make on `tile`; chi
+ *  only from the player to the left, minkan from anyone including on an honour. Exported for the
+ *  human claim prompt (`round.ts#claimOptions`), which offers exactly the calls the AI weighs
+ *  here rather than deriving a second, drifting notion of what is legal.
+ *
+ *  `calledKan` defaults `false` and `chooseCall` below never passes it — daiminkan is a
+ *  match-only ruleset switch (`RoundOptions.calledKan`), and the bot never seeing the option at
+ *  all is what keeps every golden hash pinned regardless of the flag. */
+export function availableCalls(
+  hand: Hand,
+  tile: TileId,
+  fromKamicha: boolean,
+  calledKan = false,
+): Call[] {
   const calls: Call[] = []
   if (hand.counts[tile] >= 2) calls.push({ kind: 'pon', from: [tile, tile] })
+  if (calledKan && hand.counts[tile] >= 3) {
+    calls.push({ kind: 'minkan', from: [tile, tile, tile] })
+  }
   if (!fromKamicha || tile >= HONOR) return calls
 
   const rank = tile % 9

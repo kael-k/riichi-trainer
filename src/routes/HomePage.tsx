@@ -48,6 +48,13 @@ const MODES = [
     introKey: 'trainer.scoring.intro',
     wikiUrl: TRAINER_WIKI.scoring,
   },
+  {
+    to: '/match',
+    titleKey: 'trainer.match.title',
+    descKey: 'trainer.match.desc',
+    introKey: 'trainer.match.intro',
+    wikiUrl: TRAINER_WIKI.match,
+  },
   // Lab is under development, disabled for now — see README.
   // {
   //   to: '/lab',

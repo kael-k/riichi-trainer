@@ -5,20 +5,21 @@ import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { splitDrawn } from '../../core/table'
 import { Timer, TrainerToggles } from '../../components/TrainerControls'
-import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
+import { HandDisplay, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
+import { KitaKanControls, kitaKanVisible } from '../table/KitaKanControls'
 import { ManualControls, manualControlsVisible } from '../table/ManualControls'
 import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
-import { useSettings } from '../settings/settingsStore'
+import { useBotDelay, useSettings } from '../settings/settingsStore'
 import { useTableSettings, type SeatConfig } from '../settings/tableSettings'
 import { decodeSituation } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { EFFICIENCY_VERDICT_TEXT_KEY, efficiencyVerdictSeverity } from './grade'
-import { NORTH, useEfficiencyRound, type EfficiencyOptions } from './useEfficiencyRound'
+import { useEfficiencyRound, type EfficiencyOptions } from './useEfficiencyRound'
 
 /** 1 lost out of 100 available reads as 99% accuracy; no graded choices yet reads as 100%. */
 function accuracy(lost: number, total: number): number {
@@ -29,6 +30,7 @@ export function EfficiencyPage() {
   const { t } = useTranslation()
   const situation = useUrlData(decodeSituation)
   const sanma = useSettings((s) => s.sanma)
+  const pace = useBotDelay()
   const { aka } = useAdvancedSettings()
   const { showOpponentHands, showSeatWaits, seatsEnabled } = useTableSettings('efficiency')
 
@@ -45,8 +47,9 @@ export function EfficiencyPage() {
       seats: seatConfig,
       showSeatWaits,
       showOpponentHands,
+      pace,
     }),
-    [situation, aka, sanma, seatConfig, showSeatWaits, showOpponentHands],
+    [situation, aka, sanma, seatConfig, showSeatWaits, showOpponentHands, pace],
   )
 
   const round = useEfficiencyRound(situation, options)
@@ -68,12 +71,6 @@ export function EfficiencyPage() {
     round.restart()
   }
 
-  // tiles held four times (hand + the separated drawn tile) can be closed-kanned
-  const counts = new Map<number, number>()
-  for (const t of round.hand) counts.set(t.id, (counts.get(t.id) ?? 0) + 1)
-  if (round.drawn) counts.set(round.drawn.id, (counts.get(round.drawn.id) ?? 0) + 1)
-  const kanEligible = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
-
   // the bottom hand follows perspective, not the acting seat: rotating to watch another seat
   // shows that seat's hand (face-down unless it's a manual seat or the reveal setting is on),
   // never yours. Only when the perspective is genuinely the seat whose turn it is can any of it
@@ -88,8 +85,12 @@ export function EfficiencyPage() {
   // true for the whole window a second manual seat plays its own turn in — the freeze
   // `NOTE-efficiency-multi-manual-freeze.md` found (ADR-0034)
   const canAct = perspective === round.acting && round.actingPlayable
-  const hasNorth = options.sanma && round.hand.some((tile) => tile.id === NORTH)
-  const showKitaKan = canAct && (hasNorth || kanEligible.length > 0)
+  const showKitaKan = kitaKanVisible({
+    sanma: options.sanma,
+    hand: round.hand,
+    drawn: round.drawn,
+    canAct,
+  })
   const riichiTiles = round.riichiTiles()
   // whether `controls` has anything to float at all — `showKitaKan` covers the kita/kan row,
   // `manualControlsVisible` mirrors `ManualControls`' own "nothing to show" branches exactly, so
@@ -126,12 +127,20 @@ export function EfficiencyPage() {
         claiming,
       }
     }
+    // the seat mid-turn holds fourteen: its draw sits apart from the thirteen, the same small gap
+    // the bottom hand already keeps, so a reader can see *which* tile a seat just took
+    const { tiles: hand, drawn } = splitDrawn(
+      round.hands[seat],
+      seat === round.drawnSeat ? round.drawn : undefined,
+    )
     return {
       river,
       melds: round.melds[seat],
       nuki: round.nuki[seat],
       riichi: round.riichi[seat],
-      hand: round.hands[seat],
+      hand,
+      drawn,
+      tedashi: round.tedashi?.seat === seat ? round.tedashi.tile : undefined,
       concealed: !mine && !showOpponentHands,
       points: round.match.points[seat],
       claiming,
@@ -209,6 +218,7 @@ export function EfficiencyPage() {
           wallCount={round.liveWall.length}
           honba={round.match.honba}
           activeSeat={round.drillOver ? undefined : round.acting}
+          call={round.callBanner}
         />
       }
       // one graded choice per notice: `cumulativeTotal` counts exactly those, so a re-render
@@ -263,34 +273,17 @@ export function EfficiencyPage() {
               onArmRiichi={round.armRiichi}
               onAnswer={round.answer}
               viewSeat={perspective}
-              onGoTo={setViewSeat}
               ended={round.drillOver}
             />
             {showKitaKan && (
-              <>
-                {hasNorth && (
-                  <button
-                    type="button"
-                    onClick={round.kita}
-                    className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                  >
-                    {t('efficiency.kitaButton')}
-                  </button>
-                )}
-                {kanEligible.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => round.kan(id)}
-                    className="flex min-h-11 w-fit items-center gap-1.5 rounded-lg border border-neutral-300 px-4 text-sm font-medium dark:border-neutral-700"
-                  >
-                    <span className="[--tile-w:calc(var(--tile-w-base)*0.6)]">
-                      <Tile id={id} />
-                    </span>
-                    {t('efficiency.kanButton')}
-                  </button>
-                ))}
-              </>
+              <KitaKanControls
+                sanma={options.sanma}
+                hand={round.hand}
+                drawn={round.drawn}
+                canAct={canAct}
+                onKita={round.kita}
+                onKan={round.kan}
+              />
             )}
           </div>
         )
@@ -303,6 +296,7 @@ export function EfficiencyPage() {
           <HandDisplay
             tiles={bottomHand}
             drawn={bottomDrawn}
+            tedashi={round.tedashi?.seat === perspective ? round.tedashi.tile : undefined}
             concealed={bottomConcealed}
             melds={bottomMelds}
             nuki={round.nuki[perspective]}

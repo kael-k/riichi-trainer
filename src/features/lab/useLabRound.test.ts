@@ -13,6 +13,8 @@ const BARE: LabOptions = {
   opponentWins: false,
   kiriageMangan: false,
   showOpponentHands: false,
+  // unpaced, so the whole board settles inside a synchronous `act()`
+  pace: 0,
   showSeatWaits: false,
   seats: null,
 }
@@ -150,7 +152,7 @@ describe('priceTurn', () => {
     expect(priced).not.toBeNull()
     expect(priced!.seat).toBe(result.current.acting)
     expect(priced!.model).toBe('statistical')
-    expect(priced!.objective).toBe('points')
+    expect(priced!.objective).toBe('placement') // DEFAULT_EV_SEAT's own default (core/ev.ts)
     expect(priced!.push.length).toBeGreaterThan(0)
     expect(['push', 'fold']).toContain(priced!.best)
     // the stamp is what tells an answer about this turn from one left over from the last

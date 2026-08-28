@@ -112,16 +112,32 @@ createMatch(sanma, overrides?)   // East 1, zeros, dealer 0, 25000 yonma / 35000
   is which kyoku within it (East 1 is `1`).
 - `honba` and `dealerRepeat` are **separate fields** — they diverge by ruleset — and are never
   collapsed into one.
-- It is **carry-in context, not a sequencer**: no `nextRound()`, no dealer rotation, no honba
-  increment, no payouts, no end-of-match detection.
-- The one in-round mutation is riichi (`finishTurn` takes 1000 off `state.match.points[seat]` and
-  adds a stick), so **`createRound` takes a copy of `options.match`, never an alias** — a round must
-  never write through to caller-owned options.
+- `MatchState` itself is **carry-in context, not a sequencer** — the mutation a round makes to it
+  (riichi: `finishTurn` takes 1000 off `state.match.points[seat]` and adds a stick) is the only one
+  `round.ts` ever performs, so **`createRound` takes a copy of `options.match`, never an alias** — a
+  round must never write through to caller-owned options.
 - Dealer is not assumed to be seat 0: `seatWind` is `HONOR + ((seat - dealer + players) % players)`,
   "am I dealer" is `seat === state.match.dealer`, and the turn counter increments on the dealer's
   seat. `RoundState.match.honba` feeds `ScoringRules.honba`'s 300/100 payout maths.
+- **The sequencer is `match.ts#settleRound`, and it is never called from `round.ts`** — a round
+  must not know what follows it. `settleRound(match, result, { sanma, format })` takes the _ended_
+  round's own `RoundState.match` (riichi's mutation must carry forward) plus a `RoundResult` —
+  `round.ts#roundResult(state)` reads one straight off an ended `RoundState` (`state.win`'s
+  payments for `'win'`, each seat's own-hand shanten for `'exhaustive'`'s tenpai list, nothing for
+  `'abort'`) — and returns the next round's `MatchState`, each seat's point delta, and whether the
+  match is over. It prices from `Payments.total`/`.main`/`.fromDealer` (`core/score.ts`, honba
+  already folded in) rather than re-deriving the ruleset math; the current dealer repeats
+  (honba/dealerRepeat up) on a win, a draw with the dealer tenpai, or an abort, and rotates
+  (dealerRepeat zeroed, round/wind advance) on anything else. Sticks still on the table when the
+  match ends go to the leader (ties to the lowest seat), the same tie-break `placement.ts#ranks`
+  uses.
+- **A round is "redealt" by a fresh wall array identity, nothing more** — `/match`'s own
+  `useMatchRound#nextRound` sets `settleRound`'s returned `MatchState` and a freshly-dealt wall in
+  one commit, and `useLinkedHand`'s existing "link identity changed ⇒ `fromLink` is true again"
+  rule is what makes `useRound` deal it as a new hand next render. No change to `useRound` or
+  `core/table.ts` was needed to sequence a match.
 
-**Why:** [ADR-0023](docs/adr/0023-round-inside-match.md), [ADR-0006](docs/adr/0006-one-match-engine.md)
+**Why:** [ADR-0023](docs/adr/0023-round-inside-match.md), [ADR-0006](docs/adr/0006-one-match-engine.md), [ADR-0040](docs/adr/0040-rounds-sequence-into-a-match.md)
 
 ### The round engine (`core/round.ts` + `core/policy.ts`)
 
@@ -198,7 +214,14 @@ silently skipped.
   a ron the seat order says comes first.
 - Everything it re-runs is idempotent: `tryWin`/`couldHaveWon` restore the hand they probe, and
   `missedWin` only ever goes true.
-- **Daiminkan is never offered to anyone** — the engine models no called kan at all.
+- **Daiminkan and kakan are match-only** (`RoundOptions.calledKan`, ADR-0041, amending ADR-0010):
+  `policy.ts#availableCalls` offers a `'minkan'` claim only when the flag is on, and `chooseCall`
+  never receives it — an AI seat never takes one regardless, which is what keeps every graded
+  drill's golden hash untouched. Kakan (`callKakan`) mirrors `callAnkan` (mutate, log, flip a
+  kan-dora, draw a replacement) but upgrades an existing `'pon'` meld in place — by replacing the
+  meld object, never mutating it, since `core/table.ts#snapshotTable` shallow-copies `melds` but
+  keeps the same `Meld` references. **Chankan is not modelled** — a real kakan briefly exposes the
+  added tile to every other seat's ron first; this engine skips straight to completing it.
 - `canDeclareRiichi(state, options, seat)` gates a manual seat's own declaration, read by
   `finishTurn`'s 4th argument (`declareRiichi`, manual seats only) and by `riichiTiles()`.
 - `reconsiderClaim(state, options)` re-enters `resolveReactions` from scratch when a seat stops
@@ -375,7 +398,35 @@ algorithms each seat ended on, the graded seat and its own log, and `replayLog` 
 from exactly that. The mid-hand flip never needs replaying — replay puts every seat on manual, and
 only the _starting_ algorithms of live play matter.
 
-**Why:** [ADR-0012](docs/adr/0012-shared-table-layer.md), [ADR-0021](docs/adr/0021-action-log-replay.md), [ADR-0011](docs/adr/0011-at-least-one-manual-seat.md)
+**Pacing is this layer's, and `pace: 0` must take no `await`** (ADR-0042). `UseRoundInput.pace` is
+how long the board holds before a seat nobody plays commits its action — read through a ref
+refreshed every render, so the slider takes effect on the next turn without redealing (ADR-0008).
+
+- **0 is not "fast", it is the old code path.** The `await` lives inside `show`, behind a
+  `pace.current > 0 &&` short-circuit, so an unpaced board evaluates none and the whole AI burst
+  still lands in the one terminal `setSnapshot` — which is what keeps every caller that settles a
+  round inside a synchronous `act()` working. An `await` on a plain value still defers to a
+  microtask, and that alone is enough to break them.
+- Same trap, same rule: **`discard` and `answer` return `void`, never the promise.** An `async`
+  function hands back a promise even when its body never awaits, and a thenable returned from an
+  `act(() => …)` callback switches React's `act` to its asynchronous path. Their bodies are the
+  separate `playDiscard`/`playAnswer`. Nobody awaits a paced turn — abandoning one is
+  `generation`'s job, re-checked across every pause exactly as the synchronous path re-checks it
+  after every command.
+- **The pre-reaction frame comes from the engine, not from a delay.** `stepRound` forwards
+  `finishTurn`'s existing `beforeReactions` (the only engine edit pacing needed), and a paced
+  board commits that snapshot as the discard's own frame — `finishTurn` resolves the whole turn
+  before it yields, so otherwise a ponned tile only ever appears inside the meld it ends up in.
+- The reader's own discard commits immediately (they clicked it); the reactions to it get the same
+  beat an AI turn does, and a call/kan/win gets a shorter one (`CALL_BEAT_MS`, capped by `pace`).
+- **`callBanner` and `tedashi` are produced here** because only the driver knows _when_. The banner
+  is `{ seat, kind }` up for `BANNER_MS` — a kita raises none, a riichi's rides the discard it was
+  declared with. `tedashi` is `{ seat, tile }` for `DISCARD_FLIGHT_MS` (the discard animation's own
+  duration, kept in step with `index.css` by hand), set on a throw out of the thirteen and
+  **cleared** on one straight off the draw, so a hole never outlives the throw that opened it.
+  Both are handed to `Table` as values.
+
+**Why:** [ADR-0012](docs/adr/0012-shared-table-layer.md), [ADR-0021](docs/adr/0021-action-log-replay.md), [ADR-0011](docs/adr/0011-at-least-one-manual-seat.md), [ADR-0042](docs/adr/0042-the-board-is-paced-and-the-view-is-told.md)
 
 ### The danger model (`core/danger.ts`) + the folding trainer
 
@@ -780,9 +831,12 @@ hand is over with nothing left to answer, or in the single-manual-seat, no-claim
 own-perspective case**, so every trainer mounts it unconditionally. **Its `ended` flag never
 outranks a pending claim** — efficiency's `drillOver` is a tile count and stays true across the
 window a replayed link lands in, where an opponent can still offer a call, and the engine suspends
-every turn until that call is answered. **Watching any seat other than the one that owes the decision
-swaps every other line out for one sentence naming that seat plus a "Go to {wind}" button** that
-rotates perspective there — the shortcut half of the turn glow's ambient half. A claimable discard
+every turn until that call is answered. **Watching any seat other than the one that owes the
+decision renders nothing at all** (`acting !== viewSeat`, one check covering both surfaces, and
+`manualControlsVisible` in lockstep): who owes it is the felt's own job — the turn glow says it
+ambiently and the seat plate's eye rotates there — so the line that used to name that seat in
+words, with a button for the rotation the eye already does, was a third way of stating one fact.
+A claimable discard
 is displaced out of its own river row and ringed amber (`SeatView.claiming`) rather than the prompt
 repeating which tile in text; the prompt itself draws each call option as the meld it would make,
 the claimed tile ringed in place, `Ron` filled/emphatic and `Pass` a ghost button.
@@ -811,6 +865,42 @@ drawn through the same props.
 - **Points are board truth like `riichi`/`melds`, never `seatInfo`.** `roundNumber` and
   `SeatView.points` are values in, no logic — routing board state through the page's render prop
   would make what the felt says depend on whether the seat panel is enabled.
+- **A tedashi holds its own slot open; a tsumogiri never does.** The tile in flight looks the same
+  either way, so the read is at the other end: the tile a seat has just thrown out of its thirteen
+  leaves its slot empty (one tile of space, at the position that id sorts into — `gapIndex` in
+  `Tile.tsx`, pure presentation over the sort the row is already drawn in) for the flight time.
+  **A face-down row takes the hole in its middle instead**, and `gapIndex`'s `concealed` flag is
+  what says so: every trainer but efficiency hands the felt `BACK_TILE` filler for a hidden seat
+  (thirteen copies of id 0), so the sorted position of anything thrown out of one is past the
+  last tile — a spacer a centred row renders as a half-tile shudder rather than a hole, which is
+  how the tedashi read came to be invisible on exactly the seats it was built for. Which slot the
+  tile left is not information the reader is owed; that it left the hand at all is.
+  **Both hands get it**: `SeatView.tedashi` for the felt's own rows and `HandDisplay.tedashi` for
+  the hand below the board — the reader's own discard is the one they are looking straight at, and
+  wiring only the felt is exactly the half-finished state that shipped once and read as broken.
+  Set by the pacer, cleared by it, and **only while the board is paced** — an unpaced board commits
+  the whole go-around at once, where a 260ms hole would say nothing. A tsumogiri frame clears
+  whatever the previous throw left open rather than leaving it standing.
+- **Every seat's 14th tile is split off, not just the bottom hand's.** `SeatView.drawn` is the
+  felt's own version of `HandDisplay`'s isolated slot, and each page fills it by passing its
+  `drawnSeat`'s hand through `splitDrawn`/`splitConcealedDrawn` — the same helper the bottom hand
+  already used. Without it an opponent mid-turn draws as an undifferentiated block of fourteen.
+- **The `call` banner is board truth of the same kind, and a _value_** (ADR-0042): `{ seat, kind }`,
+  drawn on that seat's own edge with the turn-mark technique (a rotated `absolute` sibling of the
+  felt grid, `pointer-events-none`). **`Table` never derives which call a meld represents** — a
+  meld-count diff plus `meld.kind` is game logic in a pure view (ADR-0014). Its lifetime belongs to
+  whoever set it, which is `useRound`'s pacer.
+- **Board motion is mount-once CSS and nothing else** (`@theme` animations plus `@keyframes` in
+  `index.css`, every use site `motion-safe:` and gated on the `boardAnimation` setting). River
+  tiles and melds are keyed positionally, so the tile that just landed is a new DOM node on the
+  render it appears and an unconditional `animation` runs exactly once, at its own mount — no refs,
+  no length diffing, no "which one is new" state. **Discard origins are written in the river's own
+  unrotated frame**, so one keyframe pair covers all four seats: the river box carries its seat's
+  spin, row 0 sits nearest the felt centre, and a tsumogiri comes in from the isolated 14th tile's
+  slot to the right. A full board mount animates every river tile together — accepted, it reads as
+  the board dealing itself in. The **tsumogiri flash** is a transient copy of the advanced
+  `showTsumogiri` shade, drawn only when that standing mark is off, so a paced board has a tedashi
+  read without turning an advanced setting on.
 - **Each score pins to a square overlay that carries the seat's rotation**, never positioned per
   seat and then turned: a transform does not move the box it was laid out in.
 - **`seatInfoNodes` is computed once per seat**, not per render.
@@ -933,7 +1023,11 @@ name) instead heads its own section, shown only when the page passes `settings` 
 `app?: TableApp` prop gates a second section, Table, resolved against that app's own override layer
 rather than a hardcoded stand-in — present iff the trainer draws a `<Table>`. Two sections render
 unconditionally on every screen, including home: Ruleset (number of players, Kiriage mangan, red
-fives) and UI (theme, tile size, language, tile-number overlay, glossary-on-click); Misc holds the
+fives) and UI (theme, tile size, language, tile-number overlay, glossary-on-click, board animation,
+and behind Advanced the opponent delay — the last two are how the board **reads**, not a property
+of any one trainer's felt, which is why they are here and not in Table; the delay is Advanced-gated
+because its default already reads correctly and a beginner should not have to find a slider first,
+and hidden never means off — `useBotDelay` resolves the stored value either way); Misc holds the
 Advanced switch alone, since flipping it changes what the other sections show
 ([ADR-0033](docs/adr/0033-settings-sections.md)).
 
@@ -978,4 +1072,4 @@ Glossary rules (`features/i18n/glossary.ts`, marked inline with `<GlossaryTerm i
   the page's 16px instead of the board's `cqw` scale. It keeps the affordance — dotted underline and
   question mark, both sized in `cqw`.
 
-**Why:** [ADR-0025](docs/adr/0025-one-interface.md), [ADR-0026](docs/adr/0026-stats-on-the-board.md), [ADR-0027](docs/adr/0027-the-log-is-the-feedback.md), [ADR-0029](docs/adr/0029-calls-on-the-hand-ring.md), [ADR-0030](docs/adr/0030-the-felt-sizes-itself.md), [ADR-0035](docs/adr/0035-efficiency-asks-for-no-calls.md), [ADR-0019](docs/adr/0019-mobile-first-board.md), [ADR-0018](docs/adr/0018-beginner-defaults-advanced-depth.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)
+**Why:** [ADR-0025](docs/adr/0025-one-interface.md), [ADR-0026](docs/adr/0026-stats-on-the-board.md), [ADR-0027](docs/adr/0027-the-log-is-the-feedback.md), [ADR-0029](docs/adr/0029-calls-on-the-hand-ring.md), [ADR-0030](docs/adr/0030-the-felt-sizes-itself.md), [ADR-0035](docs/adr/0035-efficiency-asks-for-no-calls.md), [ADR-0019](docs/adr/0019-mobile-first-board.md), [ADR-0018](docs/adr/0018-beginner-defaults-advanced-depth.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md), [ADR-0042](docs/adr/0042-the-board-is-paced-and-the-view-is-told.md)

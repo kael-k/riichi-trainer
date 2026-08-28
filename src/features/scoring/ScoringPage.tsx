@@ -21,7 +21,12 @@ import { useTableSettings } from '../settings/tableSettings'
 import { Verdict } from '../table/Verdict'
 import { decodeScoringUrl } from './scoringUrl'
 import { useUrlData } from '../situation/useUrlData'
-import { useScoringRound, type Answer, type RoundResult, type ScoringOptions } from './useScoringRound'
+import {
+  useScoringRound,
+  type Answer,
+  type RoundResult,
+  type ScoringOptions,
+} from './useScoringRound'
 
 const FLAG_KEYS = [
   'riichi',

@@ -14,7 +14,12 @@ function describeError(error: unknown): { message: string; stack?: string } {
   return { message: 'Unknown error' }
 }
 
-function issueUrl(message: string, stack: string | undefined, href: string, trainer: string): string {
+function issueUrl(
+  message: string,
+  stack: string | undefined,
+  href: string,
+  trainer: string,
+): string {
   const body = [
     '**Describe the bug**',
     'The app crashed unexpectedly. Replace this line with what you were doing when it happened.',
@@ -36,7 +41,11 @@ function issueUrl(message: string, stack: string | undefined, href: string, trai
     stack ? stack.slice(0, MAX_STACK) : '(no stack trace available)',
     '```',
   ].join('\n')
-  const params = new URLSearchParams({ template: 'bug_report.md', title: `Crash: ${message}`.slice(0, 100), body })
+  const params = new URLSearchParams({
+    template: 'bug_report.md',
+    title: `Crash: ${message}`.slice(0, 100),
+    body,
+  })
   return `https://github.com/${REPO}/issues/new?${params.toString()}`
 }
 

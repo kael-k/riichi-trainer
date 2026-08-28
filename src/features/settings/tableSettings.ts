@@ -30,12 +30,17 @@ export interface SeatConfig {
  *
  *  `fallbackModes` overrides the `'efficiency'` default for an unconfigured seat — the folding
  *  trainer flips non-declarers to `'defense'` at handover, and the panel must show what the
- *  board is actually doing rather than a generic guess (see `useFoldingRound`'s live algorithms). */
+ *  board is actually doing rather than a generic guess (see `useFoldingRound`'s live algorithms).
+ *
+ *  `requireManual` (default `true`) is the guarantee itself — off lets every seat resolve to an
+ *  AI, which only the match trainer wants: a full-bot match is something to watch, not something
+ *  that needs a person to stop the go-round loop. */
 export function resolveSeatConfig(
   config: SeatConfig | null,
   players: number,
   defaultSeat: number,
   fallbackModes?: readonly SeatAlgorithm[],
+  requireManual = true,
 ): SeatConfig {
   const modes = Array.from(
     { length: players },
@@ -44,7 +49,7 @@ export function resolveSeatConfig(
       fallbackModes?.[seat] ??
       (seat === defaultSeat ? 'manual' : 'efficiency'),
   )
-  if (!modes.includes('manual')) modes[defaultSeat] = 'manual'
+  if (requireManual && !modes.includes('manual')) modes[defaultSeat] = 'manual'
   const ev = Array.from({ length: players }, (_, seat) => config?.ev?.[seat] ?? DEFAULT_EV_SEAT)
   return { modes, ev }
 }
@@ -61,6 +66,15 @@ export function withSeatMode(
   const next = [...modes]
   next[seat] = mode
   return next
+}
+
+/** The match trainer's own default cast, unconfigured: seat 0 manual, every other seat an EV bot
+ *  — a match nobody has touched yet is still worth playing or watching, never `resolveSeatConfig`'s
+ *  generic `'efficiency'`. Shared between the setup screen and `useMatchRound` so the two can never
+ *  drift; paired with `requireManual: false` on both, which is what lets a reader who explicitly
+ *  moves seat 0 off manual actually get the full-bot match they asked for. */
+export function matchDefaultModes(players: number): SeatAlgorithm[] {
+  return Array.from({ length: players }, (_, seat) => (seat === 0 ? 'manual' : 'ev'))
 }
 
 /** The same patch for one seat's EV settings, and the same rule: built off the raw array, and
@@ -104,7 +118,7 @@ export interface TableSettings {
 /** One id per board-rendering app. `lab` is the statistical lab (plan 01-07); it has no page yet
  *  but gets a default row here so it inherits sane behavior without adding its own settings
  *  surface the day it ships. */
-export type TableApp = 'efficiency' | 'efficiencySolo' | 'folding' | 'scoring' | 'lab'
+export type TableApp = 'efficiency' | 'efficiencySolo' | 'folding' | 'scoring' | 'lab' | 'match'
 
 /** Shipped defaults per app. `opponentWins` is unread by the efficiency apps — those hardcode
  *  `wins: false` in their `RoundOptions` because ending the hand on someone else's tsumo would
@@ -140,6 +154,15 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
     showOpponentHands: false,
     showSeatWaits: false,
   },
+  match: {
+    // documentation only — the match drill hardcodes `wins: true` (`useMatchRound.ts`), real
+    // mahjong rather than a rehearsal. `threats` is unread here too: nothing in this trainer
+    // generates toward a threat count.
+    opponentWins: true,
+    threats: 1,
+    showOpponentHands: false,
+    showSeatWaits: false,
+  },
 }
 
 /** Resolves one app's table settings: app default, then the global override layer, then that
@@ -163,9 +186,9 @@ export function resolveTableSettings(
 export function useTableSettings(app: TableApp): TableSettings & { seatsEnabled: boolean } {
   const table = useSettings((s) => s.table)
   const advanced = useSettings((s) => s.advanced)
-  // the lab is the exception to the Advanced gate — free play *is* what that page is for, so its
-  // seat panel is always available
-  const seatsEnabled = advanced || app === 'lab'
+  // the lab and the match drill are the exceptions to the Advanced gate — choosing who plays
+  // which seat is the whole point of both, not a jargon-gated extra
+  const seatsEnabled = advanced || app === 'lab' || app === 'match'
   return {
     ...resolveTableSettings(app, table),
     /** Whether the seat panel is offered at all — the per-seat algorithms themselves are page

@@ -14,6 +14,8 @@ const BARE: EfficiencyOptions = {
   seats: null,
   showSeatWaits: false,
   showOpponentHands: false,
+  // unpaced, so the whole board settles inside a synchronous `act()`
+  pace: 0,
 }
 
 describe('useEfficiencyRound', () => {
@@ -237,6 +239,7 @@ describe('useEfficiencyRound', () => {
       seats: null,
       showSeatWaits: false,
       showOpponentHands: false,
+      pace: 0,
     }
     const a = renderHook(() => useEfficiencyRound(situation, opts))
     act(() => a.result.current.discard(0))
@@ -249,6 +252,7 @@ describe('useEfficiencyRound', () => {
         aka: decoded.aka ?? false,
         sanma: decoded.sanma ?? false,
         seats: null,
+        pace: 0,
         showSeatWaits: false,
         showOpponentHands: false,
       }),

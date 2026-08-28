@@ -15,7 +15,7 @@ and change every board in the app while every test still passes.
 Three invariant-shaped tests carry the engine, each aimed at one of those:
 
 1. **A reference implementation as the specification.** `referenceStandardShanten` is the old
-   whole-hand search, kept *solely* as the thing the fast per-suit decomposition is proved against
+   whole-hand search, kept _solely_ as the thing the fast per-suit decomposition is proved against
    over thousands of random hands. **Change one, re-run that.** It is not dead code.
 2. **A census.** `match.test.ts` asserts every tile kind is accounted for exactly four times
    (zero for 2m-8m under sanma) across hands, melds, rivers, wall and dead wall. This is what

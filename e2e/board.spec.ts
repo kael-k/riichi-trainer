@@ -5,6 +5,12 @@ import { dealtIndices } from '../src/core/wall.ts'
  *  design is still open, so neither is asserted here. */
 const TABLE_TRAINERS = ['efficiency', 'folding'] as const
 
+/** Pacing off for every blob in this file. These tests measure layout, not timing, and the
+ *  shipped default holds an opponent's turn for two seconds — long enough that a board still
+ *  playing itself out re-renders under a click already aimed at a node, which detaches it. A
+ *  paced board is covered by `useRound.test.ts`; what is asserted here is where things sit. */
+const NO_PACE = { botDelay: 0 }
+
 /** Advanced on, so every seat draws its info strip (the plate whose old home — a ring outboard of
  *  the felt — is what these tests exist to keep it out of), and waits on, which is the tallest
  *  that plate ever gets. `version` must match the store's own or zustand drops the blob, and the
@@ -15,6 +21,7 @@ const TABLE_TRAINERS = ['efficiency', 'folding'] as const
 const SETTINGS = JSON.stringify({
   state: {
     advanced: true,
+    ...NO_PACE,
     table: { global: { showSeatWaits: true }, apps: {} },
   },
   version: 3,
@@ -372,7 +379,7 @@ for (const trainer of TABLE_TRAINERS) {
     await context.addInitScript(
       `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
         JSON.stringify({
-          state: { advanced: true, tileScale: 1, table: { global: {}, apps: {} } },
+          state: { advanced: true, ...NO_PACE, tileScale: 1, table: { global: {}, apps: {} } },
           version: 3,
         }),
       )})`,
@@ -413,7 +420,7 @@ for (const trainer of TABLE_TRAINERS) {
     await context.addInitScript(
       `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
         JSON.stringify({
-          state: { advanced: true, tileScale: 1.8, table: { global: {}, apps: {} } },
+          state: { advanced: true, ...NO_PACE, tileScale: 1.8, table: { global: {}, apps: {} } },
           version: 3,
         }),
       )})`,
@@ -718,12 +725,62 @@ async function revealNothing(context: BrowserContext) {
   await context.addInitScript(
     `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
       JSON.stringify({
-        state: { advanced: true, table: { global: {}, apps: {} } },
+        state: { advanced: true, ...NO_PACE, table: { global: {}, apps: {} } },
         version: 3,
       }),
     )})`,
   )
 }
+
+/** This file runs unpaced (`NO_PACE`) because these tests measure layout. The tedashi hole is the
+ *  one thing that only exists *while* the board is paced, so it puts the delay back. */
+async function paced(context: BrowserContext) {
+  await context.addInitScript(
+    `localStorage.setItem('riichi-trainer-settings', ${JSON.stringify(
+      JSON.stringify({
+        state: { advanced: true, botDelay: 1000, table: { global: {}, apps: {} } },
+        version: 3,
+      }),
+    )})`,
+  )
+}
+
+test('a tedashi holds its own slot open in the hand below the board', async ({ page, context }) => {
+  // the unit tests pin each end of this separately (`Table.test.tsx` places the hole,
+  // `useRound.test.ts` decides when to open one) and still passed with the two ends unconnected —
+  // the reader's own hand was never handed the tile at all. This walks that chain in a browser:
+  // a real discard, at a real pace, on the hand the reader is looking straight at.
+  //
+  // Watched, never polled. The hole is open for one flight (~260ms) and every poll interval here
+  // is longer than that, so an assertion that looks for it directly passes or fails on load. The
+  // felt's own copy of the hole is the same page expression one seat over, pinned by
+  // `Table.test.tsx`; a board that stops at tenpai mid-test is not worth chasing for it.
+  await paced(context)
+  await page.goto('/efficiency')
+  await expect(page.getByTestId('board').first()).toBeVisible()
+  const hand = page.getByTestId('hand-strip')
+  await expect(hand).toBeVisible()
+
+  await page.evaluate(() => {
+    const w = window as unknown as { hole?: boolean }
+    w.hole = false
+    const check = () => {
+      w.hole ||= !!document.querySelector('[data-testid="hand-strip"] span.shrink-0')
+    }
+    check()
+    new MutationObserver(check).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+    })
+  })
+  const hole = () => page.evaluate(() => (window as unknown as { hole: boolean }).hole)
+  expect(await hole()).toBe(false)
+
+  // the leftmost of the thirteen: out of the hand by construction, never the drawn tile
+  await hand.getByRole('img').first().click()
+  await expect.poll(hole, { timeout: 10_000 }).toBe(true)
+})
 
 test('a furiten seat is marked exactly when its tiles are on screen', async ({ page, context }) => {
   await revealNothing(context)
@@ -752,6 +809,7 @@ test('revealing the hands reveals the furiten that goes with them', async ({ pag
       JSON.stringify({
         state: {
           advanced: true,
+          ...NO_PACE,
           table: { global: { showOpponentHands: true }, apps: {} },
         },
         version: 3,
@@ -853,7 +911,9 @@ test('a crash falls to the report page with a prefilled GitHub issue link', asyn
   // the situation link, the browser's own UA and the actual thrown message all ride along
   expect(href).toContain(page.url())
   expect(href).toContain('cannot remove tile')
-  expect(href.toLowerCase()).toContain((await page.evaluate(() => navigator.userAgent)).toLowerCase())
+  expect(href.toLowerCase()).toContain(
+    (await page.evaluate(() => navigator.userAgent)).toLowerCase(),
+  )
 
   await expect(page.getByRole('link', { name: 'Back to home' })).toHaveAttribute('href', '/')
 })
@@ -886,16 +946,29 @@ test('a declared seat may only throw the tile it just drew', async ({ page }) =>
  * Seat 0 holds an open triplet of 3s plus the 2s/4s kanchan either side of it; seat 3 — its
  * kamicha, the only seat chi ever offers from — holds the fourth and last copy of 3s. Discarding
  * it is simultaneously pon-able (2+ held), chi-able (the kanchan) and shaped like a daiminkan
- * (3+ held), which the engine never offers to anyone regardless (`ClaimOption.kind` has no `'kan'`
- * case) — one discard exercises all three named calls at once. Everyone else's tiles are single
- * copies spaced 3 apart within every suit, which makes chi structurally impossible off any of
- * *their* discards too (a run needs two held tiles within 2 of each other), so nothing but the
- * engineered discard could ever be callable in the first place.
+ * (3+ held) — one discard exercises all three named calls at once. Daiminkan stays unavailable
+ * here specifically because efficiency never sets `RoundOptions.calledKan` (ADR-0041; it exists
+ * now, gated to `/match` alone), not because the engine can never offer one. Everyone else's
+ * tiles are single copies spaced 3 apart within every suit, which makes chi structurally
+ * impossible off any of *their* discards too (a run needs two held tiles within 2 of each other),
+ * so nothing but the engineered discard could ever be callable in the first place.
  */
 function callableBoard(): string {
   const seat0 = ['3s', '3s', '3s', '2s', '4s', '2m', '5m', '8m', '2p', '5p', '8p', '1z', '5z']
   const spaced = (last: string) => [
-    '1m', '4m', '7m', '1p', '4p', '7p', '1s', '4s', '7s', '2z', '3z', '4z', last,
+    '1m',
+    '4m',
+    '7m',
+    '1p',
+    '4p',
+    '7p',
+    '1s',
+    '4s',
+    '7s',
+    '2z',
+    '3z',
+    '4z',
+    last,
   ]
   const seat1 = spaced('9m')
   const seat2 = spaced('9p')
@@ -917,7 +990,7 @@ test('efficiency never offers a call: chi, pon and daiminkan all stay unavailabl
   // seat 3 (North), seat 0's kamicha, manual too — "two seats seated next to each other" — so
   // its discard is under this test's own control rather than the AI's
   await page.getByRole('button', { name: 'N seat' }).click()
-  await page.getByRole('button', { name: 'Manual' }).click()
+  await page.getByRole('combobox', { name: 'Algorithm' }).selectOption('manual')
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
@@ -926,10 +999,16 @@ test('efficiency never offers a call: chi, pon and daiminkan all stay unavailabl
   // that bubbles the same as tapping the glyph a reader actually sees
   await handStrip.getByRole('img', { name: '2m' }).click()
 
-  // the AI seats (1, 2) play themselves out and the board lands on seat 3's turn
-  const goToNorth = page.getByRole('button', { name: 'Go to N' })
-  await expect(goToNorth).toBeVisible({ timeout: 10_000 })
-  await goToNorth.click()
+  // the AI seats (1, 2) play themselves out and the board lands on seat 3's turn. Rotating there
+  // is the seat plate's own eye ("watch from here") — there is no waiting line with a button on it
+  // any more, the felt's turn glow being the only thing that names who owes the decision
+  await expect(page.locator('[data-testid="turn-mark"][data-seat="3"]')).toBeVisible({
+    timeout: 10_000,
+  })
+  await page
+    .locator('[data-testid="seat-plate"][data-seat="3"]')
+    .getByRole('button', { name: 'Watch from here' })
+    .click()
 
   // seat 3 discards the fourth 3s, straight into seat 0's kamicha-only chi eligibility
   await handStrip.getByRole('img', { name: '3s' }).click()

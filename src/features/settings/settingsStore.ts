@@ -60,6 +60,15 @@ export const SIZABLE_QUERY = '(min-width: 768px) and (min-height: 521px)'
 /** Size used until the reader picks one: M, big enough to read a hand on a phone. */
 export const DEFAULT_TILE_SCALE = 1.25
 
+/** How long a board holds before a seat nobody plays commits its action, until the reader picks
+ *  their own. Enough that a four-seat go-around reads as four separate turns rather than one jump,
+ *  without making the reader wait on three opponents every time round; the slider goes to
+ *  `BOT_DELAY_MAX` for a reader who wants to watch, and to 0, which is the old instantaneous burst
+ *  exactly (`useRound`'s `pace`: at 0 the driver takes no `await` at all). */
+export const DEFAULT_BOT_DELAY = 1000
+export const BOT_DELAY_MAX = 5000
+export const BOT_DELAY_STEP = 250
+
 interface SettingsState extends Settings {
   theme: Theme
   setTheme: (theme: Theme) => void
@@ -72,6 +81,20 @@ interface SettingsState extends Settings {
    *  Does not affect the log panel. */
   tileScale: number | null
   setTileScale: (scale: number) => void
+  /** Milliseconds a board holds before a seat nobody plays commits its action — `useRound`'s
+   *  `pace`, threaded down by each board trainer's own hook. `null` is "never chosen", the same
+   *  idiom `tileScale` uses: read it as `botDelay ?? DEFAULT_BOT_DELAY` so the shipped default can
+   *  move later without overriding a stored 0. Top-level rather than a section, and not part of
+   *  the per-app `table` layer: how fast the opponents play is one preference for the whole app,
+   *  not a property of any one board. */
+  botDelay: number | null
+  setBotDelay: (delay: number) => void
+  /** Animate the board — discards flying into the river, a meld appearing, the call banner. On by
+   *  default; off leaves every state change instantaneous while the delay above still applies, and
+   *  an OS-level "reduce motion" removes the motion regardless (`motion-safe:` at every use
+   *  site). */
+  boardAnimation: boolean
+  setBoardAnimation: (animate: boolean) => void
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats, nukidora. Applies to both trainers. */
   sanma: boolean
   setSanma: (sanma: boolean) => void
@@ -137,6 +160,10 @@ export const useSettings = create<SettingsState>()(
       setShowTileNumbers: (showTileNumbers) => set({ showTileNumbers }),
       tileScale: null,
       setTileScale: (tileScale) => set({ tileScale }),
+      botDelay: null,
+      setBotDelay: (botDelay) => set({ botDelay }),
+      boardAnimation: true,
+      setBoardAnimation: (boardAnimation) => set({ boardAnimation }),
       sanma: false,
       setSanma: (sanma) => set({ sanma }),
       kiriageMangan: false,
@@ -187,3 +214,10 @@ export const useSettings = create<SettingsState>()(
     },
   ),
 )
+
+/** The board pacing setting resolved to a real number of milliseconds, for the four board
+ *  trainers to hand `useRound` as its `pace`. A hook of its own only so the `?? DEFAULT_BOT_DELAY`
+ *  is written once — every page that draws a `<Table>` needs the same resolution. */
+export function useBotDelay(): number {
+  return useSettings((s) => s.botDelay) ?? DEFAULT_BOT_DELAY
+}

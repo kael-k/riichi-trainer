@@ -9,7 +9,7 @@ The engine carried two parallel per-seat concepts. `MatchOptions.humans: readonl
 static list decided at `createMatch` and baked into `useTableRound`'s rebuild deps, so changing
 who played a seat **redealt the hand**. Its sibling, `PlayerState.policy`, was a live per-seat
 field the folding trainer already flipped mid-hand. Same idea, two shapes, one of them frozen —
-and two call sites (`tryWin`, the call gate) existed *only* because the two fields could disagree.
+and two call sites (`tryWin`, the call gate) existed _only_ because the two fields could disagree.
 
 The vocabulary was wrong too: "human vs opponents" implies the board knows which seat is yours.
 

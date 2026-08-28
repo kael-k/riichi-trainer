@@ -55,7 +55,12 @@
     "showSeatWaits": "Mostra tenpai e attese",
     "language": "Lingua",
     "languageAuto": "Automatica (browser)",
-    "translatedTerms": "Nomi degli yaku tradotti"
+    "translatedTerms": "Nomi degli yaku tradotti",
+    "botDelay": "Attesa avversari",
+    "botDelayInfo": "Gli avversari sono simulati, quindi potrebbero giocare all'istante. Questa attesa ferma il tavolo per un momento a ogni loro turno, come a un tavolo vero dove qualcuno pensa prima di scartare — abbastanza da vedere cosa ha scartato ogni giocatore. Imposta 0 per giocare a piena velocità.",
+    "botDelayOff": "Off",
+    "botDelayValue": "{{seconds}}s",
+    "boardAnimation": "Anima il tavolo"
   },
   "wind": {
     "E": "E",
@@ -93,6 +98,10 @@
       "statistical": "Formula",
       "houou": "Houou"
     },
+    "evChoice": {
+      "statistical": "EV — modello statistico",
+      "houou": "EV — modello Houou di Tenhou"
+    },
     "evModelHint": {
       "statistical": "Ogni prezzo dedotto dalle tessere che nessuno ha visto. Valuta poco le mani avversarie, quindi spinge dove il modello misurato si ritira.",
       "houou": "Ogni prezzo misurato su partite houou di Tenhou. Solo a quattro giocatori — non esistono dati a tre."
@@ -106,13 +115,12 @@
       "points": "Massimizza il punteggio. Stabile, ed è l’unità in cui ogni cifra è più facile da verificare.",
       "placement": "Massimizza il piazzamento finale, così gli stessi punti valgono di più per un posto che ha un piazzamento da guadagnare."
     },
-    "waitingSeat": "In attesa di {{wind}}",
-    "goToSeat": "Vai a {{wind}}",
     "claimPrompt": "{{wind}}: chiamare lo scarto di {{from}}?",
     "claim": {
       "ron": "Ron",
       "pon": "Pon",
       "chi": "Chi",
+      "minkan": "Kan",
       "pass": "Passa"
     },
     "abortPrompt": "{{wind}}: annullare la mano?",
@@ -122,7 +130,16 @@
       "decline": "Continua"
     },
     "riichi": "Riichi",
-    "riichiHint": "Ora scarta una di queste:"
+    "riichiHint": "Ora scarta una di queste:",
+    "call": {
+      "chi": "Chi",
+      "pon": "Pon",
+      "minkan": "Kan",
+      "ankan": "Kan",
+      "riichi": "Riichi",
+      "ron": "Ron",
+      "tsumo": "Tsumo"
+    }
   },
   "table": {
     "wall": "Muro {{count}}",
@@ -212,6 +229,11 @@
       "title": "Laboratorio statistico",
       "desc": "Carica o costruisci qualsiasi mano e guarda la classifica completa — shanten e ukeire di ogni scarto, livello di pericolo di ogni tessera.",
       "intro": "Carica un muro condiviso o costruisci la tua mano, tessera per tessera. Giochi solo i tuoi scarti — gli avversari giocano sempre da soli. Niente viene valutato: vengono mostrate la classifica ukeire completa di ogni scarto e la scomposizione completa del livello di pericolo di ogni tessera, gli stessi numeri che gli altri trainer calcolano e ti mostrano solo in parte."
+    },
+    "match": {
+      "title": "Partita completa",
+      "desc": "Gioca una partita completa, solo Est o hanchan, contro i bot — niente viene valutato, solo la partita.",
+      "intro": "Scegli un formato e un regolamento, scegli chi gioca ogni posto, poi gioca la partita turno dopo turno — rotazione del mazziere, honba, bastoncini riichi e tutto il resto. Niente viene valutato qui: il punteggio è il punteggio."
     }
   },
   "efficiency": {
@@ -505,6 +527,23 @@
       "notWinning": "nessuna vittoria"
     }
   },
+  "match": {
+    "setup": {
+      "format": "Formato",
+      "seats": "Posti",
+      "chooseSeats": "Scegli i posti",
+      "seat": "Posto {{number}}"
+    },
+    "format": {
+      "tonpuu": "Solo Est",
+      "hanchan": "Hanchan"
+    },
+    "start": "Inizia partita",
+    "quit": "Abbandona partita",
+    "over": "Partita conclusa",
+    "newMatch": "Nuova partita",
+    "status": "{{rank}}° su {{players}}"
+  },
   "log": {
     "rewound": "Tornato indietro alla voce {{number}}",
     "wentBack": "Tornato indietro di un passo",
@@ -521,6 +560,18 @@
     "lab": {
       "abort": "Turno {{turn}}: {{wind}} dichiara nove orfani — la mano è annullata",
       "discard": "Turno {{turn}}: scartato {{tile}}"
+    },
+    "match": {
+      "ron": "{{round}}: {{winner}} vince da {{loser}}",
+      "tsumo": "{{round}}: {{wind}} tsumo",
+      "exhaustive": "{{round}}: pareggio per esaurimento",
+      "abort": "{{round}}: mano abbandonata",
+      "delta": "{{wind}}: {{amount}}",
+      "discard": "Turno {{turn}}: {{wind}} scarta {{tile}}",
+      "riichi": "{{wind}} dichiara riichi",
+      "call": "{{wind}}: {{kind}} sulla tessera di {{from}}",
+      "kita": "{{wind}} pesca nord (kita)",
+      "kan": "{{wind}} chiama kan {{tile}}"
     },
     "folding": {
       "safe": "Turno {{turn}}: scartato {{tile}} — {{tier}}, il più sicuro disponibile",

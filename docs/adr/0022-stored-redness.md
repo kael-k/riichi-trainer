@@ -8,14 +8,14 @@ Supersedes [ADR-0003](0003-hand-counts-only.md).
 ## Context
 
 ADR-0003 kept `Hand` counts-only and let redness travel beside it: `PlayerState.reds: Set<TileId>`
-recorded which *kinds* a seat held a red copy of. Kinds, not copies — so every consumer that needed
-to know *which physical tile* was involved re-derived it, from `reds` plus `counts`, in six places
+recorded which _kinds_ a seat held a red copy of. Kinds, not copies — so every consumer that needed
+to know _which physical tile_ was involved re-derived it, from `reds` plus `counts`, in six places
 (the river's tedashi flag, pon/chi meld tiles, ankan, kita, the win's concealed hand, the display
 split). An audit found no live bug; all six happened to be right. They were right independently,
 which is the part that does not survive a seventh consumer.
 
 The same gap forced ADR-0003's one documented exception, `Hand.drawn?: ParsedTile` — the redness of
-*the draw specifically* is not reconstructable from a set of kinds, so the drawn tile had to be
+_the draw specifically_ is not reconstructable from a set of kinds, so the drawn tile had to be
 carried whole, on `Hand`, in a field the shanten hot path never reads.
 
 ## Decision
@@ -33,14 +33,14 @@ with it ADR-0003's exception. Also deleted: `PlayerState.reds` and every read/wr
 parameter, whose one caller passed nothing.
 
 `concealedTiles(player)` was planned for deletion and **kept**: its five display/scoring callers
-want the hand *sorted*, drawn tile in its natural position, and split back out by identity
+want the hand _sorted_, drawn tile in its natural position, and split back out by identity
 (`splitDrawn`) rather than by array position. It is now a sort over `concealed` instead of a
 reconstruction from `counts` + `reds`, which is the whole of what changed for them.
 
 Two things this deliberately does **not** simplify away:
 
 - **`pickTile` stays.** It looked like an inference (`counts[id] === 1` ⇒ that copy) but it encodes
-  a *policy*: given a plain and a red copy of one kind, throw the plain one. It is now an explicit
+  a _policy_: given a plain and a red copy of one kind, throw the plain one. It is now an explicit
   prefer-`!red` find over `concealed` — same behaviour, stated instead of derived.
 - **The duplication is guarded.** `concealed` and `counts` are two records of one fact and can
   drift, so `round.test.ts`'s census asserts, per player, that `concealed` tallies to `counts` per

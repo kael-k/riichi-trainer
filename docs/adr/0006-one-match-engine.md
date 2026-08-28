@@ -28,10 +28,10 @@ gate fails for almost every seat on almost every discard and everything past it 
 - A bug in the hand's bookkeeping is one bug, caught by one census test.
 - Performance is a shared concern, not four: a match is ~17ms, and `standardShanten`'s per-suit
   decomposition (~475x the naive search) is what pays for it.
-- A trainer needing turn-*granularity* control rather than event-granularity cannot use
+- A trainer needing turn-_granularity_ control rather than event-granularity cannot use
   `playMatch` at all — see [ADR-0012](0012-shared-table-layer.md) for how folding handles that.
 
 ## Rejected
 
 Per-trainer engines. Rejected implicitly by never being built; the folding trainer's divergence
-was solved by giving it turn-level access to the *same* engine, not its own.
+was solved by giving it turn-level access to the _same_ engine, not its own.

@@ -10,7 +10,7 @@ import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow } from '../settings/SettingsDialog'
-import { useSettings } from '../settings/settingsStore'
+import { useBotDelay, useSettings } from '../settings/settingsStore'
 import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { WINDS } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
@@ -70,6 +70,7 @@ export function FoldingPage() {
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
+  const pace = useBotDelay()
   // folding always shows the board (reading it is the drill); the reveal gate below
   // withholds real tile ids until `round.finished` or `showOpponentHands`
   const { showOpponentHands, showSeatWaits, threats, opponentWins, seatsEnabled } =
@@ -96,6 +97,7 @@ export function FoldingPage() {
       showOpponentHands,
       showSeatWaits,
       seats: seatConfig,
+      pace,
     }
   }, [
     urlData,
@@ -106,6 +108,7 @@ export function FoldingPage() {
     showOpponentHands,
     showSeatWaits,
     seatConfig,
+    pace,
   ])
 
   const round = useFoldingRound(urlData, options)
@@ -214,16 +217,24 @@ export function FoldingPage() {
         points: round.match.points[seat],
       }
     }
+    // `round.boardHands` is already the reveal gate for a threat: face-down filler at the right
+    // count until `round.finished` or `showOpponentHands`, real tiles after (and always real for a
+    // seat someone plays, `boardHandsOf`'s own `isManual` check). A bystander's tiles are real
+    // throughout, same as an ordinary opponent's elsewhere — and the seat mid-turn holds fourteen,
+    // so its draw is split off into the same small gap the bottom hand already keeps, filler
+    // included (`splitConcealedDrawn` takes the last back when the tiles have no identity)
+    const { tiles: hand, drawn } = splitConcealedDrawn(
+      round.boardHands[seat] ?? [],
+      seat === round.drawnSeat ? round.drawn : undefined,
+    )
     return {
       river,
       melds: round.melds[seat],
       nuki: round.nuki[seat],
       riichi: round.riichi[seat],
-      // `round.boardHands` is already the reveal gate for a threat: face-down filler at the right
-      // count until `round.finished` or `showOpponentHands`, real tiles after (and always real
-      // for a seat someone plays, `boardHandsOf`'s own `isManual` check). A bystander's tiles are
-      // real throughout, same as an ordinary opponent's elsewhere
-      hand: round.boardHands[seat],
+      hand,
+      drawn,
+      tedashi: round.tedashi?.seat === seat ? round.tedashi.tile : undefined,
       concealed: !mine && !showOpponentHands,
       points: round.match.points[seat],
     }
@@ -317,6 +328,7 @@ export function FoldingPage() {
           wallCount={round.liveWall.length}
           honba={round.match.honba}
           activeSeat={round.finished ? undefined : round.acting}
+          call={round.callBanner}
         />
       }
       controls={
@@ -329,7 +341,6 @@ export function FoldingPage() {
             onArmRiichi={round.armRiichi}
             onAnswer={round.answer}
             viewSeat={perspective}
-            onGoTo={setViewSeat}
             ended={round.finished}
           />
         )
@@ -342,6 +353,7 @@ export function FoldingPage() {
           <HandDisplay
             tiles={bottomHand}
             drawn={bottomDrawn}
+            tedashi={round.tedashi?.seat === perspective ? round.tedashi.tile : undefined}
             concealed={bottomConcealed}
             melds={round.melds[perspective]}
             nuki={round.nuki[perspective]}
@@ -365,7 +377,8 @@ export function FoldingPage() {
       end={
         // a claim pending on the hand's final discard holds the round suspended with `end`
         // already derivable — the card waits for the answer, never shares the board with it
-        round.end && !round.claim && (
+        round.end &&
+        !round.claim && (
           <div className="flex flex-col gap-3">
             <div className="rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
               <p className="font-semibold">

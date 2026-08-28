@@ -24,7 +24,7 @@ and every format invented for one of them is a format someone has to learn twice
 - Tests can pin thousands of hands to a seed and stay fast.
 - A log row's copy button, a URL param and a test fixture are the same string, so a bug report is
   a paste.
-- Seeds are no longer the *shared* record for wall-based trainers — that is
+- Seeds are no longer the _shared_ record for wall-based trainers — that is
   [ADR-0005](0005-walls-not-seeds.md) — but they still back random generation and every seeded
   test, and that is deliberate: dropping `buildWall(seed)` would cost the fuzz suites nothing but
   determinism.

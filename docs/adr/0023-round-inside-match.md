@@ -13,7 +13,7 @@ existed with its 300/100 payout maths and was passed a literal `0`. ADR-0009 def
 "additive later", on the ground that a permanently-`undefined` field is one every algorithm has to
 defend against.
 
-No trainer needs any of it today. What needs it is the *contract*: an EV algorithm cannot be
+No trainer needs any of it today. What needs it is the _contract_: an EV algorithm cannot be
 written against a table with no scores, and the statistical lab has nothing to measure without
 one. This is the deferred half arriving, without the trainers that will eventually read it.
 
@@ -28,7 +28,7 @@ deal, draws, discards, a win or an exhaustive draw. A **match** is the game roun
   feature-level `RoundOptions` took per-trainer names (`EfficiencyOptions`, `SoloOptions`,
   `LabOptions`, `FoldingOptions`, `ScoringOptions`) because core wins the collision.
 - `core/match.ts` is now a standalone, pure, ~40-line module: `MatchState { prevalentWind, round,
-  honba, dealerRepeat, dealer, riichiSticks, points }` plus `createMatch(sanma, overrides?)`.
+honba, dealerRepeat, dealer, riichiSticks, points }` plus `createMatch(sanma, overrides?)`.
   Starting points are always assigned — 25000 yonma, 35000 sanma.
 - `RoundOptions.match` is **required**, replacing the old `round: TileId` (now
   `MatchState.prevalentWind`, which pairs with the existing `SeatView.seatWind`).

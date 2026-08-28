@@ -54,8 +54,10 @@ interface SeatStripProps extends SeatButtonProps {
  */
 export function SeatStrip({ read, showWaits, wind, onWatch, ...seatButtonProps }: SeatStripProps) {
   const { t } = useTranslation()
-  const { seat, players, defaultOrientation, config, fallbackModes, viewSeat } = seatButtonProps
-  const mode = resolveSeatConfig(config, players, defaultOrientation, fallbackModes).modes[seat]
+  const { seat, players, defaultOrientation, config, fallbackModes, viewSeat, requireManual } =
+    seatButtonProps
+  const mode = resolveSeatConfig(config, players, defaultOrientation, fallbackModes, requireManual)
+    .modes[seat]
   const yours = seat === viewSeat
 
   return (

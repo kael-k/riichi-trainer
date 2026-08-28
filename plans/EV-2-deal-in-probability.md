@@ -3,14 +3,14 @@
 ## 1. In one paragraph
 
 A player in riichi is waiting on something, and you do not know what. But you know a great deal
-about what they *cannot* be waiting on: anything in their own discards, anything whose shape needs
+about what they _cannot_ be waiting on: anything in their own discards, anything whose shape needs
 a tile all four copies of which are already face up, anything that would make them furiten. So list
 every wait they could still hold, give each one a weight — how common that kind of wait is, times
 how many ways they could physically be holding it out of the tiles nobody has seen — cross out the
 impossible ones, and normalise. The chance a given tile deals in is then just the sum of the
 weights of the waits that contain it. That sum is the number, and its terms are the explanation:
-*1p is 3.1% — 1.5% that it is a tanki, 1.5% a shanpon, 0.1% kokushi, and nothing else, because the
-3p wall killed every run that could have wanted it.*
+_1p is 3.1% — 1.5% that it is a tanki, 1.5% a shanpon, 0.1% kokushi, and nothing else, because the
+3p wall killed every run that could have wanted it._
 
 ## 2. What it computes, and what it refuses to
 
@@ -26,16 +26,16 @@ would trust. See `EV-5`.
 
 For a candidate tile `t` of rank `r` in its suit, every shape that could be waiting on it:
 
-| Hypothesis   | The threat holds     | Waits on           | Exists when          |
-| ------------ | -------------------- | ------------------ | -------------------- |
-| ryanmen up   | `r+1, r+2`           | `r`, `r+3`         | `r ≤ 6`              |
-| ryanmen down | `r−2, r−1`           | `r−3`, `r`         | `r ≥ 4`              |
-| sanmenchan   | `r+1,r+2,r+4,r+5`    | `r`, `r+3`, `r+6`  | `r ≤ 3`              |
-| kanchan      | `r−1, r+1`           | `r`                | `2 ≤ r ≤ 8`          |
-| penchan      | `1,2` or `8,9`       | `3` or `7`         | `r ∈ {3, 7}`         |
-| tanki        | `r`                  | `r`                | always               |
-| shanpon      | `r, r`               | `r`                | always               |
-| kokushi      | `t`                  | `t`                | `t` terminal/honour  |
+| Hypothesis   | The threat holds  | Waits on          | Exists when         |
+| ------------ | ----------------- | ----------------- | ------------------- |
+| ryanmen up   | `r+1, r+2`        | `r`, `r+3`        | `r ≤ 6`             |
+| ryanmen down | `r−2, r−1`        | `r−3`, `r`        | `r ≥ 4`             |
+| sanmenchan   | `r+1,r+2,r+4,r+5` | `r`, `r+3`, `r+6` | `r ≤ 3`             |
+| kanchan      | `r−1, r+1`        | `r`               | `2 ≤ r ≤ 8`         |
+| penchan      | `1,2` or `8,9`    | `3` or `7`        | `r ∈ {3, 7}`        |
+| tanki        | `r`               | `r`               | always              |
+| shanpon      | `r, r`            | `r`               | always              |
+| kokushi      | `t`               | `t`               | `t` terminal/honour |
 
 Two things worth not re-deriving wrong, both of which `core/danger.ts` already states in prose and
 this model states in arithmetic:
@@ -55,12 +55,12 @@ weight(w)  =  prior(shape, index rank)  ×  A(w)
 `A(w)` counts the ways the threat could physically be holding that shape out of the unseen tiles,
 where `u(x) = 4 − visible[x]`:
 
-| Shape                        | `A`                          |
-| ---------------------------- | ---------------------------- |
-| two-tile run (ryanmen etc.)  | `u(a) · u(b)`                |
-| sanmenchan (four tiles)      | `u(a)·u(b)·u(c)·u(d)`        |
-| tanki                        | `u(t)`                       |
-| shanpon                      | `C(u(t), 2)`                 |
+| Shape                       | `A`                   |
+| --------------------------- | --------------------- |
+| two-tile run (ryanmen etc.) | `u(a) · u(b)`         |
+| sanmenchan (four tiles)     | `u(a)·u(b)·u(c)·u(d)` |
+| tanki                       | `u(t)`                |
+| shanpon                     | `C(u(t), 2)`          |
 
 **`A` is where the wall enters quantitatively.** `u(a) = 0` makes a shape impossible — that is
 `noChance`. `u(a) = 1` makes it merely rare — that is `oneChance`, and the difference between a
@@ -75,8 +75,8 @@ w is dead  if  waits(w) ∩ (threat.discards ∪ threat.passed) ≠ ∅
 
 That single line produces both tiers people learn separately:
 
-- **genbutsu** — `t` itself is in the set, so *every* hypothesis containing `t` dies. `P(t) = 0`.
-- **suji** — the far end of one ryanmen is in the set, so *that one hypothesis* dies and the rest do
+- **genbutsu** — `t` itself is in the set, so _every_ hypothesis containing `t` dies. `P(t) = 0`.
+- **suji** — the far end of one ryanmen is in the set, so _that one hypothesis_ dies and the rest do
   not. This is exactly why a suji tile is around 3% rather than 0%: kanchan, tanki and shanpon are
   untouched by a suji argument, which is the reason **no tier below genbutsu may ever read as
   "safe"**.
@@ -101,7 +101,7 @@ P(deal in with t)  =  P(t ∈ waits(W))  =  Σ_{w : t ∈ waits(w)}  P(W = w)
 ```
 
 A ryanmen contributes to two tiles and a sanmenchan to three, so these events overlap and
-`Σ_t P(deal in with t)` is **not** 1 — it is the expected number of wait *kinds*, and that gives a
+`Σ_t P(deal in with t)` is **not** 1 — it is the expected number of wait _kinds_, and that gives a
 free and very strong validation check (§8).
 
 Several threats take the union, not the worst:
@@ -127,16 +127,16 @@ visible. You hold one 1p, so `u(1p) = 3`; everything else in pin is `u = 4`.
 
 **1p — the case from the original question.**
 
-| Hypothesis        | Holds      | Waits    | `A`  | Verdict            |
-| ----------------- | ---------- | -------- | ---- | ------------------ |
-| ryanmen up        | `2p 3p`    | 1p, 4p   | 0    | **dead** — 3p wall |
-| sanmenchan        | `2p3p5p6p` | 1p,4p,7p | 0    | **dead** — 3p wall |
-| ryanmen down      | —          | —        | —    | off the suit       |
-| kanchan           | —          | —        | —    | rank 1 has none    |
-| penchan           | —          | —        | —    | only ranks 3, 7    |
-| tanki             | `1p`       | 1p       | 3    | live               |
-| shanpon           | `1p 1p`    | 1p       | `C(3,2)=3` | live         |
-| kokushi           | `1p`       | 1p       | 3    | live, tiny prior   |
+| Hypothesis   | Holds      | Waits    | `A`        | Verdict            |
+| ------------ | ---------- | -------- | ---------- | ------------------ |
+| ryanmen up   | `2p 3p`    | 1p, 4p   | 0          | **dead** — 3p wall |
+| sanmenchan   | `2p3p5p6p` | 1p,4p,7p | 0          | **dead** — 3p wall |
+| ryanmen down | —          | —        | —          | off the suit       |
+| kanchan      | —          | —        | —          | rank 1 has none    |
+| penchan      | —          | —        | —          | only ranks 3, 7    |
+| tanki        | `1p`       | 1p       | 3          | live               |
+| shanpon      | `1p 1p`    | 1p       | `C(3,2)=3` | live               |
+| kokushi      | `1p`       | 1p       | 3          | live, tiny prior   |
 
 Exactly the decomposition the question asked for: with every run shape walled off, 1p is a tanki, a
 shanpon or a kokushi and nothing else.
@@ -167,15 +167,15 @@ each other and letting the difference be the lesson.
 `chienshyong/houou-statistics`, `results/WaitDistribution.csv`, from 893,440 Tenhou houou four-player
 hanchan logs. Closed-riichi block, computed this session:
 
-| Shape       | Hands    | Share of enumerated waits |
-| ----------- | -------- | ------------------------- |
-| ryanmen     | 76 208   | 55.4 %                    |
-| kanchan     | 23 168   | 16.8 %                    |
-| shanpon     | 15 067   | 11.0 %                    |
-| tanki       | 8 365    | 6.1 %                     |
-| sanmenchan  | 8 173    | 5.9 %                     |
-| penchan     | 6 586    | 4.8 %                     |
-| **total**   | **137 567** | ryanmen + sanmenchan = **61.3 %** |
+| Shape      | Hands       | Share of enumerated waits         |
+| ---------- | ----------- | --------------------------------- |
+| ryanmen    | 76 208      | 55.4 %                            |
+| kanchan    | 23 168      | 16.8 %                            |
+| shanpon    | 15 067      | 11.0 %                            |
+| tanki      | 8 365       | 6.1 %                             |
+| sanmenchan | 8 173       | 5.9 %                             |
+| penchan    | 6 586       | 4.8 %                             |
+| **total**  | **137 567** | ryanmen + sanmenchan = **61.3 %** |
 
 137 567 enumerated + 4 894 complex waits = **142 461**, which is the file's own `Total riichi`
 exactly. The enumeration is complete and each hand is counted once.
@@ -193,21 +193,21 @@ only at 3 and 7, kanchan at 2–8. Three extraction caveats the confirmation sur
 - Shanpon is a 10×10 wait-pair matrix; the per-rank column below is its marginal — extraction must
   sum the matrix, not read a column.
 
-Expanding by the convention gives what the model actually wants, hands whose wait set *contains*
+Expanding by the convention gives what the model actually wants, hands whose wait set _contains_
 each rank (all three numbered suits aggregated):
 
-| Rank | sanmenchan | ryanmen | penchan | kanchan | tanki | shanpon | total  |
-| ---- | ---------- | ------- | ------- | ------- | ----- | ------- | ------ |
-| 1    | 2 735      | 11 177  | 0       | 0       | 734   | 2 654   | 17 300 |
-| 2    | 2 756      | 12 740  | 0       | 3 604   | 595   | 2 709   | 22 404 |
-| 3    | 2 682      | 14 199  | 3 237   | 3 646   | 620   | 2 217   | 26 601 |
-| 4    | 2 735      | 25 189  | 0       | 3 004   | 232   | 2 148   | 33 308 |
-| 5    | 2 756      | 25 428  | 0       | 2 489   | 639   | 2 634   | 33 946 |
-| 6    | 2 682      | 25 591  | 0       | 2 968   | 225   | 2 151   | 33 617 |
-| 7    | 2 735      | 14 012  | 3 349   | 3 737   | 650   | 2 269   | 26 752 |
-| 8    | 2 756      | 12 688  | 0       | 3 720   | 647   | 2 777   | 22 588 |
-| 9    | 2 682      | 11 392  | 0       | 0       | 712   | 2 736   | 17 522 |
-| honour | 0        | 0       | 0       | 0       | 3 311 | 6 612   | 9 923  |
+| Rank   | sanmenchan | ryanmen | penchan | kanchan | tanki | shanpon | total  |
+| ------ | ---------- | ------- | ------- | ------- | ----- | ------- | ------ |
+| 1      | 2 735      | 11 177  | 0       | 0       | 734   | 2 654   | 17 300 |
+| 2      | 2 756      | 12 740  | 0       | 3 604   | 595   | 2 709   | 22 404 |
+| 3      | 2 682      | 14 199  | 3 237   | 3 646   | 620   | 2 217   | 26 601 |
+| 4      | 2 735      | 25 189  | 0       | 3 004   | 232   | 2 148   | 33 308 |
+| 5      | 2 756      | 25 428  | 0       | 2 489   | 639   | 2 634   | 33 946 |
+| 6      | 2 682      | 25 591  | 0       | 2 968   | 225   | 2 151   | 33 617 |
+| 7      | 2 735      | 14 012  | 3 349   | 3 737   | 650   | 2 269   | 26 752 |
+| 8      | 2 756      | 12 688  | 0       | 3 720   | 647   | 2 777   | 22 588 |
+| 9      | 2 682      | 11 392  | 0       | 0       | 712   | 2 736   | 17 522 |
+| honour | 0          | 0       | 0       | 0       | 3 311 | 6 612   | 9 923  |
 
 The middle ranks carry roughly twice the ryanmen exposure of the ends, which is the quantitative
 version of `NON_SUJI_DISTANCE` in `danger.ts` — and it is measured rather than chosen.
@@ -219,7 +219,7 @@ non-suji down toward the published 5–6%.
 
 ### The river is evidence — the v2 seam
 
-The prior is static: it does not change with what the threat discarded. But the river *is* evidence
+The prior is static: it does not change with what the threat discarded. But the river _is_ evidence
 about the hand — a riichi declared on 8p makes near-8p waits likelier (`RiichiTile.csv`), a tile
 outside an early discard is measurably safer (`Sotogawa.csv`), an honour tedashi narrows the shape
 (`TedashiReading.csv`). The weight formula admits this as a likelihood factor without changing
@@ -238,7 +238,7 @@ wrong in an instructive way. Two symptoms:
   shape's `16`.
 
 **Cause: the prior and the availability term are not independent.** The empirical counts were
-measured over real boards, so they *already* integrate over typical availability. Multiplying by an
+measured over real boards, so they _already_ integrate over typical availability. Multiplying by an
 absolute `A` counts it twice, and it counts it hardest for the shapes with the most tiles in them.
 
 **Fix: availability enters as a ratio to its own neutral value.**
@@ -249,7 +249,7 @@ weight(w) = prior(shape, rank) × A(w) / A_neutral(w)
 A_neutral:  two-tile run 16 · sanmenchan 256 · tanki 4 · shanpon C(4,2)=6
 ```
 
-With nothing visible the ratio is 1 and the model reproduces the empirical marginals *exactly*; as
+With nothing visible the ratio is 1 and the model reproduces the empirical marginals _exactly_; as
 tiles become visible it deviates, and only then. This is the right shape for the whole design: the
 empirical layer sets the level, the combinatorial layer supplies the deviation from it.
 
@@ -259,7 +259,7 @@ preserve, and its whole point is to show what pure availability says on its own.
 ## 9. Validation targets
 
 - **Wait width.** `Σ_t P(deal in with t)` must land near **1.773 kinds** with nothing visible, and
-  the file's `Riichi width avg = 6.409887618` *tiles* is the same fact at ~3.6 unseen copies per
+  the file's `Riichi width avg = 6.409887618` _tiles_ is the same fact at ~3.6 unseen copies per
   kind. This one check catches the §8 error immediately and should be the first test written.
 - Genbutsu is exactly `0`, every term marked dead.
 - A full kabe kills every run term and leaves tanki/shanpon alive — the model must not call it safe.
@@ -273,8 +273,8 @@ preserve, and its whole point is to show what pure availability says on its own.
 ## 10. Sketch of the module this specifies
 
 ```ts
-export type WaitShape = 'ryanmen' | 'sanmenchan' | 'kanchan' | 'penchan'
-                      | 'tanki' | 'shanpon' | 'kokushi'
+export type WaitShape =
+  'ryanmen' | 'sanmenchan' | 'kanchan' | 'penchan' | 'tanki' | 'shanpon' | 'kokushi'
 
 export interface DealInTerm {
   shape: WaitShape
@@ -288,13 +288,21 @@ export interface DealInTerm {
   dead?: 'genbutsu' | 'suji' | 'kabe'
 }
 
-export interface DealInRisk { tile: TileId; probability: number; terms: DealInTerm[] }
+export interface DealInRisk {
+  tile: TileId
+  probability: number
+  terms: DealInTerm[]
+}
 
-export function dealInRisk(threat: ThreatView, visible: Uint8Array,
-                           sanma: boolean, prior?: ShapePrior): DealInRisk[]
+export function dealInRisk(
+  threat: ThreatView,
+  visible: Uint8Array,
+  sanma: boolean,
+  prior?: ShapePrior,
+): DealInRisk[]
 export function combineThreats(risks: DealInRisk[][]): DealInRisk[]
 export const UNIFORM_PRIOR: ShapePrior
-export const HOUOU_PRIOR: ShapePrior     // provenance in the comment above it
+export const HOUOU_PRIOR: ShapePrior // provenance in the comment above it
 ```
 
 - Takes `ThreatView` unchanged; `threatViews(state)` in `round.ts` already builds them.

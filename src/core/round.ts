@@ -3,7 +3,7 @@ import { ALGORITHMS, type AIAlgorithm, type SeatView, type WinCandidate } from '
 import { DEFAULT_EV_SEAT, type EvSeat } from './ev'
 import type { ThreatView } from './danger'
 import { addTile, createHand, removeTile, type Hand } from './hand'
-import type { MatchState } from './match'
+import type { MatchState, RoundResult } from './match'
 import {
   availableCalls,
   isFuriten,
@@ -86,6 +86,13 @@ export interface RoundOptions {
    *  trainer that interrupted every ponnable tile with a prompt would be grading a different
    *  skill. The free-play boards turn it on. Independent of `calls`, which is about the AI. */
   claims?: boolean
+  /** Called kan — daiminkan (kan on a discard, via `claimOptions`/`answerClaim`) and kakan (a
+   *  seat's own added kan on a pon it already holds, via `callKakan`). **Ruleset, not permission**
+   *  (ADR-0038's own distinction): defaults `false`, set `true` only by the match trainer's own
+   *  `RoundOptions`, so every graded drill's golden hash is untouched. `chooseCall` never sees the
+   *  flag at all, so an AI seat never takes a minkan regardless of its value. Chankan (ron on a
+   *  kakan's added tile) is **not** modelled — `callKakan`'s own doc comment names the gap. */
+  calledKan?: boolean
 }
 
 /** Whether the engine must stop and ask instead of deciding for `seat`. */
@@ -142,11 +149,12 @@ export interface WinRecord {
 }
 
 /** One thing a seat may do with the tile someone else just discarded. `from` names the caller's
- *  own tiles that would join it — empty for a ron, two tiles for a pon or chi. Daiminkan is
- *  absent on purpose: the engine models no called kan at all (`chooseCall` never offers one
- *  either), so offering it to a manual seat alone would be the one call the AI seats cannot answer. */
+ *  own tiles that would join it — empty for a ron, two tiles for a pon or chi, three for a
+ *  minkan. Daiminkan only ever appears here under `RoundOptions.calledKan` (match-only,
+ *  ADR-0010): `chooseCall` never offers one to an AI seat regardless of the flag, so offering it
+ *  to a manual seat alone would be the one call the AI seats cannot answer everywhere else. */
 export interface ClaimOption {
-  kind: 'ron' | 'pon' | 'chi'
+  kind: 'ron' | 'pon' | 'chi' | 'minkan'
   from: TileId[]
 }
 
@@ -154,7 +162,10 @@ export interface ClaimOption {
  *  included — which is what puts the seat in temporary furiten, exactly as declining costs an AI
  *  seat its ron. */
 export type ClaimAnswer =
-  { kind: 'pass' } | { kind: 'ron' } | { kind: 'pon' | 'chi'; from: TileId[] } | { kind: 'abort' }
+  | { kind: 'pass' }
+  | { kind: 'ron' }
+  | { kind: 'pon' | 'chi' | 'minkan'; from: TileId[] }
+  | { kind: 'abort' }
 
 /**
  * The decision the board is waiting on. While `RoundState.claim` is set the turn is suspended:
@@ -205,22 +216,27 @@ export type RoundEvent =
   | { kind: 'abort'; seat: number; reason: 'kyuushu' }
   | { kind: 'kita'; seat: number; tile: ParsedTile | undefined }
   | { kind: 'ankan'; seat: number; tile: TileId; replacement: ParsedTile | undefined }
+  /** A kakan — `seat`'s own added kan on a pon it already holds (`callKakan`), match-only
+   *  (`RoundOptions.calledKan`). `'call'` above already carries daiminkan (a called kan is just
+   *  another `Call.kind`); this is the acting seat's own-turn action, so it mirrors `'ankan'`
+   *  rather than `'call'`. */
+  | { kind: 'kakan'; seat: number; tile: TileId; replacement: ParsedTile | undefined }
 
 /** One seat's decision, logged the instant it's made — discard (with `fromDrawn`/`riichi`, the
- *  ground truth Phase 1 put on `Hand.drawn`), pon/chi (`Call` reused verbatim from `policy.ts`,
- *  since it's already the exact shape a replayed claim answer needs), kita, closed kan, and a win
- *  (tsumo when `from` is absent). No `kakan` — nothing in this engine models one (`buildContext`
- *  hardcodes `chankan: false`); no `pass`/decline — a claim nobody answered is already derivable
- *  by comparing who *could* have claimed against who's in the log (`resolveReactions` already does
- *  exactly this for `missedWin`), so logging silence would only be logging what `replayLog`
- *  (below) can already recompute. An `abort` entry is the one decision that ends the hand without
- *  anyone winning, and it is logged for the same reason a win is: nothing else in the log says the
- *  hand stopped there rather than being truncated. */
+ *  ground truth Phase 1 put on `Hand.drawn`), pon/chi/minkan (`Call` reused verbatim from
+ *  `policy.ts`, since it's already the exact shape a replayed claim answer needs), kita, closed
+ *  kan, kakan, and a win (tsumo when `from` is absent). No `pass`/decline — a claim nobody
+ *  answered is already derivable by comparing who *could* have claimed against who's in the log
+ *  (`resolveReactions` already does exactly this for `missedWin`), so logging silence would only
+ *  be logging what `replayLog` (below) can already recompute. An `abort` entry is the one
+ *  decision that ends the hand without anyone winning, and it is logged for the same reason a win
+ *  is: nothing else in the log says the hand stopped there rather than being truncated. */
 export type LogEntry =
   | { kind: 'discard'; seat: number; tile: ParsedTile; fromDrawn: boolean; riichi: boolean }
   | { kind: 'call'; seat: number; from: number; call: Call }
   | { kind: 'kita'; seat: number }
   | { kind: 'ankan'; seat: number; tile: TileId }
+  | { kind: 'kakan'; seat: number; tile: TileId }
   | { kind: 'win'; seat: number; from?: number }
   | { kind: 'abort'; seat: number }
 
@@ -528,7 +544,12 @@ function buildContext(
     ippatsu: riichi && player.ippatsu,
     haitei: tsumo && state.liveWall.length === 0,
     houtei: !tsumo && state.liveWall.length === 0,
-    // no kakan is modelled, so a replacement-tile win is always rinshan and never chankan
+    // rinshan kaihou is unimplemented: `callAnkan`/`callKita`/`callKakan` draw a replacement but
+    // never check `tryWin` against it, so a hand completed by that draw goes unnoticed rather
+    // than mis-scored — always false here, correctly, because the case never reaches this
+    // function at all yet. Chankan (ron on a kakan's added tile) is a separate, real gap: kakan
+    // exists (`callKakan`) but nothing offers other seats a ron on the tile it adds — see that
+    // function's own doc comment.
     rinshan: false,
     chankan: false,
     winTile,
@@ -768,8 +789,10 @@ export function callKita(state: RoundState, options: RoundOptions, seat: number)
 /** A manual (or replayed) seat calling a closed kan on a held quad — same reasoning as `callKita`:
  *  mutation and log entry together, formerly hand-mutated by `useTableRound.ts#kan`. No `options`
  *  parameter — unlike every other decision point here, nothing about ankan's legality or effect
- *  depends on any `RoundOptions` field (no wait-preserving-kan rule is modelled, same as kakan
- *  simply not existing) — so it is deliberately absent rather than threaded in unused. */
+ *  depends on any `RoundOptions` field (no wait-preserving-kan rule is modelled) — so it is
+ *  deliberately absent rather than threaded in unused. Ankan is legal regardless of
+ *  `RoundOptions.calledKan`, which only gates the two genuinely *new* meld types below
+ *  (`callKakan`, and daiminkan inside `resolveReactions`) — closed kan was always in this engine. */
 export function callAnkan(state: RoundState, seat: number, id: TileId): RoundEvent[] {
   if (state.ended || state.claim || seat !== state.seat) return []
   const player = state.players[seat]
@@ -805,12 +828,78 @@ export function callAnkan(state: RoundState, seat: number, id: TileId): RoundEve
   ]
 }
 
+/**
+ * A manual (or replayed) seat upgrading its own open pon into a kan (kakan/加槓) by adding the
+ * fourth copy it now holds — match-only (`RoundOptions.calledKan`), same reasoning as daiminkan.
+ * Mirrors `callAnkan`'s shape (mutate, log, flip a kan dora, draw a replacement) but upgrades an
+ * existing meld rather than building a fresh one, and does **not** touch `hand.melds` — the pon
+ * already counted as one completed block; kakan only changes what that block is worth.
+ *
+ * **Chankan is not modelled.** A real kakan briefly exposes the added tile to every other seat's
+ * ron before the kan completes; this engine skips straight to completing it. The gap is narrow
+ * (chankan is rare) but real — flagged in `docs/STATUS.md` rather than built here, since wiring a
+ * third `PendingClaim` shape through `answerClaim`/`reconsiderClaim`/`replayLog` for one rare yaku
+ * is a second, much larger change (`buildContext`'s own comment names the other half). The meld
+ * is replaced, never mutated in place, because `core/table.ts#snapshotTable` shallow-copies
+ * `melds` per seat but keeps the same `Meld` objects — mutating one in place would silently
+ * corrupt an already-taken snapshot still holding that reference.
+ */
+export function callKakan(
+  state: RoundState,
+  options: RoundOptions,
+  seat: number,
+  id: TileId,
+): RoundEvent[] {
+  if (!options.calledKan || state.ended || state.claim || seat !== state.seat) return []
+  const player = state.players[seat]
+  const idx = player.melds.findIndex((m) => m.kind === 'pon' && m.tiles[0].id === id)
+  if (idx < 0 || player.hand.counts[id] < 1) return []
+
+  const added: ParsedTile = { id, red: player.concealed.some((t) => t.id === id && t.red) }
+  removeTile(player.hand, id)
+  removeConcealed(player, added)
+  const meld = player.melds[idx]
+  player.melds[idx] = { kind: 'minkan', tiles: [...meld.tiles, added].sort((a, b) => a.id - b.id) }
+  state.visible[id]++
+
+  const indicator = state.doraStack.shift()
+  if (indicator) {
+    state.doraIndicators.push(indicator)
+    state.visible[indicator.id]++
+  }
+  state.log.push({ kind: 'kakan', seat, tile: id })
+  const replacement = drawReplacement(state, player)
+  return [
+    { kind: 'kakan', seat, tile: id, replacement },
+    ...(replacement ? [{ kind: 'draw', seat, tile: replacement } as const] : []),
+  ]
+}
+
 /** How many tiles have left `liveWallSnapshot` from the front — real draws, as opposed to the
  *  `replacements` more that left off the tail to backfill the dead wall after a kan. Derived
  *  rather than stored: `liveWall.length` already nets both out, so front-only is what's left
  *  once `replacements` is subtracted back out. What the wall-reveal display greys. */
 export function wallDrawnCount(state: RoundState): number {
   return state.liveWallSnapshot.length - state.liveWall.length - state.replacements
+}
+
+/** The ended round's result in the shape `settleRound` (`core/match.ts`) consumes.
+ *  `undefined` while the hand is still running. Tenpai (exhaustive draw only) is read straight
+ *  off every seat's 13-tile hand — nobody has a pending draw at that point, `beginTurn` sets
+ *  `state.ended` the moment it finds the wall dry, before drawing. */
+export function roundResult(state: RoundState): RoundResult | undefined {
+  if (state.ended === 'win' && state.win) {
+    const { seat, from, score } = state.win
+    return { ended: 'win', win: { seat, from, payments: score.payments } }
+  }
+  if (state.ended === 'exhaustive') {
+    const tenpai = state.players
+      .map((player, seat) => (shanten(player.hand) === 0 ? seat : -1))
+      .filter((seat) => seat >= 0)
+    return { ended: 'exhaustive', tenpai }
+  }
+  if (state.ended === 'abort') return { ended: 'abort' }
+  return undefined
 }
 
 /**
@@ -1025,7 +1114,7 @@ function resolveReactions(
       const answer = answers[other]
       const call: Call | null =
         caller.algorithm === 'manual'
-          ? answer && (answer.kind === 'pon' || answer.kind === 'chi')
+          ? answer && (answer.kind === 'pon' || answer.kind === 'chi' || answer.kind === 'minkan')
             ? { kind: answer.kind, from: answer.from }
             : null
           : ALGORITHMS[caller.algorithm].call(
@@ -1055,9 +1144,22 @@ function resolveReactions(
       // a call kills every outstanding ippatsu
       for (const p of state.players) p.ippatsu = false
 
+      events.push({ kind: 'call', seat: other, from: discarder, meld })
+      // a minkan is a kan like any other: it flips a kan dora and draws a replacement before the
+      // caller owes its discard — same tail `callAnkan`/`callKakan` run, folded in here rather
+      // than duplicated a third time
+      if (call.kind === 'minkan') {
+        const indicator = state.doraStack.shift()
+        if (indicator) {
+          state.doraIndicators.push(indicator)
+          state.visible[indicator.id]++
+        }
+        const replacement = drawReplacement(state, caller)
+        if (replacement) events.push({ kind: 'draw', seat: other, tile: replacement })
+      }
+
       state.seat = other
       state.pendingDraw = false
-      events.push({ kind: 'call', seat: other, from: discarder, meld })
       return events
     }
   }
@@ -1084,7 +1186,7 @@ export function claimOptions(
   if (tryWin(state, seat, options, tile, false, from)) claims.push({ kind: 'ron', from: [] })
   if (options.calls && player.riichiAt === undefined) {
     const fromKamicha = seat === (from + 1) % state.players.length
-    for (const call of availableCalls(player.hand, tile.id, fromKamicha)) {
+    for (const call of availableCalls(player.hand, tile.id, fromKamicha, options.calledKan)) {
       claims.push({ kind: call.kind, from: call.from })
     }
   }
@@ -1296,18 +1398,20 @@ export function replayLog(
       if (state.ended) break
     }
 
-    // a kita/ankan pull draws a replacement, and — for an *AI*-decided seat — `beginTurn`'s own
-    // loop prices a tsumo off whatever tile that replacement turns out to be, same as the initial
-    // draw. Replaying a seat's own kita/ankan pulls one at a time via `callKita`/`callAnkan` (which
-    // never check for a win themselves — a real manual seat's tsumo off a kita pull isn't an
-    // engine-level concept at all, only an AI's automatic loop prices it) has to reproduce that
-    // same check by hand after each pull, or an AI seat's tsumo-off-a-kita-replacement never fires
-    // during replay.
+    // a kita/ankan/kakan pull draws a replacement, and — for an *AI*-decided seat — `beginTurn`'s
+    // own loop prices a tsumo off whatever tile that replacement turns out to be, same as the
+    // initial draw. Replaying a seat's own pulls one at a time via `callKita`/`callAnkan`/
+    // `callKakan` (which never check for a win themselves — a real manual seat's tsumo off a kita
+    // pull isn't an engine-level concept at all, only an AI's automatic loop prices it) has to
+    // reproduce that same check by hand after each pull, or an AI seat's tsumo-off-a-replacement
+    // never fires during replay.
     while (i < log.length) {
       const entry = log[i]
       if (entry.kind === 'kita' && entry.seat === seat) emit(callKita(state, replayOptions, seat))
       else if (entry.kind === 'ankan' && entry.seat === seat)
         emit(callAnkan(state, seat, entry.tile))
+      else if (entry.kind === 'kakan' && entry.seat === seat)
+        emit(callKakan(state, replayOptions, seat, entry.tile))
       else break
       i++
 
@@ -1407,12 +1511,18 @@ export function* stepRound(
   state: RoundState,
   options: RoundOptions,
   canAct?: (state: RoundState) => boolean,
+  /** Forwarded verbatim to `finishTurn`. The one moment a driver can observe a discard sitting on
+   *  the river with nobody having reacted to it yet: `finishTurn` resolves the whole turn before
+   *  it yields anything, so by the time the `discard` event arrives the pon that took that tile
+   *  has already popped it back off. A paced board commits that frame, so a claimed tile is seen
+   *  where it landed rather than only in the meld it ends up in. */
+  beforeReactions?: (state: RoundState) => void,
 ): Generator<RoundEvent> {
   for (let guard = 0; guard < 400; guard++) {
     if (state.ended || state.claim) return
     if (canAct && !canAct(state)) return
     if (state.players[state.seat].drawn === undefined) yield* beginTurn(state, options)
-    yield* finishTurn(state, options)
+    yield* finishTurn(state, options, undefined, false, beforeReactions)
   }
 }
 

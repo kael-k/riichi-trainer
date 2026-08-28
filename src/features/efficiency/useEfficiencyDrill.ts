@@ -33,6 +33,9 @@ export interface EfficiencyDrillInput {
   /** "The reader can see everyone's tiles" — solo has no board to reveal, so it never passes
    *  this. */
   showReads?: boolean
+  /** `useRound`'s pacing beat, in milliseconds. Solo never passes it: one seat, no opponents,
+   *  nothing to wait for. */
+  pace?: number
 }
 
 /** Drives one efficiency round on top of `useRound`: dealing, replay and the go-round loop all
@@ -151,6 +154,7 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     options,
     replay: situation.log,
     showReads,
+    pace: input.pace,
     onEvent,
   })
 
@@ -242,6 +246,8 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     table,
     snapshot,
     seatIndex,
+    callBanner: table.callBanner,
+    tedashi: table.tedashi,
     /** Whose hand is on screen — `seatIndex` unless a second seat was set to manual. Always
      *  `seatIndex` in solo, since there is no other seat. */
     acting,

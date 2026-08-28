@@ -6,7 +6,7 @@
 ## Context
 
 Every wall-based trainer's link carried `wall` + **your own** past discards
-(`Situation.river` / `FoldingUrl.discards`). On replay, every *other* seat was re-simulated fresh
+(`Situation.river` / `FoldingUrl.discards`). On replay, every _other_ seat was re-simulated fresh
 by whatever algorithm it happens to be running today. Since seat algorithms are live and flippable
 mid-hand ([ADR-0008](0008-algorithms-are-live.md)), that re-simulation stopped being guaranteed to
 reproduce the original board — a flip after the link was generated silently changed what the link
@@ -36,13 +36,13 @@ unconditional — see [ADR-0008](0008-algorithms-are-live.md) — so replaying a
 `tsumogiri` decline needs an explicit way to say so; the driver decides it by peeking whether the
 next log entry is that seat's own win).
 
-`options.claims` is *also* forced on for the duration: `resolveReactions`' ask-loop only ever
+`options.claims` is _also_ forced on for the duration: `resolveReactions`' ask-loop only ever
 suspends for a manual seat when `claims` is set, which is the machinery a log-driven answer needs.
 Without it, a live match played entirely by algorithms (`claims` off, the ordinary case) would
 replay with every claim silently auto-passed. The one place this needed a second look: once a real,
 log-matched answer has settled a discard's claim, every seat still to be asked is provably
 irrelevant (seat-order priority) and safe to auto-pass even past the log's own end — and when the
-*caller's real* `options.claims` was off, an unresolved claim at the log's end can never represent a
+_caller's real_ `options.claims` was off, an unresolved claim at the log's end can never represent a
 genuinely pending human decision (that flag gates whether asking ever happens at all), so it always
 auto-passes regardless of the wall. Only when the real `claims` was on can the log legitimately end
 exactly mid-decision, for the live UI to resume — replay must never invent a pass there (it sets
@@ -69,7 +69,7 @@ shipped and been exercised.
   [ADR-0020](0020-no-back-compat-pre-release.md).
 - `useTableRound.ts#buildRound` and `useFoldingRound.ts#buildRound` both need a tail
   (`goRound`+`beginTurn`, guarded on `hand.drawn === undefined`) to reach the next live decision
-  point once replay is exhausted — `replayLog` only ever reconstructs what's *in* the log.
+  point once replay is exhausted — `replayLog` only ever reconstructs what's _in_ the log.
   `useTableRound.ts` additionally has to recognise a log that ends exactly where `stopAtTenpai`
   would have stopped a live round, or its own tail would silently keep playing a round a real
   session never reached.

@@ -1,12 +1,16 @@
-import { Moon, Settings, Sun, SunMoon, X } from 'lucide-react'
+import { HelpCircle, Moon, Settings, Sun, SunMoon, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
+import { InfoPopover } from '../../components/InfoPopover'
 import { ChromeLabel, CHROME_BUTTON } from '../../components/TrainerControls'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 import { resolveLocale } from '../i18n'
 import {
+  BOT_DELAY_MAX,
+  BOT_DELAY_STEP,
+  DEFAULT_BOT_DELAY,
   DEFAULT_TILE_SCALE,
   LOCALES,
   SIZABLE_QUERY,
@@ -105,6 +109,18 @@ export function UiSettings() {
   const setTranslatedTerms = useSettings((s) => s.setTranslatedTerms)
   const glossaryOnClick = useSettings((s) => s.glossaryOnClick)
   const setGlossaryOnClick = useSettings((s) => s.setGlossaryOnClick)
+  // how fast the opponents play and whether the board moves are one preference for the whole app,
+  // not a property of any one trainer's board — top-level setters, and this section rather than
+  // Table so they are reachable from the home screen like every other reading preference
+  const botDelay = useSettings((s) => s.botDelay) ?? DEFAULT_BOT_DELAY
+  const setBotDelay = useSettings((s) => s.setBotDelay)
+  // the delay is behind Advanced: a beginner should never have to find and change a setting before
+  // the board makes sense, and the shipped default already reads as an opponent thinking. Hidden
+  // does not mean off — `useBotDelay` resolves the same stored value either way, exactly as red
+  // fives stay on with the Ruleset row hidden
+  const advanced = useSettings((s) => s.advanced)
+  const boardAnimation = useSettings((s) => s.boardAnimation)
+  const setBoardAnimation = useSettings((s) => s.setBoardAnimation)
   // the size setting is a tablet/desktop control: below that the board fills its room whatever it
   // says (a smaller square pulls the side seats' hands off the screen edge) and the hand is capped
   // to the width under the board, so every step but the default is a lie. Shown and disabled
@@ -195,6 +211,55 @@ export function UiSettings() {
           type="checkbox"
           checked={glossaryOnClick}
           onChange={(e) => setGlossaryOnClick(e.target.checked)}
+          className="size-5"
+        />
+      </SettingRow>
+      {/* the one range control in a settings surface. `SettingRow` already supplies the 44px
+          target; the live reading sits beside the slider rather than only in the caption, since a
+          thumb position alone says nothing about seconds. 0 is a real setting, not a disabled
+          state — it is the instantaneous board this delay was added on top of. The explainer is an
+          `InfoPopover` rather than a `GlossaryTerm`: this is not mahjong jargon and has no wiki
+          page to link, but "why is the board slower than it could be" is exactly the question the
+          row invites. */}
+      {advanced && (
+        <SettingRow
+          label={
+            <span className="inline-flex items-center gap-1">
+              {t('settings.botDelay')}
+              <InfoPopover
+                triggerLabel={t('settings.botDelay')}
+                trigger={<HelpCircle className="size-3.5 shrink-0 text-neutral-400" />}
+                triggerClassName="-m-1 inline-flex items-center rounded p-1 align-baseline"
+                dialogTitle={t('settings.botDelay')}
+                text={t('settings.botDelayInfo')}
+              />
+            </span>
+          }
+        >
+          <span className="flex items-center gap-3">
+            <input
+              type="range"
+              min={0}
+              max={BOT_DELAY_MAX}
+              step={BOT_DELAY_STEP}
+              value={botDelay}
+              onChange={(e) => setBotDelay(Number(e.target.value))}
+              aria-label={t('settings.botDelay')}
+              className="w-32 accent-amber-500"
+            />
+            <span className="w-12 shrink-0 text-right text-sm tabular-nums text-neutral-500">
+              {botDelay === 0
+                ? t('settings.botDelayOff')
+                : t('settings.botDelayValue', { seconds: (botDelay / 1000).toFixed(1) })}
+            </span>
+          </span>
+        </SettingRow>
+      )}
+      <SettingRow label={t('settings.boardAnimation')}>
+        <input
+          type="checkbox"
+          checked={boardAnimation}
+          onChange={(e) => setBoardAnimation(e.target.checked)}
           className="size-5"
         />
       </SettingRow>

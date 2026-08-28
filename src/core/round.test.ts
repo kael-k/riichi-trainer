@@ -6,6 +6,7 @@ import {
   answerClaim,
   beginTurn,
   callAnkan,
+  callKakan,
   callKita,
   canDeclareKyuushu,
   canDeclareRiichi,
@@ -141,6 +142,51 @@ describe('stepRound', () => {
       if (event.kind === 'discard') break
     }
     expect(state.players[0].drawn).toBeUndefined()
+  })
+
+  it('forwards beforeReactions, firing once a turn with the discard already on the river', () => {
+    const state = createRound([], 4, YONMA, 'step-before-reactions')
+    // what the seam is worth to a driver: the length of the discarding seat's own river at the
+    // moment it fires. One fire per turn, and the tile is already on it
+    const fires: number[] = []
+    let discards = 0
+    for (const event of stepRound(state, YONMA, undefined, (s) =>
+      fires.push(s.players[s.seat].river.length),
+    )) {
+      if (event.kind === 'discard') discards++
+      if (discards === 6) break
+    }
+    expect(discards).toBe(6)
+    expect(fires).toHaveLength(6)
+    expect(fires.every((length) => length > 0)).toBe(true)
+  })
+})
+
+describe('finishTurn beforeReactions', () => {
+  it('fires with the claimed tile still on the river and the claiming seat unmelded', () => {
+    // the frame a paced board commits: `finishTurn` resolves the whole turn before it yields
+    // anything, so without this seam a ponned tile is only ever on screen inside the meld it
+    // ends up in. Same pinned board the pon tests above use
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    const wall = handsWall('before-reactions-pon', '2468m2468p9s2345z', '13579m13579p99s1z')
+    const state = createRound(wall, 4, options)
+    beginTurn(state, options)
+
+    const frames: { river: number; melds: number }[] = []
+    finishTurn(
+      state,
+      options,
+      { tile: { id: SOU + 8, red: false }, fromDrawn: false },
+      false,
+      (s) => frames.push({ river: s.players[0].river.length, melds: s.players[1].melds.length }),
+    )
+    expect(frames).toEqual([{ river: 1, melds: 0 }])
+
+    const pon = discardClaim(state).options.find((o) => o.kind === 'pon')
+    answerClaim(state, options, { kind: 'pon', from: pon!.from })
+    // and the reason the frame had to be taken when it was: by now the tile has left the river
+    expect(state.players[0].river).toHaveLength(0)
+    expect(state.players[1].melds).toHaveLength(1)
   })
 })
 
@@ -1086,6 +1132,108 @@ describe('RoundState.log', () => {
     expect(callKita(state, options, 1)).toEqual([]) // seat 1 is not the acting seat
     expect(callAnkan(state, 1, MAN)).toEqual([])
     expect(state.log).toHaveLength(0)
+  })
+})
+
+/** Daiminkan (kan on a discard) and kakan (an added kan on an open pon) — match-only
+ *  (`RoundOptions.calledKan`), ADR-0010's amendment. Seat 1 in every case here holds a triplet
+ *  of 9s, which is both pon- and minkan-eligible on the same discard — leaving one 9s behind
+ *  after a pon is exactly what a kakan test needs, so the same two hands serve both. */
+describe('called kan', () => {
+  const CALLER_HAND = '999s24689m2468p1z' // pon/minkan-eligible triplet plus filler, 13 tiles
+
+  it('offers a minkan claim only when calledKan is on', () => {
+    const off: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    const wallOff = handsWall('minkan-offer-off', '2468m2468p9s2345z', CALLER_HAND)
+    const stateOff = createRound(wallOff, 4, off)
+    beginTurn(stateOff, off)
+    finishTurn(stateOff, off, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    expect(discardClaim(stateOff).options.some((o) => o.kind === 'minkan')).toBe(false)
+
+    const on: RoundOptions = { ...off, calledKan: true }
+    const wallOn = handsWall('minkan-offer-on', '2468m2468p9s2345z', CALLER_HAND)
+    const stateOn = createRound(wallOn, 4, on)
+    beginTurn(stateOn, on)
+    finishTurn(stateOn, on, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    const minkan = discardClaim(stateOn).options.find((o) => o.kind === 'minkan')
+    expect(minkan?.from).toEqual([SOU + 8, SOU + 8, SOU + 8])
+  })
+
+  it('answering minkan melds all four tiles, flips a kan-dora, and draws a replacement, leaving the turn with the caller', () => {
+    const options: RoundOptions = { ...YONMA, claims: true, calledKan: true, algorithms: manual(1) }
+    const wall = handsWall('minkan-answer', '2468m2468p9s2345z', CALLER_HAND)
+    const state = createRound(wall, 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    const minkan = discardClaim(state).options.find((o) => o.kind === 'minkan')
+    expect(minkan).toBeDefined()
+    const indicatorsBefore = state.doraIndicators.length
+
+    const events = answerClaim(state, options, { kind: 'minkan', from: minkan!.from })
+
+    expect(events.map((e) => e.kind)).toEqual(['call', 'draw'])
+    expect(state.claim).toBeUndefined()
+    const meld = state.players[1].melds.at(-1)
+    expect(meld?.kind).toBe('minkan')
+    expect(meld?.tiles).toHaveLength(4)
+    expect(state.players[1].hand.melds).toBe(1)
+    expect(state.players[1].hand.counts[SOU + 8]).toBe(0)
+    // the claimed tile leaves the discarder's river into the meld, same as a pon
+    expect(state.players[0].river).toHaveLength(0)
+    expect(state.doraIndicators.length).toBe(indicatorsBefore + 1)
+    expect(state.seat).toBe(1)
+    expect(state.pendingDraw).toBe(false)
+  })
+
+  it('an AI seat never calls minkan even with calledKan on — the bot never sees the option', () => {
+    const options: RoundOptions = { ...YONMA, calledKan: true } // every seat AI
+    const wall = handsWall('minkan-ai-declines', '2468m2468p9s2345z', CALLER_HAND)
+    const state = createRound(wall, 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+
+    expect(state.players[1].melds.some((m) => m.kind === 'minkan')).toBe(false)
+  })
+
+  it('callKakan upgrades an existing pon into a kan, flips a kan-dora, and draws a replacement', () => {
+    const options: RoundOptions = { ...YONMA, claims: true, calledKan: true, algorithms: manual(1) }
+    const wall = handsWall('kakan-manual', '2468m2468p9s2345z', CALLER_HAND)
+    const state = createRound(wall, 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    const pon = discardClaim(state).options.find((o) => o.kind === 'pon')
+    expect(pon).toBeDefined()
+    answerClaim(state, options, { kind: 'pon', from: pon!.from })
+    // pon only spent two of the three held 9s — the kakan-eligible copy is what's left
+    expect(state.players[1].hand.counts[SOU + 8]).toBe(1)
+
+    const indicatorsBefore = state.doraIndicators.length
+    const before = state.log.length
+    const events = callKakan(state, options, 1, SOU + 8)
+
+    expect(events.map((e) => e.kind)).toContain('kakan')
+    expect(state.log.slice(before)).toEqual([{ kind: 'kakan', seat: 1, tile: SOU + 8 }])
+    const meld = state.players[1].melds.at(-1)
+    expect(meld?.kind).toBe('minkan')
+    expect(meld?.tiles).toHaveLength(4)
+    expect(state.players[1].hand.melds).toBe(1) // upgraded in place, not a second block
+    expect(state.players[1].hand.counts[SOU + 8]).toBe(0)
+    expect(state.doraIndicators.length).toBe(indicatorsBefore + 1)
+  })
+
+  it('callKakan is a no-op with calledKan off, off-turn, or with no matching pon', () => {
+    const off: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    const wall = handsWall('kakan-off', '2468m2468p9s2345z', CALLER_HAND)
+    const state = createRound(wall, 4, off)
+    beginTurn(state, off)
+    finishTurn(state, off, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    const pon = discardClaim(state).options.find((o) => o.kind === 'pon')
+    answerClaim(state, off, { kind: 'pon', from: pon!.from })
+
+    expect(callKakan(state, off, 1, SOU + 8)).toEqual([]) // calledKan is off
+    const on: RoundOptions = { ...off, calledKan: true }
+    expect(callKakan(state, on, 0, SOU + 8)).toEqual([]) // not seat 0's pon
+    expect(callKakan(state, on, 1, MAN)).toEqual([]) // no pon of 1m to upgrade
   })
 })
 

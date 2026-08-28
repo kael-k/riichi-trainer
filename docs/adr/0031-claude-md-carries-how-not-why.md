@@ -41,7 +41,7 @@ Every `###` section ends with a `**Why:**` line naming its ADRs, so the reasonin
 the rule rather than inlined ahead of it.
 
 The existing working rule stands and gains a second half: **a behaviour change updates `CLAUDE.md`
-in the same wave** — with the *rule*. Its *reason* goes to an ADR in the same commit.
+in the same wave** — with the _rule_. Its _reason_ goes to an ADR in the same commit.
 
 ## Consequences
 
@@ -56,7 +56,7 @@ in the same wave** — with the *rule*. Its *reason* goes to an ADR in the same 
   now sits under a Rejected heading where the supersession rule can reach it.
 - A cost: an agent that reads only `CLAUDE.md` and never opens an ADR knows the rules but not the
   forces behind them. Accepted deliberately — knowing the rule is what prevents the bug; knowing the
-  force is what is needed to *change* the rule, and that work should be reading the ADR anyway.
+  force is what is needed to _change_ the rule, and that work should be reading the ADR anyway.
 
 ## Rejected
 

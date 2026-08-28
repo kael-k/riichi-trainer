@@ -17,6 +17,8 @@ const TABLE_BARE: TableRoundOptions = {
   seats: null,
   showSeatWaits: false,
   showOpponentHands: false,
+  // unpaced, so the whole board settles inside a synchronous `act()`
+  pace: 0,
 }
 
 describe('useEfficiencySoloRound', () => {

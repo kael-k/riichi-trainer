@@ -25,6 +25,8 @@ export interface EfficiencyOptions {
    *  the faces itself. A seat whose tiles are already on screen gets its `SeatRead` too, since a
    *  furiten mark says nothing the hand does not. */
   showOpponentHands: boolean
+  /** How long a seat nobody plays holds before its action is committed (`useRound`'s `pace`). */
+  pace: number
 }
 
 /** Drives one efficiency round for the full table on `useEfficiencyDrill` — dealing, grading and
@@ -74,6 +76,7 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     seatIndex,
     options: roundOptions,
     showReads: options.showSeatWaits || options.showOpponentHands,
+    pace: options.pace,
   })
   const { table, snapshot } = drill
 

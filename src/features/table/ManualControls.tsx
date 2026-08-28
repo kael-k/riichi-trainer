@@ -17,14 +17,14 @@ interface ManualControlsProps {
   /** The seat the board is currently *drawn from* — perspective. A reader now acts only from the
    *  seat they are watching (ADR-0034): rotating to the seat that owes the decision is how you
    *  reach its controls, so every branch below gates on `viewSeat` rather than a fixed "your own
-   *  seat". */
+   *  seat". Watching anyone else renders **nothing** — the felt's own turn glow (`Table`'s
+   *  `activeSeat`) already names who owes the decision, and a line repeating it in words, with a
+   *  button for the rotation the seat plate's eye icon also does, was a third way of saying one
+   *  fact. */
   viewSeat: number
-  /** Rotates the board to `seat` — the escape valve the waiting line's button uses to jump
-   *  straight to whichever seat owes the decision, without the reader hunting for it themselves. */
-  onGoTo: (seat: number) => void
-  /** The drill is over, so the riichi arm and the waiting line are stale and must not render on
-   *  top of the end card. Distinct per trainer (`drillOver` for efficiency, `finished` for
-   *  folding/lab) — this component has no opinion about which. It deliberately does **not**
+  /** The drill is over, so the riichi arm is stale and must not render on top of the end card.
+   *  Distinct per trainer (`drillOver` for efficiency, `finished` for folding/lab) — this
+   *  component has no opinion about which. It deliberately does **not**
    *  outrank a pending `claim`: efficiency's `drillOver` is true for the whole window between the
    *  graded seat's tenpai discard and its next draw, and a *replayed* link lands in that window
    *  with live play still running behind it, so an opponent can offer that seat a call while the
@@ -33,8 +33,8 @@ interface ManualControlsProps {
   ended?: boolean
 }
 
-/** Whether `ManualControls` would render anything for these props — the same three branches its
- *  own render checks below, kept in exact lockstep with them (there is no other caller of this
+/** Whether `ManualControls` would render anything for these props — the same gates its own
+ *  render checks below, kept in exact lockstep with them (there is no other caller of this
  *  logic). Exported so a caller floating it in a positioned card (`BoardStage`'s `controls`, which
  *  every board-rendering trainer uses) can skip the card entirely rather than showing an empty,
  *  still-`pointer-events-auto` one — a `<ManualControls/>` element is truthy regardless of what it
@@ -48,19 +48,19 @@ export function manualControlsVisible({
   ended,
 }: Pick<ManualControlsProps, 'acting' | 'claim' | 'riichiTiles' | 'viewSeat' | 'ended'>): boolean {
   if (ended && !claim) return false
-  return acting !== viewSeat || !!claim || riichiTiles.length > 0
+  return acting === viewSeat && (!!claim || riichiTiles.length > 0)
 }
 
 /**
  * The controls a manual seat needs beyond picking a tile: the riichi declaration and the claim
  * prompt on someone else's discard — both live only on the seat that actually owes the decision,
- * so watching any other seat collapses to one line naming who that is and a button that rotates
- * there. The felt's own turn glow (`Table`'s `activeSeat`) is the ambient version of the same
- * fact; this is the control surface once you have rotated to match it.
+ * so watching any other seat renders nothing at all. Who that seat is, is the felt's own job: the
+ * turn glow (`Table`'s `activeSeat`) says it ambiently and the seat plate's eye icon rotates
+ * there. This is only the control surface, once you are watching the seat it belongs to.
  *
- * Renders nothing at all once the hand is over with nothing left to answer, or in the shipped
- * single-seat setup with no claim pending and no riichi available while already watching the seat
- * that owes the decision — so every trainer can mount it unconditionally without growing an empty
+ * Renders nothing once the hand is over with nothing left to answer, while watching any seat but
+ * the one that owes the decision, or in the shipped single-seat setup with no claim pending and
+ * no riichi available — so every trainer can mount it unconditionally without growing an empty
  * box.
  */
 export function ManualControls({
@@ -71,29 +71,13 @@ export function ManualControls({
   onArmRiichi,
   onAnswer,
   viewSeat,
-  onGoTo,
   ended,
 }: ManualControlsProps) {
   const { t } = useTranslation()
   if (ended && !claim) return null
-
   // `acting` already *is* the claim's own seat whenever one is pending (`core/table.ts#actingSeat`
-  // — a claim outranks the turn order), so there is only one seat to name here either way
-  if (acting !== viewSeat) {
-    const wind = t(`wind.${WINDS[acting]}`)
-    return (
-      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
-        {t('seats.waitingSeat', { wind })}
-        <button
-          type="button"
-          onClick={() => onGoTo(acting)}
-          className="min-h-11 rounded-lg border border-amber-400 px-3 text-sm font-medium"
-        >
-          {t('seats.goToSeat', { wind })}
-        </button>
-      </p>
-    )
-  }
+  // — a claim outranks the turn order), so this one check covers both surfaces below
+  if (acting !== viewSeat) return null
 
   // kyuushu kyuuhai: the acting seat's own offer, not a reaction to anybody's discard, so it
   // draws no tiles and names no other seat — only how many terminals and honours it is made of

@@ -28,24 +28,28 @@ PLAN-ev-model.md is the master plan file, EV-*.md files are deliverable based on
 I expect from you questions and a dynamic session to improve the plan, do not just autopilot, involve me.
 
 # Table status (point, placements, turn) is NOT deferred
+
 Table status can't be deferred, because the main goal of the efficiency is to get the best score possible (o best placement, depends on the declintation, see also below on this)
 
 ## So... how do we include it, is it only in the pull/push algorithm?
+
 I see two possible ways, and I think I lean for the second solution, but you need to be critical on this:
 
 1. table status is part of all three algorithm: here are practical examples on why it could make sense
-  * for EV efficiency
-    * East 3, you are third placemenet, starting hand with 9 different terminal, most logical think => kyuushu kyuuhai (not implemented yet, not the point, is an example)
-    * South 4, you are in 4th place with 100 point, starting hand with 9 different terminal => (opinionable, but you get the point) go for kokushi
-  * for EV folding: if you assume other players are efficient, they will play by the same rule aforementioned on efficiency => efficiency is a function of table status => defense is a function of table status
-  * push/folding: I don't think it needs explanation
+
+- for EV efficiency
+  - East 3, you are third placemenet, starting hand with 9 different terminal, most logical think => kyuushu kyuuhai (not implemented yet, not the point, is an example)
+  - South 4, you are in 4th place with 100 point, starting hand with 9 different terminal => (opinionable, but you get the point) go for kokushi
+- for EV folding: if you assume other players are efficient, they will play by the same rule aforementioned on efficiency => efficiency is a function of table status => defense is a function of table status
+- push/folding: I don't think it needs explanation
 
 2. efficiency and defense algorithm are not function of table status, but they return the EV with potential value and risk information on possible moves, it will be the push/fold algorithm to evaluate which move is actually the best by looking table status. Getting again on the kyuushu kyuuhai/kokushi example, efficiency algorithm in this case will always return the same rates on that hand, push/fold algorithm will analyze the scoring provided by the efficiency algorithm and call kyuushu kyuuhai in first case and push in the second (again is an example, not a requirement or a statement)
 
 ## Data source for weight
-In previous session, claude discovered the houou-statistics repo. I said to him that we want weights both from this datasource and from pure combinatorics statistic. This because I want the weigths to be swappable in scoring (and therefore in algorithm). The idea is:
-* the future "EV algorithm" (here I am referring the "AI that plays the table, as the efficiency, defense and tsumogiri algorithms") should take as parameter which EV weigths take as input (houhou player, pure statisitcal combinatorics model)
-* the future lab should show both scoring information
-* eventually we might also add new weight sets: it might be intresting for the 2 previous points having also a statistical model of the "average 一般 room player"
-* the point is that models should be modular
 
+In previous session, claude discovered the houou-statistics repo. I said to him that we want weights both from this datasource and from pure combinatorics statistic. This because I want the weigths to be swappable in scoring (and therefore in algorithm). The idea is:
+
+- the future "EV algorithm" (here I am referring the "AI that plays the table, as the efficiency, defense and tsumogiri algorithms") should take as parameter which EV weigths take as input (houhou player, pure statisitcal combinatorics model)
+- the future lab should show both scoring information
+- eventually we might also add new weight sets: it might be intresting for the 2 previous points having also a statistical model of the "average 一般 room player"
+- the point is that models should be modular

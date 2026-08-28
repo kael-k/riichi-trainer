@@ -38,6 +38,8 @@ export interface LabOptions {
   /** The seat panel's "show tenpai/waits" setting — threaded to `useRound`, which is where the
    *  per-seat cost of computing it is actually paid. */
   showSeatWaits: boolean
+  /** How long a seat nobody plays holds before its action is committed (`useRound`'s `pace`). */
+  pace: number
 }
 
 /** The full analysis for the current 14-tile hand: `evaluateDiscards`'s whole ranking and
@@ -115,6 +117,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     options: roundOptions,
     replay: situation.log,
     showReads: options.showSeatWaits || options.showOpponentHands,
+    pace: options.pace,
     onEvent,
   })
 
@@ -155,6 +158,8 @@ export function useLabRound(situation: Situation, options: LabOptions) {
   )
 
   return {
+    callBanner: table.callBanner,
+    tedashi: table.tedashi,
     turn: snapshot?.turn ?? 1,
     doraIndicators: snapshot?.doraIndicators ?? [],
     rivers: snapshot?.rivers ?? [],

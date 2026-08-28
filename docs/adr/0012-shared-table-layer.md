@@ -18,7 +18,7 @@ turn granularity the hook's three-callback contract could not offer.
 That justification did not survive being checked:
 
 1. **The flip is not mid-hand.** It lives in `playToRiichi`, a module-level pure function running at
-   *generation* time, and it sits at a turn boundary — not "between `beginTurn` and `finishTurn`".
+   _generation_ time, and it sits at a turn boundary — not "between `beginTurn` and `finishTurn`".
 2. **`playMatch`'s `stop` never saw a half-stepped turn.** `playFrom` built
    `[...beginTurn(...), ...finishTurn(...)]` eagerly and only then iterated, so by the time a
    predicate fired on the riichi event that turn's discard and reactions were already applied.
@@ -43,7 +43,7 @@ of it means.** Every trainer built on a real match uses it, folding included.
 turn, yielding each event. A caller stops by not asking for the next one, so "play a whole hand",
 "play until someone declares riichi" and "play up to the next seat a person decides for" are three
 callers rather than three loops. `playFrom`, `playMatch`, `playWall` and `goRound` all collapse onto
-it. `canAct` is asked once per turn *before* anything is drawn — the one stop condition a caller
+it. `canAct` is asked once per turn _before_ anything is drawn — the one stop condition a caller
 cannot express by walking away, since by the time an event is yielded its turn has already run.
 
 **One callback.** `useMatch`'s consumers subscribe to `onEvent(ctx)` and decide for themselves which
@@ -65,7 +65,7 @@ began, which is the cut a rewind link needs. Both are temporal facts about when 
 policy.
 
 **Replayed events are reported, tagged `replaying: true`, not suppressed.** The board really did
-reach that state, so a consumer rebuilding *state* treats them like any event while one that grades
+reach that state, so a consumer rebuilding _state_ treats them like any event while one that grades
 or logs skips them. Blanket suppression was the layer deciding a grading policy on the consumer's
 behalf.
 
@@ -74,7 +74,7 @@ condition is `worthwhile` failing at the handover point, and running up to 120 f
 through React would cost a render apiece. What that search produces is a wall, the algorithms each
 seat ended on, the graded seat and generation's own log; `replayLog` rebuilds the handed-over board
 from exactly that. The flip never needs replaying, because replay puts every seat on manual and only
-the *starting* algorithms of live play matter.
+the _starting_ algorithms of live play matter.
 
 ## Consequences
 
@@ -91,7 +91,7 @@ the *starting* algorithms of live play matter.
 - `stepMatch` deliberately does **not** stop at a manual seat — `finishTurn` covers one by borrowing
   `efficiency`'s discard, and `playMatch` has always relied on that. Stopping at a seat the engine
   cannot decide for is `goRound`'s condition, passed in through `canAct`.
-- A manual seat is one the engine *draws for* and never *decides for*, so a driver that stops at one
+- A manual seat is one the engine _draws for_ and never _decides for_, so a driver that stops at one
   must still take its draw. Missing this asked the reader to discard from thirteen tiles, and only
   the e2e suite caught it.
 

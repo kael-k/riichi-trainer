@@ -24,7 +24,7 @@ five methods; `match.ts`'s five call sites collapse to
 - **All five decisions belong to the algorithm**, `kita` and `win` included — you skip kita
   holding daisuushii tenpai, and you decline a ron waiting to tsumo sanankou.
 - **`win(view, candidate)`** is the one method with a second argument: `WinCandidate { tile, from?,
-  score }`, already priced by `tryWin` before it asks. An algorithm that cannot see what it
+score }`, already priced by `tryWin` before it asks. An algorithm that cannot see what it
   declines cannot price it — which is what makes `defense.win` an honest `() => false` rather
   than a carve-out inside `tryWin`.
 - **`discard` returns `{ tile, fromDrawn }`**, `fromDrawn` being the algorithm's advisory read of

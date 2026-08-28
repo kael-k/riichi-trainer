@@ -9,31 +9,31 @@ has one.
 Pure TypeScript. Zero dependencies, no React, no imports from `features/` or `components/`
 ([ADR-0001](adr/0001-three-layers.md)). Deterministic: same wall in, same round out.
 
-| File              | Role                                                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `tiles.ts`        | `TileId` 0–33, suit offsets, tenhou parse/serialize, `inTileSet` (sanma exclusion)                                                    |
-| `hand.ts`         | `Hand` — `Uint8Array(34)` counts + meld count, nothing else ([ADR-0022](adr/0022-stored-redness.md))                                  |
-| `rng.ts`          | `mulberry32` seeded by string hash, Fisher-Yates `shuffle`                                                                            |
-| `wall.ts`         | `buildWall`, `completeWall`, `wallWithHand`, `deal` — wall construction and prefix completion                                         |
-| `shanten.ts`      | Per-suit 5-block decomposition + chiitoi + kokushi; `referenceStandardShanten` is its spec                                            |
-| `ukeire.ts`       | `ukeire`, `improvingTiles` — tile-acceptance against a visibility array                                                               |
-| `efficiency.ts`   | `evaluateDiscards`, `isBestDiscard`, `bestDiscards` — discard ranking                                                                 |
-| `agari.ts`        | `decompose` — winning-shape enumeration                                                                                               |
-| `yaku.ts`         | Yaku detection over a decomposition                                                                                                   |
-| `score.ts`        | `scoreHand` — han/fu/points; `null` means "no yaku"                                                                                   |
-| `danger.ts`       | `assessDiscards` — ordinal danger tiers ([ADR-0004](adr/0004-ordinal-danger.md))                                                      |
-| `dealIn.ts`       | `dealInRisk` — deal-in probability by wait-hypothesis enumeration ([ADR-0036](adr/0036-probability-beside-the-tiers.md))              |
-| `hououPrior.ts`   | **Generated** (`npm run build-ev-models`) — measured wait-shape counts `dealIn.ts` reads                                              |
-| `probability.ts`  | `handOutlook`, `discardOutlooks` — win probability and expected score, the one-player DP                                              |
-| `evModel.ts`      | The swappable prices: `EV_MODELS` — `statistical` (derived) and `houou` (measured) ([ADR-0037](adr/0037-the-ev-seat-decides.md))      |
-| `ev.ts`           | The push/fold identity: `rankDiscards`, `foldEv`, `riichiWorthIt`, `abortWorthIt` — what an `'ev'` seat decides with                  |
-| `placement.ts`    | Rank odds and what a rank is worth: the placement objective's integral and ruleset ([ADR-0039](adr/0039-the-currency-is-a-switch.md)) |
-| `policy.ts`       | The pure maths algorithms are written in: `chooseDiscard`, `chooseFold`, `chooseCall`, `waits`, …                                     |
-| `algorithm.ts`    | The decision seam: `SeatView`, `Algorithm`, `ALGORITHMS` ([ADR-0009](adr/0009-decision-seam.md))                                      |
-| `round.ts`        | The round engine (one deal): `createRound`/`beginTurn`/`finishTurn`/`playRound`/`stepRound`, claims, `isManual`                       |
-| `match.ts`        | The game a round sits inside: `MatchState`, `createMatch` — carry-in only ([ADR-0023](adr/0023-round-inside-match.md))                |
-| `table.ts`        | Pure table layer: `actingSeat`, `goRound`, `seenBy`, `snapshotTable`, `seatRead`, per-seat analysis                                   |
-| `generateHand.ts` | Winning-hand generation for the scoring trainer                                                                                       |
+| File              | Role                                                                                                                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tiles.ts`        | `TileId` 0–33, suit offsets, tenhou parse/serialize, `inTileSet` (sanma exclusion)                                                                                                                                       |
+| `hand.ts`         | `Hand` — `Uint8Array(34)` counts + meld count, nothing else ([ADR-0022](adr/0022-stored-redness.md))                                                                                                                     |
+| `rng.ts`          | `mulberry32` seeded by string hash, Fisher-Yates `shuffle`                                                                                                                                                               |
+| `wall.ts`         | `buildWall`, `completeWall`, `wallWithHand`, `deal` — wall construction and prefix completion                                                                                                                            |
+| `shanten.ts`      | Per-suit 5-block decomposition + chiitoi + kokushi; `referenceStandardShanten` is its spec                                                                                                                               |
+| `ukeire.ts`       | `ukeire`, `improvingTiles` — tile-acceptance against a visibility array                                                                                                                                                  |
+| `efficiency.ts`   | `evaluateDiscards`, `isBestDiscard`, `bestDiscards` — discard ranking                                                                                                                                                    |
+| `agari.ts`        | `decompose` — winning-shape enumeration                                                                                                                                                                                  |
+| `yaku.ts`         | Yaku detection over a decomposition                                                                                                                                                                                      |
+| `score.ts`        | `scoreHand` — han/fu/points; `null` means "no yaku"                                                                                                                                                                      |
+| `danger.ts`       | `assessDiscards` — ordinal danger tiers ([ADR-0004](adr/0004-ordinal-danger.md))                                                                                                                                         |
+| `dealIn.ts`       | `dealInRisk` — deal-in probability by wait-hypothesis enumeration ([ADR-0036](adr/0036-probability-beside-the-tiers.md))                                                                                                 |
+| `hououPrior.ts`   | **Generated** (`npm run build-ev-models`) — measured wait-shape counts `dealIn.ts` reads                                                                                                                                 |
+| `probability.ts`  | `handOutlook`, `discardOutlooks` — win probability and expected score, the one-player DP                                                                                                                                 |
+| `evModel.ts`      | The swappable prices: `EV_MODELS` — `statistical` (derived) and `houou` (measured) ([ADR-0037](adr/0037-the-ev-seat-decides.md))                                                                                         |
+| `ev.ts`           | The push/fold identity: `rankDiscards`, `foldEv`, `riichiWorthIt`, `abortWorthIt` — what an `'ev'` seat decides with                                                                                                     |
+| `placement.ts`    | Rank odds and what a rank is worth: the placement objective's integral and ruleset ([ADR-0039](adr/0039-the-currency-is-a-switch.md))                                                                                    |
+| `policy.ts`       | The pure maths algorithms are written in: `chooseDiscard`, `chooseFold`, `chooseCall`, `waits`, …                                                                                                                        |
+| `algorithm.ts`    | The decision seam: `SeatView`, `Algorithm`, `ALGORITHMS` ([ADR-0009](adr/0009-decision-seam.md))                                                                                                                         |
+| `round.ts`        | The round engine (one deal): `createRound`/`beginTurn`/`finishTurn`/`playRound`/`stepRound`, claims, `isManual`                                                                                                          |
+| `match.ts`        | The game a round sits inside: `MatchState`, `createMatch`, `settleRound` — carry-in plus the pure step between rounds ([ADR-0023](adr/0023-round-inside-match.md), [ADR-0040](adr/0040-rounds-sequence-into-a-match.md)) |
+| `table.ts`        | Pure table layer: `actingSeat`, `goRound`, `seenBy`, `snapshotTable`, `seatRead`, per-seat analysis                                                                                                                      |
+| `generateHand.ts` | Winning-hand generation for the scoring trainer                                                                                                                                                                          |
 
 **Round ⊂ match** is the naming model throughout ([ADR-0023](adr/0023-round-inside-match.md)): a
 round is one deal, a match is the game. ADRs written before it (0006, 0007, 0009, 0010, 0012) say
@@ -59,14 +59,15 @@ agreeing with `hand.counts` ([ADR-0022](adr/0022-stored-redness.md)).
 Each trainer is a page plus a `use*Round` hook. Which route is which app is a route, never a
 setting ([ADR-0013](adr/0013-efficiency-split.md)).
 
-| Directory          | Route              | Hook                     | Notes                                                     |
-| ------------------ | ------------------ | ------------------------ | --------------------------------------------------------- |
-| `shanten/`         | `/shanten`         | `useShantenRound`        | Boardless, continuous hand stream                         |
-| `efficiency-solo/` | `/efficiency-solo` | `useEfficiencySoloRound` | Boardless, one seat                                       |
-| `efficiency/`      | `/efficiency`      | `useEfficiencyRound`     | Board, opponents, graded per discard                      |
-| `folding/`         | `/folding`         | `useFoldingRound`        | Grading + a pure board search on `useRound`; see ADR-0012 |
-| `scoring/`         | `/scoring`         | `useScoringRound`        | Generates a finished hand, never steps it                 |
-| `lab/`             | `/lab`             | `useLabRound`            | Free play, no grading                                     |
+| Directory          | Route              | Hook                     | Notes                                                                                                            |
+| ------------------ | ------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `shanten/`         | `/shanten`         | `useShantenRound`        | Boardless, continuous hand stream                                                                                |
+| `efficiency-solo/` | `/efficiency-solo` | `useEfficiencySoloRound` | Boardless, one seat                                                                                              |
+| `efficiency/`      | `/efficiency`      | `useEfficiencyRound`     | Board, opponents, graded per discard                                                                             |
+| `folding/`         | `/folding`         | `useFoldingRound`        | Grading + a pure board search on `useRound`; see ADR-0012                                                        |
+| `scoring/`         | `/scoring`         | `useScoringRound`        | Generates a finished hand, never steps it                                                                        |
+| `match/`           | `/match`           | `useMatchRound`          | Sequences rounds via `settleRound`; free play, no grading ([ADR-0040](adr/0040-rounds-sequence-into-a-match.md)) |
+| `lab/`             | `/lab`             | `useLabRound`            | Free play, no grading                                                                                            |
 
 `efficiency/useEfficiencyDrill.ts` is the grading/session-state core both efficiency hooks sit on —
 `useEfficiencySoloRound` imports it from `features/efficiency/`, same direction as its existing

@@ -13,10 +13,10 @@ hand representation would put a distinction on the hot path that the hot path ne
 
 `Hand` is a `Uint8Array(34)` of counts plus a fixed-meld count. It does **not** track redness.
 `ParsedTile { id, red }` carries redness at parse and display level; `PlayerState.reds:
-Set<TileId>` records which *kinds* a seat holds a red copy of.
+Set<TileId>` records which _kinds_ a seat holds a red copy of.
 
 One narrow, deliberate exception: **`Hand.drawn?: ParsedTile`** names the tile that brought the
-hand to 14 (still counted in `counts`), because the redness of *the draw specifically* is not
+hand to 14 (still counted in `counts`), because the redness of _the draw specifically_ is not
 reconstructable from `reds`, which tracks kinds rather than copies. It is set by `take` /
 `drawReplacement` and cleared by `finishTurn` the moment the tile leaves the hand — before any
 algorithm decision reads it, so a `SeatView` never sees a `drawn` naming a tile no longer held.

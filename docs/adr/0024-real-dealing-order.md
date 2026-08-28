@@ -25,7 +25,7 @@ of four per seat, then one each.
   (validation error zones), `wallWithHand`/`wallWithHands` (walls built around known hands) and the
   wall reveal all go through them rather than re-deriving an offset.
 - **A short wall stays a prefix**, and it is still consumed in order — but a 13-tile prefix is now
-  the start of a *deal* rather than one seat's hand. Pinning a hand means `wallWithHand`, which
+  the start of a _deal_ rather than one seat's hand. Pinning a hand means `wallWithHand`, which
   places it in the slots that seat is actually dealt.
 - **A solo round (`players: 1`) is unaffected**: the walk collapses to `wall[0..12]`. So is the
   shanten trainer, which deals through `wall.ts#deal` and has one hand to fill.

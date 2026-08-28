@@ -51,7 +51,12 @@
     "showSeatWaits": "テンパイと待ちを表示",
     "language": "言語",
     "languageAuto": "自動(ブラウザ設定)",
-    "translatedTerms": "役名を翻訳して表示"
+    "translatedTerms": "役名を翻訳して表示",
+    "botDelay": "相手の待ち時間",
+    "botDelayInfo": "相手はシミュレーションなので本来は即座に打てます。この待ち時間は各手番で卓を少し止め、実際の卓で考えてから捨てるのと同じ間を作ります。誰が何を切ったかを見るための時間です。0にすると待ち時間なしで進みます。",
+    "botDelayOff": "なし",
+    "botDelayValue": "{{seconds}}秒",
+    "boardAnimation": "卓のアニメーション"
   },
   "wind": {
     "E": "東",
@@ -89,6 +94,10 @@
       "statistical": "理論",
       "houou": "鳳凰"
     },
+    "evChoice": {
+      "statistical": "EV — 統計モデル",
+      "houou": "EV — 天鳳鳳凰モデル"
+    },
     "evModelHint": {
       "statistical": "すべての価格を見えていない牌から導きます。相手の手を安く見積もるため、統計モデルが引くところで押します。",
       "houou": "すべての価格を天鳳鳳凰卓の統計から取ります。四人打ち専用——三人打ちのデータはありません。"
@@ -102,13 +111,12 @@
       "points": "点数を最大化します。安定していて、数値を確かめやすい単位です。",
       "placement": "最終順位を最大化します。同じ点数でも、順位を上げられる席にはより高い価値がつきます。"
     },
-    "waitingSeat": "{{wind}}の判断待ちです",
-    "goToSeat": "{{wind}}へ移動",
     "claimPrompt": "{{wind}}: {{from}}の捨て牌に鳴きますか?",
     "claim": {
       "ron": "ロン",
       "pon": "ポン",
       "chi": "チー",
+      "minkan": "カン",
       "pass": "パス"
     },
     "abortPrompt": "{{wind}}: 流局にしますか?",
@@ -118,7 +126,16 @@
       "decline": "続行"
     },
     "riichi": "リーチ",
-    "riichiHint": "次のいずれかを捨ててください:"
+    "riichiHint": "次のいずれかを捨ててください:",
+    "call": {
+      "chi": "チー",
+      "pon": "ポン",
+      "minkan": "カン",
+      "ankan": "カン",
+      "riichi": "リーチ",
+      "ron": "ロン",
+      "tsumo": "ツモ"
+    }
   },
   "table": {
     "wall": "残り{{count}}",
@@ -164,6 +181,11 @@
       "title": "統計ラボ",
       "desc": "任意の手牌を読み込むか作成して、全打牌のシャンテン数・受け入れと全ての牌の危険度ランクを一覧表示。",
       "intro": "共有された牌山を読み込むか、自分で牌を一枚ずつ組んで局を作れます。自分の打牌だけを操作し、対戦相手は自動で打ちます。採点はありません——各打牌の受け入れランキング全体と、各牌の危険度の内訳全体を表示します。他のトレーナーが一部しか見せない数値をすべて確認できます。"
+    },
+    "match": {
+      "title": "通し対局",
+      "desc": "東風戦か半荘戦をボット相手に最後までプレイ——採点はなく、対局そのものです。",
+      "intro": "フォーマットとルールを選び、各席を誰が打つか決めてから、局を重ねて対局をプレイします——親の移動、本場、リーチ棒もすべて含みます。ここでは採点はありません——点数がそのまま結果です。"
     }
   },
   "efficiency": {
@@ -403,6 +425,23 @@
       "notWinning": "不和了"
     }
   },
+  "match": {
+    "setup": {
+      "format": "フォーマット",
+      "seats": "席",
+      "chooseSeats": "席を選ぶ",
+      "seat": "席 {{number}}"
+    },
+    "format": {
+      "tonpuu": "東風戦",
+      "hanchan": "半荘戦"
+    },
+    "start": "対局開始",
+    "quit": "対局を終了",
+    "over": "対局終了",
+    "newMatch": "新しい対局",
+    "status": "{{players}}人中{{rank}}位"
+  },
   "log": {
     "rewound": "{{number}}件目の記録まで巻き戻しました",
     "wentBack": "1つ前に戻りました",
@@ -419,6 +458,18 @@
     "lab": {
       "abort": "{{turn}}巡目: {{wind}}が九種九牌で流局",
       "discard": "{{turn}}巡目: {{tile}}を切った"
+    },
+    "match": {
+      "ron": "{{round}}：{{winner}}が{{loser}}からロン",
+      "tsumo": "{{round}}：{{wind}}がツモ",
+      "exhaustive": "{{round}}：流局",
+      "abort": "{{round}}：途中流局",
+      "delta": "{{wind}}：{{amount}}",
+      "discard": "{{turn}}巡目：{{wind}}が{{tile}}を捨てた",
+      "riichi": "{{wind}}がリーチ",
+      "call": "{{wind}}：{{from}}の牌に{{kind}}",
+      "kita": "{{wind}}が北を抜いた",
+      "kan": "{{wind}}が{{tile}}をカン"
     },
     "folding": {
       "safe": "{{turn}}巡目: {{tile}}を切った——{{tier}}、この局面で最も安全",

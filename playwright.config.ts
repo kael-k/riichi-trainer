@@ -23,7 +23,10 @@ export default defineConfig({
     { name: 'desktop', use: devices['Desktop Chrome'] },
     // 21:9 (2.37:1) with height ≥ 800: inside the `ultrawide:` gate with margin, and where the
     // session panel and the settings sheet are asserted to have moved in off the screen edge.
-    { name: 'ultrawide', use: { ...devices['Desktop Chrome'], viewport: { width: 2560, height: 1080 } } },
+    {
+      name: 'ultrawide',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 2560, height: 1080 } },
+    },
   ],
   // Dev server, not `vite preview`: no build step to wait on, and these tests are about layout,
   // which the dev bundle renders identically. Swap to preview if a test ever needs the PWA

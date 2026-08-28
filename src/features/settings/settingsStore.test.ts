@@ -82,6 +82,31 @@ describe('settingsStore table section', () => {
     expect(useSettings.persist.getOptions().version).toBe(3)
   })
 
+  it('leaves a blob written before the pacing fields existed on their new defaults', async () => {
+    localStorage.setItem(
+      'riichi-trainer-settings',
+      JSON.stringify({ state: { locale: 'ja' }, version: 3 }),
+    )
+    const { useSettings, DEFAULT_BOT_DELAY } = await import('./settingsStore')
+    const state = useSettings.getState()
+    expect(state.locale).toBe('ja')
+    // `null` is "never chosen", the `tileScale` idiom: the shipped default can move later without
+    // overriding anyone's stored 0
+    expect(state.botDelay).toBeNull()
+    expect(state.boardAnimation).toBe(true)
+    expect(DEFAULT_BOT_DELAY).toBe(1000)
+  })
+
+  it('keeps a chosen 0 delay rather than reading it as never chosen', async () => {
+    localStorage.setItem(
+      'riichi-trainer-settings',
+      JSON.stringify({ state: { botDelay: 0, boardAnimation: false }, version: 3 }),
+    )
+    const { useSettings } = await import('./settingsStore')
+    expect(useSettings.getState().botDelay).toBe(0)
+    expect(useSettings.getState().boardAnimation).toBe(false)
+  })
+
   it('kiriageMangan defaults off at the top level and survives a persist round-trip', async () => {
     const { useSettings } = await import('./settingsStore')
     expect(useSettings.getState().kiriageMangan).toBe(false)

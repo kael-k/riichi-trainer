@@ -1,5 +1,5 @@
 import { BrickWall } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Meld } from '../../core/agari'
 import {
@@ -12,6 +12,7 @@ import {
   type TileId,
 } from '../../core/tiles'
 import { dealtSeat } from '../../core/wall'
+import { useSettings } from '../../features/settings/settingsStore'
 import { useAdvancedSettings } from '../../features/settings/useAdvancedSettings'
 import { useShowTileNumbers } from '../../features/settings/useShowTileNumbers'
 import { InfoPopover } from '../InfoPopover'
@@ -98,8 +99,12 @@ function SidewaysTile({ children }: { children: ReactNode }) {
  *  than encoding the caller's direction. */
 export function MeldDisplay({ meld }: { meld: Meld }) {
   const last = meld.tiles.length - 1
+  // mount-once, like every other board animation: a meld is keyed positionally at both draw sites
+  // (the felt's seat ring and `HandDisplay`), so this element is new on exactly the render the
+  // call is made and the animation runs then and never again — no "which meld is new" tracking
+  const animate = useSettings((s) => s.boardAnimation)
   return (
-    <div className="flex items-end">
+    <div className={`flex items-end ${animate ? 'motion-safe:animate-meld-in' : ''}`}>
       {meld.tiles.map((t, i) => {
         const hidden = meld.kind === 'ankan' && (i === 0 || i === last)
         if (meld.kind === 'ankan' || i > 0) {
@@ -117,6 +122,33 @@ export function MeldDisplay({ meld }: { meld: Meld }) {
       })}
     </div>
   )
+}
+
+/** Where a thrown tile's own slot was in the sorted row it left — the first tile that now sorts
+ *  after it, or the end of the row. Pure presentation, over the sort the hand is already drawn in.
+ *  Shared by the felt's own rows (`Table`) and the hand below the board, so the hole a tedashi
+ *  leaves is the same shape wherever the reader is watching from. It cannot be mistaken for the
+ *  drawn tile's own gap, which is a fraction of a tile wide and, at the one moment this is set,
+ *  not on screen at all — the seat has just gone back to thirteen.
+ *
+ *  **A face-down row gets the hole in its middle instead, and that is the whole point of the
+ *  flag.** A hidden hand has no readable sort: every other trainer hands the felt `BACK_TILE`
+ *  filler for one (`useMatchRound`, `useLabRound`, folding's threats — thirteen copies of id 0),
+ *  so the sorted position of anything thrown out of it is `hand.length`, a spacer past the last
+ *  tile that a centred row renders as a half-tile shudder rather than a hole. Which slot it came
+ *  out of is not information the reader is owed anyway — *that* one left the hand at all is —
+ *  and putting it dead centre both draws it and leaks nothing about where the tile sorted among
+ *  the tiles still hidden. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function gapIndex(
+  hand: ParsedTile[] | undefined,
+  tile: ParsedTile,
+  concealed?: boolean,
+): number {
+  if (!hand) return -1
+  if (concealed) return hand.length >> 1
+  const i = hand.findIndex((t) => t.id > tile.id)
+  return i === -1 ? hand.length : i
 }
 
 interface HandDisplayProps {
@@ -138,6 +170,11 @@ interface HandDisplayProps {
    *  discard to tsumogiri (`finishTurn`'s `forcedTsumogiri`, which the engine enforces whatever a
    *  caller hands it), so a declared seat must not be offered a choice the engine will refuse. */
   lockedToDrawn?: boolean
+  /** A tile this hand has just thrown, still in flight to the river: its slot stays open until
+   *  whoever set this clears it (`useRound`'s `tedashi`). The same hole the felt gives every other
+   *  seat — the reader's own discard is the one they are looking straight at, so it is the one
+   *  place a tedashi that reads as a tsumogiri is most obviously wrong. */
+  tedashi?: ParsedTile
 }
 
 export function HandDisplay({
@@ -149,7 +186,9 @@ export function HandDisplay({
   melds,
   nuki,
   lockedToDrawn,
+  tedashi,
 }: HandDisplayProps) {
+  const gap = tedashi ? gapIndex(tiles, tedashi, concealed) : -1
   const render = (tile: ParsedTile, i: number) =>
     // `i === tiles.length` is the drawn tile, the one thing still live under the lock
     onTileClick && !(lockedToDrawn && i < tiles.length) ? (
@@ -171,7 +210,15 @@ export function HandDisplay({
     // caller had already centred this box as a whole. Unwrapped it changes nothing: the box is
     // sized to its own content
     <div className="flex flex-wrap items-end justify-center">
-      {tiles.map(render)}
+      {tiles.map((tile, i) => (
+        // the hole a tedashi leaves, held open for the tile's flight — a spacer rather than a
+        // margin, since `render` hands back a button whose className is its own business
+        <Fragment key={i}>
+          {i === gap && <span className="w-(--tile-w) shrink-0" />}
+          {render(tile, i)}
+        </Fragment>
+      ))}
+      {gap === tiles.length && <span className="w-(--tile-w) shrink-0" />}
       {drawn && <div className={`ml-2 ${drawnClassName}`}>{render(drawn, tiles.length)}</div>}
       {((melds?.length ?? 0) > 0 || (nuki?.length ?? 0) > 0) && (
         <div
@@ -205,11 +252,32 @@ export function HandDisplay({
  *  tile the prompt below is about. */
 function Discard({ tile, claiming }: { tile: RiverTile; claiming?: boolean }) {
   const { showTsumogiri } = useAdvancedSettings()
+  const animate = useSettings((s) => s.boardAnimation)
+  // unconditional, and mount-once for the same reason `MeldDisplay` is: river tiles are keyed by
+  // their row and their place in it, so the tile that just landed is a genuinely new node and this
+  // runs at its own mount. Which of the two it gets is the flag the river already carries — a
+  // tsumogiri comes in from the isolated 14th tile's slot, a tedashi straight out of the hand.
+  // `claiming`'s own nudge is a static transform on this same element and would be overwritten
+  // while the animation runs, so it takes the plain class: a claimed tile has been on the river
+  // for a beat already by the time anyone is asked about it.
+  const flight =
+    animate && !claiming
+      ? tile.tsumogiri
+        ? 'motion-safe:animate-discard-tsumogiri'
+        : 'motion-safe:animate-discard-tedashi'
+      : ''
   const face = (
-    <span className={`relative flex ${claiming ? 'translate-y-[22%]' : ''}`}>
+    <span className={`relative flex ${claiming ? 'translate-y-[22%]' : ''} ${flight}`}>
       <Tile id={tile.id} red={tile.red} />
       {tile.tsumogiri && showTsumogiri && (
         <span className="pointer-events-none absolute inset-0 rounded-[10%] bg-neutral-500/50" />
+      )}
+      {/* the permanent mark above is an *advanced* setting and so normally absent, which would
+          leave a paced board with no tsumogiri read at all once the tile has finished arriving.
+          Same grey, same convention, faded out to nothing: a brief pulse says "straight off the
+          draw" without turning the standing mark on for a reader who has not asked for it. */}
+      {tile.tsumogiri && !showTsumogiri && animate && (
+        <span className="pointer-events-none absolute inset-0 rounded-[10%] bg-neutral-500/50 motion-safe:animate-tsumogiri-flash motion-reduce:hidden" />
       )}
       {tile.win && (
         <span className="pointer-events-none absolute inset-0 rounded-[10%] outline-2 outline-red-500" />

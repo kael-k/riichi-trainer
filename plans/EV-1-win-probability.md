@@ -4,15 +4,15 @@
 
 Pretend for a moment that nobody else is at the table. You hold thirteen tiles, there are some
 number of tiles you have not seen, and you will draw a certain number more times before the wall
-runs out. Two questions follow, and **this one model answers both**: *how often does this hand
-complete*, and *what is it worth when it does?* Both have exact answers — not estimates, not
+runs out. Two questions follow, and **this one model answers both**: _how often does this hand
+complete_, and _what is it worth when it does?_ Both have exact answers — not estimates, not
 simulations — because the whole thing is a finite probability tree and every branch is a tile you
 can count. The answer is computed by working backwards from the end of the hand: on the last draw
 the chance is just "how many of my winning tiles are left, out of how many I cannot see"; on the
 draw before that it is that, plus the chance I draw something that improves me into a better
 position and then win from there. Swap "chance of winning" for "points if I win" in that same
 recursion and it returns the hand's value instead, priced by the real scorer — which is what makes
-it able to say *this discard wins less often but pays enough more to be worth it*, and what makes
+it able to say _this discard wins less often but pays enough more to be worth it_, and what makes
 "EV" mean expected **points** rather than expected wins. That recursion is the whole model.
 Everything hard about it is that the tree is large; everything useful about it is that each step is
 a fraction you can read out loud.
@@ -40,12 +40,12 @@ be kept in view:
 
 ### The sampling assumption
 
-Draws come from the *unseen* pool, not from the live wall. From your seat, a tile in an opponent's
+Draws come from the _unseen_ pool, not from the live wall. From your seat, a tile in an opponent's
 hand and a tile in the wall are indistinguishable — you have no information that separates them, so
 treating them as one pool is the maximum-entropy choice given what you know. It is what
 `tomohxx`/`nekobean` do, and it is why the model never needs to know how the wall was shuffled.
 
-The pool shrinks by one per *your own* draw. Opponents' draws and discards also reveal tiles, but
+The pool shrinks by one per _your own_ draw. Opponents' draws and discards also reveal tiles, but
 which ones is unknown when the model runs, and in expectation drawing from the unseen pool is
 already correct.
 
@@ -53,8 +53,8 @@ already correct.
 
 A node is a pair **(hand, draws remaining)**.
 
-- 13-tile hands are *decision-free*: nothing to do but draw.
-- 14-tile hands are *decision nodes*: choose a discard.
+- 13-tile hands are _decision-free_: nothing to do but draw.
+- 14-tile hands are _decision nodes_: choose a discard.
 - Edges out of a 13-tile node are draws, one per tile kind with unseen copies left.
 - Edges out of a 14-tile node are discards.
 
@@ -82,7 +82,7 @@ B(g, k) = max  V(g ⊖ x, k−1)                 otherwise
 ```
 
 with `u(t)` decremented and `U` decremented by one inside the recursive call — the copy you just
-drew is no longer unseen. A discard does *not* change `u`: the tile was already in your hand, so it
+drew is no longer unseen. A discard does _not_ change `u`: the tile was already in your hand, so it
 was never in the unseen pool.
 
 ### Tenpai probability
@@ -105,7 +105,7 @@ S(h, k) = Σ [ u(t) / U ] · BS(h ⊕ t, k)
 BS(g, k) = max(  score(g)  if g wins ,  max_x S(g ⊖ x, k−1)  )
 ```
 
-The `max` at a winning node is what makes the model able to *decline* a cheap win in favour of a
+The `max` at a winning node is what makes the model able to _decline_ a cheap win in favour of a
 better one — which is the correct behaviour, and which `Algorithm.win` in this codebase already has
 a seam for.
 
@@ -113,19 +113,19 @@ a seam for.
 scorer — `scoreHand` in `core/score.ts` — run on the actual completed hand at each winning leaf, so
 yaku, fu, dora off the live indicators and the dealer/non-dealer split are all priced by the same
 code the trainer already grades scoring questions with. Nothing is approximated at the leaf; the
-approximation is entirely in *which leaves the model can reach* (§6) and in the assumption that it
+approximation is entirely in _which leaves the model can reach_ (§6) and in the assumption that it
 reaches them alone (§8). Two known gaps, both recorded in `EV-5` §1.10: `score(g)` is a **tsumo**
-value, since the one-player model has no ron in it at all, and the DP draws at *kind* level so it
+value, since the one-player model has no ron in it at all, and the DP draws at _kind_ level so it
 never sees red fives, which makes expected score systematically slightly low.
 
 Three quantities therefore come out of one traversal, and it is worth naming them separately
 because trainers will want different ones:
 
-| Quantity                | Recurrence  | Reads as                                              |
-| ----------------------- | ----------- | ------------------------------------------------------ |
-| `P_solo`                | `V`         | how often this hand finishes                          |
-| `S_solo / P_solo`       | `S` ÷ `V`   | what it pays **when** it finishes — the hand's value  |
-| `S_solo`                | `S`         | expected points from holding it — the EV itself       |
+| Quantity          | Recurrence | Reads as                                             |
+| ----------------- | ---------- | ---------------------------------------------------- |
+| `P_solo`          | `V`        | how often this hand finishes                         |
+| `S_solo / P_solo` | `S` ÷ `V`  | what it pays **when** it finishes — the hand's value |
+| `S_solo`          | `S`        | expected points from holding it — the EV itself      |
 
 ## 5. Worked example — tenpai, one wait, closed form
 
@@ -141,7 +141,7 @@ P_solo = 1 − Π_{j=0}^{d−1}  (U − k − j) / (U − j)
 
 **Concrete.** Turn 9, four players. Unseen from your seat = 136 − 13 in hand − 1 dora indicator −
 ~32 tiles on the table ≈ **90**. A ryanmen with nothing visible is 8 tiles, so treat it as `k = 8`
-across two kinds (the formula generalises: it is the count of winning *tiles*, not kinds). Draws
+across two kinds (the formula generalises: it is the count of winning _tiles_, not kinds). Draws
 left ≈ **9**.
 
 ```
@@ -180,14 +180,14 @@ must include.
 
 Measured this session, on a verbatim port of `src/core/shanten.ts`, Node 26.7:
 
-| Root       | Advance-only, per root | Advance-or-widen, per root, depth 3 |
-| ---------- | ---------------------- | ----------------------------------- |
-| 1-shanten  | 0.8 ms · 6 nodes       | **1 407 ms** · 2 394 nodes          |
-| 2-shanten  | 3.8 ms · 65 nodes      | **8 823 ms** · 17 897 nodes         |
-| 3-shanten  | 47.7 ms · 387 nodes    | **17 878 ms** · 43 948 nodes        |
+| Root      | Advance-only, per root | Advance-or-widen, per root, depth 3 |
+| --------- | ---------------------- | ----------------------------------- |
+| 1-shanten | 0.8 ms · 6 nodes       | **1 407 ms** · 2 394 nodes          |
+| 2-shanten | 3.8 ms · 65 nodes      | **8 823 ms** · 17 897 nodes         |
+| 3-shanten | 47.7 ms · 387 nodes    | **17 878 ms** · 43 948 nodes        |
 
 The widening branch costs three orders of magnitude, and the reason is mechanical rather than
-combinatorial: deciding whether a discard *widens* the hand requires an `ukeire` call — 34 shanten
+combinatorial: deciding whether a discard _widens_ the hand requires an `ukeire` call — 34 shanten
 probes — for every candidate discard at every node, so a node expansion goes from ~34 probes to
 ~1 150.
 
@@ -203,12 +203,12 @@ somewhere between the two rows above; where exactly is a build-time measurement.
 
 Full 14-way ranking, advance-only, one memo shared across all fourteen candidates:
 
-| Root hand  | Nodes  | Whole ranking |
-| ---------- | ------ | ------------- |
-| tenpai     | 53     | 0.7 ms        |
-| 1-shanten  | 394    | 12 ms         |
-| 2-shanten  | 1 890  | 84 ms         |
-| 3-shanten  | 29 902 | 1.77 s        |
+| Root hand | Nodes  | Whole ranking |
+| --------- | ------ | ------------- |
+| tenpai    | 53     | 0.7 ms        |
+| 1-shanten | 394    | 12 ms         |
+| 2-shanten | 1 890  | 84 ms         |
+| 3-shanten | 29 902 | 1.77 s        |
 
 Supporting throughput, same machine: ~1.7 M shanten probes/s; one `ukeire` call ≈ 19 µs; one
 `evaluateDiscards` (≈476 probes) ≈ 270 µs.
@@ -251,7 +251,7 @@ opponent), approximate (independence), but fully combinatorial.
 
 `P_solo` counts only tsumo. In real play a large share of wins are ron. For a tenpai hand this is
 **not a constant** — it is exactly the `EV-2` machinery pointed the other way: the probability that
-an opponent discards one of *your* waits, with you as the threat and them as the thrower. The same
+an opponent discards one of _your_ waits, with you as the threat and them as the thrower. The same
 enumeration, the same tables, run from the other side.
 
 ### Why they nearly cancel, and why that is a trap
@@ -262,7 +262,7 @@ coincidence of magnitudes at mid-game, not an identity.** The turn-3 and turn-12
 failing in both directions. Any implementation must carry both the raw and the corrected number and
 must never quietly ship the raw one with a percent sign on it.
 
-**The design rule that follows:** the corrections live *outside* the recurrence, applied to its
+**The design rule that follows:** the corrections live _outside_ the recurrence, applied to its
 output, and `Outlook` carries both figures. Folding them into the DP would put a fitted number
 inside an exact computation, which is precisely the failure mode ADR-0004 was written against.
 
@@ -317,7 +317,7 @@ export function discardOutlooks(hand, seen, sanma, draws, opts?): Map<TileId, Ou
 
 ## 10. Sources
 
-- tomohxx, *麻雀アルゴリズム* ch. 6 「和了確率」 — <https://tomohxx.github.io/mahjong-algorithm-book/probability/>.
+- tomohxx, _麻雀アルゴリズム_ ch. 6 「和了確率」 — <https://tomohxx.github.io/mahjong-algorithm-book/probability/>.
   The recurrences in §4 are this, restated in "draws remaining" form rather than turn-index form.
 - `tomohxx/mahjong-win-prob` — reference implementation, exact to 6-shanten in C++ with heavy
   caching.

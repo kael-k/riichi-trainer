@@ -2,8 +2,9 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Meld } from '../../core/agari'
 import type { ParsedTile, RiverTile } from '../../core/tiles'
+import type { CallBanner } from '../../features/table/useRound'
 import { WINDS, type Wind } from '../../features/situation/urlCodec'
-import { MeldDisplay, River, Tile } from './Tile'
+import { gapIndex, MeldDisplay, River, Tile } from './Tile'
 
 /** What one seat shows on the table. Everything is optional: a seat with nothing to show
  *  still holds its position, which is what gives the winds a place rather than a label. */
@@ -24,6 +25,12 @@ export interface SeatView {
    *  setting; the caller decides both whether to pass this and whether `concealed` accompanies
    *  it. */
   hand?: ParsedTile[]
+  /** A tile this seat has just thrown out of its thirteen, still in flight to the river: its slot
+   *  in `hand` stays open (one tile of empty space, at the sorted position it would occupy) until
+   *  whoever set this clears it. That hole *is* the tedashi read — a tsumogiri never leaves one,
+   *  which is why this is only ever set for the other kind. Board truth like `claiming`, and a
+   *  value: the position is the row's own sort, not a fact about the hand. */
+  tedashi?: ParsedTile
   /** This seat's 14th tile, held apart from `hand` with a small gap — the same tedashi/tsumogiri
    *  read a real felt gives, for whichever seat is mid-turn. Honours `concealed` exactly like
    *  `hand`: a concealed seat's draw is still a fresh back, not a spoiler. */
@@ -61,6 +68,12 @@ interface TableProps {
    *  outranks the turn order) — lights the felt's edge on that seat's side, the one ambient signal
    *  that the board is waiting on a person rather than sitting idle. Omit once the hand is over. */
   activeSeat?: number
+  /** The call a seat has just made, drawn big on that seat's own edge for as long as whoever owns
+   *  this keeps it set. Board truth like `activeSeat`, and a **value**: `Table` never derives
+   *  which call a meld represents — a meld-count diff plus `meld.kind` would be game logic in a
+   *  pure view (ADR-0014, ADR-0042). Its lifetime belongs to the driver that raised it
+   *  (`useRound`'s `callBanner`), which is the only thing that knows when the board moved on. */
+  call?: CallBanner
   /** Extra centre content — the scoring trainer's win-condition badges. */
   children?: ReactNode
   /** One seat's own info strip — the settings button plus its furiten/algorithm/wait reads — given
@@ -196,6 +209,7 @@ export function Table({
   wallCount,
   honba,
   activeSeat,
+  call,
   children,
   seatInfo,
 }: TableProps) {
@@ -289,6 +303,10 @@ export function Table({
             const slot = SLOTS[slotOf[(index - seatIndex + players) % players]]
             const wind = t(`wind.${WINDS[index]}`)
             const called = (seat.melds?.length ?? 0) + (seat.nuki?.length ?? 0) > 0
+            // where a tile in flight came out of: the row is sorted, so the slot it left is the
+            // one its own id would sort back into — or, for a row of backs, its middle, since
+            // filler has no sort to read. -1 (nothing in flight) can never match an index
+            const gap = seat.tedashi ? gapIndex(seat.hand, seat.tedashi, seat.concealed) : -1
             return (
               <div key={index} className="contents">
                 {/* fixed at a full river's footprint (6 wide, 3 rows deep) rather than sized to
@@ -342,10 +360,22 @@ export function Table({
                   >
                     <div className="flex items-end [--tile-w:calc(100cqw/16)]">
                       {seat.hand?.map((tile, i) => (
-                        <Tile key={i} id={seat.concealed ? undefined : tile.id} red={tile.red} />
+                        <Tile
+                          key={i}
+                          id={seat.concealed ? undefined : tile.id}
+                          red={tile.red}
+                          // the hole a tedashi leaves: one tile of space before whichever tile now
+                          // stands where the thrown one did — and for a face-down row, before its
+                          // middle tile, which says a tile left the hand without saying where from
+                          className={i === gap ? 'ml-(--tile-w)' : undefined}
+                        />
                       ))}
+                      {gap === seat.hand?.length && <span className="w-(--tile-w) shrink-0" />}
                       {seat.drawn && (
-                        <div className="ml-[0.5cqw]">
+                        // the same read `HandDisplay`'s own `ml-2` gives the bottom hand, in the
+                        // felt's units: about a fifth of a tile, enough to say "this one was just
+                        // drawn" without breaking the row into two hands
+                        <div className="ml-[1.2cqw]">
                           <Tile
                             id={seat.concealed ? undefined : seat.drawn.id}
                             red={seat.drawn.red}
@@ -503,6 +533,25 @@ export function Table({
             is what keeps the rotation covering it. `pointer-events-none` throughout: it must never
             sit between the reader and a tile they are about to click. `motion-safe:` keeps the
             pulse off under reduced motion, where the bar is still there, just static. */}
+        {/* the call a seat just made, on that seat's own edge — the same rotated-square overlay the
+            turn mark below and `seat-points` above both use, and a sibling of the felt grid for
+            the same reason: a second `relative` wrapper here would change what every seat ring's
+            `inset-0` resolves against. Pinned above the turn bar rather than centred on the felt,
+            so the word says *who* called without a caption naming the seat, and sized in `cqw`
+            like every other felt label. `pointer-events-none`: it must never sit between the
+            reader and a tile they are about to click. */}
+        {call !== undefined && (
+          <span
+            data-testid="call-banner"
+            data-seat={call.seat}
+            data-kind={call.kind}
+            className={`pointer-events-none absolute ${showsHands ? 'inset-[10%]' : 'inset-0'} ${SLOTS[slotOf[(call.seat - seatIndex + players) % players]].spin}`}
+          >
+            <span className="absolute bottom-[4cqw] left-1/2 -translate-x-1/2 rounded-[1cqw] bg-amber-500 px-[2cqw] py-[0.6cqw] text-[4.4cqw] leading-none font-bold tracking-wide text-white shadow-[0_0_2cqw] shadow-amber-500/50 motion-safe:animate-call-banner">
+              {t(`seats.call.${call.kind}`)}
+            </span>
+          </span>
+        )}
         {activeSeat !== undefined && (
           <span
             data-testid="turn-mark"

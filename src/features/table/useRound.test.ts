@@ -6,7 +6,7 @@ import { evaluateDiscards } from '../../core/efficiency'
 import { createMatch } from '../../core/match'
 import { shanten } from '../../core/shanten'
 import { type LogEntry, type RoundEvent, type RoundOptions } from '../../core/round'
-import { splitDrawn } from '../../core/table'
+import { splitDrawn, type TableSnapshot } from '../../core/table'
 import { parseTenhou, SOU, type ParsedTile } from '../../core/tiles'
 import { completeWall, wallWithHand, wallWithHands } from '../../core/wall'
 import { useRound, type RoundCommand, type RoundEventContext } from './useRound'
@@ -273,5 +273,70 @@ describe('live option changes (ADR-0008)', () => {
     // a prompt already on screen stays answerable: re-resolving it under `claims: false` would
     // drop its ron entry and cost seat 1 a win it was mid-way through taking
     expect(after.claim?.seat).toBe(1)
+  })
+})
+
+describe('pacing (ADR-0042)', () => {
+  /** Mounts a board at `pace` and records every distinct snapshot it commits — one entry per frame
+   *  the reader would actually see. Recorded in the render body rather than an effect, since that
+   *  is where a commit becomes visible and an effect would coalesce two of them. */
+  function paced(pace: number, seed: string) {
+    // one identity for the life of the hook: a wall rebuilt in the render body is a new link every
+    // render, which `useLinkedHand` reads as a fresh hand to deal
+    const wall = tenpaiWall(seed)
+    const commits: (TableSnapshot | null)[] = []
+    const { result } = renderHook(() => {
+      const round = useRound({ wall, players: 4, options: BARE, pace })
+      if (commits.at(-1) !== round.snapshot) commits.push(round.snapshot)
+      return round
+    })
+    return { result, commits }
+  }
+
+  it('lands an unpaced go-around in the one commit it always did', () => {
+    const { result, commits } = paced(0, 'match-pace-off')
+    const before = commits.length
+    // three AI seats play in full between the reader's discard and their next draw. Unpaced that
+    // is one frame, and it has to stay one: the whole burst settles inside this synchronous `act`
+    tsumogiri(result)
+    expect(commits.length - before).toBe(1)
+    expect(result.current.snapshot!.rivers.flat().length).toBe(4)
+  })
+
+  it('holds a tedashi\u2019s slot open and never a tsumogiri\u2019s', () => {
+    // two mounts rather than two discards: one hold is still up 260ms after the first throw, and
+    // the seat has moved on by then anyway
+    const tedashi = paced(20, 'match-pace-throw')
+    const { tiles } = shown(tedashi.result)
+    // out of the thirteen: the hand it left keeps the hole until the tile lands
+    act(() => tedashi.result.current.discard(tiles[0], false))
+    expect(tedashi.result.current.tedashi).toEqual({ seat: 0, tile: tiles[0] })
+
+    const tsumogiri = paced(20, 'match-pace-throw')
+    const { drawn } = shown(tsumogiri.result)
+    // straight off the draw: nothing left the row, so there is nothing to hold open — the river's
+    // own flash is what says tsumogiri
+    act(() => tsumogiri.result.current.discard(drawn!, true))
+    expect(tsumogiri.result.current.tedashi).toBeUndefined()
+  })
+
+  it('commits a paced go-around turn by turn, and lands on the same board', () => {
+    const { result: plain } = paced(0, 'match-pace-same')
+    tsumogiri(plain)
+    const settled = plain.current.snapshot!.rivers
+
+    const { result, commits } = paced(20, 'match-pace-same')
+    const before = commits.length
+    tsumogiri(result)
+    // the reader's own tile is committed the instant they throw it — they clicked it, there is
+    // nothing to wait for — and the seats that follow are not yet on the board
+    expect(commits.length - before).toBe(1)
+    expect(result.current.snapshot!.rivers.flat().length).toBe(1)
+
+    return waitFor(() => {
+      expect(result.current.snapshot!.rivers).toEqual(settled)
+      // one frame per opponent rather than one for the lot: that is the whole feature
+      expect(commits.length - before).toBeGreaterThan(3)
+    })
   })
 })

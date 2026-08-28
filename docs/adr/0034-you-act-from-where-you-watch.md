@@ -17,7 +17,7 @@ draw. `useEfficiencyDrill.ts`'s `hand`/`drawn` already followed the **acting** s
 the gate that decided whether those tiles could be clicked was anchored to the wrong seat.
 
 Investigating it live surfaced a second, related problem the NOTE did not name: nothing on the
-felt said *who* owed a decision. `ManualControls` suspended its whole control surface — riichi arm,
+felt said _who_ owed a decision. `ManualControls` suspended its whole control surface — riichi arm,
 claim prompt — the instant perspective moved away from `seatIndex`, per ADR-0015's "perspective is
 view-only in every trainer." That was fine when only one seat could ever be manual, but with a
 second manual seat (or a claim on a seat the reader wasn't watching) the board looked idle with no
@@ -44,7 +44,7 @@ this — it still has no idea what playing is (ADR-0014) — the shift is entire
 **`Table` grows one new field, `activeSeat`** — board truth like `riichi`/`points`, passed in and
 drawn as an amber bar on the felt's edge nearest whoever owes the decision (the same
 rotated-square-overlay trick `seat-points` already uses to face a value toward one seat). This is
-the *ambient* half of the fix; the waiting line's button is the *shortcut* half. Together they are
+the _ambient_ half of the fix; the waiting line's button is the _shortcut_ half. Together they are
 what makes "the table looks stuck" self-diagnosing: the glow says which way to rotate, the button
 does the rotating.
 
@@ -74,7 +74,7 @@ near a third 44px touch target, and adding the icon inline wrapped the algorithm
 waits row.
 
 **The NOTE's freeze is fixed by a new derived field**, `useEfficiencyDrill`'s `actingPlayable` —
-the *acting* seat's own tile-count-complete check, as opposed to `finished`'s graded-seat one:
+the _acting_ seat's own tile-count-complete check, as opposed to `finished`'s graded-seat one:
 
 ```ts
 const actingPlayable = hand.length + (drawn ? 1 : 0) + actingMelds.length * 3 === 14
@@ -89,14 +89,14 @@ round ended," not a tile count, so their `canAct` was never wrong in the way the
 ## Consequences
 
 - `ManualControls`'s props change shape: `seatIndex` is gone (`acting` is now compared against
-  `viewSeat` directly, since `acting` already *is* the claim's own seat whenever one is pending —
+  `viewSeat` directly, since `acting` already _is_ the claim's own seat whenever one is pending —
   `core/table.ts#actingSeat` puts the claim ahead of the turn order), `onReturn` is renamed
   `onGoTo(seat)` and now targets whichever seat owes the decision rather than always `seatIndex`,
   and a new `ended?: boolean` gate (the drill's own "is it over" — `drillOver` for efficiency,
   `finished` for folding/lab) suppresses the riichi arm and the waiting line once nothing is owed.
   **`ended` deliberately does not outrank a pending `claim`.** Efficiency's `drillOver` rides on
   `finished`, a tile count, so it is true for the whole window between the graded seat's tenpai
-  discard and its next draw — and a *replayed* link lands in that window with live play still
+  discard and its next draw — and a _replayed_ link lands in that window with live play still
   running behind it, so an opponent can offer that seat a call while the end card is already up.
   `beginTurn`/`finishTurn` are no-ops until a claim is answered, so suppressing the only prompt
   that can answer it freezes the board outright (found by `e2e/board.spec.ts`'s restart-after-

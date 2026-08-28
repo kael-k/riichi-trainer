@@ -67,7 +67,10 @@ export function useShantenRound(situation: Situation, sanma: boolean) {
    *  What it keeps is what only it can offer — the copy, rewind and share of a hand nobody has
    *  answered yet — plus the number, so a boundary in a reversed list says which hand it opens. */
   function logDealt(hand: ParsedTile[]) {
-    if (loggedDeal.current?.situation === situation && loggedDeal.current?.handIndex === handIndex) {
+    if (
+      loggedDeal.current?.situation === situation &&
+      loggedDeal.current?.handIndex === handIndex
+    ) {
       return
     }
     loggedDeal.current = { situation, handIndex }

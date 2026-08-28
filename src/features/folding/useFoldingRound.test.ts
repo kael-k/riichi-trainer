@@ -23,6 +23,8 @@ const OPTIONS: FoldingOptions = {
   opponentWins: true,
   feedbackAtEnd: false,
   showOpponentHands: false,
+  // unpaced, so the whole board settles inside a synchronous `act()`
+  pace: 0,
   showSeatWaits: false,
   seats: null,
 }

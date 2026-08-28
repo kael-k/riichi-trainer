@@ -15,7 +15,7 @@ shared record ([ADR-0005](0005-walls-not-seeds.md)), `opponents` leaving the cod
 **Do not.** The project is pre-release with no external users to strand. Old `?opponents=` links,
 old seed-based board links and stale persisted keys are not migrated, redirected or supported.
 
-Two qualifications that are *not* exceptions:
+Two qualifications that are _not_ exceptions:
 
 - **A stale persisted key is left in place, not purged.** The settings store `version` was
   deliberately not bumped to drop the dead `seats` key, because bumping it drops every setting for

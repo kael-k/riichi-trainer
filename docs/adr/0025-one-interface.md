@@ -1,4 +1,4 @@
-# ADR-0025 — One interface: the board *is* the page
+# ADR-0025 — One interface: the board _is_ the page
 
 **Status:** Accepted · **Date:** 2026-08-18
 **Source:** `UX.md`; the one-interface commit run of 2026-08-18
@@ -31,7 +31,7 @@ the top below that. Nothing lives in only one of them.
 
 **Fullscreen stops being a mode and becomes a request.** `useMobileFullscreen` asks the browser for
 real fullscreen on a phone, on the reader's first tap, once — and never again once they have left
-it. No button, no persisted setting. The call only ever removed the browser's *own* chrome, which
+it. No button, no persisted setting. The call only ever removed the browser's _own_ chrome, which
 is worth having on Android and does not exist on iOS.
 
 **The size setting is one control over the whole table.** `BOARD_SCALES` pairs with `TILE_SCALES`
@@ -39,7 +39,7 @@ by index and reaches `Table` as `--board-scale`; XL is all the room there is. Wi
 longer sharing a page there is no "don't balloon" cap left to keep — `--table-max`/`--table-cap`
 are gone.
 
-*Refined 2026-08-18, this decision otherwise standing:* the setting applies **from tablet size up
+_Refined 2026-08-18, this decision otherwise standing:_ the setting applies **from tablet size up
 only** (`sizable:`, `(min-width: 768px) and (min-height: 521px)`) — both halves, the board and the
 tiles. On a phone the board is always as big as its room allows, which is not a preference to
 express: the side seats' hand rows sit against the square's own edge, so a square smaller than its
@@ -48,7 +48,7 @@ because a phone has one size that fits either way up; the dialog shows the row d
 "unavailable on mobile" rather than hiding it or leaving four buttons that do nothing. And where
 the setting does apply it is a ceiling on the hand rather than a width — the hand is capped to the
 strip it sits in, since a wrapped hand takes a tile row of height off the board, which is how
-asking for bigger tiles used to make the table *smaller*. Where there is room to spare the
+asking for bigger tiles used to make the table _smaller_. Where there is room to spare the
 sentence above is otherwise unchanged — one control, XL is all of it.
 
 ## Consequences
@@ -57,7 +57,7 @@ sentence above is otherwise unchanged — one control, XL is all of it.
 - `noticeCompact` keeps its job but narrows it: it floats over the board only while the panel is
   shut. Open in either shape, the panel's full feedback is the only copy — the same verdict in two
   wordings on one screen reads as a difference rather than a repeat.
-- The pause a graded trainer owes the log is now derived from *drawer* open, not panel open: a
+- The pause a graded trainer owes the log is now derived from _drawer_ open, not panel open: a
   docked panel hides no tiles, so it must not stop the clock.
 - **The score is behind a tap on a phone.** Deliberate: mid-drill the board and the hand are what
   matter, the floating verdict still lands after every decision, and the alternative was a status

@@ -25,9 +25,12 @@ export interface Swing {
 }
 
 /** Rounds a hanchan runs: East and South, four each at a four-player table and three at a
- *  three-player one. Stated rather than read off `MatchState`, which carries no match length —
- *  a tonpuusen would halve it, and nothing in this engine sequences rounds to find out
- *  (ADR-0023). */
+ *  three-player one. Stated rather than read off `MatchState`, which carries no match length of
+ *  its own (`core/match.ts#MatchFormat` lives beside `settleRound`, not here) — this is always
+ *  the hanchan length regardless of the running match's real format. The one real ceiling that
+ *  leaves: an `'ev'` seat on the placement objective in a **tonpuu** `/match` game prices its
+ *  swing over the eight rounds of a hanchan it isn't playing, rather than the four it is —
+ *  plumbing the format through `swing`/`evOptions` is a separate wave (ADR-0040). */
 export function totalRounds(sanma: boolean): number {
   return sanma ? 6 : 8
 }

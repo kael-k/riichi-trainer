@@ -1,6 +1,7 @@
 # ADR-0010 — Permissions are match-wide flags on `MatchOptions`; legality → choice → prompt
 
 **Status:** Accepted · **Date:** 2026-08-15
+**Amended by:** [ADR-0041](0041-daiminkan-and-kakan-are-a-match-only-switch.md) (called kan)
 **Source:** `core/match.ts#MatchOptions`; commit `bc276b3` (the efficiency trainer's row)
 
 ## Context
@@ -14,12 +15,12 @@ Collapsing them into one per-seat permission set makes each of the three unanswe
 **Four flat flags on `MatchOptions`, each shared by every seat**, never renamed, never `Table`
 props:
 
-| Flag     | Gates                                                                                       |
-| -------- | ------------------------------------------------------------------------------------------- |
+| Flag     | Gates                                                                                                                                          |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `wins`   | `tryWin` itself — the sole win evaluator. `false` blocks ron **and** tsumo for every seat and drops the ron entry from `claimOptions` outright |
-| `calls`  | Whether an AI algorithm may pon/chi at all                                                  |
-| `riichi` | `canDeclareRiichi`, for AI and manual seats alike                                            |
-| `claims` | Whether a **manual** seat is *asked* about another seat's discard                            |
+| `calls`  | Whether an AI algorithm may pon/chi at all                                                                                                     |
+| `riichi` | `canDeclareRiichi`, for AI and manual seats alike                                                                                              |
+| `claims` | Whether a **manual** seat is _asked_ about another seat's discard                                                                              |
 
 **The layering is the point:** **legality** (`MatchOptions`) → **choice** (the `Algorithm`) →
 **prompt** (`claims`, manual seats only). With `wins: false` the engine never even asks
@@ -30,9 +31,12 @@ efficiency trainer's hardcoded value reach (ending a per-turn drill on someone e
 cut it short). The efficiency trainer also runs `riichi: false` — it reads no danger, so an
 opponent's riichi there was decoration, not signal.
 
-Daiminkan is never offered to anyone: the engine models no called kan at all, so offering it to
-one manual seat alone would be the one call no algorithm could answer. A manual seat's own tsumo
-is never an explicit choice either — `beginTurn` wins the instant the draw completes the hand.
+Daiminkan was never offered to anyone at the time this was written: the engine modelled no called
+kan at all, so offering it to one manual seat alone would have been the one call no algorithm
+could answer. [ADR-0041](0041-daiminkan-and-kakan-are-a-match-only-switch.md) lifts that, but as a
+ruleset switch rather than a fifth row in the table above — `chooseCall` never receives it, so an
+AI seat still never takes one regardless. A manual seat's own tsumo is never an explicit choice
+either — `beginTurn` wins the instant the draw completes the hand.
 
 ## Consequences
 

@@ -57,6 +57,11 @@ export type FoldingOptions = Settings['folding'] & {
    *  settings — see `FoldingPage`. Read at generation time to seed the handover, and live
    *  thereafter (ADR-0008): a change here never rebuilds the round. */
   seats: SeatConfig | null
+  /** How long a seat nobody plays holds before its action is committed (`useRound`'s `pace`).
+   *  Deliberately absent from the search effect's deps below, like `seats`: the board search is a
+   *  plain async loop that never runs through `useRound` at all, so pacing cannot slow it and
+   *  changing it must never re-search for a new hand. */
+  pace: number
 }
 
 export interface FoldingUrl {
@@ -649,6 +654,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     options: liveOptions ?? IDLE,
     replay: round?.replay,
     showReads: options.showSeatWaits || options.showOpponentHands,
+    pace: options.pace,
     onEvent,
   })
 
@@ -714,6 +720,8 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
   }
 
   return {
+    callBanner: table.callBanner,
+    tedashi: table.tedashi,
     turn: snapshot?.turn ?? 1,
     doraIndicators: snapshot?.doraIndicators ?? [],
     rivers: snapshot?.rivers ?? [],

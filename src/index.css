@@ -63,3 +63,83 @@ body {
   margin: 0;
   @apply bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100;
 }
+
+/* Board motion. Everything here is a **mount-once** animation: river tiles and melds are keyed
+   positionally, so the tile that just landed is a genuinely new DOM node on the render it appears
+   and an unconditional `animation` on every discard runs exactly once, at its own mount. No refs,
+   no length diffing, no "which one is new" state. The one accepted cost is that a full board mount
+   — a fresh deal, a replayed link — mounts every river tile at once and they animate together as a
+   single shimmer, which reads as the board dealing itself in.
+
+   Discard origins are written in the river's **own unrotated frame**: the whole river box carries
+   its seat's rotation (`Table.tsx`'s `slot.spin`), row 0 sits nearest the felt centre and later
+   rows grow toward the seat's own edge, so "toward the hand it came from" is `+Y` for all four
+   seats and one keyframe pair covers the table. A tsumogiri comes from below *and to the right*,
+   where the isolated 14th tile actually sits (`Tile.tsx`'s `ml-2` slot); a tedashi comes straight
+   up out of the hand.
+
+   Every use site is behind `motion-safe:`, so an OS-level "reduce motion" removes the lot. */
+@theme {
+  --animate-discard-tedashi: discard-tedashi 260ms ease-out;
+  --animate-discard-tsumogiri: discard-tsumogiri 260ms ease-out;
+  --animate-tsumogiri-flash: tsumogiri-flash 700ms ease-out forwards;
+  --animate-meld-in: meld-in 260ms ease-out;
+  --animate-call-banner: call-banner 1200ms ease-out forwards;
+}
+
+@keyframes discard-tedashi {
+  from {
+    opacity: 0;
+    transform: translateY(180%);
+  }
+}
+
+@keyframes discard-tsumogiri {
+  from {
+    opacity: 0;
+    transform: translate(140%, 180%);
+  }
+}
+
+/* a transient copy of the permanent tsumogiri shade, for readers who have not turned that
+   advanced mark on: it says "straight off the draw" for as long as the tile is arriving and then
+   leaves no mark behind */
+@keyframes tsumogiri-flash {
+  from {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes meld-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+
+/* up, hold, out — the hold is most of it, since the word is there to be read rather than to move.
+   `forwards` so it ends invisible on the frame before whoever raised it takes it away. */
+@keyframes call-banner {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 60%) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -30%) scale(1);
+  }
+}

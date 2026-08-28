@@ -22,7 +22,7 @@ Three layers, and the imports only ever point one way:
 
 - The engine is testable as arithmetic: 31 test files, and every file in `core/` has one.
 - A hand can be replayed, hashed and diffed without a DOM ([ADR-0016](0016-testing-strategy.md)).
-- The cost is real: anything the UI needs to *show* about a decision has to be handed out of the
+- The cost is real: anything the UI needs to _show_ about a decision has to be handed out of the
   engine explicitly, which is why `core/table.ts` grew a snapshot builder
   ([ADR-0012](0012-shared-table-layer.md)) rather than letting pages read `MatchState`.
 

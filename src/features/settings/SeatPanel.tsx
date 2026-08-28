@@ -3,19 +3,42 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { WINDS } from '../situation/urlCodec'
-import { SegmentedButton } from './SettingsDialog'
 import { resolveSeatConfig, withSeatEv, withSeatMode, type SeatConfig } from './tableSettings'
 import { DEFAULT_EV_SEAT, type EvObjective } from '../../core/ev'
-import type { EvModelName } from '../../core/evModel'
+import { EV_MODELS, type EvModelName } from '../../core/evModel'
 import type { SeatAlgorithm } from '../../core/policy'
 
-const MODES: SeatAlgorithm[] = ['efficiency', 'defense', 'tsumogiri', 'ev', 'manual']
+/** One flat list of choices: the four plain algorithms, the two EV models named as their own
+ *  entries (ADR-0037's model is a seat field, not an algorithm — this is presentation only, so
+ *  picking one still writes `mode: 'ev'` plus `EvSeat.model`), and manual. Exported for the match
+ *  drill's setup screen (`MatchPage.tsx`), which offers the same choices before any board exists
+ *  to hang a corner button off. */
+export type SeatChoice = { mode: SeatAlgorithm; model?: EvModelName }
+// eslint-disable-next-line react-refresh/only-export-components
+export const SEAT_CHOICES: SeatChoice[] = [
+  { mode: 'efficiency' },
+  { mode: 'defense' },
+  { mode: 'tsumogiri' },
+  { mode: 'ev', model: 'statistical' },
+  { mode: 'ev', model: 'houou' },
+  { mode: 'manual' },
+]
 
-/** The two orthogonal switches an `'ev'` seat carries. They are here rather than in `MODES`
- *  because they are not algorithms: every combination is the same decider reading a different
- *  price list in a different currency (ADR-0037). */
-const EV_MODELS: EvModelName[] = ['statistical', 'houou']
+// eslint-disable-next-line react-refresh/only-export-components
+export function choiceValue(choice: SeatChoice): string {
+  // `mode` alone decides, never `model`'s mere presence: `resolveSeatConfig` fills every seat's
+  // `ev` with `DEFAULT_EV_SEAT` regardless of algorithm (so switching to `'ev'` and back keeps
+  // the reader's choice), which means a non-`'ev'` seat still carries a defined `model` — passing
+  // it through unconditionally would read every efficiency/defense/manual seat as an EV entry.
+  return choice.mode === 'ev' && choice.model ? `ev:${choice.model}` : choice.mode
+}
+
 const EV_OBJECTIVES: EvObjective[] = ['points', 'placement']
+
+/** Reused verbatim from the language picker (`SettingsDialog.tsx`) — the `[color-scheme:]` pair
+ *  is what keeps a native `<select>`'s own popup legible in dark mode. */
+export const SELECT_CLASS =
+  'min-h-11 rounded-lg border border-neutral-300 bg-white px-2 text-neutral-900 [color-scheme:light] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:[color-scheme:dark]'
 
 export interface SeatButtonProps {
   /** The seat this button configures. */
@@ -37,6 +60,10 @@ export interface SeatButtonProps {
    *  exactly one seat's discards against exactly one hand, so a second manual seat has nothing
    *  defined to score — the algorithm choice is still offered for every seat. */
   ownSeatOnlyManual?: boolean
+  /** Passed straight through to `resolveSeatConfig` — `false` only for the match trainer, whose
+   *  full-bot cast is a real choice, not an empty table (`tableSettings.ts`'s own doc comment).
+   *  Default `true` matches every other trainer's guarantee. */
+  requireManual?: boolean
 }
 
 /**
@@ -59,10 +86,17 @@ export function SeatButton({
   fallbackModes,
   viewSeat,
   ownSeatOnlyManual = false,
+  requireManual = true,
 }: SeatButtonProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const resolved = resolveSeatConfig(config, players, defaultOrientation, fallbackModes)
+  const resolved = resolveSeatConfig(
+    config,
+    players,
+    defaultOrientation,
+    fallbackModes,
+    requireManual,
+  )
   const wind = t(`wind.${WINDS[seat]}`)
 
   useEffect(() => {
@@ -139,82 +173,87 @@ export function SeatButton({
                   <span className="text-xs font-medium text-neutral-500">
                     {t('seats.playedBy')}
                   </span>
-                  <div className="flex flex-wrap gap-1">
-                    {MODES.filter(
-                      (option) => option !== 'manual' || !ownSeatOnlyManual || yours,
-                    ).map((option) => (
-                      <SegmentedButton
-                        key={option}
-                        active={mode === option}
-                        // the last manual seat may not be given away: with none, no seat ever
-                        // stops the go-round loop and the hand would play itself out
-                        disabled={mode === 'manual' && option !== 'manual' && manualCount === 1}
-                        onClick={() =>
-                          onChange({
-                            modes: withSeatMode(config?.modes ?? [], seat, option),
-                            ev: config?.ev,
-                          })
-                        }
-                      >
-                        {t(`seats.mode.${option}`)}
-                      </SegmentedButton>
-                    ))}
-                  </div>
-                  <p className="text-sm text-neutral-500">{t(`seats.modeHint.${mode}`)}</p>
+                  <select
+                    aria-label={t('seats.playedBy')}
+                    value={choiceValue({ mode, model: ev.model })}
+                    onChange={(e) => {
+                      const choice = SEAT_CHOICES.find((c) => choiceValue(c) === e.target.value)
+                      if (!choice) return
+                      onChange({
+                        modes: withSeatMode(config?.modes ?? [], seat, choice.mode),
+                        ev: choice.model
+                          ? withSeatEv(config?.ev, seat, { model: choice.model })
+                          : config?.ev,
+                      })
+                    }}
+                    className={SELECT_CLASS}
+                  >
+                    {SEAT_CHOICES.filter(
+                      (choice) => choice.mode !== 'manual' || !ownSeatOnlyManual || yours,
+                    ).map((choice) => {
+                      const hououReason =
+                        choice.model === 'houou' ? EV_MODELS.houou.unsupported(players === 3) : null
+                      return (
+                        <option
+                          key={choiceValue(choice)}
+                          value={choiceValue(choice)}
+                          // the last manual seat may not be given away: with none, no seat ever
+                          // stops the go-round loop and the hand would play itself out
+                          disabled={
+                            (mode === 'manual' && choice.mode !== 'manual' && manualCount === 1) ||
+                            hououReason !== null
+                          }
+                        >
+                          {choice.model
+                            ? t(`seats.evChoice.${choice.model}`)
+                            : t(`seats.mode.${choice.mode}`)}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  <p className="text-sm text-neutral-500">
+                    {mode === 'ev'
+                      ? t(`seats.evModelHint.${ev.model}`)
+                      : t(`seats.modeHint.${mode}`)}
+                  </p>
+                  {mode === 'ev' &&
+                    ev.model === 'houou' &&
+                    EV_MODELS.houou.unsupported(players === 3) && (
+                      <p className="text-sm text-amber-700 dark:text-amber-400">
+                        {EV_MODELS.houou.unsupported(players === 3)}
+                      </p>
+                    )}
                 </div>
-                {/* only an EV seat has anything to price with, so the two rows appear with it
-                    rather than sitting greyed out under every other algorithm */}
+                {/* only an EV seat has anything to price with, so this row appears with it rather
+                    than sitting greyed out under every other algorithm */}
                 {mode === 'ev' && (
-                  <>
-                    <div className="flex flex-col gap-2">
-                      <span className="text-xs font-medium text-neutral-500">
-                        {t('seats.evModelLabel')}
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {EV_MODELS.map((option) => (
-                          <SegmentedButton
-                            key={option}
-                            active={ev.model === option}
-                            onClick={() =>
-                              onChange({
-                                modes: config?.modes ?? [],
-                                ev: withSeatEv(config?.ev, seat, { model: option }),
-                              })
-                            }
-                          >
-                            {t(`seats.evModel.${option}`)}
-                          </SegmentedButton>
-                        ))}
-                      </div>
-                      <p className="text-sm text-neutral-500">
-                        {t(`seats.evModelHint.${ev.model}`)}
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <span className="text-xs font-medium text-neutral-500">
-                        {t('seats.evObjectiveLabel')}
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {EV_OBJECTIVES.map((option) => (
-                          <SegmentedButton
-                            key={option}
-                            active={ev.objective === option}
-                            onClick={() =>
-                              onChange({
-                                modes: config?.modes ?? [],
-                                ev: withSeatEv(config?.ev, seat, { objective: option }),
-                              })
-                            }
-                          >
-                            {t(`seats.evObjective.${option}`)}
-                          </SegmentedButton>
-                        ))}
-                      </div>
-                      <p className="text-sm text-neutral-500">
-                        {t(`seats.evObjectiveHint.${ev.objective}`)}
-                      </p>
-                    </div>
-                  </>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-medium text-neutral-500">
+                      {t('seats.evObjectiveLabel')}
+                    </span>
+                    <select
+                      aria-label={t('seats.evObjectiveLabel')}
+                      value={ev.objective}
+                      onChange={(e) =>
+                        onChange({
+                          modes: config?.modes ?? [],
+                          ev: withSeatEv(config?.ev, seat, {
+                            objective: e.target.value as EvObjective,
+                          }),
+                        })
+                      }
+                      className={SELECT_CLASS}
+                    >
+                      {EV_OBJECTIVES.map((option) => (
+                        <option key={option} value={option}>
+                          {t(`seats.evObjective.${option}`)}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-sm text-neutral-500">
+                      {t(`seats.evObjectiveHint.${ev.objective}`)}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

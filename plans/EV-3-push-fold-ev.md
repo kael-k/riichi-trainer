@@ -45,17 +45,17 @@ stated float epsilon, never sort stability — ADR-0009's purity rule covers the
 
 ## 3. Every term, and where it comes from
 
-| Term                   | Source                                                          | Available today?                    |
-| ---------------------- | --------------------------------------------------------------- | ----------------------------------- |
-| `P_win`                | `EV-1`, corrected (§8 there) — and it depends on `t`, because throwing a tile changes the hand | After `EV-1` ships |
-| `value_win`            | `EV-1`'s expected-score DP, or `scoreHand` once tenpai          | `core/score.ts` exists              |
-| `P_dealin(t, j)`       | `EV-2`, per threat, union across threats                        | After `EV-2` ships                  |
-| `value_j`              | **Not modelled.** See §4                                        | No                                  |
-| `P_tsumo_against`      | **Not modelled.** Requires an opponent hand model               | No                                  |
-| `honba_in` / `honba_out` | `MatchState.honba` × 300/100                                  | `core/match.ts` has it              |
-| `sticks`               | `MatchState.riichiSticks` × 1000                                | Yes                                 |
-| `tenpai_payment`       | 1000/1500/3000 split by how many are tenpai                     | Rule constant                       |
-| `P_exhaustive`         | ≈17% of hands, turn-dependent                                   | Empirical constant                  |
+| Term                     | Source                                                                                         | Available today?       |
+| ------------------------ | ---------------------------------------------------------------------------------------------- | ---------------------- |
+| `P_win`                  | `EV-1`, corrected (§8 there) — and it depends on `t`, because throwing a tile changes the hand | After `EV-1` ships     |
+| `value_win`              | `EV-1`'s expected-score DP, or `scoreHand` once tenpai                                         | `core/score.ts` exists |
+| `P_dealin(t, j)`         | `EV-2`, per threat, union across threats                                                       | After `EV-2` ships     |
+| `value_j`                | **Not modelled.** See §4                                                                       | No                     |
+| `P_tsumo_against`        | **Not modelled.** Requires an opponent hand model                                              | No                     |
+| `honba_in` / `honba_out` | `MatchState.honba` × 300/100                                                                   | `core/match.ts` has it |
+| `sticks`                 | `MatchState.riichiSticks` × 1000                                                               | Yes                    |
+| `tenpai_payment`         | 1000/1500/3000 split by how many are tenpai                                                    | Rule constant          |
+| `P_exhaustive`           | ≈17% of hands, turn-dependent                                                                  | Empirical constant     |
 
 Two of those are the honest gaps, and they are the reason this document is a specification rather
 than a plan.
@@ -84,7 +84,7 @@ one.
 That has a direct consequence for the trainer: **the interesting question is rarely "is this tile
 dangerous" but "is this tile more dangerous than the safest tile I will still be holding in three
 turns"**, and a model that prices only the current throw cannot ask it. `EV(fold)` therefore has to
-be evaluated over the *rest of the hand*, not the next discard — the same multi-turn recursion
+be evaluated over the _rest of the hand_, not the next discard — the same multi-turn recursion
 `EV-1` uses, applied to safety instead of speed.
 
 That is the single largest piece of unbuilt work in this document, and `EV-5` records it as such.
@@ -115,7 +115,7 @@ terms showing.
 
 The engine already deducts the 1000 and adds the stick inside `finishTurn`, and
 `canDeclareRiichi(state, options, seat)` already gates legality — so the only missing half is the
-*choice*, which is what an EV algorithm would supply.
+_choice_, which is what an EV algorithm would supply.
 
 The honest version compares against the alternative branch, and both branches have measured data:
 declare (the rates above) vs stay dama (`DamaWinrate.csv` by wait and turn; `OikakeWinrate.csv`
@@ -130,7 +130,7 @@ not only the push/fold discard.
 - **Call (pon/chi).** `EV(call) − EV(pass)`, where calling changes `P_win` (usually up, via
   shanten), `value_win` (usually down, via losing menzen and riichi) and `P_dealin` over the rest
   of the hand (up, because an open hand is committed). Today `chooseCall` in `policy.ts` calls
-  whenever the meld strictly lowers shanten *and* `hasYakuRoute` still holds — a sound rule that
+  whenever the meld strictly lowers shanten _and_ `hasYakuRoute` still holds — a sound rule that
   the EV decider refines rather than replaces, for its own seat only.
 - **Kita.** Already graded against `evaluateDiscards`' own north entry in `useEfficiencyRound.ts`,
   which is a shanten-and-ukeire comparison. The EV version prices the dora against the tempo.
@@ -204,6 +204,6 @@ The reason for all of it. A single discard, with its arithmetic open:
      deal in  3.1% × 6 200   = −  192   (genbutsu this turn, 2 left)
 ```
 
-Every line is a term from `EV-1` or `EV-2`, and every term expands into *its* terms. That is what
+Every line is a term from `EV-1` or `EV-2`, and every term expands into _its_ terms. That is what
 the statistical lab is for, and it is why the two models underneath had to be built term-first
 rather than number-first.

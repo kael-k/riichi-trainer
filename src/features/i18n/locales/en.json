@@ -55,7 +55,12 @@
     "showSeatWaits": "Show tenpai and waits",
     "language": "Language",
     "languageAuto": "Auto (browser)",
-    "translatedTerms": "Translated yaku names"
+    "translatedTerms": "Translated yaku names",
+    "botDelay": "Opponent delay",
+    "botDelayInfo": "The opponents are simulated, so they could act instantly. This holds the board for a moment on each of their turns instead, the way a real table has someone thinking before they discard — long enough to see what each seat actually threw. Set it to 0 to play at full speed.",
+    "botDelayOff": "Off",
+    "botDelayValue": "{{seconds}}s",
+    "boardAnimation": "Animate the board"
   },
   "wind": {
     "E": "E",
@@ -93,6 +98,10 @@
       "statistical": "Formula",
       "houou": "Houou"
     },
+    "evChoice": {
+      "statistical": "EV — statistical model",
+      "houou": "EV — Tenhou houou model"
+    },
     "evModelHint": {
       "statistical": "Every price derived from the tiles nobody has seen. It prices opponents cheap, so it pushes where the measured model folds.",
       "houou": "Every price measured over Tenhou houou games. Four-player only — there is no three-player data."
@@ -106,13 +115,12 @@
       "points": "Maximises the score. Stable, and the currency every figure is easiest to check in.",
       "placement": "Maximises where the match is likely to finish, so the same points are worth more to a seat with a place to gain."
     },
-    "waitingSeat": "Waiting on {{wind}}",
-    "goToSeat": "Go to {{wind}}",
     "claimPrompt": "{{wind}}: call on {{from}}’s discard?",
     "claim": {
       "ron": "Ron",
       "pon": "Pon",
       "chi": "Chi",
+      "minkan": "Kan",
       "pass": "Pass"
     },
     "abortPrompt": "{{wind}}: abort the hand?",
@@ -122,7 +130,16 @@
       "decline": "Play on"
     },
     "riichi": "Riichi",
-    "riichiHint": "Now discard one of:"
+    "riichiHint": "Now discard one of:",
+    "call": {
+      "chi": "Chi",
+      "pon": "Pon",
+      "minkan": "Kan",
+      "ankan": "Kan",
+      "riichi": "Riichi",
+      "ron": "Ron",
+      "tsumo": "Tsumo"
+    }
   },
   "table": {
     "wall": "Wall {{count}}",
@@ -212,6 +229,11 @@
       "title": "Statistical lab",
       "desc": "Load or build any hand and see the full ranking — every discard's shanten and ukeire, every tile's danger tier.",
       "intro": "Load a shared wall or build your own hand, tile by tile. Play only your own discards — opponents always play themselves. Nothing is graded: every discard's full ukeire ranking and every tile's full danger-tier breakdown are shown, the same numbers the other trainers compute and only show you a sliver of."
+    },
+    "match": {
+      "title": "Full match",
+      "desc": "Play a whole east-only or hanchan match against the bots — nothing graded, just the game.",
+      "intro": "Pick a format and a ruleset, choose who plays each seat, then play the match out round by round — dealer rotation, honba, riichi sticks and all. Nothing here is graded: the points are the score."
     }
   },
   "efficiency": {
@@ -505,6 +527,23 @@
       "notWinning": "no win"
     }
   },
+  "match": {
+    "setup": {
+      "format": "Format",
+      "seats": "Seats",
+      "chooseSeats": "Choose seats",
+      "seat": "Seat {{number}}"
+    },
+    "format": {
+      "tonpuu": "East only",
+      "hanchan": "Hanchan"
+    },
+    "start": "Start match",
+    "quit": "Quit match",
+    "over": "Match over",
+    "newMatch": "New match",
+    "status": "{{rank}} of {{players}}"
+  },
   "log": {
     "rewound": "Rewound to entry {{number}}",
     "wentBack": "Went back one step",
@@ -521,6 +560,18 @@
     "lab": {
       "abort": "Turn {{turn}}: {{wind}} declared nine orphans — the hand is abandoned",
       "discard": "Turn {{turn}}: discarded {{tile}}"
+    },
+    "match": {
+      "ron": "{{round}}: {{winner}} wins off {{loser}}",
+      "tsumo": "{{round}}: {{wind}} tsumo",
+      "exhaustive": "{{round}}: exhaustive draw",
+      "abort": "{{round}}: hand abandoned",
+      "delta": "{{wind}}: {{amount}}",
+      "discard": "Turn {{turn}}: {{wind}} discarded {{tile}}",
+      "riichi": "{{wind}} declares riichi",
+      "call": "{{wind}}: {{kind}} on {{from}}’s tile",
+      "kita": "{{wind}} pulls north (kita)",
+      "kan": "{{wind}} kans {{tile}}"
     },
     "folding": {
       "safe": "Turn {{turn}}: threw {{tile}} — {{tier}}, the safest available",

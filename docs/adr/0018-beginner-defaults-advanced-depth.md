@@ -8,7 +8,7 @@
 
 The audience is both: advanced players who want fu itemisation and per-threat tier reasons, and
 beginners who have never scored a hand. Building for one produces a tool the other cannot use, and
-"add a setting" only helps if the *default* is the beginner's.
+"add a setting" only helps if the _default_ is the beginner's.
 
 ## Decision
 
@@ -17,7 +17,7 @@ plainly to someone who has never scored a hand**. A new option must never be som
 has to find and change before the screen makes sense.
 
 Concretely: fu and yaku breakdowns are opt-in; yaku are named "Pure straight" rather than "Ittsuu"
-until the reader asks otherwise (and that row is hidden under ja/zh, where those *are* the local
+until the reader asks otherwise (and that row is hidden under ja/zh, where those _are_ the local
 names); tile-number overlays default on except in ja/zh.
 
 Two beginner-facing surfaces built on the same principle:

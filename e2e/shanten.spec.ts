@@ -73,9 +73,7 @@ test('a wrong guess names both the guess and the real answer', async ({ page }) 
 
   await openPanel(page)
   await expect(
-    panel(page).getByText(
-      new RegExp(`Hand 1: guessed 3, actual ${PINNED_SHANTEN}.*wrong`),
-    ),
+    panel(page).getByText(new RegExp(`Hand 1: guessed 3, actual ${PINNED_SHANTEN}.*wrong`)),
   ).toBeVisible()
   await expect(scoreLine(page, 'Correct: 0 / 1')).toHaveCount(1)
 })

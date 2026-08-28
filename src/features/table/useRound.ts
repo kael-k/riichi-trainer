@@ -3,6 +3,7 @@ import {
   answerClaim,
   beginTurn,
   callAnkan,
+  callKakan,
   callKita,
   canDeclareRiichi,
   createRound,
@@ -18,6 +19,7 @@ import {
   type RoundOptions,
   type RoundState,
 } from '../../core/round'
+import type { MeldKind } from '../../core/agari'
 import { addTile, removeTile, tileCount } from '../../core/hand'
 import {
   actingSeat,
@@ -99,7 +101,67 @@ export interface UseRoundInput {
    *  site. Threaded straight to `snapshotTable`, which is where the per-seat `waits` cost is paid
    *  and which widens it once more with `round.ended`. */
   showReads?: boolean
+  /** Milliseconds to hold the board before a seat nobody plays has its action committed — the
+   *  "thinking" beat that stops three opponents' whole go-around appearing in one frame. **0 (the
+   *  default) keeps the driver fully synchronous**: no `await` is evaluated and no per-event
+   *  snapshot is taken, so the entire AI burst still lands in the one terminal commit it always
+   *  did, and every caller that settles a round inside a synchronous `act()` still does. Read
+   *  through a ref, so changing it mid-hand takes effect on the next turn (ADR-0008). */
+  pace?: number
   onEvent?: RoundEventHandler
+}
+
+/** The call a seat has just made, for as long as the board should say so. Produced here because
+ *  only the driver knows *when* — `Table` is handed this as board truth and never derives which
+ *  call a meld represents (ADR-0042). */
+export interface CallBanner {
+  seat: number
+  kind: MeldKind | 'riichi' | 'ron' | 'tsumo'
+}
+
+/** A tile a seat has just thrown out of its hand — the hole it left, for as long as whoever owns
+ *  this keeps it set. Produced here for the same reason `CallBanner` is: only the driver knows
+ *  when the tile lands (ADR-0042). */
+export interface Tedashi {
+  seat: number
+  tile: ParsedTile
+}
+
+/** How long a raised banner stays up. Independent of `pace`: it is how long the word takes to
+ *  read, not how long the seat took to decide. */
+const BANNER_MS = 1200
+
+/** How long a seat's hand keeps the slot of a tile it just threw open — the flight time of the
+ *  discard animation (`--animate-discard-*` in `index.css`; the two are held in step by hand, a
+ *  CSS custom property being no easier to read back than this constant is to keep). It is the
+ *  whole tedashi read on the felt: the tile is off the river's own end either way, but only a
+ *  tedashi leaves a hole behind it in the hand it came from. */
+const DISCARD_FLIGHT_MS = 260
+
+/** The beat between a discard landing on the river and the call that takes it back off. Short,
+ *  and capped by `pace` so turning the delay down never lengthens anything: the reader is already
+ *  looking at that tile, they only need to see it arrive before it moves. */
+const CALL_BEAT_MS = 600
+
+const hold = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** The word a paced board puts up for one event, or nothing where there is no announcement to
+ *  make. A kita is deliberately silent: pulling a north is a bookkeeping move nobody calls out at
+ *  a real table, and it happens on almost every sanma turn. A riichi is not here either — it is
+ *  raised with the discard it rides on, in `show`. */
+function bannerFor(event: RoundEvent): CallBanner | undefined {
+  switch (event.kind) {
+    case 'call':
+      return { seat: event.seat, kind: event.meld.kind }
+    case 'ankan':
+      return { seat: event.seat, kind: 'ankan' }
+    case 'kakan':
+      return { seat: event.seat, kind: 'minkan' }
+    case 'win':
+      return { seat: event.win.seat, kind: event.win.from === undefined ? 'tsumo' : 'ron' }
+    default:
+      return undefined
+  }
 }
 
 /** Whether `state` is mid-turn for a seat nobody will decide for automatically. */
@@ -142,6 +204,107 @@ export function useRound(input: UseRoundInput) {
 
   const handler = useRef<RoundEventHandler | undefined>(input.onEvent)
   handler.current = input.onEvent
+
+  // read through a ref for the same reason `handler` is: a page rebuilds its input object every
+  // render, and the driver has to see the value as it stands at the turn it is about to pace, not
+  // the one captured when the drive started (ADR-0008)
+  const pace = useRef(input.pace ?? 0)
+  pace.current = input.pace ?? 0
+
+  const [callBanner, setCallBanner] = useState<CallBanner | undefined>(undefined)
+  const bannerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [tedashi, setTedashi] = useState<Tedashi | undefined>(undefined)
+  const tedashiTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // the board with the discard on the river and nobody having reacted to it yet, written by the
+  // `beforeReactions` seam and committed as that discard's own frame. `finishTurn` resolves the
+  // whole turn before it yields, so this is the only way the tile a pon takes is ever on screen
+  const preReaction = useRef<TableSnapshot | undefined>(undefined)
+  // a riichi event is yielded immediately before the discard that carries it, so the banner waits
+  // for that discard's own frame rather than going up while the seat is still "thinking"
+  const declaring = useRef(false)
+
+  useEffect(
+    () => () => {
+      clearTimeout(bannerTimer.current)
+      clearTimeout(tedashiTimer.current)
+    },
+    [],
+  )
+
+  /** Holds the slot a tedashi came out of open for the tile's flight, then closes it. Passing
+   *  `undefined` just closes whatever is open — which is what a tsumogiri does: it left no hole,
+   *  and a hole still standing from the previous seat's throw is a lie about this one. */
+  function vacate(next: Tedashi | undefined): void {
+    clearTimeout(tedashiTimer.current)
+    setTedashi(next)
+    if (next) tedashiTimer.current = setTimeout(() => setTedashi(undefined), DISCARD_FLIGHT_MS)
+  }
+
+  /** Puts one call up on the board and takes it down again `BANNER_MS` later. */
+  function raise(banner: CallBanner): void {
+    clearTimeout(bannerTimer.current)
+    setCallBanner(banner)
+    bannerTimer.current = setTimeout(() => setCallBanner(undefined), BANNER_MS)
+  }
+
+  /** The frame `beforeReactions` hands the pacer, taken only while the board is actually paced —
+   *  an unpaced board takes no per-event snapshot at all. */
+  function capturePreReaction(c: TableCore): void {
+    if (pace.current > 0) preReaction.current = snapshotTable(c, input.showReads)
+  }
+
+  /** Holds the board for one event's own beat and commits the frame that event belongs to; false
+   *  means the drive it belonged to has been abandoned and the caller must stop.
+   *
+   *  **Only ever called when `pace > 0`.** The `await`s live in here rather than at the call sites
+   *  precisely so an unpaced board evaluates none of them: an `await` on a plain value still
+   *  defers to a microtask, which is enough to move a commit outside a synchronous `act()` and
+   *  break every trainer hook test. `alive` re-checks the drive generation across each pause, the
+   *  same guard the synchronous path already applies after every command — a restart or an unmount
+   *  mid-hold must not commit a dead board. */
+  async function show(c: TableCore, event: RoundEvent, alive: () => boolean): Promise<boolean> {
+    switch (event.kind) {
+      case 'riichi':
+        // no beat and no frame of its own: the declaration and the tile it rides on are one
+        // action, so the banner goes up with the discard below rather than a turn's wait before it
+        declaring.current = true
+        return true
+      case 'discard': {
+        // a seat somebody plays discarded because they clicked it — there is nothing to wait for
+        if (!isManual(c.round, event.seat)) {
+          await hold(pace.current)
+          if (!alive()) return false
+        }
+        setSnapshot(preReaction.current ?? snapshotTable(c, input.showReads))
+        preReaction.current = undefined
+        // a tile out of the thirteen leaves its slot open until it lands; one straight off the
+        // draw leaves nothing behind and closes whatever the last throw opened. `finishTurn`
+        // re-derives this flag from the tile `pickTile` really resolved, so it is the river's own
+        // truth and not the algorithm's advisory read
+        vacate(event.tile.tsumogiri ? undefined : { seat: event.seat, tile: event.tile })
+        if (declaring.current) {
+          declaring.current = false
+          raise({ seat: event.seat, kind: 'riichi' })
+        }
+        return true
+      }
+      case 'call':
+      case 'ankan':
+      case 'kakan':
+      case 'kita':
+      case 'win': {
+        await hold(Math.min(pace.current, CALL_BEAT_MS))
+        if (!alive()) return false
+        setSnapshot(snapshotTable(c, input.showReads))
+        const banner = bannerFor(event)
+        if (banner) raise(banner)
+        return true
+      }
+      default:
+        setSnapshot(snapshotTable(c, input.showReads))
+        return true
+    }
+  }
 
   /** Reports one event and returns whatever the handler wants done about it.
    *
@@ -225,12 +388,22 @@ export function useRound(input: UseRoundInput) {
         return true
       }
 
+      const alive = () => generation.current === mine
       let running = true
-      for (const event of stepRound(current.round, current.options, (s) => !awaitingManual(s))) {
+      for (const event of stepRound(
+        current.round,
+        current.options,
+        (s) => !awaitingManual(s),
+        () => capturePreReaction(current),
+      )) {
         if (!pump([event])) {
           running = false
           break
         }
+        // the whole of what pacing costs an unpaced board: one comparison per event. The `await`
+        // is inside `show`, so with `pace` at 0 nothing here ever yields to the event loop and the
+        // drive still settles inside its caller's synchronous `act()`
+        if (pace.current > 0 && !(await show(current, event, alive))) return
       }
 
       // `stepRound` stops *before* a manual seat acts, and a manual seat is one the engine draws
@@ -379,32 +552,66 @@ export function useRound(input: UseRoundInput) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.showReads])
 
-  /** Discards `tile` for the seat currently acting, declaring riichi with it when asked. */
-  function discard(tile: ParsedTile, fromDrawn: boolean, declareRiichi = riichiArmed): void {
+  /** The body of `discard` below, kept separate only because it is `async`. */
+  async function playDiscard(
+    tile: ParsedTile,
+    fromDrawn: boolean,
+    declareRiichi: boolean,
+  ): Promise<void> {
     const c = core.current
     if (!c || c.round.ended || c.round.claim) return
     const seat = actingSeat(c)
     if (!isManual(c.round, seat) || tileCount(c.round.players[seat].hand) !== 14) return
     setRiichiArmed(false)
-    for (const event of finishTurn(c.round, c.options, { tile, fromDrawn }, declareRiichi)) {
+    const mine = generation.current
+    const alive = () => generation.current === mine
+    for (const event of finishTurn(c.round, c.options, { tile, fromDrawn }, declareRiichi, () =>
+      capturePreReaction(c),
+    )) {
       const command = report(c, event, false)
       if (command && 'stop' in command) {
         c.round.players[c.round.seat].drawn = undefined
         setSnapshot(snapshotTable(c, input.showReads))
         return
       }
+      if (pace.current > 0 && !(await show(c, event, alive))) return
+    }
+    void drive(c)
+  }
+
+  /** Discards `tile` for the seat currently acting, declaring riichi with it when asked.
+   *
+   *  Paced only in the sense `drive` is: the reader's own discard is committed the instant they
+   *  make it, but the *reactions* to it are somebody else's turn and get the same beat an ordinary
+   *  bot turn does. At `pace` 0 no `await` is reached, so the whole thing runs to completion
+   *  before this returns.
+   *
+   *  **Returns `void`, never the promise**, and the same goes for `answer` below: an `async`
+   *  function hands back a promise even when its body never awaits, and a thenable returned from
+   *  an `act(() => …)` callback switches React's `act` to its asynchronous path — which would
+   *  break every caller that settles a turn inside a synchronous `act`, unpaced boards included.
+   *  The promise is nobody's to await: a paced turn finishes on its own, and abandoning it is
+   *  `generation`'s job, not a cancellation the caller holds. */
+  function discard(tile: ParsedTile, fromDrawn: boolean, declareRiichi = riichiArmed): void {
+    void playDiscard(tile, fromDrawn, declareRiichi)
+  }
+
+  /** The body of `answer` below, kept separate only because it is `async`. */
+  async function playAnswer(claimAnswer: ClaimAnswer): Promise<void> {
+    const c = core.current
+    if (!c || !c.round.claim) return
+    const mine = generation.current
+    const alive = () => generation.current === mine
+    for (const event of answerClaim(c.round, c.options, claimAnswer)) {
+      report(c, event, false)
+      if (pace.current > 0 && !(await show(c, event, alive))) return
     }
     void drive(c)
   }
 
   /** Answers the claim the board is waiting on — ron, pon, chi or pass — and plays on. */
   function answer(claimAnswer: ClaimAnswer): void {
-    const c = core.current
-    if (!c || !c.round.claim) return
-    for (const event of answerClaim(c.round, c.options, claimAnswer)) {
-      report(c, event, false)
-    }
-    void drive(c)
+    void playAnswer(claimAnswer)
   }
 
   /** Pulls a held north (sanma only). */
@@ -427,6 +634,19 @@ export function useRound(input: UseRoundInput) {
     if (!isManual(c.round, seat) || tileCount(c.round.players[seat].hand) !== 14) return
     if (c.round.players[seat].hand.counts[id] !== 4) return
     for (const event of callAnkan(c.round, seat, id)) report(c, event, false)
+    capture(c)
+    setSnapshot(snapshotTable(c, input.showReads))
+  }
+
+  /** Upgrades a held pon into a kan (kakan) — match-only (`RoundOptions.calledKan`); `callKakan`
+   *  itself no-ops when the flag is off, same "trust but verify" posture as every other call
+   *  here. */
+  function kakan(id: TileId): void {
+    const c = core.current
+    if (!c || c.round.ended || c.round.claim) return
+    const seat = actingSeat(c)
+    if (!isManual(c.round, seat) || tileCount(c.round.players[seat].hand) !== 14) return
+    for (const event of callKakan(c.round, c.options, seat, id)) report(c, event, false)
     capture(c)
     setSnapshot(snapshotTable(c, input.showReads))
   }
@@ -475,6 +695,14 @@ export function useRound(input: UseRoundInput) {
   return {
     snapshot,
     core: core.current,
+    /** The tile a seat is currently mid-throw with, and whose — the slot a page holds open in
+     *  that seat's hand until it reaches the river (`SeatView.tedashi`). Never set for a
+     *  tsumogiri, which left no hole, and only ever while the board is paced. */
+    tedashi,
+    /** The call to draw on the board right now, or nothing. Board truth, produced by the pacer
+     *  and passed straight to `Table` — a page never derives it (ADR-0042). Only ever set while
+     *  the board is paced: with `pace` at 0 there is no frame to put it in. */
+    callBanner,
     /** The analysis for the turn currently in progress, if a seat is holding 14 tiles. */
     analysis: pending.current?.analysis,
     discard,
@@ -484,6 +712,7 @@ export function useRound(input: UseRoundInput) {
     armRiichi: setRiichiArmed,
     kita,
     kan,
+    kakan,
     restart: bumpRestart,
     /** Bumped by `restart`, reset whenever `input.wall` changes identity — a consumer's own
      *  restart-dedupe key, so it doesn't need a second copy of this same counter. */

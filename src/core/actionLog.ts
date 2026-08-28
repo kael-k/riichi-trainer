@@ -1,3 +1,4 @@
+import type { Call } from './policy'
 import type { LogEntry } from './round'
 import { parseTenhou, tileCode, type TileId } from './tiles'
 
@@ -12,17 +13,20 @@ import { parseTenhou, tileCode, type TileId } from './tiles'
  *
  * Grammar, one line per `LogEntry.kind`:
  * - `discard`: `D` seat tileCode [`T`] [`R`] — `T`/`R` are `fromDrawn`/`riichi`, each present or not.
- * - `call`: `C` seat from kind(`P`|`H` for pon/chi) tileCode tileCode — `call.from`'s two tiles,
- *   always exactly two (a pon's own two matching copies, a chi's two adjacent kinds) — `Call`
- *   (`policy.ts`) carries no redness, so neither does this.
+ * - `call`: `C` seat from kind(`P`|`H`|`M` for pon/chi/minkan) then `call.from`'s tiles — two
+ *   tokens for a pon (its own two matching copies) or a chi (two adjacent kinds), **one** for a
+ *   minkan: its three held copies are always the same id, so one token says as much as three.
+ *   `Call` (`policy.ts`) carries no redness, so neither does this.
  * - `kita`: `K` seat.
  * - `ankan`: `A` seat tileCode.
+ * - `kakan`: `G` seat tileCode — an added kan on a pon already on the table, match-only
+ *   (`RoundOptions.calledKan`).
  * - `win`: `W` seat (from | `T` for tsumo).
  * - `abort`: `Q` seat — kyuushu kyuuhai, the only abortive draw modelled.
  */
 
-const CALL_KIND_CHARS: Record<'pon' | 'chi', string> = { pon: 'P', chi: 'H' }
-const CALL_CHAR_KINDS: Record<string, 'pon' | 'chi'> = { P: 'pon', H: 'chi' }
+const CALL_KIND_CHARS: Record<Call['kind'], string> = { pon: 'P', chi: 'H', minkan: 'M' }
+const CALL_CHAR_KINDS: Record<string, Call['kind']> = { P: 'pon', H: 'chi', M: 'minkan' }
 
 function encodeEntry(entry: LogEntry): string {
   switch (entry.kind) {
@@ -31,13 +35,17 @@ function encodeEntry(entry: LogEntry): string {
       return `D${entry.seat}${tileCode(entry.tile.id, entry.tile.red)}${flags}`
     }
     case 'call': {
-      const [a, b] = entry.call.from
-      return `C${entry.seat}${entry.from}${CALL_KIND_CHARS[entry.call.kind]}${tileCode(a)}${tileCode(b)}`
+      // minkan's three `from` entries are always the same id — see the grammar note above
+      const tiles = entry.call.kind === 'minkan' ? [entry.call.from[0]] : entry.call.from
+      const kindChar = CALL_KIND_CHARS[entry.call.kind]
+      return `C${entry.seat}${entry.from}${kindChar}${tiles.map((id) => tileCode(id)).join('')}`
     }
     case 'kita':
       return `K${entry.seat}`
     case 'ankan':
       return `A${entry.seat}${tileCode(entry.tile)}`
+    case 'kakan':
+      return `G${entry.seat}${tileCode(entry.tile)}`
     case 'win':
       return `W${entry.seat}${entry.from ?? 'T'}`
     case 'abort':
@@ -96,19 +104,19 @@ export function decodeLog(s: string): LogEntry[] {
       const seat = digitAt(s, i + 1)
       const from = digitAt(s, i + 2)
       const callKind = CALL_CHAR_KINDS[s[i + 3]]
-      const a = tileAt(s, i + 4)
-      const b = tileAt(s, i + 6)
-      if (
-        seat === undefined ||
-        from === undefined ||
-        !callKind ||
-        a === undefined ||
-        b === undefined
-      ) {
-        break
+      if (seat === undefined || from === undefined || !callKind) break
+      if (callKind === 'minkan') {
+        const a = tileAt(s, i + 4)
+        if (a === undefined) break
+        log.push({ kind: 'call', seat, from, call: { kind: 'minkan', from: [a, a, a] } })
+        i += 6
+      } else {
+        const a = tileAt(s, i + 4)
+        const b = tileAt(s, i + 6)
+        if (a === undefined || b === undefined) break
+        log.push({ kind: 'call', seat, from, call: { kind: callKind, from: [a, b] } })
+        i += 8
       }
-      log.push({ kind: 'call', seat, from, call: { kind: callKind, from: [a, b] } })
-      i += 8
     } else if (kind === 'K') {
       const seat = digitAt(s, i + 1)
       if (seat === undefined) break
@@ -119,6 +127,12 @@ export function decodeLog(s: string): LogEntry[] {
       const tile = tileAt(s, i + 2)
       if (seat === undefined || tile === undefined) break
       log.push({ kind: 'ankan', seat, tile })
+      i += 4
+    } else if (kind === 'G') {
+      const seat = digitAt(s, i + 1)
+      const tile = tileAt(s, i + 2)
+      if (seat === undefined || tile === undefined) break
+      log.push({ kind: 'kakan', seat, tile })
       i += 4
     } else if (kind === 'W') {
       const seat = digitAt(s, i + 1)

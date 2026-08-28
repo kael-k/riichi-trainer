@@ -50,7 +50,7 @@ the difference. This is also the single most bug-prone area of the codebase.
 
 - This lands compact feedback on phones and full on desktop — originally with no JS media query at
   all; since [ADR-0025](0025-one-interface.md) the panel's own docked/drawer split is one
-  `useMediaQuery` read, because a layout that changes *shape* cannot be expressed in CSS alone.
+  `useMediaQuery` read, because a layout that changes _shape_ cannot be expressed in CSS alone.
 - Severity is always **derived at display level** from the grade or partial credit that already
   exists — never a new grading concept.
 - **The board being square in every orientation is an invariant, not a preference**, and it is

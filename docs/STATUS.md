@@ -1,23 +1,23 @@
 # Status
 
-_Last synthesised: 2026-08-27, against the git history through the third EV-model wave
-(`plans/PLAN-ev-model.md`), which finishes its next-wave list._
+_Last synthesised: 2026-08-28, against the git history through the board-pacing wave (item 24)._
 
 This file churns. It is the one place recording what is done, what is running, and what is known
 to be broken. Decisions live in `docs/adr/`; behaviour lives in `CLAUDE.md`.
 
 ## Shipped
 
-Six trainers, each its own route ([ADR-0013](adr/0013-efficiency-split.md)):
+Seven trainers, each its own route ([ADR-0013](adr/0013-efficiency-split.md)):
 
-| Route              | State                                                                |
-| ------------------ | -------------------------------------------------------------------- |
-| `/shanten`         | Stable. Continuous hand stream, works well on phone and desktop      |
-| `/efficiency-solo` | Stable. One seat, boardless                                          |
-| `/efficiency`      | Stable. Board, opponents, graded per discard                         |
-| `/folding`         | Stable. Ordinal danger, full betaori grading, partial credit         |
-| `/scoring`         | Stable. Han/fu/points grading, full breakdown in the log             |
-| `/lab`             | Free play, no grading. Wall authoring exists; the flow is still thin |
+| Route              | State                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| `/shanten`         | Stable. Continuous hand stream, works well on phone and desktop                      |
+| `/efficiency-solo` | Stable. One seat, boardless                                                          |
+| `/efficiency`      | Stable. Board, opponents, graded per discard                                         |
+| `/folding`         | Stable. Ordinal danger, full betaori grading, partial credit                         |
+| `/scoring`         | Stable. Han/fu/points grading, full breakdown in the log                             |
+| `/match`           | Stable. East-only/hanchan against the bots, sequenced round to round, nothing graded |
+| `/lab`             | Free play, no grading. Wall authoring exists; the flow is still thin                 |
 
 Also shipped: situation URLs, i18n (en/ja/zh/it), glossary popovers, beginner/advanced split,
 dark mode, PWA + GitHub Pages deploy, sanma throughout, per-seat algorithms with a live decision
@@ -323,6 +323,87 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     there is something to protect: a seat that is _behind_ plays the same hand under both
     currencies, because points already say a hand worth nothing costs nothing to chase.
 
+22. **Rounds sequence into a match, and `/match` plays one out**
+    ([ADR-0040](adr/0040-rounds-sequence-into-a-match.md), amending
+    [ADR-0023](adr/0023-round-inside-match.md)). `core/match.ts#settleRound` is the one pure
+    function that steps a `MatchState`: payments to deltas, dealer repeat/rotate, honba, the round
+    and wind counters, and whether the match is over — read off `core/round.ts#roundResult`'s small
+    summary of an ended round, never called from inside `round.ts` itself. The seventh trainer sits
+    on the same shared table layer as every other one (`useRound` unchanged); the only new trick is
+    that a fresh wall _array identity_ per round is what makes it redeal, exactly the mechanism
+    every other trainer's "new hand" already relies on.
+
+    Not modelled, on purpose, same spirit as `abortiveDraws`' own ceilings: dealer agari-yame/
+    tenpai-yame, West sudden death, nagashi mangan, and sanma's nukidora paid separately.
+
+23. **`/match`'s interface pass: models named in the picker, drawn seats, called kan, a full log
+    and undo** ([ADR-0041](adr/0041-daiminkan-and-kakan-are-a-match-only-switch.md), amending
+    [ADR-0010](adr/0010-match-wide-permissions.md)). The seat picker (`SeatPanel.tsx` and the
+    match setup screen) is a native `<select>` listing the two EV models as their own entries
+    rather than a second row that only appeared after picking "EV"; `DEFAULT_EV_SEAT`'s objective
+    moved to `'placement'` (`core/ev.ts`), the currency the trainer is actually about. Setup draws
+    seats by default (`shuffle`, `core/rng.ts`) rather than asking, behind a "Choose seats" opt-in,
+    and a full-bot match is legal (`resolveSeatConfig`'s new `requireManual` parameter,
+    `matchDefaultModes`). `RoundOptions.calledKan` (match-only) adds daiminkan and kakan to the
+    engine — an AI seat never takes either regardless of the flag (`chooseCall` never sees it), so
+    every graded drill is byte-identical. The match board's log now records every seat's action,
+    not just the reader's, and gained a real undo button — wired through the same
+    `useUrlData`/`situation` machinery every other trainer's rewind already uses. **Only the
+    reader's own seat's rows carry a `situation`** (bot rows are visible but not individually
+    rewindable): a bot's move replayed "from just before it" just redecides the identical thing on
+    the same deterministic wall, which left `useLogBack` stuck in place on the last bot turn during
+    manual testing before this was found.
+
+24. **The board is paced, and it moves**
+    ([ADR-0042](adr/0042-the-board-is-paced-and-the-view-is-told.md)). Every AI seat's whole turn
+    used to land in one `setSnapshot`, so three opponents' go-around appeared in a single frame
+    with no way to tell what any of them threw. `useRound` gained `pace` — milliseconds to hold
+    before a seat nobody plays commits its action, default 1s, a range slider in the settings
+    dialog's UI section behind the Advanced gate, with an `InfoPopover` saying what it simulates
+    (`botDelay`, 0–5s in 250ms steps; `boardAnimation` sits beside it, ungated) — and every board
+    trainer threads it
+    through (`/efficiency`, `/folding`, `/lab`, `/match`; solo draws no board but its own river
+    still animates). **At 0 the driver takes no `await` at all**, so an unpaced board is
+    bit-for-bit the old one and every existing synchronous `act()` still settles a round — which
+    is also why `discard`/`answer` hand back `void` rather than the promise their bodies produce.
+    `stepRound` forwards `finishTurn`'s existing `beforeReactions` (the one engine edit), so a
+    paced board commits the frame with a discard on the river _before_ a pon takes it back off.
+    Motion is mount-once CSS keyframes — no dependency, no "which tile is new" state: a discard
+    flies in from the hand side (a tsumogiri from the drawn tile's own slot, pulsing the grey the
+    advanced `showTsumogiri` mark uses so the read survives without that setting on), a meld scales
+    in, and a call raises a Tenhou-style banner on the calling seat's own edge. `Table` is _told_
+    which banner to draw (`call`, board truth beside `activeSeat`) and never derives it from melds.
+    All of it is behind `boardAnimation` (default on) and `motion-safe:`.
+    Three board reads landed with it. Every seat's 14th tile is now split off from its thirteen on
+    the felt (`SeatView.drawn`, the same gap `HandDisplay` gives the bottom hand — an opponent
+    mid-turn used to draw as one block of fourteen). A **tedashi holds its own slot open** while
+    the tile flies — on the felt (`SeatView.tedashi`) and in the hand below the board
+    (`HandDisplay.tedashi`), both off the driver's `DISCARD_FLIGHT_MS` transient. The tile in
+    flight looks identical either way, so the hole in the hand is what says which kind it was,
+    with the tsumogiri flash as the other half of the pair. It shipped felt-only first and read as
+    not working at all, which is why `e2e/board.spec.ts` now drives the whole chain in a browser —
+    a paced board, a real discard, the hole watched by `MutationObserver` rather than polled for,
+    since 260ms is shorter than any poll interval the suite uses. And
+    `ManualControls`' "Waiting on {wind}" line with its "Go to" button is deleted outright.
+    Watching a seat that does not owe the decision now renders nothing: the felt's turn glow
+    (ADR-0034's `activeSeat`) already names that seat and the seat plate's eye already rotates
+    there, so the line was a third way of saying one fact. `seats.waitingSeat`/`seats.goToSeat`
+    and `ManualControls`' `onGoTo` prop are gone with it.
+    New coverage: `stepRound`'s forwarded seam and `finishTurn`'s pre-reaction frame on a pinned
+    pon board (`round.test.ts`), the unpaced single commit and a paced go-around landing on the
+    same board turn by turn (`useRound.test.ts`), the banner's four rotations (`Table.test.tsx`),
+    and the two new fields against a v3 blob written before they existed
+    (`settingsStore.test.ts`); `ManualControls.test.tsx`'s "go to" case is replaced by one
+    asserting nothing renders for a seat that is not owed the decision, claim included; and the
+    tedashi hole is pinned at both ends — where it lands in a sorted row (`Table.test.tsx`) and
+    that only a throw out of the thirteen opens one (`useRound.test.ts`).
+    **Still owed: the live checks.** `/match` at 390×844 and 1440×900 in both themes (a full
+    go-around, a forced pon showing the tile on the river before the meld, the banner legible in
+    all four rotations); `/efficiency` unchanged at 2s and 0s; `/folding`'s "new hand" still
+    instant; 0s + animation off indistinguishable from before; OS reduce-motion killing the motion
+    but not the delay; and `npm run ui-test` for the board's squareness with the banner's new
+    absolutely-positioned sibling inside the box `e2e/board.spec.ts` measures.
+
 ## In flight
 
 - Nothing. `plans/PLAN-ev-model.md`'s next-wave list is complete; what the EV work still owes is
@@ -426,8 +507,10 @@ Not decided, deliberately not guessed:
 - **Do the four match-wide permission flags need a per-algorithm split?**
   ([ADR-0010](adr/0010-match-wide-permissions.md)) A trainer that wants no manual riichi has to
   turn it off for the AI too. Known coarseness; no forcing case yet.
-- **Zero-manual boards** — watching a hand play itself out. Deferred to the lab with its own
-  step/autoplay controls ([ADR-0011](adr/0011-at-least-one-manual-seat.md)).
+- **Zero-manual boards** — watching a hand play itself out. `/match` has this now
+  (`resolveSeatConfig`'s `requireManual: false`, item 23) — `goRound`'s own 400-turn backstop was
+  already enough once ADR-0012 rebuilt it on a generator, exactly as ADR-0011 anticipated. Still
+  deferred everywhere else (lab, the graded drills) with no forcing case yet.
 - **Two benchmark/validation sessions the EV work owes**, both deliberately out of scope of the
   wave that shipped item 19: the memo-lifetime measurement (`plans/EV-5` §2.7 — fresh per ranking
   is the shipped default and the lean) and the backtest against real houou logs (§2.13), which is
@@ -447,11 +530,14 @@ Recorded so they stop being re-proposed:
   first — which is the backtest below.
 - **Reading a silent tenpai.** `dealIn.ts` refuses to speak about a seat that has not declared, and
   should keep refusing until the much weaker inference behind it is built (`plans/EV-5` §1.4).
-- **Round sequencing** — `nextRound()`, dealer rotation, honba/repeat increment, payout settlement,
-  the winner collecting riichi sticks, end-of-match detection. `MatchState` is carry-in context
-  plus the one within-round mutation (riichi); nothing steps between rounds
-  ([ADR-0023](adr/0023-round-inside-match.md)).
-- **Placement/uma/oka** — a function of settled points, so it waits on sequencing too.
+- **Chankan.** Kakan (`callKakan`, `/match` only) skips straight to completing the kan rather than
+  giving every other seat a narrow ron window on the added tile first — a real third
+  `PendingClaim` shape threaded through `answerClaim`/`reconsiderClaim`/`replayLog` for one rare
+  yaku, out of proportion to what shipped ([ADR-0041](adr/0041-daiminkan-and-kakan-are-a-match-only-switch.md)).
+- **Rinshan kaihou.** `callAnkan`/`callKita`/`callKakan` all draw a replacement but never check
+  `tryWin` against it — a hand completed by that draw goes unnoticed in live play rather than
+  mis-scored (replay's own after-pull check is the one place it already fires, incidentally).
+  Pre-existing, not created or closed by ADR-0041.
 - **Backward compatibility** for old links or persisted keys while pre-release —
   [ADR-0020](adr/0020-no-back-compat-pre-release.md).
 - **Restructuring the scoring trainer** — it generates a frozen result and renders `<Table>`

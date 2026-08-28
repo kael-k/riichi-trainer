@@ -1,6 +1,6 @@
 # EV-5 — Shortcomings, and what is still open
 
-Two lists. The first is what the models in `EV-1`–`EV-3` get *wrong* — known, quantified where
+Two lists. The first is what the models in `EV-1`–`EV-3` get _wrong_ — known, quantified where
 possible, and none of it discovered later by a user. The second is what has not been decided.
 
 ---
@@ -16,7 +16,7 @@ that widens a wait without advancing it. Real hands do this constantly, so `P_so
 
 The bias is at least uniform across candidate discards, which is why the ranking survives it. But
 "uniform" is an assumption, not a proof, and it is most likely to fail exactly where hands differ in
-*shape quality* rather than in speed — which is the interesting case. Measured cost of removing the
+_shape quality_ rather than in speed — which is the interesting case. Measured cost of removing the
 approximation: 1.4 s per single root at 1-shanten, so it is not being removed.
 
 ### 1.2 The offense model has no opponents, and the two corrections do not cancel
@@ -88,7 +88,7 @@ expensive enough to justify lazy getters, and this is two orders of magnitude pa
 So an `'ev'` `SeatAlgorithm` cannot simply call the exact model. It needs a cheap path — the
 collapsed chain, or a shanten-and-ukeire prefilter with the DP run only on the survivors, the same
 trick `bestDiscards` already plays against `evaluateDiscards`. Concretely: the candidate set is a
-**union** — the top-K tiles by the shanten/ukeire prefilter *plus* the top-J safest tiles (a
+**union** — the top-K tiles by the shanten/ukeire prefilter _plus_ the top-J safest tiles (a
 push/fold decision that never prices the fold option is not a decision) — with the DP run on the
 union only. K and J are algorithm constants: changing them changes which discards an `'ev'` seat
 makes, so they are versioned with the ADR and the golden tests, never tuned casually.
@@ -98,7 +98,7 @@ makes, so they are versioned with the ADR and the golden tests, never tuned casu
 - **Kokushi and chiitoitsu.** The offense DP must handle both terminals (`shanten.ts` already
   computes them); the defense model gives kokushi a hypothesis but chiitoi tanki is folded into
   plain tanki, which understates honour and terminal danger against a chiitoi hand.
-- **Red fives.** `scoreHand` prices them, but the DP draws at *kind* level and never sees redness,
+- **Red fives.** `scoreHand` prices them, but the DP draws at _kind_ level and never sees redness,
   so expected score is systematically slightly low. The same seam `Algorithm.discard` already
   documents. A cheap first-order fix is recorded in `EV-1` §9: treat the unseen pool as weights
   and put a small mass on redness at draw time.
@@ -121,7 +121,7 @@ makes, so they are versioned with the ADR and the golden tests, never tuned casu
 
 Real opponents change behaviour with the score — the same dataset shows it (`Variance.csv`: players
 behind take measurably more variance) — so a threat's true wait-shape and riichi distributions are
-conditioned on *their* table status, and the model's priors are the marginal over all of them. No
+conditioned on _their_ table status, and the model's priors are the marginal over all of them. No
 published wait data is stratified by score situation, so this is not fixable by extraction; the
 refinement session settled the architecture instead: table status enters at the decision layer
 (`EV-3` §8), never in the probability layers, which keeps the two EV models comparable on one
@@ -133,7 +133,7 @@ analysis) and is the raw material for the future `ippan` EV model.
 The houou prior measures Tenhou houou players. At our own tables the opponents are `efficiency`
 and `defense` algorithms — and, once the EV models ship, `'ev'` seats themselves: the **houou bot
 is just "pick what the EV model says"**, which is the point of the design (the models are both lab
-instruments and new bots). So a prior is really a *claim about the population a seat faces*: a
+instruments and new bots). So a prior is really a _claim about the population a seat faces_: a
 houou-vs-houou table is a coherent world, an `'ev'` seat facing `efficiency` bots believes in a
 population that is not there, and a mixed table mixes populations. v1 keeps one prior for all
 threats; a later seam could annotate each threat with its algorithm (the engine knows it;
@@ -203,8 +203,8 @@ be earned. Revisit alongside the `'ev'` algorithm's cheap path (§1.9).
 ### 2.7 Memo lifetime — OPEN, deferred to a dedicated benchmark session
 
 The offense model answers "how often does this hand win" by walking a tree of every possible
-future draw. Different paths reach the *same* hand (draw 3p-then-5p equals draw 5p-then-3p), so
-the model keeps a notebook of hands already valued — the *memo* — and sharing one notebook across
+future draw. Different paths reach the _same_ hand (draw 3p-then-5p equals draw 5p-then-3p), so
+the model keeps a notebook of hands already valued — the _memo_ — and sharing one notebook across
 a whole discard ranking is worth 25–30%. The catch: every note was computed against "these tiles
 are still unseen", and that set shrinks every turn, so a notebook kept from last turn is slightly
 wrong throughout. Options: bin the notebook after each ranking (always correct, costs the reuse
@@ -270,7 +270,7 @@ derived from the decision's own outcome spread, never a typed-in adjustment tabl
 What is **open**, and needs its own investigation before any flavour ships:
 
 - **What exactly each flavour optimises.** A model that maximises EV-minus-variance is optimal
-  *under that modified objective* — "less correct than balanced" is not a well-formed claim, since
+  _under that modified objective_ — "less correct than balanced" is not a well-formed claim, since
   correctness only compares within one objective. Whether the modified objective is the right
   model of the intended playstyle (does a defensive player minimise variance, or maximise
   P(no deal-in), or maximise P(keep current placement)?) is the real question, and it is
@@ -289,5 +289,5 @@ check available is against reality itself. Proposal: a dedicated session that re
 logs (`es4p.db`), computes the model's stated probabilities at real decision points, and scores
 them — reliability curves and Brier scores per EV model, delivered as a markdown report. Three
 payoffs: "is the model any good" becomes a measurement rather than an opinion; the two EV models
-gain *measured* quality the lab can display; and the measured calibration error sets the floor
+gain _measured_ quality the lab can display; and the measured calibration error sets the floor
 below which a §2.5 ε is noise-grading. Same out-of-scope-here status as the §2.7 benchmark.

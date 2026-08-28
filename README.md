@@ -1,6 +1,6 @@
 # Riichi Trainer
 
-Mobile-first riichi mahjong trainer: efficiency, shanten, scoring and defensive folding drills, plus a free-play statistical lab — with reproducible, shareable training situations.
+Mobile-first riichi mahjong trainer: efficiency, shanten, scoring and defensive folding drills, full-match play, plus a free-play statistical lab — with reproducible, shareable training situations.
 
 ## Why
 
@@ -23,6 +23,7 @@ Mobile-first riichi mahjong trainer: efficiency, shanten, scoring and defensive 
 | `/efficiency`      | The same drill at a full table, opponents playing themselves                                  |
 | `/folding`         | Someone riichis and you are not tenpai; every discard to the end of the hand is graded        |
 | `/scoring`         | A finished hand: guess han, fu and points                                                     |
+| `/match`           | Play a full east-only or hanchan match against the bots, nothing graded                       |
 | `/lab`             | Free play, nothing graded, everything shown. Under development, not linked from the home page |
 
 ## Stack

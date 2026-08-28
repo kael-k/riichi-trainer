@@ -24,7 +24,6 @@ function controls(props: Partial<Parameters<typeof ManualControls>[0]> = {}) {
       onArmRiichi={vi.fn()}
       onAnswer={vi.fn()}
       viewSeat={0}
-      onGoTo={vi.fn()}
       {...props}
     />
   )
@@ -46,11 +45,11 @@ describe('ManualControls', () => {
     expect(container.querySelectorAll('button')).toHaveLength(0)
   })
 
-  it('offers a way back to whichever seat owes the decision', () => {
-    const onGoTo = vi.fn()
-    render(controls({ acting: 2, viewSeat: 0, onGoTo }))
-    screen.getByRole('button', { name: /Go to/ }).click()
-    expect(onGoTo).toHaveBeenCalledWith(2)
+  it('renders nothing while watching a seat that does not owe the decision', () => {
+    // the felt's turn glow already names that seat and the seat plate's eye rotates there — a
+    // line saying it again in words was a third way of stating one fact
+    const { container } = render(controls({ acting: 2, viewSeat: 0, claim: CLAIM }))
+    expect(container.querySelectorAll('button')).toHaveLength(0)
   })
 })
 
@@ -69,8 +68,9 @@ describe('manualControlsVisible', () => {
     expect(manualControlsVisible({ ...BASE, ended: true, claim: CLAIM })).toBe(true)
   })
 
-  it('is true while a different seat owes the decision', () => {
-    expect(manualControlsVisible({ ...BASE, acting: 2 })).toBe(true)
+  it('is false while a different seat owes the decision, claim or no claim', () => {
+    expect(manualControlsVisible({ ...BASE, acting: 2 })).toBe(false)
+    expect(manualControlsVisible({ ...BASE, acting: 2, claim: CLAIM })).toBe(false)
   })
 
   it('is true with a riichi declaration on offer', () => {

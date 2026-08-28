@@ -22,7 +22,7 @@ started writing per-app overrides.
 ## Decision
 
 The dialog's own title is constant: `t('settings.button')` ("Settings"), never templated with a
-trainer name. Sections are named for what a setting is *about*, not for the screen it was opened
+trainer name. Sections are named for what a setting is _about_, not for the screen it was opened
 from:
 
 - **{trainer title}** — the app's own rows, headed with the same translated string

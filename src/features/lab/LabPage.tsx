@@ -18,7 +18,7 @@ import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow } from '../settings/SettingsDialog'
 import { ManualControls, manualControlsVisible } from '../table/ManualControls'
-import { useSettings } from '../settings/settingsStore'
+import { useBotDelay, useSettings } from '../settings/settingsStore'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { decodeSituation, resolveSanma, WINDS, type Situation } from '../situation/urlCodec'
@@ -185,6 +185,7 @@ export function LabPage() {
   const { t } = useTranslation()
   const urlSituation = useUrlData(decodeSituation)
   const sanma = useSettings((s) => s.sanma)
+  const pace = useBotDelay()
   const kiriageMangan = useSettings((s) => s.kiriageMangan)
   const { aka } = useAdvancedSettings()
   const rawTable = useSettings((s) => s.table)
@@ -252,6 +253,7 @@ export function LabPage() {
       showOpponentHands,
       showSeatWaits,
       seats: seatConfig,
+      pace,
     }),
     [
       situation,
@@ -262,6 +264,7 @@ export function LabPage() {
       showOpponentHands,
       showSeatWaits,
       seatConfig,
+      pace,
     ],
   )
 
@@ -280,23 +283,33 @@ export function LabPage() {
   }
   const perspective = viewSeat ?? round.seatIndex
 
-  const seats: SeatView[] = round.rivers.map((river, seat) => ({
-    river,
-    // the felt omits a hand row for whichever seat sits at the bottom of the board — that is
-    // where HandDisplay, in the page's own `hand` slot, already sits, and that seat's calls go
-    // beside it there rather than on the felt's edge, where nothing sizes them against its hand
-    melds: seat !== perspective ? round.melds[seat] : undefined,
-    nuki: seat !== perspective ? round.nuki[seat] : undefined,
-    riichi: round.riichi[seat],
-    hand: seat !== perspective ? round.boardHands[seat] : undefined,
-    // finished alone has always revealed here (a post-game reveal, same as reading a real score
-    // sheet); showOpponentHands now does the same live, mid-hand — previously this page never
-    // read that setting at all, so toggling it did nothing. A manual seat is the reader's own
-    // hand and never concealed from them, wherever it sits
-    concealed: !(round.finished || showOpponentHands || round.manualSeats.includes(seat)),
-    points: round.match.points[seat],
-    claiming: round.claim?.kind === 'discard' && round.claim.from === seat,
-  }))
+  const seats: SeatView[] = round.rivers.map((river, seat) => {
+    // the seat mid-turn holds fourteen: its draw sits apart from the thirteen, the same small gap
+    // the bottom hand already keeps, so a reader can see *which* tile a seat just took
+    const { tiles: hand, drawn } = splitConcealedDrawn(
+      round.boardHands[seat] ?? [],
+      seat === round.drawnSeat ? round.drawn : undefined,
+    )
+    return {
+      river,
+      // the felt omits a hand row for whichever seat sits at the bottom of the board — that is
+      // where HandDisplay, in the page's own `hand` slot, already sits, and that seat's calls go
+      // beside it there rather than on the felt's edge, where nothing sizes them against its hand
+      melds: seat !== perspective ? round.melds[seat] : undefined,
+      nuki: seat !== perspective ? round.nuki[seat] : undefined,
+      riichi: round.riichi[seat],
+      hand: seat !== perspective ? hand : undefined,
+      drawn: seat !== perspective ? drawn : undefined,
+      tedashi: round.tedashi?.seat === seat ? round.tedashi.tile : undefined,
+      // finished alone has always revealed here (a post-game reveal, same as reading a real score
+      // sheet); showOpponentHands now does the same live, mid-hand — previously this page never
+      // read that setting at all, so toggling it did nothing. A manual seat is the reader's own
+      // hand and never concealed from them, wherever it sits
+      concealed: !(round.finished || showOpponentHands || round.manualSeats.includes(seat)),
+      points: round.match.points[seat],
+      claiming: round.claim?.kind === 'discard' && round.claim.from === seat,
+    }
+  })
 
   // the bottom hand follows perspective, not the drill's own graded seat: rotating to watch
   // another seat shows that seat's hand — `boardHands` already carries the reveal gate above, so
@@ -506,6 +519,7 @@ export function LabPage() {
             wallCount={round.liveWall.length}
             honba={round.match.honba}
             activeSeat={round.finished ? undefined : round.acting}
+            call={round.callBanner}
           />
         ) : undefined
       }
@@ -519,7 +533,6 @@ export function LabPage() {
             onArmRiichi={round.armRiichi}
             onAnswer={round.answer}
             viewSeat={perspective}
-            onGoTo={setViewSeat}
             ended={round.finished}
           />
         )
@@ -533,6 +546,7 @@ export function LabPage() {
             <HandDisplay
               tiles={bottomHand}
               drawn={bottomDrawn}
+              tedashi={round.tedashi?.seat === perspective ? round.tedashi.tile : undefined}
               concealed={bottomConcealed}
               melds={round.melds[perspective]}
               nuki={round.nuki[perspective]}

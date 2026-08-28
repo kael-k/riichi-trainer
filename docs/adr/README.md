@@ -4,7 +4,7 @@ One decision per file. Short, dated, and never edited once accepted — a decisi
 a **new** ADR that supersedes the old one, and the old one gains a `Superseded by` line and
 nothing else. The trail is the point.
 
-Write an ADR when a question is *closed*: when the answer is not derivable from the code, when a
+Write an ADR when a question is _closed_: when the answer is not derivable from the code, when a
 plausible alternative was rejected for a reason worth not re-deriving, or when someone is likely
 to propose the opposite next month. Do not write one for what the code plainly says.
 
@@ -24,62 +24,65 @@ to propose the opposite next month. Do not write one for what the code plainly s
 
 ### Engine and domain
 
-| ADR                                                         | Title                                                        | Status    |
-| ----------------------------------------------------------- | ------------------------------------------------------------ | --------- |
-| [0001](0001-three-layers.md)                                | Three layers: pure engine, URL codec, React trainers         | Accepted  |
-| [0002](0002-determinism-and-tenhou-notation.md)             | Determinism, and tenhou notation as the interchange format   | Accepted  |
-| [0003](0003-hand-counts-only.md)                            | `Hand` stores counts; redness travels beside it              | Superseded by [0022](0022-stored-redness.md) |
-| [0022](0022-stored-redness.md)                              | Redness is stored on the player, not inferred from counts    | Accepted  |
-| [0004](0004-ordinal-danger.md)                              | Danger is ordinal — no EV, deal-in rates, or push/fold grading | Amended by [0036](0036-probability-beside-the-tiers.md) |
-| [0036](0036-probability-beside-the-tiers.md)                | Probability sits beside the tiers; every number measured or derived | Accepted  |
-| [0005](0005-walls-not-seeds.md)                             | Boards are shared as explicit validated walls, not seeds     | Accepted  |
-| [0024](0024-real-dealing-order.md)                          | The wall's leading block is a real deal: 4/4/4+1             | Accepted  |
-| [0028](0028-dead-wall-stacks.md)                            | The dead wall is seven stacks, not three blocks              | Accepted  |
-| [0025](0025-one-interface.md)                               | One interface: the board *is* the page                       | Amended by [0026](0026-stats-on-the-board.md) |
-| [0026](0026-stats-on-the-board.md)                          | Session stats float on the board; the log carries its own share | Amended by [0027](0027-the-log-is-the-feedback.md) |
-| [0027](0027-the-log-is-the-feedback.md)                     | The log is the feedback surface                              | Accepted  |
-| [0021](0021-action-log-replay.md)                           | Shared links replay a full action log, not your own river    | Accepted  |
-| [0006](0006-one-match-engine.md)                            | One match engine; trainers differ only by stop condition     | Accepted  |
-| [0023](0023-round-inside-match.md)                          | A round is one deal; a match is the game it sits inside      | Accepted  |
-| [0038](0038-kyuushu-is-a-rule-not-a-permission.md)          | Kyuushu kyuuhai is a rule of the game, not a permission      | Accepted  |
+| ADR                                                         | Title                                                               | Status                                                  |
+| ----------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- |
+| [0001](0001-three-layers.md)                                | Three layers: pure engine, URL codec, React trainers                | Accepted                                                |
+| [0002](0002-determinism-and-tenhou-notation.md)             | Determinism, and tenhou notation as the interchange format          | Accepted                                                |
+| [0003](0003-hand-counts-only.md)                            | `Hand` stores counts; redness travels beside it                     | Superseded by [0022](0022-stored-redness.md)            |
+| [0022](0022-stored-redness.md)                              | Redness is stored on the player, not inferred from counts           | Accepted                                                |
+| [0004](0004-ordinal-danger.md)                              | Danger is ordinal — no EV, deal-in rates, or push/fold grading      | Amended by [0036](0036-probability-beside-the-tiers.md) |
+| [0036](0036-probability-beside-the-tiers.md)                | Probability sits beside the tiers; every number measured or derived | Accepted                                                |
+| [0005](0005-walls-not-seeds.md)                             | Boards are shared as explicit validated walls, not seeds            | Accepted                                                |
+| [0024](0024-real-dealing-order.md)                          | The wall's leading block is a real deal: 4/4/4+1                    | Accepted                                                |
+| [0028](0028-dead-wall-stacks.md)                            | The dead wall is seven stacks, not three blocks                     | Accepted                                                |
+| [0025](0025-one-interface.md)                               | One interface: the board _is_ the page                              | Amended by [0026](0026-stats-on-the-board.md)           |
+| [0026](0026-stats-on-the-board.md)                          | Session stats float on the board; the log carries its own share     | Amended by [0027](0027-the-log-is-the-feedback.md)      |
+| [0027](0027-the-log-is-the-feedback.md)                     | The log is the feedback surface                                     | Accepted                                                |
+| [0021](0021-action-log-replay.md)                           | Shared links replay a full action log, not your own river           | Accepted                                                |
+| [0006](0006-one-match-engine.md)                            | One match engine; trainers differ only by stop condition            | Accepted                                                |
+| [0023](0023-round-inside-match.md)                          | A round is one deal; a match is the game it sits inside             | Amended by [0040](0040-rounds-sequence-into-a-match.md) |
+| [0038](0038-kyuushu-is-a-rule-not-a-permission.md)          | Kyuushu kyuuhai is a rule of the game, not a permission             | Accepted                                                |
+| [0040](0040-rounds-sequence-into-a-match.md)                | Rounds sequence into a match; `/match` plays one out                | Accepted                                                |
+| [0041](0041-daiminkan-and-kakan-are-a-match-only-switch.md) | Daiminkan and kakan are a match-only ruleset switch                 | Accepted                                                |
 
 ### Seats and algorithms
 
-| ADR                                                         | Title                                                        | Status    |
-| ----------------------------------------------------------- | ------------------------------------------------------------ | --------- |
-| [0007](0007-every-seat-is-a-player.md)                      | Every seat is a player; a player has an algorithm            | Accepted  |
-| [0008](0008-algorithms-are-live.md)                         | Algorithm changes are live and never change the hand         | Accepted  |
-| [0009](0009-decision-seam.md)                               | The decision seam: `ALGORITHMS` over a curated `SeatView`    | Accepted  |
-| [0010](0010-match-wide-permissions.md)                      | Permissions are match-wide flags on `MatchOptions`           | Accepted  |
-| [0011](0011-at-least-one-manual-seat.md)                    | At least one seat stays manual                               | Superseded by [0012](0012-shared-table-layer.md) |
-| [0037](0037-the-ev-seat-decides.md)                         | An EV seat decides through one identity; its model may not borrow | Amended by [0039](0039-the-currency-is-a-switch.md) |
-| [0039](0039-the-currency-is-a-switch.md)                    | The currency is a switch; an EV seat carries its model as a field | Accepted  |
+| ADR                                      | Title                                                             | Status                                                                 |
+| ---------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [0007](0007-every-seat-is-a-player.md)   | Every seat is a player; a player has an algorithm                 | Accepted                                                               |
+| [0008](0008-algorithms-are-live.md)      | Algorithm changes are live and never change the hand              | Accepted                                                               |
+| [0009](0009-decision-seam.md)            | The decision seam: `ALGORITHMS` over a curated `SeatView`         | Accepted                                                               |
+| [0010](0010-match-wide-permissions.md)   | Permissions are match-wide flags on `MatchOptions`                | Amended by [0041](0041-daiminkan-and-kakan-are-a-match-only-switch.md) |
+| [0011](0011-at-least-one-manual-seat.md) | At least one seat stays manual                                    | Superseded by [0012](0012-shared-table-layer.md)                       |
+| [0037](0037-the-ev-seat-decides.md)      | An EV seat decides through one identity; its model may not borrow | Amended by [0039](0039-the-currency-is-a-switch.md)                    |
+| [0039](0039-the-currency-is-a-switch.md) | The currency is a switch; an EV seat carries its model as a field | Accepted                                                               |
 
 ### App layer
 
-| ADR                                                         | Title                                                        | Status     |
-| ----------------------------------------------------------- | ------------------------------------------------------------ | ---------- |
-| [0012](0012-shared-table-layer.md)                          | The React match layer reports engine events; policy lives in trainers | Accepted  |
-| [0013](0013-efficiency-split.md)                            | Efficiency splits into two routes; solo is one seat, no board | **TO REVIEW** |
-| [0014](0014-table-is-a-pure-view.md)                        | `<Table>` is a pure view with no player concept              | Accepted   |
-| [0015](0015-what-persists.md)                               | Reader preferences persist; board state does not             | Amended by [0034](0034-you-act-from-where-you-watch.md) |
-| [0017](0017-imperative-log-rows.md)                         | Log rows are written imperatively, never from effects        | Accepted   |
-| [0029](0029-calls-on-the-hand-ring.md)                      | A seat's calls ride on its hand ring, not on the felt        | Accepted   |
-| [0030](0030-the-felt-sizes-itself.md)                       | The felt sizes itself: container units, and a scale only where there is room | Accepted   |
-| [0032](0032-one-efficiency-drill-core.md)                   | One drill core behind both efficiency hooks                  | Accepted   |
-| [0033](0033-settings-sections.md)                            | Settings sections are named for what a setting is about       | Accepted   |
-| [0034](0034-you-act-from-where-you-watch.md)                 | You act from where you watch; the felt says who owes a decision | Amended by [0035](0035-efficiency-asks-for-no-calls.md) |
-| [0035](0035-efficiency-asks-for-no-calls.md)                 | Efficiency asks for no calls; transient controls float, never resize the board | Accepted |
+| ADR                                                     | Title                                                                          | Status                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| [0012](0012-shared-table-layer.md)                      | The React match layer reports engine events; policy lives in trainers          | Accepted                                                |
+| [0013](0013-efficiency-split.md)                        | Efficiency splits into two routes; solo is one seat, no board                  | **TO REVIEW**                                           |
+| [0014](0014-table-is-a-pure-view.md)                    | `<Table>` is a pure view with no player concept                                | Accepted                                                |
+| [0015](0015-what-persists.md)                           | Reader preferences persist; board state does not                               | Amended by [0034](0034-you-act-from-where-you-watch.md) |
+| [0017](0017-imperative-log-rows.md)                     | Log rows are written imperatively, never from effects                          | Accepted                                                |
+| [0029](0029-calls-on-the-hand-ring.md)                  | A seat's calls ride on its hand ring, not on the felt                          | Accepted                                                |
+| [0030](0030-the-felt-sizes-itself.md)                   | The felt sizes itself: container units, and a scale only where there is room   | Accepted                                                |
+| [0042](0042-the-board-is-paced-and-the-view-is-told.md) | The board is paced by its driver; the view is told what to draw                | Accepted                                                |
+| [0032](0032-one-efficiency-drill-core.md)               | One drill core behind both efficiency hooks                                    | Accepted                                                |
+| [0033](0033-settings-sections.md)                       | Settings sections are named for what a setting is about                        | Accepted                                                |
+| [0034](0034-you-act-from-where-you-watch.md)            | You act from where you watch; the felt says who owes a decision                | Amended by [0035](0035-efficiency-asks-for-no-calls.md) |
+| [0035](0035-efficiency-asks-for-no-calls.md)            | Efficiency asks for no calls; transient controls float, never resize the board | Accepted                                                |
 
 ### Process and product
 
-| ADR                                                         | Title                                                        | Status    |
-| ----------------------------------------------------------- | ------------------------------------------------------------ | --------- |
-| [0016](0016-testing-strategy.md)                            | Testing: a reference implementation, a census, a golden hash | Accepted  |
-| [0018](0018-beginner-defaults-advanced-depth.md)            | Beginner-safe defaults, advanced depth behind settings       | Accepted  |
-| [0019](0019-mobile-first-board.md)                          | Mobile-first: a square board and fullscreen as a place       | Amended by [0025](0025-one-interface.md), [0030](0030-the-felt-sizes-itself.md) |
-| [0020](0020-no-back-compat-pre-release.md)                  | No backward compatibility while pre-release                  | Accepted  |
-| [0031](0031-claude-md-carries-how-not-why.md)               | `CLAUDE.md` carries how, not why                             | Accepted  |
+| ADR                                              | Title                                                        | Status                                                                          |
+| ------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| [0016](0016-testing-strategy.md)                 | Testing: a reference implementation, a census, a golden hash | Accepted                                                                        |
+| [0018](0018-beginner-defaults-advanced-depth.md) | Beginner-safe defaults, advanced depth behind settings       | Accepted                                                                        |
+| [0019](0019-mobile-first-board.md)               | Mobile-first: a square board and fullscreen as a place       | Amended by [0025](0025-one-interface.md), [0030](0030-the-felt-sizes-itself.md) |
+| [0020](0020-no-back-compat-pre-release.md)       | No backward compatibility while pre-release                  | Accepted                                                                        |
+| [0031](0031-claude-md-carries-how-not-why.md)    | `CLAUDE.md` carries how, not why                             | Accepted                                                                        |
 
 Numbering runs 0001–0035 with no gaps. Take the next free number, and never reuse one — not even
 if an ADR is later withdrawn.
@@ -97,14 +100,18 @@ in those texts are today's `RoundState`/`RoundOptions`/`useRound`. The decisions
 **Source:** where the decision was settled
 
 ## Context
+
 The forces. What made this a question at all.
 
 ## Decision
+
 What was decided, in one or two sentences, plus the code that carries it.
 
 ## Consequences
+
 What this buys, and what it costs.
 
 ## Rejected
+
 The alternative, and why it lost. This is the half that stops re-litigation.
 ```

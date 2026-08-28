@@ -29,6 +29,39 @@ interface FoldingDiscardParams {
   correct: boolean
 }
 
+/** What ended a round, in exactly the shape both the log row (`log.match.result`) and the
+ *  match drill's own round-end card need — `formatMatchResult` below is the one place that turns
+ *  it into a sentence, so the two never read a settlement differently. */
+export interface MatchResultParams {
+  roundWind: string
+  roundNumber: number
+  honba: number
+  kind: 'win' | 'exhaustive' | 'abort'
+  seat?: number
+  from?: number
+}
+
+/** "East 1: South wins off West" / "East 1 · 2: North tsumo" / "East 1: exhaustive draw" /
+ *  "East 1: hand abandoned" — shared by the log panel's own row and `MatchPage`'s round-end card,
+ *  so the wording can only ever say one thing about a settled round. */
+export function formatMatchResult(t: TFunction, p: MatchResultParams): string {
+  const round = t(p.honba > 0 ? 'table.roundLineRepeat' : 'table.roundLine', {
+    wind: t(`windFull.${p.roundWind}`),
+    number: p.roundNumber,
+    repeat: p.honba,
+  })
+  if (p.kind === 'win' && p.seat !== undefined) {
+    return p.from === undefined
+      ? t('log.match.tsumo', { round, wind: t(`wind.${WINDS[p.seat]}`) })
+      : t('log.match.ron', {
+          round,
+          winner: t(`wind.${WINDS[p.seat]}`),
+          loser: t(`wind.${WINDS[p.from]}`),
+        })
+  }
+  return t(p.kind === 'exhaustive' ? 'log.match.exhaustive' : 'log.match.abort', { round })
+}
+
 /** Keys carrying a `shanten` param (every efficiency discard/kita/kan outcome) get a trailing
  *  clause naming the resulting shanten — composed here rather than baked in at log time, so a
  *  language switch re-translates the whole line. */
@@ -102,6 +135,43 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
     const { turn, seat } = entry.params as unknown as { turn: number; seat: number }
     return t('log.lab.abort', { turn, wind: t(`wind.${WINDS[seat]}`) })
   }
+  if (entry.key === 'log.match.result') {
+    return formatMatchResult(t, entry.params as unknown as MatchResultParams)
+  }
+  // the match's own action log: every seat's turn, not just the reader's, so the wind is resolved
+  // here from a raw seat number the same way `log.lab.abort` already does
+  if (entry.key === 'log.match.discard') {
+    const { turn, seat, tile } = entry.params as unknown as {
+      turn: number
+      seat: number
+      tile: string
+    }
+    return t('log.match.discard', { turn, wind: t(`wind.${WINDS[seat]}`), tile })
+  }
+  if (entry.key === 'log.match.riichi') {
+    const { seat } = entry.params as unknown as { seat: number }
+    return t('log.match.riichi', { wind: t(`wind.${WINDS[seat]}`) })
+  }
+  if (entry.key === 'log.match.call') {
+    const { seat, from, kind } = entry.params as unknown as {
+      seat: number
+      from: number
+      kind: 'pon' | 'chi' | 'minkan'
+    }
+    return t('log.match.call', {
+      wind: t(`wind.${WINDS[seat]}`),
+      from: t(`wind.${WINDS[from]}`),
+      kind: t(`seats.claim.${kind}`),
+    })
+  }
+  if (entry.key === 'log.match.kita') {
+    const { seat } = entry.params as unknown as { seat: number }
+    return t('log.match.kita', { wind: t(`wind.${WINDS[seat]}`) })
+  }
+  if (entry.key === 'log.match.kan') {
+    const { seat, tile } = entry.params as unknown as { seat: number; tile: string }
+    return t('log.match.kan', { wind: t(`wind.${WINDS[seat]}`), tile })
+  }
   if (EFFICIENCY_SHANTEN_KEYS.has(entry.key)) {
     const shanten = (entry.params as { shanten?: number } | undefined)?.shanten
     const shantenSuffix =
@@ -129,6 +199,10 @@ export function formatLogDetail(
     const { seat, tier } = detail.params as unknown as { seat?: number; tier: string }
     const vs = seat === undefined ? '' : t('log.folding.vs', { wind: t(`wind.${WINDS[seat]}`) })
     return t(detail.key, { vs, tier: t(`folding.tier.${tier}`) })
+  }
+  if (detail.key === 'log.match.delta') {
+    const { seat, amount } = detail.params as unknown as { seat: number; amount: string }
+    return t('log.match.delta', { wind: t(`wind.${WINDS[seat]}`), amount })
   }
   if (detail.key === 'log.scoring.field') {
     const { labelKey, expected, answer } = detail.params as unknown as {
