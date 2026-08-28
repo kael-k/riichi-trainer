@@ -95,8 +95,11 @@
     },
     "evModelLabel": "Modello EV",
     "evModel": {
-      "statistical": "Formula",
+      "statistical": "Statistico",
       "houou": "Houou"
+    },
+    "modeBadge": {
+      "ev": "EV — {{model}}"
     },
     "evChoice": {
       "statistical": "EV — modello statistico",
@@ -524,7 +527,8 @@
       "win": "vittoria",
       "dealIn": "servito",
       "danger": "turni successivi",
-      "notWinning": "nessuna vittoria"
+      "notWinning": "nessuna vittoria",
+      "tenpai": "tenpai al pareggio"
     }
   },
   "match": {

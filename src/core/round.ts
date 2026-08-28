@@ -511,6 +511,7 @@ export function seatView(state: RoundState, options: RoundOptions, seat: number)
     wallLeft: state.liveWall.length,
     doraIndicators: state.doraIndicators,
     sanma: options.sanma,
+    kiriageMangan: options.kiriageMangan ?? false,
     match: state.match,
     ev: player.ev,
     get seen() {

@@ -17,7 +17,7 @@ const ALGO_COLOR: Record<SeatAlgorithm, string> = {
   defense: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
   tsumogiri: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
   ev: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-  manual: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+  manual: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
 }
 
 interface SeatStripProps extends SeatButtonProps {
@@ -56,8 +56,20 @@ export function SeatStrip({ read, showWaits, wind, onWatch, ...seatButtonProps }
   const { t } = useTranslation()
   const { seat, players, defaultOrientation, config, fallbackModes, viewSeat, requireManual } =
     seatButtonProps
-  const mode = resolveSeatConfig(config, players, defaultOrientation, fallbackModes, requireManual)
-    .modes[seat]
+  const resolved = resolveSeatConfig(
+    config,
+    players,
+    defaultOrientation,
+    fallbackModes,
+    requireManual,
+  )
+  const mode = resolved.modes[seat]
+  // an EV seat's badge names its model: the two EV seats share one badge colour precisely because
+  // the text is what distinguishes them, and until now it did not
+  const label =
+    mode === 'ev'
+      ? t('seats.modeBadge.ev', { model: t(`seats.evModel.${resolved.ev[seat].model}`) })
+      : t(`seats.mode.${mode}`)
   const yours = seat === viewSeat
 
   return (
@@ -97,7 +109,7 @@ export function SeatStrip({ read, showWaits, wind, onWatch, ...seatButtonProps }
         <span
           className={`shrink-0 rounded px-[0.6cqw] py-[0.1cqw] text-[2cqw] ${ALGO_COLOR[mode]}`}
         >
-          {t(`seats.mode.${mode}`)}
+          {label}
         </span>
         {read?.furiten && (
           /* `InfoPopover` directly rather than `GlossaryTerm`: the popover is portalled to

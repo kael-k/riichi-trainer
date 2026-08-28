@@ -3,6 +3,7 @@ import { combineThreats, dealInRisk, type DealInRisk } from './dealIn'
 import { evaluateDiscards } from './efficiency'
 import { tileCount } from './hand'
 import {
+  NOTEN_PENALTY,
   STATISTICAL,
   type BoardCost,
   type EvModel,
@@ -25,6 +26,7 @@ import { TILES_PER_KIND } from './wall'
  *              − Σ_j P(deal in with t, j) × (their hand + honba)
  *              − danger over the rest of the hand, throwing tiles like this one
  *              + (1 − P(win))    × the cost of not winning
+ *              + P(tenpai, didn't win) × the noten penalty, collected instead of paid
  *
  * EV(fold)   = − danger over the rest of the hand, spending the safe tiles in hand
  *              + the cost of not winning
@@ -64,7 +66,7 @@ import { TILES_PER_KIND } from './wall'
 
 /** One line of the arithmetic, in the shape a reader can check: how often, times how much. */
 export interface EvTerm {
-  kind: 'win' | 'dealIn' | 'danger' | 'notWinning'
+  kind: 'win' | 'dealIn' | 'danger' | 'notWinning' | 'tenpai'
   probability: number
   /** Points the outcome is worth — negative for a cost. */
   value: number
@@ -203,7 +205,7 @@ export function riichiWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
     maxShanten: opts.maxShanten,
     scoring: scoringContext(view),
   })
-  const won = outlook.score ?? 0
+  const won = conditionalWin(outlook)
   // the stick is paid whether or not the hand wins, and under placement the two halves are not
   // each other's negative — a thousand points off a comfortable lead is not what a thousand
   // points onto a desperate one is worth
@@ -243,6 +245,20 @@ export function abortWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
   return keepEv(view, opts) < 0
 }
 
+/**
+ * What this hand pays **when it wins** — `plans/EV-1` §4's `S_solo / P_solo`.
+ *
+ * `Outlook.score` is the *unconditional* expectation, `P(win) × E[value | win]`, and every term of
+ * the identity is a probability times a value. Pairing `soloWin` with `score` counts `P(win)`
+ * twice, which shrinks the push branch quadratically and biases the whole decider toward folding —
+ * hardest at 1- and 2-shanten, where the interesting decisions are. Zero when the hand cannot win,
+ * and when the collapsed chain ran and priced no leaf to divide.
+ */
+function conditionalWin(outlook: Outlook | undefined): number {
+  if (!outlook || outlook.score === undefined || outlook.soloWin <= 0) return 0
+  return outlook.score / outlook.soloWin
+}
+
 /** The tiles worth pricing: the fastest few, plus the safest few. Duplicates collapse, so a tile
  *  that is both is counted once and the union is usually smaller than the sum. */
 function candidateUnion(view: SeatView, combined: DealInRisk[]): TileId[] {
@@ -280,7 +296,7 @@ function price(
   const terms: EvTerm[] = []
   const honba = view.match.honba * 300
   const win = outlook?.soloWin ?? 0
-  const winValue = value((outlook?.score ?? 0) + honba + view.match.riichiSticks * RIICHI_STICK)
+  const winValue = value(conditionalWin(outlook) + honba + view.match.riichiSticks * RIICHI_STICK)
   if (outlook) {
     terms.push({ kind: 'win', probability: win, value: winValue, points: win * winValue })
   }
@@ -325,6 +341,23 @@ function price(
     value: givenUp,
     points: (1 - win) * givenUp,
   })
+
+  // `giveUpCost` ends on the noten penalty, which is right for the branch it is named after: a
+  // hand that has stopped trying is noten by construction. A *pushing* hand that does not win may
+  // still be tenpai when the wall runs out, and then it collects the penalty rather than paying
+  // it — so the swing is the penalty twice over. This is `plans/EV-3` §2's
+  // `P_exhaustive × tenpai_payment`, the one term of that identity the give-up price cannot carry.
+  // `soloTenpai` is free off the same DP traversal `soloWin` comes from, and under advance-only a
+  // hand that reaches tenpai stays there, so `soloTenpai − soloWin` is "tenpai at the end, having
+  // not won". `reachesDraw` is `giveUpCost`'s own survival factor, restated so the two agree about
+  // how likely the hand is to get to the draw at all.
+  const stillTenpai = Math.max(0, (outlook?.soloTenpai ?? 0) - win)
+  if (stillTenpai > 0) {
+    const reachesDraw = (1 - board.tsumoChance) ** board.drawsLeft
+    const swing = value(2 * NOTEN_PENALTY)
+    const probability = stillTenpai * reachesDraw
+    terms.push({ kind: 'tenpai', probability, value: swing, points: probability * swing })
+  }
 
   return {
     tile,
@@ -584,7 +617,7 @@ function threatCosts(view: SeatView): ThreatCost[] {
 }
 
 function scoringRules(view: SeatView): ScoringRules {
-  return { kiriageMangan: false, honba: view.match.honba, sanma: view.sanma }
+  return { kiriageMangan: view.kiriageMangan, honba: view.match.honba, sanma: view.sanma }
 }
 
 function scoringContext(view: SeatView): ScoringContext {

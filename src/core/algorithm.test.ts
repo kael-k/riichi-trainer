@@ -27,6 +27,7 @@ function baseView(overrides: Partial<SeatView> = {}): SeatView {
     wallLeft: 70,
     doraIndicators: [],
     sanma: true,
+    kiriageMangan: false,
     match: createMatch(true),
     seen: new Uint8Array(NUM_TILE_TYPES),
     threats: [],

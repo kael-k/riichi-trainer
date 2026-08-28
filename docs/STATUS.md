@@ -404,6 +404,34 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     but not the delay; and `npm run ui-test` for the board's squareness with the banner's new
     absolutely-positioned sibling inside the box `e2e/board.spec.ts` measures.
 
+25. **A review pass over the EV model, and the two magnitude bugs no test could see**
+    (`plans/RECAP-REVIEW.md`). Reading all ten `plans/` documents against the shipped code
+    confirmed every deviation the three implementation recaps claim — the shanpon wait-pair matrix,
+    the lowest-waited-tile indexing, the averaging collapsed chain, `HOUOU_OPEN_PRIOR`'s
+    unreachability, kyuushu shipping on without moving a hash — and turned up four defects, all
+    inside one blind spot: **every EV test asserts that a row adds up (`points === probability ×
+value`) or a direction, and none asserts a magnitude.**
+
+    `Outlook.score` is the _unconditional_ expectation (`P(win) ×` what the hand pays), so pairing
+    it with `soloWin` as a term's value counted `P(win)` twice — the tenpai hand in `ev.test.ts`
+    pays 10 633 and was priced at 784, under-crediting every push quadratically and biasing the
+    decider toward folding. `riichiWorthIt` had it too, invisible under `houou` because its uplift
+    ignores the hand value. Both read one `conditionalWin()` helper now. Second: the push branch
+    never collected a tenpai payment — `giveUpCost` is noten-only, which is right for the branch it
+    is named after and wrong for a push that reaches the draw tenpai — so `price` gained a
+    `'tenpai'` term worth twice `NOTEN_PENALTY`, finally giving `Outlook.soloTenpai` its first
+    consumer. Third: `SeatView.kiriageMangan`, so an `'ev'` seat prices the ruleset the table is
+    playing; `houou`'s tables cannot follow it or kan dora, which is now a stated ceiling rather
+    than a silent one. Fourth: `EV_GOLDEN` freezes one event stream per model, so
+    `EV_FAST_CANDIDATES`/`EV_SAFE_CANDIDATES` are versioned as `plans/EV-5` §1.9 asks — and the
+    placement-vs-points divergence seeds moved with the arithmetic (`golden-12`/`golden-19` →
+    `golden-2`/`golden-6`), which is a re-scan, not a constant.
+
+    The felt's algorithm badge names an EV seat's model (`EV — Statistic` / `EV — Houou`) rather
+    than a bare "EV", which is what `RECAP-4-5` §8 always claimed carried the distinction; manual
+    moved from yellow to red, off the amber the EV seats sit on. `round.golden.test.ts`'s twenty
+    frozen hashes do not move.
+
 ## In flight
 
 - Nothing. `plans/PLAN-ev-model.md`'s next-wave list is complete; what the EV work still owes is

@@ -112,8 +112,13 @@ const CLOSED_RON_FU = 30
 const TYPICAL_CLOSED_YAKU_HAN = 1
 
 /** What a noten seat pays at an exhaustive draw. The real figure is 1000/1500/3000 by how many
- *  seats are tenpai; 1500 is the two-tenpai middle and the stated choice. */
-const NOTEN_PENALTY = 1500
+ *  seats are tenpai; 1500 is the two-tenpai middle and the stated choice.
+ *
+ *  Exported because `ev.ts` prices the *other* side of the same rule: a pushing hand that is
+ *  tenpai when the wall runs out collects this instead of paying it, and the two readings have to
+ *  be one number or the swing between them is wrong. It stays a model-independent rule constant —
+ *  neither `EvModel` measures it, so sharing it breaches no borrowing rule. */
+export const NOTEN_PENALTY = 1500
 
 /** Below this many hands behind a measured cell, the houou model looks for a neighbouring turn
  *  instead. Some cells in the fold table hold two hands. */
@@ -281,6 +286,13 @@ export const HOUOU: EvModel = {
    *
    * A threat whose declaration turn is unknown is priced at the turn being asked about — later
    * than the truth, and the table rises with the turn, so that reading is the pessimistic one.
+   *
+   * **Two ceilings this table cannot see, both of which `statistical` can.** It is indexed by turn
+   * and dealership alone, so a board with three kan dora showing prices a deal-in exactly as a
+   * board with none does; and Tenhou does not play kiriage mangan, so the measured figure is a
+   * no-kiriage figure and stays one under `ScoringRules.kiriageMangan`. Neither is fixable by
+   * feeding the flag in — the numbers are what they were measured to be. Conditioning on either
+   * needs a new extraction.
    */
   dealInCost(threat, board) {
     const table = threat.dealer ? HOUOU_HAND_SCORE.dealer : HOUOU_HAND_SCORE.nonDealer

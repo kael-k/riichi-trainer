@@ -91,8 +91,11 @@
     },
     "evModelLabel": "EV模型",
     "evModel": {
-      "statistical": "理论",
+      "statistical": "统计",
       "houou": "凤凰"
+    },
+    "modeBadge": {
+      "ev": "EV — {{model}}"
     },
     "evChoice": {
       "statistical": "EV — 统计模型",
@@ -422,7 +425,8 @@
       "win": "和牌",
       "dealIn": "放铳",
       "danger": "之后各巡",
-      "notWinning": "未和"
+      "notWinning": "未和",
+      "tenpai": "流局听牌"
     }
   },
   "match": {

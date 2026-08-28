@@ -23,6 +23,12 @@ export interface SeatConfig {
   ev?: (EvSeat | undefined)[]
 }
 
+/** What `resolveSeatConfig` hands back. `ev` stops being optional here: the resolver names every
+ *  seat, and a reader of a resolved config should not have to defend against a case the function
+ *  cannot produce — the optionality on `SeatConfig` is about what a *reader* has configured, not
+ *  about what a resolved board holds. */
+export type ResolvedSeatConfig = SeatConfig & { ev: EvSeat[] }
+
 /** `SeatConfig` filled in for a real table: every seat named, and at least one manual seat
  *  guaranteed — with none, nothing would ever stop the go-round loop to let a person act. The
  *  guarantee anchors on `defaultSeat` (a link's `?seat=`, or the seat the trainer generated), not
@@ -41,7 +47,7 @@ export function resolveSeatConfig(
   defaultSeat: number,
   fallbackModes?: readonly SeatAlgorithm[],
   requireManual = true,
-): SeatConfig {
+): ResolvedSeatConfig {
   const modes = Array.from(
     { length: players },
     (_, seat): SeatAlgorithm =>

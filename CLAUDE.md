@@ -501,7 +501,7 @@ Three reveal rules the UI must keep:
   wall only about runs.
 
 The algorithm badge has no setting at all — every seat's mode is always shown, colour-coded
-(efficiency green, defense blue, manual yellow). By design the drill is fold-only: no push control,
+(efficiency green, defense blue, EV amber, manual red). By design the drill is fold-only: no push control,
 no danger markers before the answer, threats up to `players - 1`.
 
 **Why:** [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0005](docs/adr/0005-walls-not-seeds.md)
@@ -596,6 +596,24 @@ derived deal-in cost would be a third model nobody chose.
 with `P(win)` at zero and the tiles taken from the safe end of the hand instead of the useful end.
 Every priced discard carries its terms — probability, value, product — which is the whole reason to
 prefer a formula.
+
+- **A term's `value` is what the outcome is worth, never an expectation that already carries its own
+  probability.** `Outlook.score` is `S_solo` — `P(win) ×` what the hand pays when it wins — so the
+  win term takes `conditionalWin()` (`score / soloWin`), not `score`. Pairing `soloWin` with `score`
+  multiplies `P(win)` in twice, shrinks every push quadratically and biases the whole decider toward
+  folding; every existing test survived it, because they check that a row adds up rather than what
+  its value is. `riichiWorthIt` reads the same helper for the same reason — `houou.riichiUplift`
+  ignores its argument, so only the `statistical` model shows the error.
+- **The exhaustive-draw term belongs to the push branch alone.** `EvModel.giveUpCost` ends on the
+  noten penalty, which is right for the branch it is named after: a hand that has given up is noten
+  by construction. A push that does not win may still be tenpai when the wall runs out, so `price`
+  adds a `'tenpai'` term worth **twice** `NOTEN_PENALTY` (not paid, and collected) at
+  `soloTenpai − soloWin`, discounted by `giveUpCost`'s own survival factor so the two agree about
+  reaching the draw at all. `foldEv` never has one.
+- **The EV seat prices the ruleset the table is playing.** `SeatView.kiriageMangan` feeds
+  `ScoringRules` for the DP's own leaf and for `statistical`'s derived opponent cost. `houou`'s
+  tables cannot follow it (or kan dora): they are measured over Tenhou, which plays neither — a
+  stated ceiling on `HOUOU.dealInCost`, not a flag to thread in.
 
 **Both branches are integrated over the rest of the hand, turn by turn.** `turnRisks` produces the
 sequence of per-turn risks a policy faces and `laterCost` discounts it by the chance the hand is

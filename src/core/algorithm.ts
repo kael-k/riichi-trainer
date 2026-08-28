@@ -69,6 +69,11 @@ export interface SeatView {
   readonly wallLeft: number
   readonly doraIndicators: readonly ParsedTile[]
   readonly sanma: boolean
+  /** Whether this table rounds a 4-han/30-fu or 3-han/60-fu win up to a flat mangan
+   *  (`RoundOptions.kiriageMangan`). A rule of the match, the same kind of field as `sanma`: an
+   *  `'ev'` seat prices its own wins with the real scorer at the DP's leaf, so it has to price
+   *  them under the ruleset the table is actually playing. */
+  readonly kiriageMangan: boolean
   /** Points, honba, riichi sticks, dealer seat, which round — the match this round sits inside.
    *  Live, not carry-in: a riichi declaration mid-round mutates `points`/`riichiSticks`, and this
    *  is the same object `RoundState.match` holds, not a snapshot taken at deal time. Nothing in

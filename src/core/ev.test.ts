@@ -63,6 +63,7 @@ function viewOf(
     wallLeft: 40,
     doraIndicators: [{ id: SOU + 0, red: false }],
     sanma: false,
+    kiriageMangan: false,
     match: createMatch(false),
     seen,
     threats,
@@ -109,6 +110,24 @@ describe('rankDiscards', () => {
       for (const term of entry.terms)
         expect(term.points).toBeCloseTo(term.probability * term.value, 9)
     }
+  })
+
+  // The regression this pins: `Outlook.score` is the *unconditional* expectation, P(win) times
+  // what the hand pays when it wins (`plans/EV-1` §4). A term is a probability times what the
+  // outcome is *worth*, so pairing `soloWin` with `score` counts P(win) twice and shrinks every
+  // push quadratically. Every other test here checks that a row adds up, which the double-count
+  // preserved — only the magnitude of `value` catches it.
+  it('prices a win at what it pays, not at the expected points — P(win) enters exactly once', () => {
+    let checked = 0
+    for (const entry of rankDiscards(viewOf(TENPAI), { model: statistical })) {
+      const win = entry.terms.find((term) => term.kind === 'win')
+      if (!win || entry.outlook?.score === undefined || entry.outlook.soloWin === 0) continue
+      // no honba and no sticks on a fresh match, so the value is the conditional win alone
+      expect(win.value).toBeCloseTo(entry.outlook.score / entry.outlook.soloWin, 6)
+      expect(win.value).toBeGreaterThan(entry.outlook.score)
+      checked++
+    }
+    expect(checked).toBeGreaterThan(0)
   })
 
   it('prices no deal-in at all when nobody has declared', () => {
@@ -256,6 +275,21 @@ describe('the push and fold branches', () => {
       foldEv(short, { model: statistical }).ev,
     )
   })
+
+  // `plans/EV-3` §2's `P_exhaustive × tenpai_payment`, which `giveUpCost` cannot carry: it is the
+  // *give-up* price, and a hand that has given up is noten by construction. A pushing hand that
+  // does not win may still be tenpai when the wall runs out, and then the penalty is collected
+  // rather than paid — a swing of twice the penalty against what `notWinning` already charged.
+  it('collects the tenpai payment on the push branch, and never on the fold', () => {
+    const view = viewOf(TENPAI)
+    const entry = rankDiscards(view, { model: statistical })[0]
+    const tenpai = entry.terms.find((term) => term.kind === 'tenpai')
+    expect(tenpai).toBeDefined()
+    expect(tenpai!.value).toBe(3000)
+    expect(tenpai!.probability).toBeGreaterThan(0)
+    expect(tenpai!.probability).toBeLessThan(1)
+    expect(foldEv(view, { model: statistical }).terms.some((t) => t.kind === 'tenpai')).toBe(false)
+  })
 })
 
 describe('the objective', () => {
@@ -329,6 +363,19 @@ describe('the riichi declaration', () => {
   // `Outlook` says whether the hand has a yaku of its own. Real play declares here.
   it('declines a thin wait even when the hand has no yaku without the declaration', () => {
     expect(riichiWorthIt(declared(THIN_TENPAI, 60), { model: houou })).toBe(false)
+  })
+
+  // The model whose uplift actually reads the hand value — `houou`'s is a measured points
+  // difference that ignores its argument, so the three tests above cannot see whether the value
+  // handed to `riichiUplift` is the conditional one or P(win) times it.
+  //
+  // This hand pays 10 633 when it lands (sanshoku + pinfu + tsumo + dora), so even the last draw
+  // of the wall is worth a 1000 stick: 7.4% of it clears the stick with room to spare. That is the
+  // discriminating case — pairing `soloWin` with the unconditional `score` priced the hand at 784
+  // instead of 10 633 and declined here.
+  it('declares under the statistical model even on the last draw, for a hand worth 10k', () => {
+    expect(riichiWorthIt(declared(TENPAI, 60), { model: statistical })).toBe(true)
+    expect(riichiWorthIt(declared(TENPAI, 4), { model: statistical })).toBe(true)
   })
 })
 

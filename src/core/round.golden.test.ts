@@ -93,6 +93,24 @@ const GOLDEN: Record<string, [yonma: string, sanma: string]> = {
   'golden-19': ['62be2ff8e1e0537f', 'f98026bd1740656d'],
 }
 
+/**
+ * One frozen event stream per EV model, on the same wall the divergence tests use.
+ *
+ * `plans/EV-5` §1.9 asks that `EV_FAST_CANDIDATES` and `EV_SAFE_CANDIDATES` — how many tiles reach
+ * the DP, and from which end of the hand — be versioned rather than tuned casually, because
+ * changing either changes which discards an `'ev'` seat makes. Until this table existed nothing
+ * pinned them: the tests below check that an EV seat *differs* from `efficiency` and from the
+ * other model, and every value of K and J satisfies that.
+ *
+ * Unlike `GOLDEN`, these are expected to move whenever the identity in `core/ev.ts` changes on
+ * purpose — they are a "say so in the commit" net, not an invariant. Regenerate with the same
+ * `GENERATE_GOLDEN=1` run.
+ */
+const EV_GOLDEN: Record<'statistical' | 'houou', string> = {
+  statistical: 'bb468b2afb281212',
+  houou: '824333eb044ca5f5',
+}
+
 describe('match golden determinism', () => {
   if (process.env.GENERATE_GOLDEN) {
     it('prints the golden table', () => {
@@ -101,7 +119,15 @@ describe('match golden determinism', () => {
         const sanma = hash(serialize(playRound(seed, 3, SANMA).events))
         return `  '${seed}': ['${yonma}', '${sanma}'],`
       })
-      console.log(lines.join('\n'))
+      const ev = (['statistical', 'houou'] as const).map((model) => {
+        const options: RoundOptions = {
+          ...YONMA,
+          algorithms: ['ev'],
+          ev: [{ model, objective: 'points' }],
+        }
+        return `  ${model}: '${hash(serialize(playRound('golden-3', 4, options).events))}',`
+      })
+      console.log([...lines, '', 'EV_GOLDEN:', ...ev].join('\n'))
       expect(true).toBe(true)
     })
     return
@@ -142,9 +168,14 @@ describe('match golden determinism', () => {
       algorithms: ['ev'],
       ev: [{ model, objective: 'points' }],
     })
-    const pure = playRound(seed, 4, evSeat('statistical'))
-    const measured = playRound(seed, 4, evSeat('houou'))
-    expect(hash(serialize(measured.events))).not.toBe(hash(serialize(pure.events)))
+    const pure = hash(serialize(playRound(seed, 4, evSeat('statistical')).events))
+    const measured = hash(serialize(playRound(seed, 4, evSeat('houou')).events))
+    expect(measured).not.toBe(pure)
+    // and each is the hand its own constants say it is — this is where `EV_GOLDEN` does its work.
+    // `statistical` happens to land on `efficiency`'s line for this wall; that is a coincidence of
+    // one seed, not a fallthrough, which the row above proves on `golden-0`.
+    expect(pure).toBe(EV_GOLDEN.statistical)
+    expect(measured).toBe(EV_GOLDEN.houou)
   })
 
   /**
@@ -157,6 +188,12 @@ describe('match golden determinism', () => {
    * already say a hand worth nothing costs nothing to chase. A lead is what placement can protect
    * and points cannot see — 44000 with three seats behind is a first place worth more than any
    * hand on the table, and the seat starts declining risk it would otherwise take.
+   *
+   * The two seeds are a **re-scan, not a constant**: which walls happen to divide the two
+   * currencies is a property of the arithmetic, so a deliberate change to the identity moves them.
+   * `golden-12`/`golden-19` were the pair before the win term stopped counting `P(win)` twice;
+   * `golden-2`/`golden-6` are the pair after, from the same twenty-seed sweep. What the test pins
+   * is the claim — the objective is a switch, not a label — never these particular walls.
    */
   it('an ev seat playing for placement does not play the same hand as one playing for points', () => {
     const allLast = createMatch(false, {
@@ -170,11 +207,11 @@ describe('match golden determinism', () => {
       algorithms: ['ev'],
       ev: [{ model: 'houou', objective }],
     })
-    const diverged = ['golden-12', 'golden-19'].filter(
+    const diverged = ['golden-2', 'golden-6'].filter(
       (seed) =>
         hash(serialize(playRound(seed, 4, evSeat('placement')).events)) !==
         hash(serialize(playRound(seed, 4, evSeat('points')).events)),
     )
-    expect(diverged).toEqual(['golden-12', 'golden-19'])
+    expect(diverged).toEqual(['golden-2', 'golden-6'])
   })
 })

@@ -397,8 +397,10 @@ function waysToHold(hypothesis: Hypothesis, unseen: Uint8Array): number {
  *
  * The product assumes the threats are independent and they are not: two seats hold shapes out of
  * one shared pool, so they cannot hold the same copies and their waits are negatively correlated.
- * The honest form enumerates hypotheses jointly and is affordable for two threats (~15k
- * compatible-pair checks); it is not built. Read this as the approximation it is.
+ * The honest form is `combinedDealInRisk` below — built, measured and off by default, because it
+ * costs 46ms against this function's 2.5ms to move the answer by at most 0.09pp. The correlation
+ * raises `P(A ∪ B)` rather than lowering it (`P(both)` falls faster than the independent product
+ * does), so read this as the slight *under*statement it is, not the overstatement it looks like.
  */
 export function combineThreats(risks: DealInRisk[][]): DealInRisk[] {
   // 34 entries in tile order whatever it is given, so a caller can always index by `TileId` — a
