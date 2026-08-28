@@ -161,22 +161,25 @@ export interface ClaimOption {
 
 /** A manual seat's reply to `ClaimOption`s. `'pass'` gives up every claim on that discard, ron
  *  included — which is what puts the seat in temporary furiten, exactly as declining costs an AI
- *  seat its ron. */
+ *  seat its ron. It is also the decline for the two offers that are nobody's reaction to a
+ *  discard, `'abort'`'s and `'tsumo'`'s, neither of which costs the seat anything. */
 export type ClaimAnswer =
   | { kind: 'pass' }
   | { kind: 'ron' }
   | { kind: 'pon' | 'chi' | 'minkan'; from: TileId[] }
   | { kind: 'abort' }
+  | { kind: 'tsumo' }
 
 /**
  * The decision the board is waiting on. While `RoundState.claim` is set the turn is suspended:
  * nobody draws, nobody discards, and `answerClaim` is the only way forward.
  *
- * Two shapes, because there are two moments the engine has to stop and ask a manual seat something
- * it cannot decide for itself — a reaction to somebody else's discard, and the acting seat's own
- * abortive draw. They share the suspension and `answerClaim`, not their contents.
+ * Three shapes, because there are three moments the engine has to stop and ask a manual seat
+ * something it cannot decide for itself — a reaction to somebody else's discard, the acting seat's
+ * own abortive draw, and its own completed hand. They share the suspension and `answerClaim`, not
+ * their contents.
  */
-export type PendingClaim = PendingDiscardClaim | PendingAbort
+export type PendingClaim = PendingDiscardClaim | PendingAbort | PendingWin
 
 export interface PendingDiscardClaim {
   kind: 'discard'
@@ -202,6 +205,27 @@ export interface PendingAbort {
   /** How many distinct terminals and honours the hand holds. It is what makes the offer legal,
    *  and it is the one number a prompt wants to show. */
   kinds: number
+}
+
+/**
+ * The acting seat's own completed hand, priced and offered rather than taken (ADR-0045). One seat,
+ * one question, like `PendingAbort`: nobody else reacts to a tile you drew yourself.
+ *
+ * Raised only for a **manual** seat under `RoundOptions.claims` — an AI seat has already answered
+ * through `Algorithm.win`, which is the same question asked of something that can price it, and a
+ * board that never asks anybody (the graded drills, all of which run `wins: false` anyway) still
+ * ends the instant the hand completes. A ron is never offered here: `claimOptions` already asked,
+ * and by the time `tryWin` awards one the reader has said yes.
+ */
+export interface PendingWin {
+  kind: 'win'
+  /** Seat being asked — always the seat whose turn it is. */
+  seat: number
+  /** The tile that completed the hand: the draw, or the replacement off a kan or a kita. */
+  tile: ParsedTile
+  /** Already priced, so a prompt can show what declining costs and `answerClaim` can end the hand
+   *  without asking twice. */
+  win: WinRecord
 }
 
 export type RoundEvent =
@@ -373,7 +397,12 @@ export function createRound(
     visible,
     discards: [],
     log: [],
-    seat: 0,
+    // the dealer leads, in this round and every round after it. The *deal* is index-order
+    // (`dealtSeat`, ADR-0024) and stays that way — this is play order, which is the dealer's, and
+    // it is what `state.turn`'s own increment already assumes (`resolveReactions` steps the
+    // counter when the turn comes back round to `match.dealer`). Every trainer but `/match` runs
+    // `createMatch`'s `dealer: 0` default, so nothing else moves.
+    seat: options.match.dealer,
     turn: 1,
     pendingDraw: true,
     replacements: 0,
@@ -524,7 +553,7 @@ export function seatView(state: RoundState, options: RoundOptions, seat: number)
     },
     get furiten() {
       return (furitenCache ??=
-        isFuriten(waits(player.hand, options.sanma), player.river) || player.missedWin)
+        isFuriten(seatWaits(player, options.sanma), player.river) || player.missedWin)
     },
   }
 }
@@ -534,6 +563,7 @@ function buildContext(
   seat: number,
   winTile: TileId,
   tsumo: boolean,
+  rinshan: boolean,
 ): WinContext {
   const player = state.players[seat]
   const riichi = player.riichiAt !== undefined
@@ -547,13 +577,14 @@ function buildContext(
     ippatsu: riichi && player.ippatsu,
     haitei: tsumo && state.liveWall.length === 0,
     houtei: !tsumo && state.liveWall.length === 0,
-    // rinshan kaihou is unimplemented: `callAnkan`/`callKita`/`callKakan` draw a replacement but
-    // never check `tryWin` against it, so a hand completed by that draw goes unnoticed rather
-    // than mis-scored — always false here, correctly, because the case never reaches this
-    // function at all yet. Chankan (ron on a kakan's added tile) is a separate, real gap: kakan
-    // exists (`callKakan`) but nothing offers other seats a ron on the tile it adds — see that
-    // function's own doc comment.
-    rinshan: false,
+    // rinshan kaihou: passed in rather than derived, because "this tile came off the dead wall"
+    // is known only at the call site — `replacementWin` and the daiminkan's own replacement check
+    // are the two, and every other caller is an ordinary draw or a ron. It was hardcoded `false`
+    // while no replacement was ever win-checked at all; since ADR-0043 and ADR-0045 they all are,
+    // so leaving it false would quietly score every rinshan tsumo one han short.
+    // **Chankan is still a real gap**: kakan exists (`callKakan`) but nothing offers other seats a
+    // ron on the tile it adds — see that function's own doc comment.
+    rinshan,
     chankan: false,
     winTile,
   }
@@ -570,6 +601,9 @@ function tryWin(
   tile: ParsedTile,
   tsumo: boolean,
   from?: number,
+  /** The tile came off the dead wall — a kan's or a kita's replacement. Only the two callers that
+   *  know it pass it; rinshan kaihou is worth a han and nothing else here depends on it. */
+  rinshan = false,
 ): WinRecord | null {
   if (!options.wins) return null
   const player = state.players[seat]
@@ -596,7 +630,7 @@ function tryWin(
     return null
   }
 
-  const ctx = buildContext(state, seat, tile.id, tsumo)
+  const ctx = buildContext(state, seat, tile.id, tsumo, rinshan)
   const uraIndicators =
     ctx.riichi || ctx.doubleRiichi
       ? state.uraStack.slice(0, state.doraIndicators.length).map((t) => t.id)
@@ -645,14 +679,38 @@ function endWith(state: RoundState, win: WinRecord): RoundEvent[] {
   return [{ kind: 'win', win }]
 }
 
-/** Draws for the seat whose turn it is, and takes the tsumo if there is one. `declineTsumo` only
- *  ever matters for a manual seat: a manual seat's own win is otherwise unconditional (`tryWin`
- *  skips the algorithm ask entirely once `algorithm === 'manual'` — a real person's legal tsumo is
- *  never an explicit choice). Replay (`replayLog`) is the one caller that ever needs the opposite:
- *  every seat is forced manual there (so no algorithm is ever consulted), yet the *original* live
- *  play may have had this seat on `defense`/`tsumogiri` and genuinely declined a legal tsumo mid-
- *  hand — an outcome only representable by asking `beginTurn` not to take it. Every other caller
- *  omits the argument and gets exactly today's behaviour. */
+/**
+ * Ends the hand on `win`, or — for a manual seat the board is allowed to ask (`RoundOptions.claims`)
+ * — suspends and offers it (ADR-0045, amending ADR-0009). Every **self-drawn** win goes through
+ * here: the turn's own draw, and the replacement off a kan or a kita.
+ *
+ * A ron does not, and must not: `claimOptions` already put the question to the reader and
+ * `answerClaim` only reaches `tryWin` once they have said yes, so routing it through here would
+ * ask the same question twice. An AI seat does not either — `tryWin` has already consulted
+ * `Algorithm.win`, which is the same decision asked of something that can price it.
+ *
+ * `tile` is what completed the hand; the prompt draws it, and `reconsiderClaim` re-prices from it
+ * if the seat stops being manual before it answers.
+ */
+function offerOrEnd(
+  state: RoundState,
+  options: RoundOptions,
+  win: WinRecord,
+  tile: ParsedTile,
+): RoundEvent[] {
+  if (!options.claims || !isManual(state, win.seat)) return endWith(state, win)
+  state.claim = { kind: 'win', seat: win.seat, tile, win }
+  return []
+}
+
+/** Draws for the seat whose turn it is, and settles the tsumo if there is one — ending the hand,
+ *  or offering it to a manual seat the board may ask (`offerOrEnd`).
+ *
+ *  `declineTsumo` skips the question entirely, and `replayLog` is its only caller: every seat is
+ *  forced manual there, so the *original* live play's own answer — an AI seat on `defense` that
+ *  declined, or a person who played on — is only representable by asking `beginTurn` not to raise
+ *  it at all. Where the log does record the win, replay leaves this `false` and answers the offer
+ *  it gets back. Every other caller omits the argument. */
 export function beginTurn(
   state: RoundState,
   options: RoundOptions,
@@ -683,7 +741,7 @@ export function beginTurn(
   // already completed the hand. This used to be the other way round — the kita loop ran here and
   // `tryWin` saw only the last replacement.
   const win = tryWin(state, state.seat, options, tile, true)
-  if (win && !declineTsumo) return [...events, ...endWith(state, win)]
+  if (win && !declineTsumo) return [...events, ...offerOrEnd(state, options, win, tile)]
 
   // kyuushu kyuuhai, asked *after* the tsumo check: a dealt thirteen-orphan kokushi is nine
   // distinct terminals and a completed hand at once, and the win outranks the abort. A manual
@@ -710,10 +768,9 @@ export function beginTurn(
  * still in hand.
  *
  * "First draw, uninterrupted" is `river.length === 0` on this seat plus no melds anywhere, not
- * `state.turn === 1`: seats are served in index order while the turn counter increments on the
- * *dealer's* seat, so with a dealer other than seat 0 the counter moves in the middle of the
- * opening go-around. Nukidora is deliberately not disqualifying — a kita is not a call, and it
- * leaves no meld behind.
+ * `state.turn === 1`: the counter names the go-around, so it reads `1` for every seat's opening
+ * turn and says nothing about whether anybody has acted since. Nukidora is deliberately not
+ * disqualifying — a kita is not a call, and it leaves no meld behind.
  */
 export function canDeclareKyuushu(state: RoundState, options: RoundOptions, seat: number): boolean {
   const player = state.players[seat]
@@ -753,6 +810,24 @@ export function drawReplacement(state: RoundState, player: PlayerState): ParsedT
   return tile
 }
 
+/**
+ * The win a replacement draw completes — rinshan kaihou's own moment. Every kan and every kita
+ * ends here, so the three `call*` functions below each price the tile they just drew rather than
+ * leaving it to whoever called them: the turn loop used to do it for an AI seat and nobody did it
+ * at all for a manual one, which is why a reader's rinshan tsumo simply vanished (ADR-0045).
+ *
+ * Returns `[]` when the replacement completes nothing, which is the overwhelmingly common case.
+ */
+function replacementWin(
+  state: RoundState,
+  options: RoundOptions,
+  seat: number,
+  tile: ParsedTile,
+): RoundEvent[] {
+  const win = tryWin(state, seat, options, tile, true, undefined, true)
+  return win ? offerOrEnd(state, options, win, tile) : []
+}
+
 /** A manual (or replayed) seat pulling a held north — the mutation and its log entry together, so
  *  a caller can't do one without the other. `beginTurn`'s own kita loop covers AI seats; this is
  *  the entry point for everyone else, formerly hand-mutated by `useTableRound.ts#kita`. A no-op
@@ -768,7 +843,11 @@ export function callKita(state: RoundState, options: RoundOptions, seat: number)
   state.visible[NORTH]++
   state.log.push({ kind: 'kita', seat })
   const tile = drawReplacement(state, player)
-  return [{ kind: 'kita', seat, tile }, ...(tile ? [{ kind: 'draw', seat, tile } as const] : [])]
+  const events: RoundEvent[] = [
+    { kind: 'kita', seat, tile },
+    ...(tile ? [{ kind: 'draw', seat, tile } as const] : []),
+  ]
+  return tile ? [...events, ...replacementWin(state, options, seat, tile)] : events
 }
 
 /** A manual (or replayed) seat calling a closed kan on a held quad — same reasoning as `callKita`:
@@ -778,7 +857,12 @@ export function callKita(state: RoundState, options: RoundOptions, seat: number)
  *  deliberately absent rather than threaded in unused. Ankan is legal regardless of
  *  `RoundOptions.calledKan`, which only gates the two genuinely *new* meld types below
  *  (`callKakan`, and daiminkan inside `resolveReactions`) — closed kan was always in this engine. */
-export function callAnkan(state: RoundState, seat: number, id: TileId): RoundEvent[] {
+export function callAnkan(
+  state: RoundState,
+  options: RoundOptions,
+  seat: number,
+  id: TileId,
+): RoundEvent[] {
   if (state.ended || state.claim || seat !== state.seat) return []
   const player = state.players[seat]
   if (player.hand.counts[id] !== 4) return []
@@ -807,10 +891,13 @@ export function callAnkan(state: RoundState, seat: number, id: TileId): RoundEve
   }
   state.log.push({ kind: 'ankan', seat, tile: id })
   const replacement = drawReplacement(state, player)
-  return [
+  const events: RoundEvent[] = [
     { kind: 'ankan', seat, tile: id, replacement },
     ...(replacement ? [{ kind: 'draw', seat, tile: replacement } as const] : []),
   ]
+  return replacement
+    ? [...events, ...replacementWin(state, options, seat, replacement)]
+    : events
 }
 
 /**
@@ -854,10 +941,13 @@ export function callKakan(
   }
   state.log.push({ kind: 'kakan', seat, tile: id })
   const replacement = drawReplacement(state, player)
-  return [
+  const events: RoundEvent[] = [
     { kind: 'kakan', seat, tile: id, replacement },
     ...(replacement ? [{ kind: 'draw', seat, tile: replacement } as const] : []),
   ]
+  return replacement
+    ? [...events, ...replacementWin(state, options, seat, replacement)]
+    : events
 }
 
 /** How many tiles have left `liveWallSnapshot` from the front — real draws, as opposed to the
@@ -934,19 +1024,16 @@ function takeTurn(
       action.kind === 'kita'
         ? callKita(state, options, seat)
         : action.kind === 'ankan'
-          ? callAnkan(state, seat, action.tile)
+          ? callAnkan(state, options, seat, action.tile)
           : callKakan(state, options, seat, action.tile)
     if (applied.length === 0) break
     events.push(...applied)
+    // the replacement is priced by `call*` itself (`replacementWin`) rather than here, so the one
+    // rinshan check covers a manual seat's own pull too. The hand may therefore be over already
+    if (state.ended) return undefined
     // read off the events rather than `player.drawn`: with the dead wall spent there is no
     // replacement at all, and the hand is left at thirteen tiles with nothing to rank
-    const replacement = applied.find((e) => e.kind === 'draw')
-    if (!replacement) break
-    const win = tryWin(state, seat, options, replacement.tile, true)
-    if (win) {
-      events.push(...endWith(state, win))
-      return undefined
-    }
+    if (!applied.some((e) => e.kind === 'draw')) break
   }
   // the loop stopped without a discard — an action the engine refused, a dead wall that ran out,
   // or the bound. The seat still owes a tile, so it borrows `'efficiency'`'s, exactly as a manual
@@ -1069,7 +1156,12 @@ export function finishTurn(
   // No ron is possible between the two moments either way: nobody else discards while this seat
   // holds its 14th. A seat in riichi keeps it for the rest of the hand, which is the actual rule
   // and the reason this is not a plain `= false`.
-  player.missedWin = player.riichiAt !== undefined && player.missedWin
+  // **`!declaring` is load-bearing**: `riichiAt` was set a few lines above, on *this* discard, so
+  // without it the clause reads true for the first time on the declaring turn and freezes a
+  // temporary furiten from the previous go-around into a permanent one — `tryWin` then refuses
+  // every ron for the rest of the hand. The rule is about a seat that was *already* declared when
+  // it passed the win, not about the declaration that ends the turn the furiten expires on.
+  player.missedWin = !declaring && player.riichiAt !== undefined && player.missedWin
   state.log.push({
     kind: 'discard',
     seat,
@@ -1219,7 +1311,26 @@ function resolveReactions(
           state.visible[indicator.id]++
         }
         const replacement = drawReplacement(state, caller)
-        if (replacement) events.push({ kind: 'draw', seat: other, tile: replacement })
+        if (replacement) {
+          events.push({ kind: 'draw', seat: other, tile: replacement })
+          // and the same win check every other replacement gets (ADR-0043). `drawReplacement`
+          // never runs one itself, and this is the one kan path no caller was covering: the turn
+          // loop checks the replacements it draws, `replayLog` checks a replayed pull, and a
+          // daiminkan's landed in neither — so a hand completed here vanished instead of ending
+          // the round. Scored as an ordinary tsumo: rinshan kaihou the yaku is still unmodelled.
+          const win = tryWin(state, other, options, replacement, true, undefined, true)
+          if (win) {
+            const resolved = offerOrEnd(state, options, win, replacement)
+            // a *declined* offer leaves the caller holding its replacement and owing a discard, so
+            // the turn has to be handed over before this returns — the fall-through below is
+            // unreachable once a claim is pending
+            if (state.claim) {
+              state.seat = other
+              state.pendingDraw = false
+            }
+            return [...events, ...resolved]
+          }
+        }
       }
 
       state.seat = other
@@ -1269,6 +1380,13 @@ export function answerClaim(
 ): RoundEvent[] {
   const claim = state.claim
   if (!claim) return []
+  if (claim.kind === 'win') {
+    state.claim = undefined
+    // declining costs the seat nothing — furiten is a rule about a *ron* you passed up, and this
+    // tile was self-drawn. It is still in hand, and the seat still owes the discard `beginTurn`
+    // (or the kan/kita that drew it) suspended before, which is exactly where this returns to
+    return answer.kind === 'tsumo' ? endWith(state, claim.win) : []
+  }
   if (claim.kind === 'abort') {
     state.claim = undefined
     // anything but an abort carries the turn straight on: the seat still holds its fourteenth
@@ -1292,6 +1410,15 @@ export function answerClaim(
 export function reconsiderClaim(state: RoundState, options: RoundOptions): RoundEvent[] {
   const claim = state.claim
   if (!claim) return []
+  if (claim.kind === 'win') {
+    // still manual: the question is still theirs, so the offer stays on the table
+    if (isManual(state, claim.seat)) return []
+    state.claim = undefined
+    // re-priced rather than taken from the claim: `tryWin` skipped `Algorithm.win` while the seat
+    // was manual, and the algorithm it has just been given is entitled to decline
+    const win = tryWin(state, claim.seat, options, claim.tile, true)
+    return win ? endWith(state, win) : []
+  }
   if (claim.kind === 'abort') {
     // still manual: the question is still theirs, so the offer stays on the table
     if (isManual(state, claim.seat)) return []
@@ -1442,6 +1569,10 @@ export function replayLog(
     const next: LogEntry | undefined = log[i]
     const acceptsTsumo = next?.kind === 'win' && next.seat === seat && next.from === undefined
     emit(beginTurn(state, replayOptions, !acceptsTsumo))
+    // every replayed seat is forced manual and `claims` is forced on, so a tsumo the log *does*
+    // record comes back as an offer rather than an ending (ADR-0045). `declineTsumo` above already
+    // suppressed the ones it does not record, so anything pending here is a yes
+    if (state.claim?.kind === 'win') emit(answerClaim(state, replayOptions, { kind: 'tsumo' }))
     if (state.ended) {
       if (acceptsTsumo) i++
       break
@@ -1462,37 +1593,28 @@ export function replayLog(
       if (state.ended) break
     }
 
-    // a kita/ankan/kakan pull draws a replacement, and — for an *AI*-decided seat — `beginTurn`'s
-    // own loop prices a tsumo off whatever tile that replacement turns out to be, same as the
-    // initial draw. Replaying a seat's own pulls one at a time via `callKita`/`callAnkan`/
-    // `callKakan` (which never check for a win themselves — a real manual seat's tsumo off a kita
-    // pull isn't an engine-level concept at all, only an AI's automatic loop prices it) has to
-    // reproduce that same check by hand after each pull, or an AI seat's tsumo-off-a-replacement
-    // never fires during replay.
+    // a kita/ankan/kakan pull draws a replacement, and `callKita`/`callAnkan`/`callKakan` price a
+    // tsumo off it themselves (`replacementWin`). Every replayed seat is manual, so what they
+    // raise is an offer: the log says whether it was taken, and — exactly as with the kyuushu
+    // offer above and a claim nobody answered — nothing at all is a decline.
     while (i < log.length) {
       const entry = log[i]
       if (entry.kind === 'kita' && entry.seat === seat) emit(callKita(state, replayOptions, seat))
       else if (entry.kind === 'ankan' && entry.seat === seat)
-        emit(callAnkan(state, seat, entry.tile))
+        emit(callAnkan(state, replayOptions, seat, entry.tile))
       else if (entry.kind === 'kakan' && entry.seat === seat)
         emit(callKakan(state, replayOptions, seat, entry.tile))
       else break
       i++
 
-      const afterPull: LogEntry | undefined = log[i]
-      const drawn = state.players[seat].drawn
-      if (
-        afterPull?.kind === 'win' &&
-        afterPull.seat === seat &&
-        afterPull.from === undefined &&
-        drawn
-      ) {
-        const win = tryWin(state, seat, replayOptions, drawn, true)
-        if (win) {
-          emit(endWith(state, win))
-          i++
-        }
+      if (state.claim?.kind === 'win') {
+        const afterPull: LogEntry | undefined = log[i]
+        const takes =
+          afterPull?.kind === 'win' && afterPull.seat === seat && afterPull.from === undefined
+        emit(answerClaim(state, replayOptions, { kind: takes ? 'tsumo' : 'pass' }))
+        if (takes) i++
       }
+      if (state.ended) break
     }
     if (state.ended) break
 
@@ -1519,6 +1641,29 @@ function seatsFrom(state: RoundState, seat: number): number[] {
   const order: number[] = []
   for (let k = 1; k < state.players.length; k++) order.push((seat + k) % state.players.length)
   return order
+}
+
+/**
+ * This seat's waits, read off the thirteen it is *keeping* rather than off whatever it happens to
+ * be holding right now.
+ *
+ * `policy.ts#waits` is documented for a 13-tile hand and means it: `shanten()` scores blocks and
+ * never counts tiles, so a fourteen-tile hand mid-turn still answers `0`, and `improvingTiles`
+ * then probes a *fifteen*-tile hand. What comes back is not this hand's wait — it is the union of
+ * the waits of every discard that would leave the seat tenpai. `123m456m789m 11p 22p 3p` reads as
+ * 1p/2p/4p, because throwing the 3p waits 1p/2p and throwing a 2p waits 1p/4p. Any one of that
+ * union sitting in the seat's own river lit the furiten mark for the whole time the reader was
+ * deciding, and cleared it the instant they discarded.
+ *
+ * Mutate-and-restore, the same shape `tryWin` and `couldHaveWon` already use on this hand.
+ */
+export function seatWaits(player: PlayerState, sanma: boolean): TileId[] {
+  const drawn = player.drawn
+  if (!drawn) return waits(player.hand, sanma)
+  removeTile(player.hand, drawn.id)
+  const held = waits(player.hand, sanma)
+  addTile(player.hand, drawn.id)
+  return held
 }
 
 /** A win this seat passed up, ignoring furiten — the test for *entering* temporary furiten. */

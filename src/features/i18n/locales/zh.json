@@ -128,6 +128,14 @@
       "confirm": "流局",
       "decline": "继续"
     },
+    "tsumoPrompt": "{{wind}}：要和牌吗？",
+    "tsumo": {
+      "question": "自摸 — {{value}}",
+      "confirm": "自摸",
+      "decline": "继续",
+      "value": "{{han}}番{{fu}}符",
+      "valueLimit": "{{han}}番 — {{limit}}"
+    },
     "riichi": "立直",
     "riichiHint": "请打出以下任意一张:",
     "call": {
@@ -444,7 +452,12 @@
     "quit": "退出对局",
     "over": "对局结束",
     "newMatch": "新对局",
-    "status": "第{{rank}}名 / 共{{players}}人"
+    "status": "第{{rank}}名 / 共{{players}}人",
+    "handValue": "{{han}}番{{fu}}符",
+    "handValueLimit": "{{han}}番 — {{limit}}",
+    "payout": "{{points}}点",
+    "winningHand": "和牌",
+    "indicators": "宝牌 / 里宝牌"
   },
   "log": {
     "rewound": "已撤回到第 {{number}} 条记录",

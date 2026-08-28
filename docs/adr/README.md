@@ -47,16 +47,18 @@ to propose the opposite next month. Do not write one for what the code plainly s
 
 ### Seats and algorithms
 
-| ADR                                      | Title                                                             | Status                                                                 |
-| ---------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| [0007](0007-every-seat-is-a-player.md)   | Every seat is a player; a player has an algorithm                 | Accepted                                                               |
-| [0008](0008-algorithms-are-live.md)      | Algorithm changes are live and never change the hand              | Accepted                                                               |
-| [0009](0009-decision-seam.md)            | The decision seam: `ALGORITHMS` over a curated `SeatView`         | Amended by [0043](0043-one-turn-one-decision.md)                       |
-| [0010](0010-match-wide-permissions.md)   | Permissions are match-wide flags on `MatchOptions`                | Amended by [0041](0041-daiminkan-and-kakan-are-a-match-only-switch.md) |
-| [0011](0011-at-least-one-manual-seat.md) | At least one seat stays manual                                    | Superseded by [0012](0012-shared-table-layer.md)                       |
-| [0037](0037-the-ev-seat-decides.md)      | An EV seat decides through one identity; its model may not borrow | Amended by [0039](0039-the-currency-is-a-switch.md)                    |
-| [0039](0039-the-currency-is-a-switch.md) | The currency is a switch; an EV seat carries its model as a field | Accepted                                                               |
-| [0043](0043-one-turn-one-decision.md)    | One turn, one decision: `turn` replaces `discard` and `kita`      | Accepted                                                               |
+| ADR                                      | Title                                                             | Status                                                                                                              |
+| ---------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| [0007](0007-every-seat-is-a-player.md)   | Every seat is a player; a player has an algorithm                 | Accepted                                                                                                            |
+| [0008](0008-algorithms-are-live.md)      | Algorithm changes are live and never change the hand              | Accepted                                                                                                            |
+| [0009](0009-decision-seam.md)            | The decision seam: `ALGORITHMS` over a curated `SeatView`         | Amended by [0043](0043-one-turn-one-decision.md), [0045](0045-a-persons-win-is-a-call.md)                            |
+| [0010](0010-match-wide-permissions.md)   | Permissions are match-wide flags on `MatchOptions`                | Amended by [0041](0041-daiminkan-and-kakan-are-a-match-only-switch.md)                                              |
+| [0011](0011-at-least-one-manual-seat.md) | At least one seat stays manual                                    | Superseded by [0012](0012-shared-table-layer.md)                                                                    |
+| [0037](0037-the-ev-seat-decides.md)      | An EV seat decides through one identity; its model may not borrow | Amended by [0039](0039-the-currency-is-a-switch.md), superseded in part by [0044](0044-every-decision-is-priced.md) |
+| [0039](0039-the-currency-is-a-switch.md) | The currency is a switch; an EV seat carries its model as a field | Accepted                                                                                                            |
+| [0043](0043-one-turn-one-decision.md)    | One turn, one decision: `turn` replaces `discard` and `kita`      | Amended by [0044](0044-every-decision-is-priced.md)                                                                 |
+| [0044](0044-every-decision-is-priced.md) | Every decision the EV seat makes is priced, claim time included   | Accepted                                                                                                            |
+| [0045](0045-a-persons-win-is-a-call.md)  | A person's own win is a call; a claim answers from any seat       | Accepted                                                                                                            |
 
 ### App layer
 
@@ -72,7 +74,7 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | [0042](0042-the-board-is-paced-and-the-view-is-told.md) | The board is paced by its driver; the view is told what to draw                | Accepted                                                |
 | [0032](0032-one-efficiency-drill-core.md)               | One drill core behind both efficiency hooks                                    | Accepted                                                |
 | [0033](0033-settings-sections.md)                       | Settings sections are named for what a setting is about                        | Accepted                                                |
-| [0034](0034-you-act-from-where-you-watch.md)            | You act from where you watch; the felt says who owes a decision                | Amended by [0035](0035-efficiency-asks-for-no-calls.md) |
+| [0034](0034-you-act-from-where-you-watch.md)            | You act from where you watch; the felt says who owes a decision                | Amended by [0035](0035-efficiency-asks-for-no-calls.md), [0045](0045-a-persons-win-is-a-call.md) |
 | [0035](0035-efficiency-asks-for-no-calls.md)            | Efficiency asks for no calls; transient controls float, never resize the board | Accepted                                                |
 
 ### Process and product

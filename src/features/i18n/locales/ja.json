@@ -128,6 +128,14 @@
       "confirm": "流局",
       "decline": "続行"
     },
+    "tsumoPrompt": "{{wind}}：和了しますか？",
+    "tsumo": {
+      "question": "ツモ — {{value}}",
+      "confirm": "ツモ",
+      "decline": "続行",
+      "value": "{{han}}翻{{fu}}符",
+      "valueLimit": "{{han}}翻 — {{limit}}"
+    },
     "riichi": "リーチ",
     "riichiHint": "次のいずれかを捨ててください:",
     "call": {
@@ -444,7 +452,12 @@
     "quit": "対局を終了",
     "over": "対局終了",
     "newMatch": "新しい対局",
-    "status": "{{players}}人中{{rank}}位"
+    "status": "{{players}}人中{{rank}}位",
+    "handValue": "{{han}}翻{{fu}}符",
+    "handValueLimit": "{{han}}翻 — {{limit}}",
+    "payout": "{{points}}点",
+    "winningHand": "和了手",
+    "indicators": "ドラ / 裏ドラ"
   },
   "log": {
     "rewound": "{{number}}件目の記録まで巻き戻しました",

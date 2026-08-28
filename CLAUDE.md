@@ -155,8 +155,11 @@ draws, then the trailing 14 the dead wall is cut from.
 - **Every wall-index-to-seat mapping goes through `dealtSeat`/`dealtIndices`**: `validateWall`'s
   error zones, `wallWithHand`/`wallWithHands` (the only way to pin a hand, and what the tests build
   claim scenarios with), and the wall reveal's perspective highlight.
-- Seats are served in **index order**, not from the dealer — which keeps `MatchState` out of every
-  index-to-seat mapping.
+- **The wall is dealt in index order; play starts at the dealer.** The two are separate facts and
+  only the first keeps `MatchState` out of an index-to-seat mapping: `dealtSeat`/`dealtIndices`
+  walk seat 0 upward regardless of who is dealing, while `RoundState.seat` is seeded from
+  `options.match.dealer` so the dealer draws first — which is also what `state.turn`'s own
+  increment (back round to `match.dealer`) has always assumed.
 - **A short wall is a prefix**, completed at random from the copies it leaves (`completeWall`). A
   13-tile prefix is the start of a _deal_, not one seat's hand. `players: 1` collapses to
   `wall[0..12]`.
@@ -228,6 +231,18 @@ silently skipped.
 - `reconsiderClaim(state, options)` re-enters `resolveReactions` from scratch when a seat stops
   being manual mid-claim. It **never invents a pass**: a pass sets `missedWin` and would poison the
   hand with furiten over a decision nobody made.
+- **A manual seat's own tsumo is a call too** (ADR-0045, amending ADR-0009): `PendingWin` is the
+  third `PendingClaim` shape and **one function raises it** — `offerOrEnd`, which ends the hand
+  unless the winner is manual _and_ `claims` is on. Every **self-drawn** win goes through it: the
+  turn's draw, and the replacement off a kan or a kita. A **ron never does** (`claimOptions`
+  already asked, and `tryWin` only awards one once the reader said yes) and **neither does an AI
+  seat** (`Algorithm.win` is the same question asked of something that can price it). `'tsumo'`
+  ends the hand; anything else hands the turn straight back with the fourteenth tile still in
+  hand, and **leaves no furiten** — furiten is a rule about a ron you passed up.
+- **The rinshan check lives in the three `call*` functions** (`replacementWin`), not in their
+  callers: the AI turn loop, `replayLog` and a person's own pull all get the same one. That is why
+  `callAnkan` takes `RoundOptions` — the one thing its own doc comment used to be right to say it
+  did not need. Rinshan kaihou the yaku is still unmodelled (`buildContext`).
 
 **Permissions live entirely in `RoundOptions`, never in `Table`.** Four flags, each shared by every
 seat:
@@ -237,12 +252,13 @@ seat:
 | `wins`   | `tryWin` itself — `false` blocks ron **and** tsumo for every seat and drops the ron entry from `claimOptions` |
 | `calls`  | Whether an AI algorithm may pon/chi at all                                                                    |
 | `riichi` | `canDeclareRiichi`, for AI and manual seats alike                                                             |
-| `claims` | Whether a **manual** seat is _asked_ about another seat's discard                                             |
+| `claims` | Whether a **manual** seat is _asked_ — about another seat's discard, and about its own tsumo                  |
 
 Layering is legality (`RoundOptions`) → choice (the algorithm) → prompt (`claims`, manual seats
-only): with `wins: false` the engine never even asks an algorithm's `win`. A manual seat's own tsumo
-is never an explicit choice — `beginTurn` wins the instant the draw completes the hand. Whether
-these four need a finer per-algorithm split is open (`docs/STATUS.md`).
+only): with `wins: false` the engine never even asks an algorithm's `win`. **`claims` covers a
+manual seat's own tsumo as well as another seat's discard** (ADR-0045): both are "ask, don't decide
+for it", so a board that asks about a pon asks about a win. Whether these four need a finer
+per-algorithm split is open (`docs/STATUS.md`).
 
 **`abortiveDraws` is a fifth `RoundOptions` field and is deliberately _not_ one of those four**
 (ADR-0038). They gate what a seat may do; this one says which ruleset is being played, like `sanma`
@@ -253,8 +269,8 @@ they turn `wins` off. See kyuushu kyuuhai below.
 `policy.ts`) on a seat's own first draw with nobody having melded, and the hand may be abandoned.
 
 - **"First draw, uninterrupted" is `river.length === 0` plus no melds anywhere, never `turn === 1`**:
-  seats are served in index order while the turn counter increments on the _dealer's_ seat, so with
-  a dealer other than seat 0 that counter moves mid-go-around. A kita is not a call and does not
+  the counter says which go-around, not which draw, so it is already `1` for every seat's first
+  turn and says nothing about whether anyone has acted since. A kita is not a call and does not
   disqualify. `canDeclareKyuushu` is the legality half alone, exactly like `canDeclareRiichi`.
 - **`beginTurn` asks after the tsumo check**, because a dealt thirteen-orphan kokushi is nine
   distinct terminals and a completed hand at once, and the win outranks the abort.
@@ -287,12 +303,22 @@ ron, and it never does (regression test in `round.test.ts`). The two kinds are s
 differently:
 
 - **Own-river** furiten is derived (`isFuriten(waits, river)`), so it comes and goes with the hand
-  and needs no bookkeeping.
+  and needs no bookkeeping. It is read through **`seatWaits(player, sanma)`, never `waits` on the
+  live hand**: `policy.ts#waits` means its "13-tile hand" literally, and `shanten` scores blocks
+  without counting tiles, so a hand mid-turn still answers `0` and `improvingTiles` then probes
+  fifteen — returning the union of every tenpai-producing discard's wait rather than this hand's
+  own. Any one of that union in the seat's own river lit the mark for the length of the turn and
+  cleared it on the discard. `seatWaits` removes `player.drawn` and puts it back, the same
+  mutate-and-restore `tryWin`/`couldHaveWon` use; `core/table.ts#seatRead` and `SeatView.furiten`
+  are its only readers.
 - **Temporary** furiten is the stored half, `PlayerState.missedWin`, lifted in `finishTurn` on the
   seat's own **discard** — the end of the turn that clears it, not the draw that opens it. Nothing
   is legal in between, so the badge stays up while the reader is deciding.
-- It is `player.missedWin = player.riichiAt !== undefined && player.missedWin`, **not a plain
-  clear**: a seat that declines a win _while in riichi_ stays furiten for the rest of the hand.
+- It is `player.missedWin = !declaring && player.riichiAt !== undefined && player.missedWin`, **not
+  a plain clear**: a seat that declines a win _while in riichi_ stays furiten for the rest of the
+  hand. **`!declaring` is the load-bearing half** — `riichiAt` is set earlier in the same
+  `finishTurn`, so without it the clause reads true for the first time on the declaring discard and
+  freezes a temporary furiten from the previous go-around into a permanent one.
   Setting it stays inside `resolveReactions` and stays monotonic there, which is what keeps that
   function restartable.
 - `missedWin` is set only for a seat that genuinely declined. A manual seat with `claims: false` is
@@ -325,7 +351,7 @@ this north worth more than kanning" is a question independent methods cannot ask
 the engine's loop order made loop order into policy.
 
 - **The loop is `round.ts#takeTurn`, called from `finishTurn` and nowhere else.** Asking from
-  `beginTurn` too would make an `'ev'` seat run `rankDiscards` twice a turn at ~460ms each.
+  `beginTurn` too would make an `'ev'` seat run `rankDiscards` twice a turn, at ~35ms a turn.
 - It runs **before `finishTurn` reads `forcedTsumogiri`**, since a nukidora pull replaces the tile
   a declared seat is locked to.
 - **A manual seat never reaches it** (drawn for, never decided for); **a seat in riichi may pull a
@@ -354,9 +380,11 @@ the engine's loop order made loop order into policy.
   was the only axis; the objective made it a cross product, which is the trigger ADR-0037 wrote
   down and ADR-0039 acted on. **Every seat carries an `EvSeat` and every non-`'ev'` seat ignores
   it** — an optional field is a default every reader has to remember.
-- An `'ev'` seat prices **the discard, the kan, the riichi declaration and the abortive draw**
-  through the identity. `call`, `win` and `turn`'s kita half are stand-ins that each name what they
-  stand in for in the code.
+- An `'ev'` seat prices **every** decision point through the identity (ADR-0044): the discard and
+  the kan (`rankDiscards`/`bestKan`), the pon/chi/daiminkan and the pass (`bestCall`), the riichi
+  declaration (`riichiWorthIt`), the win (`winWorthIt`), the kita (`kitaWorthIt`) and the abortive
+  draw (`abortWorthIt`). `algorithm.ts` holds no arithmetic of its own — one line per method, one
+  named function in `ev.ts`, and each carries the ceilings its own answer ships with.
 - `TurnAction`'s `'discard'` variant carries `fromDrawn`, the algorithm's **advisory** read of
   tedashi vs tsumogiri (it decides at the kind level and never sees redness); `finishTurn`
   re-derives the river's actual flag from the tile `pickTile` really resolves, so the returned slot
@@ -378,7 +406,7 @@ score }`, already priced by `tryWin` before it asks. `defense.win` is `() => fal
 - Still rejected as fields: dora-in-hand (a helper over `concealed` + `doraIndicators`) and per-seat
   discard counts (already `players[i].river.length`).
 
-**Why:** [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0043](docs/adr/0043-one-turn-one-decision.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0023](docs/adr/0023-round-inside-match.md)
+**Why:** [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0043](docs/adr/0043-one-turn-one-decision.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0044](docs/adr/0044-every-decision-is-priced.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0023](docs/adr/0023-round-inside-match.md)
 
 ### The table layer (`core/table.ts` + `features/table/useRound.ts`)
 
@@ -691,19 +719,42 @@ one integral.
 - The cheap path is the **candidate union** alone (fastest by ukeire ∪ safest against the board):
   an `'ev'` seat plays a ~460ms hand against `efficiency`'s ~40ms with the DP exact to 2-shanten.
   Capping the look-ahead and collapsing 2-shanten as well was measured, and removed.
-- **`abortWorthIt` is `EV(keep) < 0`** — `EV(abort)` is zero under the pinned ruleset. Two ceilings
-  it names: a kyuushu hand is 4+ shanten, so the collapsed chain prices no win at all and the answer
-  is dominated by the give-up term; and a dealer's forfeited dealership needs round sequencing.
+- **`abortWorthIt` is `EV(keep) < 0`** — `EV(abort)` is zero under the pinned ruleset. One ceiling
+  now: a dealer's forfeited dealership needs round sequencing. The other went with the win-value
+  hole — a 4+ shanten kyuushu hand used to be dominated by the give-up term because the collapsed
+  chain priced no win at all, and `EvModel.winValue` fills that in.
 - **A kan is decided by the sign of the scaled terms, and needs no constant** (`bestKan` in
   `algorithm.ts`). A kan flips one more dora indicator, multiplying every hand at the table by the
   same expected han — yours and every threat's alike — so `EV(kan) − EV(no kan) = m × Σ(the terms
 whose value is a hand's worth)`, `m > 0`, and a binary decision needs only the sign. `'notWinning'`
   is excluded as a **stated approximation** (`giveUpCost` mixes tsumo payments, which scale, with
   the noten penalty, which does not); `'tenpai'` is excluded because that payment is a fixed rule
-  amount. Tie-break: kakan before ankan, then lowest id, stated as arbitrary. **Two ceilings, both
-  in the code:** with nobody declared the cost side is zero, so an `'ev'` seat kans every legal kan
-  on a quiet board _whose win the DP can price_; above `maxShanten` the collapsed chain prices none,
-  the sum is exactly zero, and it declines for a reason that has nothing to do with the kan.
+  amount. Tie-break: kakan before ankan, then lowest id, stated as arbitrary. **One ceiling now:**
+  with nobody declared the cost side is zero, so an `'ev'` seat kans every legal kan on a quiet
+  board. The second — above `maxShanten` the sum was exactly zero — went with the win-value hole
+  (ADR-0044); what survives of it is that the win term still carries the riichi sticks, which a
+  dora does not multiply either.
+- **Claim time is priced too, and a daiminkan's kan dora is a multiplier rather than a zero**
+  (`rankCalls`/`bestCall` in `ev.ts`). Every legal call and the pass are priced as hands:
+  `EV(pass)` is the thirteen-tile hand held as it stands, a pon or chi leaves a fourteen-equivalent
+  hand ranked by `rankDiscards`, a minkan leaves a thirteen-equivalent one priced by `passEv` —
+  `keepEv` dispatches on tile count, which is why one function covers all of it. A cheap screen
+  (never raise shanten, never open into a hand with no `yakuRoute`) runs first and **decides
+  nothing**; it only spares the DP a wasted run. It is deliberately looser than `chooseCall`'s
+  "must lower shanten", since every daiminkan is shanten-neutral by construction. `KAN_DORA_UPLIFT`
+  is `2 ** (14/34) − 1` applied to the same terms `bestKan` scales — `bestKan` needs no constant
+  because a binary choice cancels the multiplier, and a daiminkan ranked against a pon, a chi and a
+  pass does not. **Three ceilings, all in `bestCall`:** the indicator itself is unknowable, a pon's
+  stolen turns price at zero, and a quiet board gives a call no cost side at all.
+- **`EvModel.winValue` is what the DP cannot reach** — `probability.ts#collapsed` never touches a
+  leaf, so `Outlook.score` is undefined above `maxShanten` and `conditionalWin` used to answer
+  zero. It takes a `HandShape` (dora held, closed, declared, `yakuRoute`), never tiles, so
+  `BoardCost` still never sees a hand; `statistical` derives it, `houou` reads `HandScore.csv`'s
+  own open columns, and the no-borrowing rule holds. It fires **only** where `Outlook.score` is
+  undefined — the exact DP is untouched wherever it ran.
+- **Honba is inside `Outlook.score` already** (`scoringRules` hands it to the DP's leaf and
+  `score.ts#computePayments` folds it into `payments.total`), so `price` must not add it to the win
+  term a second time. Riichi sticks are the opposite: nothing in `score.ts` knows about them.
 
 **`core/table.ts#evOf` is the only surface**, and it is **on demand, never a getter beside
 `ranked`/`danger`**: those are a handful of milliseconds and this is hundreds at 2-shanten, so a
@@ -711,7 +762,7 @@ board that priced every turn on the chance somebody looked would be a board nobo
 on. The lab's panel asks for it and stamps the answer with the discard count, so a stale one is
 recognisable rather than quietly wrong about the turn before.
 
-**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0043](docs/adr/0043-one-turn-one-decision.md)
+**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0044](docs/adr/0044-every-decision-is-priced.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0043](docs/adr/0043-one-turn-one-decision.md)
 
 ### Tenhou notation + situation URLs (the shared DSL)
 

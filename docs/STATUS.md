@@ -345,8 +345,10 @@ The **table-architecture centralization** work is complete: explicit walls, `cor
     seats by default (`shuffle`, `core/rng.ts`) rather than asking, behind a "Choose seats" opt-in,
     and a full-bot match is legal (`resolveSeatConfig`'s new `requireManual` parameter,
     `matchDefaultModes`). `RoundOptions.calledKan` (match-only) adds daiminkan and kakan to the
-    engine — an AI seat never takes either regardless of the flag (`chooseCall` never sees it), so
-    every graded drill is byte-identical. The match board's log now records every seat's action,
+    engine — an `efficiency` seat never takes either regardless of the flag (`chooseCall` never sees
+    it), so every graded drill is byte-identical. An `'ev'` seat does, since item 27
+    ([ADR-0044](adr/0044-every-decision-is-priced.md)), and it reaches the option through
+    `availableCalls` rather than through `chooseCall` for exactly that reason. The match board's log now records every seat's action,
     not just the reader's, and gained a real undo button — wired through the same
     `useUrlData`/`situation` machinery every other trainer's rewind already uses. **Only the
     reader's own seat's rows carry a `situation`** (bot rows are visible but not individually
@@ -439,7 +441,8 @@ value`) or a direction, and none asserts a magnitude.**
     cannot rank them. `SeatView.calledKan` carries the ruleset, `policy.ts#kanOptions` is the one
     notion of own-turn kan legality (the engine, the `'ev'` seat and `KitaKanControls` all read it),
     and the loop lives in `finishTurn`, asked exactly as many times as the seat acts — asking from
-    `beginTurn` as well would cost an `'ev'` seat a second ~460ms `rankDiscards` every turn.
+    `beginTurn` as well would cost an `'ev'` seat a second `rankDiscards` every turn, doubling
+    the ~35ms a turn it already pays.
 
     Two correctness fixes rode along. **`beginTurn` now prices the tsumo on the tile it drew**,
     before any kita can spend it; it used to run its kita loop first and `tryWin` on the last
@@ -457,11 +460,114 @@ value`) or a direction, and none asserts a magnitude.**
     so raises the `'kita'` event a manual pull always did — previously invisible to the hash _and_
     to every board consumer. The tsumo-before-kita fix fired on none of the twenty walls.
 
-    Still out of scope and now written down as such: **daiminkan by an AI seat** — `chooseCall`
-    structurally rejects it (a concealed triplet is already a complete block, so
-    `shantenAfterCall` returns `after === current` and the `after >= current` guard always fires),
-    so it needs a price of its own on the call gate, which costs a `rankDiscards` per seat per
-    discard.
+    Deferred here and closed by item 27: **daiminkan by an AI seat**. The reason recorded at the
+    time — `shantenAfterCall` returns `after === current`, so the `after >= current` guard always
+    fires — turned out to be a generalisation from one hand, and the cost estimate behind it was
+    off by a factor of eighteen.
+
+27. **Every decision the EV seat makes is priced, claim time included**
+    ([ADR-0044](adr/0044-every-decision-is-priced.md)). `plans/EV-3` §7 always specified that the
+    `'ev'` decider prices every decision point through the identity; three of them were still
+    stand-ins. `ev.call` was `chooseCall`'s shanten rule plus a tenpai guard, `ev.win` was
+    `() => true`, and `turn`'s kita half was `efficiency`'s ukeire comparison. All three now go
+    through `ev.ts` — `rankCalls`/`bestCall`, `winWorthIt`, `kitaWorthIt` — and `algorithm.ts`
+    holds no arithmetic of its own.
+
+    The hole under all of it was that **the model had no win value above 2 shanten**:
+    `probability.ts#collapsed` never reaches a leaf, so `Outlook.score` came back undefined and
+    `conditionalWin` answered zero. `EvModel.winValue` is the sixth model member that fills it —
+    `statistical` derives it from the dora the hand holds and a stated per-route han, `houou` reads
+    `HandScore.csv`'s open columns, which were already being fetched and thrown away. It fires only
+    where the DP declined, so the exact path is untouched. Three stated ceilings went with it: a kan
+    is no longer declined above 2 shanten for a reason unrelated to the kan, a kyuushu hand is
+    weighed on what it is worth rather than on a structural zero, and a call priced early in a hand
+    now compares two branches that both carry a win value.
+
+    An `'ev'` seat can take a daiminkan for the first time, because `bestCall` enumerates through
+    `availableCalls(…, view.calledKan)` rather than through `chooseCall` — which is left untouched,
+    so every `efficiency` seat and all forty `GOLDEN` hashes are unmoved. Its kan dora is priced as
+    `KAN_DORA_UPLIFT`, `2 ** (14/34) − 1`, since the indicator itself is face down; `bestKan` needs
+    no such constant because a binary choice cancels the multiplier and a three-way ranking does
+    not.
+
+    Two latent bugs fixed on the way: **`shantenAfterCall` probed a twelve-tile hand for a minkan**
+    (`bestDiscards` is right for a pon or chi, which leave fourteen and owe a throw, and wrong for a
+    kan, which leaves thirteen and draws), and **a daiminkan's replacement was never win-checked** —
+    the one kan path no caller covered, live for a manual seat since ADR-0041. Plus honba was being
+    added to the win term twice, invisible until a hand is played at honba > 0.
+
+    **Measured: +23% on a hand** (424ms → 520ms for one `'ev'` seat), by `core/ev.bench.test.ts`,
+    which is gated on `EV_BENCH` and never runs in CI. The same run settled a documentation error
+    worth knowing about: the `~460ms` quoted in seven places as "a turn" is a whole **hand** — a
+    turn is ~35ms, and `efficiency`'s paired `~40ms` is a hand too. `GOLDEN` and `EV_GOLDEN` both
+    held; the placement-divergence pair re-scanned to `golden-2`/`golden-8`.
+
+28. **`/match` gets its winds, its felt, its tsumo and its win report**
+    ([ADR-0045](adr/0045-a-persons-win-is-a-call.md), amending
+    [ADR-0009](adr/0009-decision-seam.md) and [ADR-0034](adr/0034-you-act-from-where-you-watch.md)).
+    Six defects reported from play, plus four found while tracing them. `/match` is the only
+    trainer whose dealer rotates, so a whole class of dealer-relative code had never been
+    exercised — every other trainer runs `createMatch`'s `dealer: 0`.
+
+    **The dealer never led and the winds never rotated.** `createRound` seeded `state.seat` from a
+    literal `0`, so play ran 0→1→2→3 in every round of a match including the ones somebody else was
+    dealing — a reader drawn into the last chair drew last all game, which is what "I'm always
+    north" was. And `Table` drew each seat's wind from its own *index* (`TableProps` had no
+    `dealer` at all), so from East 2 on the felt disagreed with the scorer, which had been
+    computing `HONOR + ((seat - dealer + players) % players)` correctly the whole time. One helper
+    (`urlCodec.ts#seatWind`) now serves the felt, the seat dialog and both end-of-round cards, and
+    the match's log rows carry the **wind letter** resolved at write time rather than a seat index,
+    so a row written in East 2 keeps saying East 2's winds once East 3 is on the felt. `state.turn`
+    stops stepping mid-go-around as a side effect. **No golden hash moves** — every fixture in the
+    repo deals with `dealer: 0`.
+
+    **A person's own tsumo is a call now**, and so is the rinshan tsumo they could not previously
+    have at all: `callKita`/`callAnkan`/`callKakan` never priced their own replacement (only the AI
+    turn loop did, ADR-0043), so a reader's kan simply carried on past a completed hand. One
+    `replacementWin` serves the AI loop, replay and a person's own pull, and `PendingWin` is the
+    third `PendingClaim` shape — `offerOrEnd` ends the hand unless the winner is manual and
+    `claims` is on. `replayLog` got smaller rather than larger: it answers the offer from the log
+    instead of re-deriving the win, on the same "nothing at all is a decline" rule it already
+    applied to kyuushu. **Rinshan kaihou also stopped being hardcoded `false`** in `buildContext`,
+    where the comment claiming no replacement is ever win-checked had been untrue since ADR-0043.
+
+    **Two furiten bugs, both one line.** `seatRead` read `waits` off the *live* hand, which holds
+    fourteen for the whole time the reader is deciding — and `waits` on fourteen answers the union
+    of every tenpai-producing discard's wait, so any tile in that union sitting in the seat's own
+    river lit the mark for the length of the turn and cleared it on the discard. `seatWaits` reads
+    the thirteen being kept. And `finishTurn` set `riichiAt` before clearing `missedWin`, so its
+    "a seat already in riichi keeps its furiten" clause fired for the first time on the declaring
+    discard — freezing a temporary furiten into a permanent one and refusing every ron for the rest
+    of the hand. `!declaring` is the fix.
+
+    **The felt stops resizing.** `HandDisplay` swapped `TileButton` (`min-h-11 p-0.5`) for a bare
+    `Tile` the moment the turn left the reader's seat, and its row wrapped whenever the drawn tile,
+    a tedashi spacer or any meld pushed it past the strip's 14-tile cap — both of which change the
+    hand strip's height, which is `100cqh` for the board area, which is the square. The hand is one
+    inert-or-live box now, publishes its own `--hand-slots`, and never wraps.
+
+    **And a win is explained.** `useScoringRound.ts#scoreDetail` is the ungraded half of the
+    scoring trainer's own breakdown split out, so the round-end card and that round's log row draw
+    the same yaku, bonus han, fu itemization and rounding off one function — with the winning hand,
+    the indicators and the payout above it. The final standings read the **settled** match rather
+    than the ended round's carry-in (they were missing the payments that ended the match), and a
+    match-ending hand keeps its report.
+
+    Two smaller ones with it: a pending claim renders its prompt from **any** perspective (the
+    engine suspends until it is answered, so ADR-0034's `viewSeat` gate froze the board with
+    nothing on screen to unfreeze it — only the riichi arm keeps that gate), and a `?wall=` link
+    opens straight onto the board instead of the setup screen, which used to reshuffle the very
+    seats the link was reproducing. `useMatchRound` seeds its wall and match from the link **at
+    mount**, not only on a later navigation — its resync fires on an identity change, and a fresh
+    board's situation has never changed, so a shared `/match` link had in fact never replayed at
+    all.
+
+    Still owed: the live pass on a phone and a desktop, and the **WebKit half** of
+    `npm run ui-test`. `e2e/board.spec.ts` gains the felt-never-resizes case and stops excluding
+    `[data-testid="hand-calls"]` from the one-row case; both pass on `desktop` and `ultrawide`
+    (Chromium) and neither could be run on `mobile`/`mobile-landscape` here — this host is missing
+    `libmanette-0.2.so.0`, so WebKit will not launch. A portrait phone is exactly where the hand
+    still wraps by design, so that half is genuinely unverified rather than merely unrun.
 
 ## In flight
 
@@ -595,8 +701,9 @@ Recorded so they stop being re-proposed:
   yaku, out of proportion to what shipped ([ADR-0041](adr/0041-daiminkan-and-kakan-are-a-match-only-switch.md)).
 - **Rinshan kaihou the _yaku_.** The win itself is no longer dropped: `callAnkan`/`callKita`/
   `callKakan` still never check `tryWin` against their own replacement, but every caller that
-  matters now does — the turn loop for an AI seat (ADR-0043) and `replayLog`'s after-pull check
-  for a replayed one. What stays unmodelled is the yaku, so a hand completed by a kan's
+  matters now does — the turn loop for an AI seat (ADR-0043), `resolveReactions` for a daiminkan's
+  replacement (ADR-0044, the one path that was still dropping it), and `replayLog`'s after-pull
+  check for a replayed one. What stays unmodelled is the yaku, so a hand completed by a kan's
   replacement is taken and scored as an ordinary tsumo. A _manual_ seat's own rinshan tsumo is
   still not offered at all, since its kans come in through the three `call*` functions directly.
 - **Backward compatibility** for old links or persisted keys while pre-release —

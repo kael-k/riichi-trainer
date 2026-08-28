@@ -3,10 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { BackButton, ResetButton } from '../../components/TrainerControls'
 import { Table, type SeatView } from '../../components/tiles/Table'
-import { HandDisplay, WallDetails } from '../../components/tiles/Tile'
+import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { EV_MODELS } from '../../core/evModel'
 import { ranks, resultPoints } from '../../core/placement'
+import { DetailLine } from '../../components/LogList'
 import type { MatchFormat, MatchState } from '../../core/match'
+import type { WinRecord } from '../../core/round'
+import { scoreDetail } from '../scoring/useScoringRound'
 import { mulberry32, shuffle } from '../../core/rng'
 import { HONOR } from '../../core/tiles'
 import { useLogBack } from '../../lib/useLogBack'
@@ -25,12 +28,16 @@ import {
   type SeatConfig,
 } from '../settings/tableSettings'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
-import { decodeSituation, WINDS } from '../situation/urlCodec'
+import { decodeSituation, emptySituation, WINDS, type Wind } from '../situation/urlCodec'
 import { useUrlData } from '../situation/useUrlData'
 import { KitaKanControls, kitaKanVisible } from '../table/KitaKanControls'
 import { ManualControls, manualControlsVisible } from '../table/ManualControls'
 import { SeatStrip } from '../table/SeatStrip'
-import { useMatchRound, type RoundSettlement } from './useMatchRound'
+import { linkedSeats, useMatchRound, type RoundSettlement } from './useMatchRound'
+
+/** Stable identity, so the "ignore the link this board mounted with" swap below never itself looks
+ *  like a navigation. */
+const EMPTY_SITUATION = emptySituation()
 
 /** What Start hands to the board: the ruleset, captured once rather than read live — a match that
  *  changed player count or red-fives mid-game would corrupt its own carried-over `MatchState`. */
@@ -42,6 +49,11 @@ export interface MatchConfig {
   /** Only the *initial* per-seat algorithms — `MatchBoard` seeds its own live `useState` from
    *  this once and never reads it again, exactly like every other trainer's seat panel. */
   seats: SeatConfig | null
+  /** This match *is* the link in the URL, rather than one started from the setup screen with a
+   *  stale link still in the bar. Same idea as `useLinkedHand`'s own `fromLink`: a link names one
+   *  hand, not every hand from here on, so pressing Start after quitting a linked match must deal
+   *  a fresh wall rather than re-pose the one the URL still names. */
+  fromLink?: boolean
 }
 
 /** Step 1: format, ruleset, who plays which seat — the setup screen `docs/adr/0040` describes.
@@ -162,20 +174,77 @@ function MatchSetup({ onStart }: { onStart: (config: MatchConfig) => void }) {
   )
 }
 
-/** One settled round's card: what happened, each seat's point change, and the button on to the
- *  next round — `formatMatchResult` is the exact sentence the log's own row renders, so the two
- *  never disagree about what a round decided. */
-function RoundCard({ settlement, onNext }: { settlement: RoundSettlement; onNext: () => void }) {
+/** What the winning hand was worth, drawn the way the scoring trainer draws it — the hand itself,
+ *  the indicators that priced it, and `scoreDetail`'s own lines through the log's `DetailLine`, so
+ *  the card and that round's log row are the same breakdown rather than two accounts of it.
+ *
+ *  Nothing to draw on an exhaustive draw or an abort, hence the null: `RoundState.win` is set only
+ *  for a win, and it is the ended round's own record until `nextRound` deals over it. */
+function WinReport({ win }: { win: WinRecord | undefined }) {
+  const { t } = useTranslation()
+  if (!win) return null
+  const { score } = win
+  const value = score.limit
+    ? t('match.handValueLimit', { han: score.han, limit: t(`scoring.limit.${score.limit}`) })
+    : t('match.handValue', { han: score.han, fu: score.fu })
+  return (
+    <div className="flex flex-col gap-2">
+      {/* the winning tile is already inside `concealed`; the ring the scoring trainer puts round
+          it needs a fourteenth slot this hand does not have, so the value line names it instead */}
+      {/* an inline-size container of its own, so the hand fits *this card* rather than the board
+          area behind it — `HandDisplay` measures its own row against the nearest one */}
+      <div className="flex justify-center [--tile-w-base:calc(var(--tile-w-raw)*0.55)] [container-type:inline-size]">
+        <HandDisplay tiles={win.concealed} melds={win.melds} />
+      </div>
+      <p className="flex flex-wrap items-baseline justify-center gap-2 text-sm">
+        <span className="font-semibold">{value}</span>
+        <span className="text-neutral-500">
+          {t('match.payout', { points: score.payments.total.toLocaleString() })}
+        </span>
+      </p>
+      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-neutral-500">
+        <span>{t('match.indicators')}</span>
+        <span className="flex [--tile-w-base:calc(var(--tile-w-raw)*0.45)]">
+          {win.doraIndicators.map((id, i) => (
+            <Tile key={`d${i}`} id={id} />
+          ))}
+          {win.uraIndicators.map((id, i) => (
+            <Tile key={`u${i}`} id={id} />
+          ))}
+        </span>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        {scoreDetail(score).map((line, i) => (
+          <DetailLine key={i} detail={line} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** One settled round's card: what happened, what the winning hand was worth, each seat's point
+ *  change, and the button on to the next round — `formatMatchResult` is the exact sentence the
+ *  log's own row renders, so the two never disagree about what a round decided. */
+function RoundCard({
+  settlement,
+  win,
+  onNext,
+}: {
+  settlement: RoundSettlement
+  win: WinRecord | undefined
+  onNext: () => void
+}) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
       <p className="font-semibold">{formatMatchResult(t, settlement.result)}</p>
+      <WinReport win={win} />
       <div className="flex flex-col gap-0.5 text-sm text-neutral-600 dark:text-neutral-400">
         {settlement.deltas.map(
           (delta, seat) =>
             delta !== 0 && (
               <p key={seat}>
-                {t(`wind.${WINDS[seat]}`)}: {delta >= 0 ? '+' : ''}
+                {t(`wind.${settlement.winds[seat]}`)}: {delta >= 0 ? '+' : ''}
                 {delta.toLocaleString()}
               </p>
             ),
@@ -196,10 +265,20 @@ function RoundCard({ settlement, onNext }: { settlement: RoundSettlement; onNext
  *  (`core/placement.ts#resultPoints`) the placement objective is itself maximising. */
 function FinalCard({
   match,
+  winds,
+  win,
   sanma,
   onNewMatch,
 }: {
+  /** The **settled** match — `settleRound`'s own output, not the ended round's carry-in, or the
+   *  standings would be missing the very payments that ended the match. */
   match: MatchState
+  /** Each seat's wind in the last round played; the only seating this card can honestly name. */
+  winds: Wind[]
+  /** The hand that ended the match, if one did — this card stands in for the round card that
+   *  would otherwise have shown it, so the last hand's breakdown is not the one hand of the match
+   *  the reader never gets to see. */
+  win: WinRecord | undefined
   sanma: boolean
   onNewMatch: () => void
 }) {
@@ -211,13 +290,14 @@ function FinalCard({
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-neutral-100 p-4 dark:bg-neutral-900">
       <p className="font-semibold">{t('match.over')}</p>
+      <WinReport win={win} />
       <div className="flex flex-col gap-1 text-sm">
         {order.map(({ seat, points, rank: r }) => {
           const result = resultPoints(points, r, sanma)
           return (
             <p key={seat} className="flex items-baseline justify-between gap-3 tabular-nums">
               <span>
-                #{r} {t(`wind.${WINDS[seat]}`)}
+                #{r} {t(`wind.${winds[seat]}`)}
               </span>
               <span className="text-neutral-500">{points.toLocaleString()}</span>
               <span className={result >= 0 ? 'text-green-700 dark:text-green-400' : ''}>
@@ -255,7 +335,13 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
   // the log's own rewind and the undo button both work by pushing a situation into the URL —
   // `useMatchRound` resyncs the round in progress from it when its identity changes (a real
   // navigation), and leaves ordinary play (`nextRound`'s own local wall/match advance) alone
-  const situation = useUrlData(decodeSituation)
+  const urlSituation = useUrlData(decodeSituation)
+  // a match started from the setup screen ignores whatever link was in the bar when it mounted —
+  // quitting deliberately leaves the URL alone, so without this Start would re-pose the hand the
+  // reader just quit instead of dealing a fresh one. Only the *mount-time* one is ignored: a
+  // rewind or the undo button pushes a new situation, and that is a real navigation to honour.
+  const [staleLink] = useState(config.fromLink ? null : urlSituation)
+  const situation = urlSituation === staleLink ? EMPTY_SITUATION : urlSituation
   const { canBack, back } = useLogBack()
 
   const round = useMatchRound(
@@ -301,7 +387,11 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
     perspective === round.drawnSeat ? round.drawn : undefined,
   )
   const bottomConcealed = !(round.finished || showOpponentHands || viewingManual)
-  const canAct = perspective === round.acting && !round.finished
+  // `!round.claim` as well: a pending claim suspends `finishTurn`, so a live-looking tile that
+  // silently does nothing is worse than an inert one — and the seat being asked is the acting
+  // seat, so without this a reader offered a pon (or, since ADR-0045, their own tsumo) still
+  // has a clickable hand that the engine refuses
+  const canAct = perspective === round.acting && !round.finished && !round.claim
 
   const riichiTiles = round.riichiTiles()
   const showKitaKan = kitaKanVisible({
@@ -359,6 +449,7 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
                 seat={seat}
                 players={round.rivers.length}
                 defaultOrientation={round.seatIndex}
+                dealer={round.match.dealer}
                 config={seatConfig}
                 onChange={setSeatConfig}
                 viewSeat={perspective}
@@ -377,6 +468,7 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
           round={WINDS[round.match.prevalentWind - HONOR] ?? 'E'}
           roundNumber={round.match.round}
           dealerRepeat={round.match.dealerRepeat}
+          dealer={round.match.dealer}
           doraIndicators={round.doraIndicators}
           wallCount={round.liveWall.length}
           honba={round.match.honba}
@@ -396,6 +488,8 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
               onAnswer={round.answer}
               viewSeat={perspective}
               ended={round.finished}
+              dealer={round.match.dealer}
+              players={round.rivers.length}
             />
             {showKitaKan && (
               <KitaKanControls
@@ -429,9 +523,15 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
       end={
         round.settlement &&
         (round.over ? (
-          <FinalCard match={round.match} sanma={config.sanma} onNewMatch={onExit} />
+          <FinalCard
+            match={round.settlement.settlement.match}
+            winds={round.settlement.winds}
+            win={round.win}
+            sanma={config.sanma}
+            onNewMatch={onExit}
+          />
         ) : (
-          <RoundCard settlement={round.settlement} onNext={round.nextRound} />
+          <RoundCard settlement={round.settlement} win={round.win} onNext={round.nextRound} />
         ))
       }
     />
@@ -453,9 +553,33 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
  *  component". Rendering neither for one tick lets the old tree fully unmount before the new one
  *  mounts, so the two `BoardStage`s never coexist in the same pass. */
 export function MatchPage() {
-  const [config, setConfig] = useState<MatchConfig | null>(null)
-  const [settled, setSettled] = useState(true)
   const { t } = useTranslation()
+  const situation = useUrlData(decodeSituation)
+  const sanma = useSettings((s) => s.sanma)
+  const kiriageMangan = useSettings((s) => s.kiriageMangan)
+  const { aka } = useAdvancedSettings()
+  // A link that names a wall names a round of a match already under way — the log's own rewind and
+  // the undo button both work by pushing one into the URL, and a shared link is the same shape.
+  // There is no setup left to do for it, and running the setup screen anyway would reshuffle the
+  // very seats the link is reproducing (Start draws them) before `MatchBoard` ever mounted to read
+  // it. Seeded once, on this component's own first render: quitting back to setup deliberately
+  // leaves the URL alone, so re-reading it later would bounce the reader straight back onto the
+  // board they just quit.
+  // The format is the one thing a situation cannot carry (`MatchState` has no match length —
+  // `settleRound` is told it per call), so a link opens as a hanchan.
+  const [config, setConfig] = useState<MatchConfig | null>(() =>
+    situation.wall.length === 0
+      ? null
+      : {
+          format: 'hanchan',
+          sanma: situation.sanma ?? sanma,
+          aka: situation.aka ?? aka,
+          kiriageMangan,
+          seats: linkedSeats(situation),
+          fromLink: true,
+        },
+  )
+  const [settled, setSettled] = useState(true)
 
   function transition(next: MatchConfig | null) {
     setSettled(false)

@@ -130,6 +130,12 @@ describe('useLabRound', () => {
     const situation: Situation = { ...emptySituation(), wall }
     const { result } = renderHook(() => useLabRound(situation, { ...BARE, opponentWins: true }))
 
+    // the lab asks a manual seat before taking its own tsumo (ADR-0045), so the hand is not over
+    // until the offer is answered — the reveal is what happens *after* that, not instead of it
+    expect(result.current.claim?.kind).toBe('win')
+    expect(result.current.finished).toBe(false)
+    act(() => result.current.answer({ kind: 'tsumo' }))
+
     expect(result.current.finished).toBe(true)
     for (let seat = 0; seat < result.current.boardHands.length; seat++) {
       if (seat === result.current.seatIndex) continue

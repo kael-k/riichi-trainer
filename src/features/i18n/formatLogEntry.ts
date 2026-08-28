@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import type { LogDetail, LogEntry } from '../../store/log'
-import { WINDS } from '../situation/urlCodec'
+import { WINDS, type Wind } from '../situation/urlCodec'
 
 interface ShantenResultParams {
   hand: number
@@ -37,8 +37,12 @@ export interface MatchResultParams {
   roundNumber: number
   honba: number
   kind: 'win' | 'exhaustive' | 'abort'
-  seat?: number
-  from?: number
+  /** The winner and (on a ron) the discarder, named by the wind they were **sitting that round**
+   *  rather than by a seat index. A match rotates its dealer, so a seat index is not a wind —
+   *  `useMatchRound` resolves both through `urlCodec.ts#seatWind` at write time, which is also
+   *  what keeps an old log row honest about a round whose dealer has since moved on. */
+  winner?: Wind
+  loser?: Wind
 }
 
 /** "East 1: South wins off West" / "East 1 · 2: North tsumo" / "East 1: exhaustive draw" /
@@ -50,13 +54,13 @@ export function formatMatchResult(t: TFunction, p: MatchResultParams): string {
     number: p.roundNumber,
     repeat: p.honba,
   })
-  if (p.kind === 'win' && p.seat !== undefined) {
-    return p.from === undefined
-      ? t('log.match.tsumo', { round, wind: t(`wind.${WINDS[p.seat]}`) })
+  if (p.kind === 'win' && p.winner !== undefined) {
+    return p.loser === undefined
+      ? t('log.match.tsumo', { round, wind: t(`wind.${p.winner}`) })
       : t('log.match.ron', {
           round,
-          winner: t(`wind.${WINDS[p.seat]}`),
-          loser: t(`wind.${WINDS[p.from]}`),
+          winner: t(`wind.${p.winner}`),
+          loser: t(`wind.${p.loser}`),
         })
   }
   return t(p.kind === 'exhaustive' ? 'log.match.exhaustive' : 'log.match.abort', { round })
@@ -65,6 +69,14 @@ export function formatMatchResult(t: TFunction, p: MatchResultParams): string {
 /** Keys carrying a `shanten` param (every efficiency discard/kita/kan outcome) get a trailing
  *  clause naming the resulting shanten — composed here rather than baked in at log time, so a
  *  language switch re-translates the whole line. */
+/** Match rows whose only render-time work is turning their own `wind` letter into a word. */
+const MATCH_WIND_KEYS = new Set([
+  'log.match.discard',
+  'log.match.riichi',
+  'log.match.kita',
+  'log.match.kan',
+])
+
 const EFFICIENCY_SHANTEN_KEYS = new Set([
   'log.efficiency.discardBest',
   'log.efficiency.discardBestDrew',
@@ -138,39 +150,25 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
   if (entry.key === 'log.match.result') {
     return formatMatchResult(t, entry.params as unknown as MatchResultParams)
   }
-  // the match's own action log: every seat's turn, not just the reader's, so the wind is resolved
-  // here from a raw seat number the same way `log.lab.abort` already does
-  if (entry.key === 'log.match.discard') {
-    const { turn, seat, tile } = entry.params as unknown as {
-      turn: number
-      seat: number
-      tile: string
-    }
-    return t('log.match.discard', { turn, wind: t(`wind.${WINDS[seat]}`), tile })
-  }
-  if (entry.key === 'log.match.riichi') {
-    const { seat } = entry.params as unknown as { seat: number }
-    return t('log.match.riichi', { wind: t(`wind.${WINDS[seat]}`) })
-  }
+  // the match's own action log: every seat's turn, not just the reader's. Its rows carry the
+  // *wind letter* rather than a seat index — a match rotates its dealer, so only the writer knows
+  // which wind a seat was sitting — and the two-letter rows (`call`) name both. All that is left
+  // here is turning those letters into words, plus the call's own kind.
   if (entry.key === 'log.match.call') {
-    const { seat, from, kind } = entry.params as unknown as {
-      seat: number
-      from: number
+    const { wind, from, kind } = entry.params as unknown as {
+      wind: Wind
+      from: Wind
       kind: 'pon' | 'chi' | 'minkan'
     }
     return t('log.match.call', {
-      wind: t(`wind.${WINDS[seat]}`),
-      from: t(`wind.${WINDS[from]}`),
+      wind: t(`wind.${wind}`),
+      from: t(`wind.${from}`),
       kind: t(`seats.claim.${kind}`),
     })
   }
-  if (entry.key === 'log.match.kita') {
-    const { seat } = entry.params as unknown as { seat: number }
-    return t('log.match.kita', { wind: t(`wind.${WINDS[seat]}`) })
-  }
-  if (entry.key === 'log.match.kan') {
-    const { seat, tile } = entry.params as unknown as { seat: number; tile: string }
-    return t('log.match.kan', { wind: t(`wind.${WINDS[seat]}`), tile })
+  if (MATCH_WIND_KEYS.has(entry.key)) {
+    const { wind } = entry.params as unknown as { wind: Wind }
+    return t(entry.key, { ...entry.params, wind: t(`wind.${wind}`) })
   }
   if (EFFICIENCY_SHANTEN_KEYS.has(entry.key)) {
     const shanten = (entry.params as { shanten?: number } | undefined)?.shanten
@@ -201,8 +199,8 @@ export function formatLogDetail(
     return t(detail.key, { vs, tier: t(`folding.tier.${tier}`) })
   }
   if (detail.key === 'log.match.delta') {
-    const { seat, amount } = detail.params as unknown as { seat: number; amount: string }
-    return t('log.match.delta', { wind: t(`wind.${WINDS[seat]}`), amount })
+    const { wind, amount } = detail.params as unknown as { wind: Wind; amount: string }
+    return t('log.match.delta', { wind: t(`wind.${wind}`), amount })
   }
   if (detail.key === 'log.scoring.field') {
     const { labelKey, expected, answer } = detail.params as unknown as {

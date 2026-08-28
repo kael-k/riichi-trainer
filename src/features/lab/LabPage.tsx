@@ -322,7 +322,11 @@ export function LabPage() {
     perspective === round.drawnSeat ? round.drawn : undefined,
   )
   const bottomConcealed = !(round.finished || showOpponentHands || viewingManual)
-  const canAct = perspective === round.acting && !round.finished
+  // `!round.claim` as well: a pending claim suspends `finishTurn`, so a live-looking tile that
+  // silently does nothing is worse than an inert one — and the seat being asked is the acting
+  // seat, so without this a reader offered a pon (or, since ADR-0045, their own tsumo) still
+  // has a clickable hand that the engine refuses
+  const canAct = perspective === round.acting && !round.finished && !round.claim
 
   // the priced turn is kept until the board moves rather than recomputed: it is the expensive
   // answer on this page, and it is an answer about one particular turn. `at` is what says which

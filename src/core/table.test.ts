@@ -4,8 +4,8 @@ import { evaluateDiscards } from './efficiency'
 import { createMatch } from './match'
 import { beginTurn, createRound, finishTurn, type RoundOptions } from './round'
 import type { SeatAlgorithm } from './policy'
-import { NUM_TILE_TYPES, parseTenhou, SOU } from './tiles'
-import { wallWithHands } from './wall'
+import { NUM_TILE_TYPES, parseTenhou, PIN, SOU } from './tiles'
+import { DEAD_WALL_SIZE, INITIAL_HAND_SIZE, wallWithHands } from './wall'
 import {
   actingSeat,
   analysisOf,
@@ -307,6 +307,51 @@ describe('seatRead', () => {
   it('reads furiten for a seat that missed a win on this tenpai', () => {
     const round = createRound(wall, 4, YONMA, 'seat-read-4')
     round.players[1].missedWin = true
+    expect(seatRead(round, 1, false).furiten).toBe(true)
+  })
+
+  // The read runs on the *live* hand, which holds fourteen for the whole time the acting seat is
+  // deciding — and `waits` on fourteen answers the union of every tenpai-producing discard's wait
+  // rather than the hand's own. `123m456m789m 11p 22p` is a 1p/2p shanpon; draw a 3p and throwing
+  // the 2p instead would wait 1p/4p, so the union carries a 4p this seat is not waiting on at all.
+  // A 4p in its own river then lit the furiten mark for the length of the turn and cleared it the
+  // moment the reader discarded, which is the phantom furiten the trainer was reported for.
+  it('reads the thirteen it is keeping, not the fourteen it is holding', () => {
+    const shanpon = wallWithHands(
+      [
+        parseTenhou('189m189p2s123456z'),
+        parseTenhou('123456789m1122p'),
+        parseTenhou('111222333m111p7z'),
+        parseTenhou('444555666m222p7z'),
+      ],
+      false,
+      true,
+      'seat-read-drawn',
+    )
+    // seat 1's own first draw is the second tile off the live wall (the dealer draws first), so
+    // the 3p is swapped into that slot from wherever the fill put it — inside the live wall only,
+    // since the dealt block is the pinned hands and the last 14 are the dead wall's stacks
+    const draw = 4 * INITIAL_HAND_SIZE + 1
+    const spare = shanpon.findIndex(
+      (t, i) => i > draw && i < shanpon.length - DEAD_WALL_SIZE && t.id === PIN + 2,
+    )
+    ;[shanpon[draw], shanpon[spare]] = [shanpon[spare], shanpon[draw]]
+
+    // nothing may react to the dealer's discard, or seat 1 reaches its draw having called instead
+    const quiet: RoundOptions = { ...YONMA, calls: false, riichi: false, wins: false }
+    const round = createRound(shanpon, 4, quiet, 'seat-read-drawn')
+    beginTurn(round, quiet)
+    finishTurn(round, quiet)
+    beginTurn(round, quiet)
+    expect(round.seat).toBe(1)
+    expect(round.players[1].drawn?.id).toBe(PIN + 2)
+
+    expect(seatRead(round, 1, false).waits.map((w) => w.tile)).toEqual([PIN, PIN + 1])
+    // the 4p the union would have claimed as a wait
+    round.players[1].river.push({ id: PIN + 3, red: false })
+    expect(seatRead(round, 1, false).furiten).toBe(false)
+    // and a real one still reads
+    round.players[1].river.push({ id: PIN, red: false })
     expect(seatRead(round, 1, false).furiten).toBe(true)
   })
 })

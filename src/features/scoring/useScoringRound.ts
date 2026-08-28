@@ -172,6 +172,19 @@ export function scoringDetail(
     }
   }
 
+  detail.push(...scoreDetail(actual))
+
+  return detail
+}
+
+/** The ungraded half of the breakdown above — the limit name, the yaku (or yakuman) with their
+ *  bonus han, and the fu itemization ending in the rounding. Pure `ScoreResult` → `LogDetail[]`,
+ *  so anything holding a scored hand can draw it: `scoringDetail` puts the graded fields in front
+ *  of it, and `/match`'s round-end report (`WinReport`) draws it straight off `WinRecord.score`
+ *  with no grading to lead with. Split out rather than duplicated so the two can never disagree
+ *  about what a hand is made of. */
+export function scoreDetail(actual: ScoreResult): LogDetail[] {
+  const detail: LogDetail[] = []
   if (actual.limit) detail.push({ key: 'log.scoring.limit', params: { limit: actual.limit } })
 
   if (actual.yakuman.length > 0) {

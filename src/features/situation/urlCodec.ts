@@ -7,6 +7,14 @@ import { validateWall, type WallError } from '../../core/wall'
 export type Wind = 'E' | 'S' | 'W' | 'N'
 export const WINDS: Wind[] = ['E', 'S', 'W', 'N']
 
+/** The wind `seat` is sitting this round — the display half of `round.ts`'s own
+ *  `HONOR + ((seat - dealer + players) % players)`, which every scoring path has always used. A
+ *  seat index is **not** a wind: it only looks like one while the dealer is seat 0, which is every
+ *  trainer but `/match`. `dealer` defaults to 0 for exactly those callers. */
+export function seatWind(seat: number, dealer = 0, players = WINDS.length): Wind {
+  return WINDS[(seat - dealer + players) % players]
+}
+
 export interface Situation {
   /** Seed backing the shanten trainer's continuous hand stream, and a pinned hand for its
    *  one-shot reveal. The shanten trainer is the only one left on this seed+hand format —

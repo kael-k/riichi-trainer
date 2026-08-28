@@ -45,10 +45,18 @@ describe('ManualControls', () => {
     expect(container.querySelectorAll('button')).toHaveLength(0)
   })
 
-  it('renders nothing while watching a seat that does not owe the decision', () => {
-    // the felt's turn glow already names that seat and the seat plate's eye rotates there — a
-    // line saying it again in words was a third way of stating one fact
-    const { container } = render(controls({ acting: 2, viewSeat: 0, claim: CLAIM }))
+  it('prompts a pending claim while watching a seat other than the one it is on', () => {
+    // `beginTurn`/`finishTurn` are no-ops until the claim is answered, so hiding the prompt behind
+    // a perspective rotated onto someone else's seat freezes the board with nothing to unfreeze it
+    render(controls({ acting: 2, viewSeat: 0, claim: CLAIM }))
+    expect(screen.getByRole('button', { name: /Pass/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Chi/ })).toBeTruthy()
+  })
+
+  it('renders nothing for a riichi offer while watching a seat that does not owe it', () => {
+    // riichi is an offer, not a question the engine is blocked on, so it keeps the ADR-0034 rule
+    // the claim prompt above no longer follows: rotate away from the seat and the button goes too
+    const { container } = render(controls({ acting: 2, viewSeat: 0, riichiTiles: [7] }))
     expect(container.querySelectorAll('button')).toHaveLength(0)
   })
 })
@@ -68,9 +76,13 @@ describe('manualControlsVisible', () => {
     expect(manualControlsVisible({ ...BASE, ended: true, claim: CLAIM })).toBe(true)
   })
 
-  it('is false while a different seat owes the decision, claim or no claim', () => {
+  it('is false for a riichi offer while a different seat owes the decision', () => {
     expect(manualControlsVisible({ ...BASE, acting: 2 })).toBe(false)
-    expect(manualControlsVisible({ ...BASE, acting: 2, claim: CLAIM })).toBe(false)
+    expect(manualControlsVisible({ ...BASE, acting: 2, riichiTiles: [7] })).toBe(false)
+  })
+
+  it('is true for a pending claim regardless of which seat is being watched', () => {
+    expect(manualControlsVisible({ ...BASE, acting: 2, claim: CLAIM })).toBe(true)
   })
 
   it('is true with a riichi declaration on offer', () => {

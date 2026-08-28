@@ -12,9 +12,17 @@ import { completeWall } from '../../core/wall'
 import { matchDefaultModes, resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { BACK_TILE } from '../folding/useFoldingRound'
-import { encodeSituation, matchOverrides, WINDS, type Situation } from '../situation/urlCodec'
+import {
+  encodeSituation,
+  matchOverrides,
+  seatWind,
+  WINDS,
+  type Situation,
+  type Wind,
+} from '../situation/urlCodec'
 import { splitDrawn } from '../../core/table'
 import { type MatchResultParams } from '../i18n/formatLogEntry'
+import { scoreDetail } from '../scoring/useScoringRound'
 import { useRound, type RoundEventContext } from '../table/useRound'
 
 /**
@@ -45,6 +53,24 @@ export interface RoundSettlement {
   result: MatchResultParams
   deltas: number[]
   settlement: Settlement
+  /** The wind each seat was sitting in the round that just ended — the dealer has already moved on
+   *  inside `settlement.match`, so a card naming the seats has to be told which round it is about
+   *  (`urlCodec.ts#seatWind`). */
+  winds: Wind[]
+}
+
+/** The cast a link implies: its own `?seat=` plays the hand, every other seat is a bot — what
+ *  `/match` opens with when a shared link (or the log's own rewind) names a wall, since there is no
+ *  setup left to run for it and running one anyway would reshuffle the seats the link reproduces.
+ *
+ *  `Situation.seat` is a Wind letter written from a seat *index* (`useRound#situation`) and read
+ *  back as one here. The two ends share that convention, so it round-trips even in a round whose
+ *  dealer has rotated and whose letter is therefore no longer the wind that seat is really
+ *  sitting — which is why this reads it as a position and never through `seatWind`. */
+export function linkedSeats(situation: Situation): SeatConfig {
+  const players = situation.sanma ? 3 : 4
+  const seat = Math.max(0, WINDS.indexOf(situation.seat))
+  return { modes: Array.from({ length: players }, (_, i) => (i === seat ? 'manual' : 'ev')) }
 }
 
 export function useMatchRound(options: MatchOptions, situation: Situation) {
@@ -59,8 +85,18 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
   // the ruleset (players, red fives) is fixed for the whole match at Start (`MatchOptions.sanma`/
   // `.aka` never change out from under a running match) — only the carry-in state steps, via
   // `nextRound` below, never re-derived from `options` on a later render
-  const [match, setMatch] = useState<MatchState>(() => createMatch(options.sanma))
-  const [wall, setWall] = useState<ParsedTile[]>(() => completeWall([], options.sanma, options.aka))
+  // a link that names a wall is picked up **at mount as well as on a later navigation**: the resync
+  // below fires on an identity *change*, and the situation a fresh `MatchBoard` opens with has
+  // never changed — so seeding from it here is what makes a shared link (or a rewind that remounted
+  // the board) deal the round it names instead of a fresh random one. It also makes
+  // `wall === situation.wall` below, which is what arms the replay.
+  const linked = situation.wall.length > 0
+  const [match, setMatch] = useState<MatchState>(() =>
+    createMatch(options.sanma, linked ? matchOverrides(situation) : undefined),
+  )
+  const [wall, setWall] = useState<ParsedTile[]>(() =>
+    linked ? situation.wall : completeWall([], options.sanma, options.aka),
+  )
   const [settlement, setSettlement] = useState<RoundSettlement | null>(null)
 
   // a link names one round of the match, not every round from here on — same rule every other
@@ -115,26 +151,38 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
       const rr = roundResult(core.round)
       if (!rr) return
       const stepped = settleRound(ended, rr, { sanma: options.sanma, format: options.format })
+      const winds = Array.from({ length: players }, (_, seat) =>
+        seatWind(seat, ended.dealer, players),
+      )
       const result: MatchResultParams = {
         roundWind: WINDS[ended.prevalentWind - HONOR] ?? 'E',
         roundNumber: ended.round,
         honba: ended.honba,
         kind: rr.ended,
-        seat: rr.win?.seat,
-        from: rr.win?.from,
+        winner: rr.win === undefined ? undefined : winds[rr.win.seat],
+        loser: rr.win?.from === undefined ? undefined : winds[rr.win.from],
       }
-      setSettlement({ result, deltas: stepped.deltas, settlement: stepped })
+      setSettlement({ result, deltas: stepped.deltas, settlement: stepped, winds })
 
       log({
         key: 'log.match.result',
         params: { ...result },
-        detail: stepped.deltas
-          .map((delta, seat) => ({ seat, delta }))
-          .filter((d) => d.delta !== 0)
-          .map(({ seat, delta }) => ({
-            key: 'log.match.delta',
-            params: { seat, amount: (delta >= 0 ? '+' : '') + delta.toLocaleString() },
-          })),
+        // the winning hand's own breakdown leads, then who paid what — the exact lines the
+        // round-end card draws (`MatchPage`'s `WinReport`), off the one `scoreDetail` the scoring
+        // trainer also uses, so the row and the card can never tell two stories about one hand
+        detail: [
+          ...(core.round.win ? scoreDetail(core.round.win.score) : []),
+          ...stepped.deltas
+            .map((delta, seat) => ({ seat, delta }))
+            .filter((d) => d.delta !== 0)
+            .map(({ seat, delta }) => ({
+              key: 'log.match.delta',
+              params: {
+                wind: winds[seat],
+                amount: (delta >= 0 ? '+' : '') + delta.toLocaleString(),
+              },
+            })),
+        ],
         situation: encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength))),
       })
       return
@@ -151,13 +199,16 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
       manualSeats.includes(seat)
         ? encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength)))
         : undefined
+    // resolved here rather than at render: the dealer moves between rounds, so a row written in
+    // East 2 must keep saying East 2's winds once East 3 is on the felt
+    const windAt = (seat: number) => seatWind(seat, core.round.match.dealer, players)
     switch (event.kind) {
       case 'discard':
         log({
           key: 'log.match.discard',
           params: {
             turn: core.round.turn,
-            seat: event.seat,
+            wind: windAt(event.seat),
             tile: tileCode(event.tile.id, event.tile.red),
           },
           situation: situationAt(event.seat),
@@ -166,21 +217,21 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
       case 'riichi':
         log({
           key: 'log.match.riichi',
-          params: { seat: event.seat },
+          params: { wind: windAt(event.seat) },
           situation: situationAt(event.seat),
         })
         break
       case 'call':
         log({
           key: 'log.match.call',
-          params: { seat: event.seat, from: event.from, kind: event.meld.kind },
+          params: { wind: windAt(event.seat), from: windAt(event.from), kind: event.meld.kind },
           situation: situationAt(event.seat),
         })
         break
       case 'kita':
         log({
           key: 'log.match.kita',
-          params: { seat: event.seat },
+          params: { wind: windAt(event.seat) },
           situation: situationAt(event.seat),
         })
         break
@@ -188,7 +239,7 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
       case 'kakan':
         log({
           key: 'log.match.kan',
-          params: { seat: event.seat, tile: tileCode(event.tile) },
+          params: { wind: windAt(event.seat), tile: tileCode(event.tile) },
           situation: situationAt(event.seat),
         })
         break

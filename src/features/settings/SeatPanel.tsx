@@ -2,7 +2,7 @@ import { Settings2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { WINDS } from '../situation/urlCodec'
+import { seatWind } from '../situation/urlCodec'
 import { resolveSeatConfig, withSeatEv, withSeatMode, type SeatConfig } from './tableSettings'
 import { DEFAULT_EV_SEAT, type EvObjective } from '../../core/ev'
 import { EV_MODELS, type EvModelName } from '../../core/evModel'
@@ -64,6 +64,9 @@ export interface SeatButtonProps {
    *  full-bot cast is a real choice, not an empty table (`tableSettings.ts`'s own doc comment).
    *  Default `true` matches every other trainer's guarantee. */
   requireManual?: boolean
+  /** This round's dealer, so the seat is named by the wind it is *sitting* rather than by its own
+   *  index (`urlCodec.ts#seatWind`). Only `/match` rotates a dealer; everyone else takes the 0. */
+  dealer?: number
 }
 
 /**
@@ -87,6 +90,7 @@ export function SeatButton({
   viewSeat,
   ownSeatOnlyManual = false,
   requireManual = true,
+  dealer = 0,
 }: SeatButtonProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -97,7 +101,7 @@ export function SeatButton({
     fallbackModes,
     requireManual,
   )
-  const wind = t(`wind.${WINDS[seat]}`)
+  const wind = t(`wind.${seatWind(seat, dealer, players)}`)
 
   useEffect(() => {
     if (!open) return

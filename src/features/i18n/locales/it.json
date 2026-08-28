@@ -132,6 +132,14 @@
       "confirm": "Annulla",
       "decline": "Continua"
     },
+    "tsumoPrompt": "{{wind}}: prendere la vittoria?",
+    "tsumo": {
+      "question": "Tsumo — {{value}}.",
+      "confirm": "Tsumo",
+      "decline": "Continua",
+      "value": "{{han}} han {{fu}} fu",
+      "valueLimit": "{{han}} han — {{limit}}"
+    },
     "riichi": "Riichi",
     "riichiHint": "Ora scarta una di queste:",
     "call": {
@@ -546,7 +554,12 @@
     "quit": "Abbandona partita",
     "over": "Partita conclusa",
     "newMatch": "Nuova partita",
-    "status": "{{rank}}° su {{players}}"
+    "status": "{{rank}}° su {{players}}",
+    "handValue": "{{han}} han {{fu}} fu",
+    "handValueLimit": "{{han}} han — {{limit}}",
+    "payout": "{{points}} punti",
+    "winningHand": "Mano vincente",
+    "indicators": "Dora / ura"
   },
   "log": {
     "rewound": "Tornato indietro alla voce {{number}}",

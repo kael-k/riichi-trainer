@@ -132,6 +132,14 @@
       "confirm": "Abort",
       "decline": "Play on"
     },
+    "tsumoPrompt": "{{wind}}: take the win?",
+    "tsumo": {
+      "question": "Tsumo — {{value}}.",
+      "confirm": "Tsumo",
+      "decline": "Play on",
+      "value": "{{han}} han {{fu}} fu",
+      "valueLimit": "{{han}} han — {{limit}}"
+    },
     "riichi": "Riichi",
     "riichiHint": "Now discard one of:",
     "call": {
@@ -546,7 +554,12 @@
     "quit": "Quit match",
     "over": "Match over",
     "newMatch": "New match",
-    "status": "{{rank}} of {{players}}"
+    "status": "{{rank}} of {{players}}",
+    "handValue": "{{han}} han {{fu}} fu",
+    "handValueLimit": "{{han}} han — {{limit}}",
+    "payout": "{{points}} points",
+    "winningHand": "Winning hand",
+    "indicators": "Dora / ura"
   },
   "log": {
     "rewound": "Rewound to entry {{number}}",

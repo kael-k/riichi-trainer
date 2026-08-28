@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { Meld } from '../../core/agari'
 import type { ParsedTile, RiverTile } from '../../core/tiles'
 import type { CallBanner } from '../../features/table/useRound'
-import { WINDS, type Wind } from '../../features/situation/urlCodec'
+import { seatWind, type Wind } from '../../features/situation/urlCodec'
 import { gapIndex, MeldDisplay, River, Tile } from './Tile'
 
 /** What one seat shows on the table. Everything is optional: a seat with nothing to show
@@ -59,6 +59,10 @@ interface TableProps {
    *  running match passes. Not `honba`: the two diverge by ruleset, and the honba counter has its
    *  own stick mark in the row below. */
   dealerRepeat?: number
+  /** Seat index of this round's dealer (`MatchState.dealer`), which is what turns a seat index
+   *  into a wind — a seat is only "East" while it is the one dealing. Defaults to 0, the value
+   *  every trainer but `/match` runs on (`createMatch`), so nothing else has to pass it. */
+  dealer?: number
   doraIndicators?: ParsedTile[]
   /** Ura indicators; pass only once they should be visible. */
   uraIndicators?: ParsedTile[]
@@ -204,6 +208,7 @@ export function Table({
   round,
   roundNumber,
   dealerRepeat,
+  dealer = 0,
   doraIndicators = [],
   uraIndicators = [],
   wallCount,
@@ -246,7 +251,7 @@ export function Table({
         index === seatIndex ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500'
       }`}
     >
-      {t(`wind.${WINDS[index]}`)}
+      {t(`wind.${seatWind(index, dealer, players)}`)}
     </span>
   )
   // evaluated once per seat rather than once per render pass through the loop below — a caller
@@ -301,7 +306,7 @@ export function Table({
         <div className="grid aspect-square w-full grid-cols-[minmax(0,4fr)_minmax(0,6.6fr)_minmax(0,4fr)] grid-rows-[minmax(0,4fr)_minmax(0,6.6fr)_minmax(0,4fr)] rounded-xl bg-emerald-800/10 p-[1cqw] [--tile-w:calc((100cqw-2cqw)/14.6)] dark:bg-emerald-200/5">
           {seats.map((seat, index) => {
             const slot = SLOTS[slotOf[(index - seatIndex + players) % players]]
-            const wind = t(`wind.${WINDS[index]}`)
+            const wind = t(`wind.${seatWind(index, dealer, players)}`)
             const called = (seat.melds?.length ?? 0) + (seat.nuki?.length ?? 0) > 0
             // where a tile in flight came out of: the row is sorted, so the slot it left is the
             // one its own id would sort back into — or, for a row of backs, its middle, since

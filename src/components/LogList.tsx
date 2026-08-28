@@ -224,8 +224,12 @@ function Tiles({ tiles }: { tiles: NonNullable<LogEntry['tiles']> }) {
 /** One expanded line: what the deleted feedback panels drew, as a label plus whichever of the two
  *  tile shapes it carries (plain tiles, or tiles with their remaining counts). A `header` line is
  *  the grouping above them — the same hairline-label treatment `DealSeparator` gives a deal, since
- *  it makes the same kind of claim: what follows belongs together. */
-function DetailLine({ detail }: { detail: LogDetail }) {
+ *  it makes the same kind of claim: what follows belongs together.
+ *
+ *  Exported because a `LogDetail[]` is not only a log row's own contents: `/match`'s round-end
+ *  report draws the very same lines the log row for that round carries, and drawing them twice
+ *  two ways is how the two come to disagree. */
+export function DetailLine({ detail }: { detail: LogDetail }) {
   const { t } = useTranslation()
   const termName = useTermName()
   const text = formatLogDetail(detail, t, termName)

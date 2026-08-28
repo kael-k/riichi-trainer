@@ -164,7 +164,7 @@ describe('replayLog', () => {
     const state = createRound(wall, 4, options)
 
     beginTurn(state, options)
-    callAnkan(state, 0, MAN)
+    callAnkan(state, options, 0, MAN)
     finishTurn(state, options, { tile: state.players[0].drawn!, fromDrawn: true })
     for (let t = 0; t < 6 && !state.ended; t++) {
       beginTurn(state, options)

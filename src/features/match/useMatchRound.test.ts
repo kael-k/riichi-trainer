@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { emptySituation } from '../situation/urlCodec'
-import { useMatchRound, type MatchOptions } from './useMatchRound'
+import { linkedSeats, useMatchRound, type MatchOptions } from './useMatchRound'
 
 // no `?wall=` link behind these tests — every round comes from ordinary local play, never a
 // resync (`useMatchRound`'s own `situation.wall.length > 0` guard)
@@ -32,9 +32,29 @@ function playToSettlement(result: { current: ReturnType<typeof useMatchRound> })
   }
 }
 
+describe('linkedSeats', () => {
+  // a shared `/match` link opens straight onto the board (`MatchPage`), so the cast has to come
+  // from the link rather than from the setup screen's own shuffle — which would otherwise move the
+  // reader to a different seat than the one the link was shared from
+  it("plays the link's own seat and leaves the rest to the bots", () => {
+    expect(linkedSeats({ ...emptySituation(), seat: 'W' })).toEqual({
+      modes: ['ev', 'ev', 'manual', 'ev'],
+    })
+    expect(linkedSeats({ ...emptySituation(), seat: 'S', sanma: true })).toEqual({
+      modes: ['ev', 'manual', 'ev'],
+    })
+    // an absent or unparseable `?seat=` decodes to 'E', which is seat 0 either way
+    expect(linkedSeats(emptySituation()).modes[0]).toBe('manual')
+  })
+})
+
 describe('useMatchRound', () => {
   // the three bot seats default to 'ev' now (`matchDefaultModes`), not 'efficiency' — an EV
-  // decision runs a real push/fold search, so a full round comfortably clears the default 5s
+  // decision runs a real push/fold search, so a full round comfortably clears the default 5s.
+  // These two are the only tests in the suite that play a whole hand through React and they lose
+  // most of their wall clock to the other 45 files running beside them: ~1.7s in isolation against
+  // tens of seconds under a loaded run. The budget below guards against a hang, not against a
+  // regression — the measurement that watches cost is `core/ev.bench.test.ts`.
   it('plays a round to its end and produces a settlement', () => {
     const { result } = renderHook(() => useMatchRound(BARE, NO_LINK))
     playToSettlement(result)
@@ -43,7 +63,7 @@ describe('useMatchRound', () => {
     const { deltas, result: rr } = result.current.settlement!
     expect(deltas.length).toBe(4)
     expect(['win', 'exhaustive', 'abort']).toContain(rr.kind)
-  }, 20000)
+  }, 120_000)
 
   it('nextRound deals a fresh board and carries the settled points over', () => {
     const { result } = renderHook(() => useMatchRound(BARE, NO_LINK))
@@ -56,5 +76,5 @@ describe('useMatchRound', () => {
     expect(result.current.settlement).toBeNull()
     expect(result.current.finished).toBe(false)
     expect(result.current.match.points).toEqual(nextPoints)
-  }, 20000)
+  }, 120_000)
 })

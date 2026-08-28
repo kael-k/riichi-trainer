@@ -19,6 +19,26 @@ describe('Table', () => {
     expect(seatBlock(container, 0).className).toContain('col-start-1 row-start-2') // kamicha
   })
 
+  it('names each seat by the wind it is sitting, not by its own index', () => {
+    // a seat index is only a wind while the dealer is seat 0 — which is every trainer but
+    // `/match`, where the dealer rotates and the felt used to keep calling seat 0 East all game
+    const winds = (dealer?: number) => {
+      const { container } = render(
+        <Table seats={[{}, {}, {}, {}]} seatIndex={0} round="E" dealer={dealer} />,
+      )
+      return Array.from({ length: 4 }, (_, seat) =>
+        container
+          .querySelector<HTMLElement>(`[data-testid="seat-plate"][data-seat="${seat}"]`)!
+          .textContent?.trim(),
+      )
+    }
+    // dealer 0: the identity mapping the default has always drawn
+    expect(winds()).toEqual(winds(0))
+    expect(winds(0)).toEqual(['E', 'S', 'W', 'N'])
+    // dealer 2 is East, and the seats before it have wrapped round
+    expect(winds(2)).toEqual(['W', 'N', 'E', 'S'])
+  })
+
   it('seats sanma’s third player on the left — there is no toimen', () => {
     const { container } = render(<Table seats={[{}, {}, {}]} seatIndex={0} round="E" />)
     expect(seatBlock(container, 2).className).toContain('col-start-1 row-start-2')

@@ -633,7 +633,7 @@ export function useRound(input: UseRoundInput) {
     const seat = actingSeat(c)
     if (!isManual(c.round, seat) || tileCount(c.round.players[seat].hand) !== 14) return
     if (c.round.players[seat].hand.counts[id] !== 4) return
-    for (const event of callAnkan(c.round, seat, id)) report(c, event, false)
+    for (const event of callAnkan(c.round, c.options, seat, id)) report(c, event, false)
     capture(c)
     setSnapshot(snapshotTable(c, input.showReads))
   }

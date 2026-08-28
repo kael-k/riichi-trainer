@@ -8,6 +8,7 @@ import {
   concealedTiles,
   isManual,
   seatView,
+  seatWaits,
   seenBy as seenByMatch,
   stepRound,
   threatViews,
@@ -18,7 +19,7 @@ import {
   type WinRecord,
 } from './round'
 import type { MatchState } from './match'
-import { isFuriten, waits, type SeatAlgorithm } from './policy'
+import { isFuriten, type SeatAlgorithm } from './policy'
 import type { ParsedTile, RiverTile, TileId } from './tiles'
 import { INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
 
@@ -226,7 +227,10 @@ export interface SeatRead {
 /** Builds `seat`'s own `SeatRead` from `state` as it stands right now. */
 export function seatRead(state: RoundState, seat: number, sanma: boolean): SeatRead {
   const player = state.players[seat]
-  const waitTiles = waits(player.hand, sanma)
+  // `seatWaits`, not `waits`: this runs on the live hand, which holds fourteen for the whole time
+  // the acting seat is deciding, and `waits` on fourteen answers the union of every discard's
+  // wait rather than this hand's own — see its doc comment for what that did to the furiten mark
+  const waitTiles = seatWaits(player, sanma)
   const seen = seenByMatch(state, player)
   return {
     tenpai: waitTiles.length > 0,

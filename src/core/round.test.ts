@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from './danger'
+import { rankCalls } from './ev'
+import { EV_MODELS } from './evModel'
 import { removeTile, tileCount } from './hand'
 import { createMatch } from './match'
 import {
@@ -18,6 +20,7 @@ import {
   playRound,
   reconsiderClaim,
   replayLog,
+  seatView,
   stepRound,
   threatViews,
   wallDrawnCount,
@@ -26,10 +29,20 @@ import {
   type RoundOptions,
   type RoundState,
 } from './round'
-import type { SeatAlgorithm } from './policy'
+import { availableCalls, type SeatAlgorithm } from './policy'
 import { scoreHand } from './score'
 import { shanten } from './shanten'
-import { inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, SOU, type ParsedTile } from './tiles'
+import {
+  HONOR,
+  inTileSet,
+  MAN,
+  NUM_TILE_TYPES,
+  parseTenhou,
+  PIN,
+  SOU,
+  type ParsedTile,
+  type TileId,
+} from './tiles'
 import {
   completeWall,
   dealtSeat,
@@ -61,6 +74,20 @@ function manual(...seats: number[]): SeatAlgorithm[] {
   const algorithms: SeatAlgorithm[] = Array(Math.max(...seats) + 1).fill('efficiency')
   for (const seat of seats) algorithms[seat] = 'manual'
   return algorithms
+}
+
+/** Swaps a copy of `id` into the dead wall's last slot — the tile `drawReplacement` pops first,
+ *  so it is what a kan or a kita draws. Swapped rather than assigned, since overwriting would
+ *  duplicate one kind and lose another, and the census would rightly fail. The copy comes out of
+ *  the **live wall** alone: the leading block is the seats' dealt hands (which a caller has just
+ *  pinned) and the rest of the tail is the dora stacks. */
+function pinReplacement(wall: ParsedTile[], id: TileId, players: number): void {
+  const last = wall.length - 1
+  const spare = wall.findIndex(
+    (t, i) => i >= players * INITIAL_HAND_SIZE && i < wall.length - DEAD_WALL_SIZE && t.id === id,
+  )
+  expect(spare, `no spare ${id} in the live wall`).toBeGreaterThan(-1)
+  ;[wall[last], wall[spare]] = [wall[spare], wall[last]]
 }
 
 const YONMA: RoundOptions = {
@@ -448,6 +475,40 @@ describe('playRound', () => {
 })
 
 describe('createRound', () => {
+  // `/match` is the only trainer whose dealer moves, so this was wrong and invisible for as long
+  // as the dealer was always seat 0: play started at seat 0 in every round of a match, including
+  // the ones where seat 0 was not dealing. A seat drawn into the last chair therefore drew last
+  // all game — and `state.turn`, which steps when the turn comes back round to `match.dealer`,
+  // stepped in the middle of the opening go-around.
+  it('seats the dealer first, and counts a turn per go-around from there', () => {
+    for (let dealer = 0; dealer < 4; dealer++) {
+      // no calls, no wins: a pon hands the turn straight to the caller (and deliberately does not
+      // complete a go-around), which would make this test about claim luck rather than seating
+      const options: RoundOptions = {
+        ...YONMA,
+        calls: false,
+        riichi: false,
+        wins: false,
+        match: createMatch(false, { dealer }),
+      }
+      const state = createRound([], 4, options, `dealer-leads-${dealer}`)
+      expect(state.seat).toBe(dealer)
+      expect(state.turn).toBe(1)
+
+      // one full go-around: four seats each draw and discard, and only the return to the dealer
+      // moves the counter
+      for (let k = 0; k < 4; k++) {
+        expect(state.seat).toBe((dealer + k) % 4)
+        expect(state.turn).toBe(1)
+        beginTurn(state, options)
+        finishTurn(state, options)
+        if (state.ended) break
+      }
+      expect(state.seat).toBe(dealer)
+      expect(state.turn).toBe(2)
+    }
+  })
+
   it('seeds exactly one red five per suit when aka is on, and none when it is off', () => {
     // a red copy is either still in a pile, or held — there is at most one red per kind, so the
     // two counts add up exactly
@@ -782,6 +843,36 @@ describe('manual claims', () => {
     expect(state.players[1].missedWin, 'lifted by its own discard').toBe(false)
   })
 
+  it('lifts the temporary furiten on the discard that declares riichi, not despite it', () => {
+    // `finishTurn` sets `riichiAt` before it clears `missedWin`, and the clear's own "a seat in
+    // riichi keeps its furiten" clause reads `riichiAt !== undefined` — which on the declaring
+    // discard is true for the very first time. Without the `!declaring` guard the pass above
+    // becomes *permanent* furiten the moment this seat declares, and `tryWin` refuses every ron
+    // for the rest of the hand. The rule is about a seat that was already declared when it passed
+    // the win, not about the declaration ending the turn the furiten expires on.
+    const options: RoundOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
+    const wall = handsWall(
+      'claim-pass-then-riichi',
+      '189m189p2s123456z',
+      '234567m234567p2s',
+      '111222333m111p7z',
+      '444555666m222p7z',
+    )
+    const state = createRound(wall, 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 1, red: false }, fromDrawn: false })
+    answerClaim(state, options, { kind: 'pass' })
+    expect(state.players[1].missedWin).toBe(true)
+
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: state.players[1].drawn!, fromDrawn: true }, true)
+
+    expect(state.players[1].riichiAt).toBe(0)
+    expect(state.players[1].missedWin, 'the declaring discard ends the turn that ends it').toBe(
+      false,
+    )
+  })
+
   it('leaves a manual seat unfuriten when claims are off — it was never offered the ron', () => {
     // the same declined win as above, except `claims: false` means the engine never asks. A seat
     // that could not have declared cannot have declined, so marking it furiten would poison the
@@ -1035,6 +1126,89 @@ describe('manual riichi declaration', () => {
   })
 })
 
+describe("a manual seat's own tsumo", () => {
+  // ADR-0045: a person's win is a call, not something the engine takes for them. The offer is a
+  // one-seat `PendingClaim` exactly like kyuushu's, so `beginTurn`/`finishTurn` are no-ops until
+  // it is answered — and declining leaves no furiten behind, because the tile was self-drawn.
+  const wall = () => {
+    const w = wallWithHand(0, parseTenhou('123456789m1122z'), false, false, 'manual-tsumo')
+    w[4 * INITIAL_HAND_SIZE] = { id: HONOR, red: false } // 1z completes the shanpon on the draw
+    return w
+  }
+
+  it('is offered rather than taken, and taking it ends the hand', () => {
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(0) }
+    const state = createRound(wall(), 4, options)
+    const events = beginTurn(state, options)
+
+    expect(events.map((e) => e.kind)).toEqual(['draw'])
+    expect(state.ended).toBeUndefined()
+    expect(state.claim?.kind).toBe('win')
+    // nothing moves while it is pending — the same suspension every other claim gets
+    expect(beginTurn(state, options)).toEqual([])
+    expect(finishTurn(state, options)).toEqual([])
+
+    expect(answerClaim(state, options, { kind: 'tsumo' }).map((e) => e.kind)).toEqual(['win'])
+    expect(state.ended).toBe('win')
+    expect(state.win?.seat).toBe(0)
+  })
+
+  it('leaves the seat holding its fourteenth tile, and unfuriten, when declined', () => {
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(0) }
+    const state = createRound(wall(), 4, options)
+    beginTurn(state, options)
+
+    expect(answerClaim(state, options, { kind: 'pass' })).toEqual([])
+    expect(state.ended).toBeUndefined()
+    expect(state.claim).toBeUndefined()
+    expect(state.seat).toBe(0)
+    expect(state.players[0].drawn?.id).toBe(HONOR)
+    expect(tileCount(state.players[0].hand)).toBe(14)
+    // furiten is a rule about a *ron* you passed up; this tile came off the wall
+    expect(state.players[0].missedWin).toBe(false)
+    // and the turn carries on from exactly where it suspended
+    expect(finishTurn(state, options).map((e) => e.kind)).toContain('discard')
+  })
+
+  it('is never offered where the board does not ask, and never to an AI seat', () => {
+    // `claims: false` is every graded drill (which also run `wins: false`) — the hand ends the
+    // moment it completes, exactly as it always did
+    const quiet: RoundOptions = { ...YONMA, claims: false, algorithms: manual(0) }
+    const silent = createRound(wall(), 4, quiet)
+    beginTurn(silent, quiet)
+    expect(silent.ended).toBe('win')
+
+    // an AI seat has already answered the same question through `Algorithm.win`
+    const bots: RoundOptions = { ...YONMA, claims: true }
+    const state = createRound(wall(), 4, bots)
+    beginTurn(state, bots)
+    expect(state.claim).toBeUndefined()
+    expect(state.ended).toBe('win')
+  })
+
+  it('prices the replacement a manual kan draws — a rinshan tsumo used to vanish', () => {
+    // `callAnkan` never checked its own replacement: the turn loop did it for an AI seat and
+    // nothing did it for a manual one, so a hand completed by a reader's own kan simply carried on
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(0) }
+    const w = wallWithHand(0, parseTenhou('111456789m1122p'), false, false, 'manual-rinshan')
+    w[4 * INITIAL_HAND_SIZE] = parseTenhou('1m')[0]
+    pinReplacement(w, PIN, 4) // the 1p side of the live shanpon
+    const state = createRound(w, 4, options)
+    beginTurn(state, options)
+
+    const events = callAnkan(state, options, 0, MAN)
+
+    expect(events.map((e) => e.kind)).toEqual(['ankan', 'draw'])
+    expect(state.claim?.kind).toBe('win')
+    expect(answerClaim(state, options, { kind: 'tsumo' }).map((e) => e.kind)).toEqual(['win'])
+    expect(state.win?.seat).toBe(0)
+    // and it is scored as a rinshan tsumo, not as an ordinary one: `buildContext` hardcoded
+    // `rinshan: false` for as long as no replacement was ever win-checked at all
+    expect(state.win?.ctx.rinshan).toBe(true)
+    expect(state.win?.score.yaku.map((y) => y.name)).toContain('rinshan')
+  })
+})
+
 describe('beginTurn declineTsumo', () => {
   it('a manual seat auto-accepts a legal tsumo by default, unchanged from before this option existed', () => {
     const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'decline-default')
@@ -1116,12 +1290,16 @@ describe('RoundState.log', () => {
     const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
     const wall = wallWithHand(0, parseTenhou('111456789m1122p'), false, false, 'ankan-manual')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1m')[0] // the fourth 1m, drawn next as seat 0's turn
+    // and the kan's replacement is the dead wall's last tile — pinned to something that completes
+    // nothing, since `456789m 1122p` is a live 1p/2p shanpon and a rinshan tsumo would end the
+    // hand mid-test (which is its own case below)
+    pinReplacement(wall, parseTenhou('5z')[0].id, 4)
     const state = createRound(wall, 4, options)
     const indicatorsBefore = state.doraIndicators.length
     beginTurn(state, options)
     const before = state.log.length
 
-    const events = callAnkan(state, MAN, 0)
+    const events = callAnkan(state, options, MAN, 0)
 
     expect(events.map((e) => e.kind)).toContain('ankan')
     expect(state.log.slice(before)).toEqual([{ kind: 'ankan', seat: 0, tile: MAN }])
@@ -1139,7 +1317,7 @@ describe('RoundState.log', () => {
     beginTurn(state, options)
 
     expect(callKita(state, options, 1)).toEqual([]) // seat 1 is not the acting seat
-    expect(callAnkan(state, 1, MAN)).toEqual([])
+    expect(callAnkan(state, options, 1, MAN)).toEqual([])
     expect(state.log).toHaveLength(0)
   })
 })
@@ -1194,7 +1372,9 @@ describe('called kan', () => {
     expect(state.pendingDraw).toBe(false)
   })
 
-  it('an AI seat never calls minkan even with calledKan on — the bot never sees the option', () => {
+  it('an efficiency seat never calls minkan even with calledKan on — it never sees the option', () => {
+    // the default algorithm, so this is what every seeded round runs. `'ev'` is the one kind that
+    // can take an open kan, and it does so by pricing the branch rather than through `chooseCall`
     const options: RoundOptions = { ...YONMA, calledKan: true } // every seat AI
     const wall = handsWall('minkan-ai-declines', '2468m2468p9s2345z', CALLER_HAND)
     const state = createRound(wall, 4, options)
@@ -1399,22 +1579,27 @@ describe('the turn seam', () => {
 })
 
 /**
- * Daiminkan is offered to a person and to nobody else, and these pin both halves of that: the case
- * where declining is obviously right, and the case where it is obviously wrong. **Both come out the
- * same**, because `chooseCall` never receives `RoundOptions.calledKan` and so never sees a minkan
- * at all (ADR-0041), and threading the flag through would not help — `shantenAfterCall` removes
- * three tiles and adds a meld, so a hand holding a concealed triplet lands on the *same* shanten
- * (the triplet was already a complete block) and the `after >= current` guard rejects it, always.
- * A daiminkan needs a price of its own, on the call gate, which is `ADR-0043`'s stated rejection.
+ * Daiminkan, from both ends: the board where taking it is obviously right and the board where it
+ * is obviously wrong. The two algorithms answer them for **different reasons**, which is the whole
+ * point of the block.
+ *
+ * `efficiency` declines both, and cannot do otherwise. `chooseCall` calls the three-argument
+ * `availableCalls`, so `RoundOptions.calledKan` never reaches it and a minkan is never even a
+ * candidate (ADR-0041); and its rule wants a call to *lower* shanten, which an open kan never does,
+ * since the concealed triplet it is made from was already a complete block.
+ *
+ * An `'ev'` seat prices the branch instead — `ev.ts#rankCalls`, every call weighed against the pass
+ * as a hand — so it takes the free one and declines the one that costs it a yakuman. That is the
+ * gap ADR-0043 deferred, and closing it is what these tests now pin.
  */
-describe("daiminkan is never an AI seat's call", () => {
+describe('daiminkan is priced by an ev seat and invisible to efficiency', () => {
   /** The AI seats that call at all. `defense` and `tsumogiri` return `null` from `call`
    *  unconditionally, so they would pass these by not being asked a question. */
-  const AI_MODES = [
-    ['efficiency', undefined],
+  const EV_MODES = [
     ['ev, statistical', 'statistical'],
     ['ev, houou', 'houou'],
   ] as const
+  const AI_MODES = [['efficiency', undefined], ...EV_MODES] as const
 
   function aiOptions(model: 'statistical' | 'houou' | undefined): RoundOptions {
     return {
@@ -1430,18 +1615,50 @@ describe("daiminkan is never an AI seat's call", () => {
   /** Four concealed triplets and a 5s tanki. A daiminkan on the fourth 1m opens that triplet, and
    *  suuankou wants all four concealed — the yakuman dies for one extra dora indicator. */
   const SUUANKOU = '111m222m333m444p5s'
+
+  /** This board is `decompose`'s worst case and needs saying so rather than being quietly slow:
+   *  `111m222m333m` arranges as three triplets *and* as three runs, so every leaf the DP prices
+   *  scores several arrangements, and an `'ev'` seat pricing three call branches over it takes a
+   *  couple of seconds against the ~40ms an ordinary turn costs. It is the shape that makes the
+   *  test worth having, so the budget moves rather than the hand. */
+  const SUUANKOU_BUDGET = 30_000
   /** Seat 0: holds the last 1m and throws it. */
   const THROWS_THE_LAST_1M = '1m456m789m123s456s'
 
-  it.each(AI_MODES)('%s declines the kan that would break its suuankou', (_label, model) => {
-    const options = aiOptions(model)
-    const state = createRound(handsWall('suuankou-kan', THROWS_THE_LAST_1M, SUUANKOU), 4, options)
-    beginTurn(state, options)
-    finishTurn(state, options, { tile: parseTenhou('1m')[0], fromDrawn: false })
+  it.each(AI_MODES)(
+    '%s declines the kan that would break its suuankou',
+    (_label, model) => {
+      // `efficiency` because it never sees the option at all; both `'ev'` models because they price
+      // it — opening the triplet re-scores the leaf at toitoi and sanankou instead of a yakuman, and
+      // one dora indicator does not buy that back
+      const options = aiOptions(model)
+      const state = createRound(handsWall('suuankou-kan', THROWS_THE_LAST_1M, SUUANKOU), 4, options)
+      beginTurn(state, options)
+      finishTurn(state, options, { tile: parseTenhou('1m')[0], fromDrawn: false })
 
-    expect(state.players[1].melds).toHaveLength(0)
-    expect(state.players[1].hand.counts[MAN]).toBe(3) // all three still concealed
-  })
+      expect(state.players[1].melds).toHaveLength(0)
+      expect(state.players[1].hand.counts[MAN]).toBe(3) // all three still concealed
+    },
+    SUUANKOU_BUDGET,
+  )
+
+  it.each(EV_MODES)(
+    '%s was shown that kan and priced it, rather than never seeing it',
+    (_l, m) => {
+      // the control above proves a *manual* seat is offered it. This proves the ev seat's own view
+      // carries it too, so its decline is a judgement rather than an absence
+      const options = aiOptions(m)
+      const state = createRound(handsWall('suuankou-kan', THROWS_THE_LAST_1M, SUUANKOU), 4, options)
+      beginTurn(state, options)
+      const view = seatView(state, options, 1)
+
+      expect(availableCalls(view.hand, MAN, false, view.calledKan).map((c) => c.kind)).toContain(
+        'minkan',
+      )
+      expect(rankCalls(view, MAN, false).map((row) => row.call?.kind ?? 'pass')[0]).toBe('pass')
+    },
+    SUUANKOU_BUDGET,
+  )
 
   it('and the kan was genuinely on offer — a manual seat in the same seat is shown it', () => {
     // without this the row above would pass on a board where no kan was ever available
@@ -1458,16 +1675,28 @@ describe("daiminkan is never an AI seat's call", () => {
   /** Seat 1 pons the haku, throws its spare west, and is left **open, tenpai and already yaku-ful**
    *  on a 5s/8s ryanmen with `111m` sitting concealed beside it, doing nothing but being a set.
    *  Kanning the fourth 1m leaves the wait exactly where it is, flips a dora indicator and draws a
-   *  replacement: free by every reading, and declined anyway. */
+   *  replacement: free by every reading, and now taken. */
   const PONS_THEN_TENPAI = '55z111m234p99s67s3z'
   const THROWS_THE_HAKU = '5z456m789m123s456s'
   const THROWS_THE_LAST_1M_TOO = '1m234m567m888p123p'
 
   /** Plays seat 1 into that open tenpai with the seat still manual, and stops with seat 2 about to
    *  act. The caller decides what seat 1 becomes before the fourth 1m is thrown — algorithms are
-   *  live, so flipping it here is the ordinary way to ask an AI a question a person set up. */
+   *  live, so flipping it here is the ordinary way to ask an AI a question a person set up.
+   *
+   *  **Riichi is off, and that is what makes the kan free rather than merely cheap.** With a
+   *  declared threat on the board the three concealed 1m are genbutsu, and kanning spends all
+   *  three at once — a real cost an `'ev'` seat is right to weigh, and one that has nothing to do
+   *  with the question this board was built to ask. The setup test below pins the emptiness rather
+   *  than trusting this comment. */
   function openTenpai(): { state: RoundState; options: RoundOptions } {
-    const options: RoundOptions = { ...YONMA, calledKan: true, claims: true, algorithms: manual(1) }
+    const options: RoundOptions = {
+      ...YONMA,
+      riichi: false,
+      calledKan: true,
+      claims: true,
+      algorithms: manual(1),
+    }
     const wall = wallWithHands(
       [THROWS_THE_HAKU, PONS_THEN_TENPAI, THROWS_THE_LAST_1M_TOO].map(parseTenhou),
       false,
@@ -1490,18 +1719,49 @@ describe("daiminkan is never an AI seat's call", () => {
     expect(state.players[1].hand.counts[MAN]).toBe(3)
     expect(shanten(state.players[1].hand)).toBe(0)
     expect(state.seat).toBe(2) // nobody called the west; seat 2 is about to throw the fourth 1m
+    expect(threatViews(state)).toEqual([]) // and nobody is pushing back, so the kan really is free
   })
 
-  it.each(AI_MODES)('%s declines the free kan too, which is the known gap', (_label, model) => {
+  it('efficiency declines the free kan — chooseCall is never shown a minkan at all', () => {
     const { state, options } = openTenpai()
-    state.players[1].algorithm = model ? 'ev' : 'efficiency'
-    if (model) state.players[1].ev = { model, objective: 'points' }
+    state.players[1].algorithm = 'efficiency'
 
     beginTurn(state, options)
     finishTurn(state, options, { tile: parseTenhou('1m')[0], fromDrawn: false })
 
     expect(state.players[1].melds.map((m) => m.kind)).toEqual(['pon'])
     expect(state.players[1].hand.counts[MAN]).toBe(3)
+  })
+
+  it.each(EV_MODES)(
+    '%s takes the free kan, which is what pricing the gate buys',
+    (_label, model) => {
+      const { state, options } = openTenpai()
+      state.players[1].algorithm = 'ev'
+      state.players[1].ev = { model, objective: 'points' }
+      const indicators = state.doraIndicators.length
+
+      beginTurn(state, options)
+      finishTurn(state, options, { tile: parseTenhou('1m')[0], fromDrawn: false })
+
+      expect(state.players[1].melds.map((m) => m.kind)).toEqual(['pon', 'minkan'])
+      expect(state.players[1].hand.counts[MAN]).toBe(0)
+      expect(state.doraIndicators.length).toBe(indicators + 1) // the kan dora really flipped
+    },
+  )
+
+  it.each(EV_MODES)('%s ranks that kan above both the pon and the pass', (_label, model) => {
+    // the decision itself, with its arithmetic showing: a pon breaks the tenpai, the kan keeps the
+    // wait exactly where it was and flips an indicator, and the pass does neither
+    const { state, options } = openTenpai()
+    const view = seatView(state, options, 1)
+    const ranked = rankCalls(view, MAN, false, {
+      model: EV_MODELS[model],
+      objective: 'points',
+    })
+
+    expect(ranked.map((row) => row.call?.kind ?? 'pass')).toEqual(['minkan', 'pass', 'pon'])
+    expect(ranked[0].ev).toBeGreaterThan(ranked[1].ev)
   })
 
   it('and that kan was on offer as well — the same board, seat 1 left manual', () => {
@@ -1603,10 +1863,15 @@ describe('kyuushu kyuuhai', () => {
   })
 
   it('replays off the log, for the seats that took it and the ones that did not', () => {
-    const options: RoundOptions = { ...YONMA, algorithms: ['ev'] }
+    // the abort is taken by a *person* rather than by an algorithm's judgement: this test is about
+    // `replayLog`, and hanging it on whether some seat's model happens to like this hand would
+    // make it a test of the model instead — which is what it silently was while `abortWorthIt`
+    // priced every kyuushu hand at a zero win term and so abandoned all of them
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0) }
     const wall = handsWall('kyuushu-replay', KYUUSHU)
     const played = createRound(wall, 4, options)
     beginTurn(played, options)
+    answerClaim(played, options, { kind: 'abort' })
     expect(played.ended).toBe('abort')
 
     const fresh = createRound(wall, 4, options)
