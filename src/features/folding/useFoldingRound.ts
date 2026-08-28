@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { decodeLog, encodeLog } from '../../core/actionLog'
 import { dangerScore, type TileDanger } from '../../core/danger'
+import type { DiscardEv } from '../../core/ev'
+import { EV_MODELS, type EvModelName } from '../../core/evModel'
 import { createMatch } from '../../core/match'
 import {
   beginTurn,
@@ -15,7 +17,7 @@ import {
 import { waits } from '../../core/policy'
 import { mulberry32 } from '../../core/rng'
 import { shanten } from '../../core/shanten'
-import { analysisOf, splitDrawn, type TableCore } from '../../core/table'
+import { analysisOf, foldRankingOf, splitDrawn, type TableCore } from '../../core/table'
 import {
   HONOR,
   parseTenhou,
@@ -27,12 +29,13 @@ import {
 import { completeWall, validateWall, type WallError } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
-import { useLog, type LogDetail, type LogEntry as UiLogEntry } from '../../store/log'
+import { useLog, type LogBar, type LogDetail, type LogEntry as UiLogEntry } from '../../store/log'
 import { resolveSanma } from '../situation/urlCodec'
 import { useLinkedHand } from '../situation/useLinkedHand'
 import type { Settings } from '../settings/settingsStore'
 import type { SeatConfig } from '../settings/tableSettings'
 import type { VerdictSeverity } from '../table/Verdict'
+import { gradeEv, type EvBands } from './evGrade'
 
 /** The folding settings section plus the ruleset the round runs under (which a link can pin, so
  *  it is not a plain setting) and the two table settings (`threats`, `opponentWins`) that moved
@@ -94,6 +97,14 @@ export interface TurnResult {
    *  averages into `averageQuality` and what the compact mobile verdict bands into red/yellow
    *  when `correct` is false. */
   quality: number
+  /** Set only when this turn was graded on the EV model's fold branch instead of danger tiers
+   *  (`plans/EV-5` §2.5, alpha) — `correct`/`quality` above already reflect it either way, so
+   *  `foldingVerdictSeverity` needs no change; this is what the log row's band line and bars read. */
+  ev?: {
+    model: EvModelName
+    bands: EvBands
+    delta: number
+  }
 }
 
 /** The compact mobile verdict's severity, banded off the same partial credit the session score
@@ -152,6 +163,35 @@ function foldingDetail(result: TurnResult, seats: number[]): LogDetail[] {
     })
   }
   return detail
+}
+
+/** The band a turn was graded against, drawn as a line naming the model and ε pair plus one bar
+ *  per candidate — `plans/EV-5` §2.5's "the grading UI must show the band it graded against". Sits
+ *  ahead of the tier lines: EV decides the verdict in this mode, tiers stay underneath as the
+ *  human-readable why. `fraction` is `(ev - worst) / (best - worst)`, computed here rather than in
+ *  the renderer, so the best candidate is always a full bar and the worst always empty regardless
+ *  of how negative a fold's own numbers run. */
+function evBandDetail(ranking: DiscardEv[], model: EvModelName, bands: EvBands, tile: TileId): LogDetail {
+  const best = ranking[0]!.ev
+  const worst = ranking[ranking.length - 1]!.ev
+  const span = best - worst
+  const bars: LogBar[] = ranking.map((entry) => ({
+    tile: entry.tile,
+    value: Math.round(entry.ev),
+    fraction: span > 0 ? (entry.ev - worst) / span : 1,
+    chosen: entry.tile === tile,
+    best: entry === ranking[0],
+  }))
+  return {
+    key: 'log.folding.evBand',
+    params: {
+      model,
+      near: Math.round(bands.near),
+      wrong: Math.round(bands.wrong),
+      delta: Math.round(best - (ranking.find((entry) => entry.tile === tile)?.ev ?? best)),
+    },
+    bars,
+  }
 }
 
 export interface ThreatReveal {
@@ -517,6 +557,11 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
   // `stats.averageTime`, which keeps running across every hand until the log is cleared
   const roundActionCount = useRef(0)
   const roundTotalMs = useRef(0)
+  // set just before `table.discard` is called, mid-turn while the hand is still fourteen tiles —
+  // `foldRankingOf` refuses anything else — and read (then cleared) by `onEvent` once the same
+  // discard is reported. Alpha (`plans/EV-5` §2.5): `null` whenever EV grading is off, or the
+  // discard belongs to a seat this hook never asked (a replay, or a seat the reader isn't playing)
+  const evRanking = useRef<DiscardEv[] | null>(null)
 
   // `options.seats` is read below only as the *initial* algorithm seed for a freshly generated
   // hand (`playToRiichi`'s own handover logic) — deliberately absent from this effect's deps: a
@@ -591,14 +636,34 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     const ranked = analysis.danger
     const yours = ranked.find((entry) => entry.tile === tile.id)!
     const safest = ranked.filter((entry) => entry.rank === 0)
-    const correct = yours.rank === 0
     const elapsed = stats.elapsedNow()
-    // partial credit against the turn's own worst option: right/wrong alone calls a suji throw
-    // when a genbutsu was there the same mistake as throwing the live non-suji 5. A hand where
-    // everything is genbutsu has nothing to be wrong about, so it scores full marks
-    const worst = Math.max(...ranked.map(dangerScore))
-    const quality = worst > 0 ? (worst - dangerScore(yours)) / worst : 1
-    const result: TurnResult = { turn: core.round.turn, yours, safest, correct, quality }
+
+    // set by `discard()` just before this turn's tile left the fourteen — `null` under tier
+    // grading (the permanent default), for a replayed/non-reader turn, or with EV grading off
+    const ranking = evRanking.current
+    evRanking.current = null
+
+    let correct: boolean
+    let quality: number
+    let evDetail: LogDetail | undefined
+    let ev: TurnResult['ev']
+    if (ranking) {
+      const model = options.evModel
+      const bands = options.evBands[model]
+      const grade = gradeEv(ranking, tile.id, bands)
+      correct = grade.correct
+      quality = grade.quality
+      ev = { model, bands, delta: grade.delta }
+      evDetail = evBandDetail(ranking, model, bands, tile.id)
+    } else {
+      correct = yours.rank === 0
+      // partial credit against the turn's own worst option: right/wrong alone calls a suji throw
+      // when a genbutsu was there the same mistake as throwing the live non-suji 5. A hand where
+      // everything is genbutsu has nothing to be wrong about, so it scores full marks
+      const worst = Math.max(...ranked.map(dangerScore))
+      quality = worst > 0 ? (worst - dangerScore(yours)) / worst : 1
+    }
+    const result: TurnResult = { turn: core.round.turn, yours, safest, correct, quality, ev }
 
     writeLog({
       key: 'log.folding.discard',
@@ -612,7 +677,9 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
       },
       situation: situationBefore,
       severity: foldingVerdictSeverity(result),
-      detail: foldingDetail(result, riichiSeats(core.round)),
+      // EV decides the verdict in this mode; the tier lines stay underneath as the human-readable
+      // why (`plans/EV-5` §2.8) — evidence, not a second grading
+      detail: [...(evDetail ? [evDetail] : []), ...foldingDetail(result, riichiSeats(core.round))],
     })
     stats.record(correct, elapsed, quality)
     roundActionCount.current++
@@ -789,7 +856,17 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
       if (finished || loading) return
       const fromDrawn = index === hand.length
       const tile = fromDrawn ? drawn : hand[index]
-      if (tile) table.discard(tile, fromDrawn, declareRiichi)
+      if (!tile) return
+      // priced while the hand is still fourteen tiles — `foldRankingOf` refuses anything else —
+      // and only for the drill's own graded seat: onEvent's own `event.seat === seatIndex` gate is
+      // what actually decides whether this turn is graded at all, so pricing any other acting seat
+      // here would be wasted work nothing reads
+      if (options.evGrading && acting === seatIndex && table.core) {
+        evRanking.current = foldRankingOf(table.core, seatIndex, {
+          model: EV_MODELS[options.evModel],
+        })
+      }
+      table.discard(tile, fromDrawn, declareRiichi)
     },
     answer: table.answer,
     /** Never any: the drill is fold-only, so the reader is not offered a declaration. Riichi

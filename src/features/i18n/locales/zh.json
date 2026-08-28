@@ -24,7 +24,9 @@
     "deadWallMarker": "死墙",
     "rewind": "撤回到此操作之前",
     "undoAction": "撤销上一步操作",
-    "iosInstallHint": "将本应用添加到主屏幕即可去掉Safari的工具栏——点击“分享”,然后选择“添加到主屏幕”。"
+    "iosInstallHint": "将本应用添加到主屏幕即可去掉Safari的工具栏——点击“分享”,然后选择“添加到主屏幕”。",
+    "alpha": "内测",
+    "alphaNote": "这是尚未验证的早期功能,数值今后可能调整,请当作预览而非最终结论。"
   },
   "settings": {
     "button": "设置",
@@ -400,7 +402,11 @@
     "settings": {
       "opponentWins": "允许对手和牌",
       "feedbackAtEnd": "仅在牌局结束后显示答案",
-      "threats": "要防守的立直数"
+      "threats": "要防守的立直数",
+      "evGrading": "按EV而非等级评分",
+      "evModel": "EV模型",
+      "evNear": "正确范围(分)",
+      "evWrong": "错误范围(分)"
     }
   },
   "lab": {
@@ -470,7 +476,8 @@
       "fu": "符",
       "fuTotal": "合计：{{exact}} → {{fu}} 符",
       "fuTotalExact": "合计：{{fu}} 符",
-      "ukeireLegend": "牌下方数字：牌山中剩余张数"
+      "ukeireLegend": "牌下方数字：牌山中剩余张数",
+      "evLegend": "每个弃牌的期望分数;柱状条以最佳弃牌为基准"
     },
     "lab": {
       "abort": "第{{turn}}巡: {{wind}}宣告九种九牌,本局流局",
@@ -494,7 +501,8 @@
       "dealIn": "放铳: {{tile}} 给{{wind}}——{{points}} 点",
       "yourTile": "你的牌{{vs}}——{{tier}}",
       "safestTile": "最安全的牌{{vs}}——{{tier}}",
-      "vs": "（对{{wind}}）"
+      "vs": "（对{{wind}}）",
+      "evBand": "按EV评分({{model}}): 与最佳差{{delta}}分(≤{{near}}为正确,超过{{wrong}}为错误)"
     },
     "efficiency": {
       "shanten": "上听数 {{count}}",

@@ -1,7 +1,7 @@
 import type { Meld } from './agari'
 import { assessDiscards, type TileDanger } from './danger'
 import { evaluateDiscards, type DiscardOption } from './efficiency'
-import { foldEv, rankDiscards, type DiscardEv, type EvObjective } from './ev'
+import { foldEv, foldRanking, rankDiscards, type DiscardEv, type EvObjective, type EvOptions } from './ev'
 import { EV_MODELS, type EvModelName } from './evModel'
 import { tileCount, type Hand } from './hand'
 import {
@@ -293,6 +293,21 @@ export function evOf(core: TableCore, seat: number): SeatEv | null {
     best: push[0] !== undefined && push[0].ev >= fold.ev ? 'push' : 'fold',
     unsupported: EV_MODELS[model].unsupported(core.options.sanma),
   }
+}
+
+/**
+ * Every held tile's fold price for `seat`, on demand — the folding trainer's own reading of
+ * `core/ev.ts`, never a formula the feature writes itself, so a model change moves what it grades.
+ *
+ * Unlike `evOf`, `opts.model` is not read off `player.ev`: the graded seat is a person, not an
+ * `'ev'` seat, so the trainer's own setting picks the model and passes it in here. `null` under the
+ * same rule `evOf` follows — `foldRanking` needs the fourteen-tile hand mid-turn.
+ */
+export function foldRankingOf(core: TableCore, seat: number, opts?: EvOptions): DiscardEv[] | null {
+  const player = core.round.players[seat]
+  if (tileCount(player.hand) % 3 !== 2) return null
+  const view = seatView(core.round, core.options, seat)
+  return foldRanking(view, opts)
 }
 
 export function analysisOf(core: TableCore, seat: number): TableAnalysis {

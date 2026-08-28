@@ -1,6 +1,23 @@
 import { create } from 'zustand'
-import type { ParsedTile } from '../core/tiles'
+import type { TileId, ParsedTile } from '../core/tiles'
 import type { UkeireTile } from '../core/ukeire'
+
+/** One tile's EV score, drawn as a bar normalized on the ranking's own best entry (`fraction`) —
+ *  never on an absolute scale, since a fold's expected value is negative and "percent of best"
+ *  would be meaningless. `value` is the raw expected points, rounded where the row is written, for
+ *  the number printed beside the bar. Values, never text: the language switch has to re-render
+ *  them, same reason `LogDetail.ukeire` is numbers rather than a formatted string. */
+export interface LogBar {
+  tile: TileId
+  value: number
+  /** 0-1, `(ev - worst) / (best - worst)` — a full bar is the best discard, an empty one the
+   *  worst. */
+  fraction: number
+  /** The tile the reader actually threw. */
+  chosen?: boolean
+  /** The ranking's own top entry. */
+  best?: boolean
+}
 
 export type LogSeverity = 'ok' | 'warning' | 'error'
 
@@ -13,6 +30,9 @@ export interface LogDetail {
   tiles?: ParsedTile[]
   /** Rendered through the existing `UkeireTiles` (per-tile remaining counts). */
   ukeire?: UkeireTile[]
+  /** Per-discard EV scores, drawn as bars normalized on the best one — the folding trainer's EV
+   *  grading mode (alpha, `plans/EV-5` §2.5). */
+  bars?: LogBar[]
   /** Index in `tiles` where the *evidence* for the line begins — the subject tile leads, what
    *  explains it follows past a hairline seam; absent means the line's tiles are all one
    *  thing. */

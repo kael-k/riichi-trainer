@@ -209,7 +209,7 @@ export function SeatButton({
                           }
                         >
                           {choice.model
-                            ? t(`seats.evChoice.${choice.model}`)
+                            ? `${t(`seats.evChoice.${choice.model}`)} (${t('common.alpha')})`
                             : t(`seats.mode.${choice.mode}`)}
                         </option>
                       )
@@ -217,7 +217,7 @@ export function SeatButton({
                   </select>
                   <p className="text-sm text-neutral-500">
                     {mode === 'ev'
-                      ? t(`seats.evModelHint.${ev.model}`)
+                      ? `${t(`seats.evModelHint.${ev.model}`)} ${t('common.alphaNote')}`
                       : t(`seats.modeHint.${mode}`)}
                   </p>
                   {mode === 'ev' &&

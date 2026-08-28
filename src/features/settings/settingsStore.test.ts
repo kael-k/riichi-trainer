@@ -77,6 +77,23 @@ describe('settingsStore table section', () => {
     expect(useSettings.getState().scoring.testHan).toBe(true)
   })
 
+  it('leaves a blob written before folding EV grading existed on its new defaults', async () => {
+    localStorage.setItem(
+      'riichi-trainer-settings',
+      JSON.stringify({
+        state: { folding: { feedbackAtEnd: true } },
+        version: 3,
+      }),
+    )
+    const { useSettings } = await import('./settingsStore')
+    const { EV_GRADE_BANDS } = await import('../folding/evGrade')
+    const folding = useSettings.getState().folding
+    expect(folding.feedbackAtEnd).toBe(true)
+    expect(folding.evGrading).toBe(false)
+    expect(folding.evModel).toBe('statistical')
+    expect(folding.evBands).toEqual(EV_GRADE_BANDS)
+  })
+
   it('bumps persist version to 3', async () => {
     const { useSettings } = await import('./settingsStore')
     expect(useSettings.persist.getOptions().version).toBe(3)
@@ -136,5 +153,14 @@ describe('useAdvancedSettings', () => {
     expect(result.current.showTsumogiri).toBe(false) // advanced is off by default
     expect(result.current.aka).toBe(true) // aka's default is true regardless of advanced
     expect(result.current.exactFu).toBe(false)
+  })
+
+  it('evGrading resolves off unless both advanced and the folding setting are on', async () => {
+    const { useSettings } = await import('./settingsStore')
+    const { useAdvancedSettings } = await import('./useAdvancedSettings')
+    useSettings.getState().update('folding', { evGrading: true })
+    expect(renderHook(() => useAdvancedSettings()).result.current.evGrading).toBe(false)
+    useSettings.getState().setAdvanced(true)
+    expect(renderHook(() => useAdvancedSettings()).result.current.evGrading).toBe(true)
   })
 })

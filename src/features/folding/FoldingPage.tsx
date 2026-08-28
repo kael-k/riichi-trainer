@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Alpha } from '../../components/Alpha'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { Timer, TrainerToggles } from '../../components/TrainerControls'
+import { EV_MODELS, type EvModelName } from '../../core/evModel'
 import { HONOR } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
 import { SettingRow } from '../settings/SettingsDialog'
+import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useBotDelay, useSettings } from '../settings/settingsStore'
 import { useTableSettings, type SeatConfig, type TableSettings } from '../settings/tableSettings'
 import { WINDS } from '../situation/urlCodec'
@@ -70,6 +73,8 @@ export function FoldingPage() {
   const rawTable = useSettings((s) => s.table)
   const update = useSettings((s) => s.update)
   const sanma = useSettings((s) => s.sanma)
+  const advanced = useSettings((s) => s.advanced)
+  const { evGrading } = useAdvancedSettings()
   const pace = useBotDelay()
   // folding always shows the board (reading it is the drill); the reveal gate below
   // withholds real tile ids until `round.finished` or `showOpponentHands`
@@ -90,6 +95,9 @@ export function FoldingPage() {
     const isSanma = urlData.sanma ?? sanma
     return {
       ...settings,
+      // the advanced-resolved value, not `settings.evGrading` straight — a hidden row must not
+      // mean a live mode (`useAdvancedSettings.ts`, same rule `exactFu` already follows)
+      evGrading,
       sanma: isSanma,
       opponentWins: urlData.wins ?? opponentWins,
       // one seat has to be left to fold; a link can pin a count this table cannot seat
@@ -103,6 +111,7 @@ export function FoldingPage() {
     urlData,
     sanma,
     settings,
+    evGrading,
     threats,
     opponentWins,
     showOpponentHands,
@@ -165,6 +174,92 @@ export function FoldingPage() {
           ))}
         </select>
       </SettingRow>
+      {/* alpha (`plans/EV-5` §2.5/§2.8): tiers stay the permanent default grading, this only
+          switches what a turn is graded *against* — and it is read through `useAdvancedSettings`
+          (`evGrading` above), so hiding this row when Advanced is off actually turns the mode off
+          rather than leaving it running unseen */}
+      {advanced && (
+        <>
+          <SettingRow
+            label={
+              <span className="flex items-center gap-1.5">
+                {t('folding.settings.evGrading')}
+                <Alpha />
+              </span>
+            }
+          >
+            <input
+              type="checkbox"
+              checked={settings.evGrading}
+              onChange={(e) => update('folding', { evGrading: e.target.checked })}
+              className="size-5"
+            />
+          </SettingRow>
+          {settings.evGrading && (
+            <>
+              <p className="text-xs text-neutral-500">{t('common.alphaNote')}</p>
+              <SettingRow label={t('folding.settings.evModel')}>
+                <select
+                  value={settings.evModel}
+                  onChange={(e) =>
+                    update('folding', { evModel: e.target.value as EvModelName })
+                  }
+                  className="min-h-11 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+                >
+                  {(Object.keys(EV_MODELS) as EvModelName[]).map((model) => (
+                    <option key={model} value={model}>
+                      {t(`seats.evModel.${model}`)}
+                    </option>
+                  ))}
+                </select>
+              </SettingRow>
+              {EV_MODELS[settings.evModel].unsupported(players === 3) && (
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  {EV_MODELS[settings.evModel].unsupported(players === 3)}
+                </p>
+              )}
+              <SettingRow label={t('folding.settings.evNear')}>
+                <input
+                  type="number"
+                  min={0}
+                  value={settings.evBands[settings.evModel].near}
+                  onChange={(e) =>
+                    update('folding', {
+                      evBands: {
+                        ...settings.evBands,
+                        [settings.evModel]: {
+                          ...settings.evBands[settings.evModel],
+                          near: Number(e.target.value),
+                        },
+                      },
+                    })
+                  }
+                  className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              </SettingRow>
+              <SettingRow label={t('folding.settings.evWrong')}>
+                <input
+                  type="number"
+                  min={0}
+                  value={settings.evBands[settings.evModel].wrong}
+                  onChange={(e) =>
+                    update('folding', {
+                      evBands: {
+                        ...settings.evBands,
+                        [settings.evModel]: {
+                          ...settings.evBands[settings.evModel],
+                          wrong: Number(e.target.value),
+                        },
+                      },
+                    })
+                  }
+                  className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              </SettingRow>
+            </>
+          )}
+        </>
+      )}
     </>
   )
 

@@ -7,6 +7,7 @@ import type { SeatAlgorithm } from '../../core/policy'
 import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
 import { useLog } from '../../store/log'
+import { EV_GRADE_BANDS } from './evGrade'
 import {
   BACK_TILE,
   decodeFoldingUrl,
@@ -22,6 +23,9 @@ const OPTIONS: FoldingOptions = {
   threats: 1,
   opponentWins: true,
   feedbackAtEnd: false,
+  evGrading: false,
+  evModel: 'statistical',
+  evBands: EV_GRADE_BANDS,
   showOpponentHands: false,
   // unpaced, so the whole board settles inside a synchronous `act()`
   pace: 0,
@@ -176,6 +180,39 @@ describe('useFoldingRound', () => {
       expect(result.current.accuracy).toBeCloseTo(0.5, 5)
       expect(result.current.correctCount).toBe(1)
     }
+  })
+
+  it('grades on the EV model instead of tiers when evGrading is on, and shows the band it graded against', async () => {
+    act(() => useLog.getState().clear())
+    const result = await deal({ wall: wall('ev-grade-seed') }, { ...OPTIONS, evGrading: true })
+    const safe = result.current.ranked()[0]
+    act(() => result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)))
+
+    // the tier model's own safest tile is graded through the EV branch instead of `rank === 0`
+    expect(result.current.lastResult?.ev).toBeDefined()
+    expect(result.current.lastResult?.ev?.model).toBe('statistical')
+    expect(result.current.lastResult?.ev?.bands).toEqual(EV_GRADE_BANDS.statistical)
+
+    const entry = useLog.getState().entries.find((e) => e.key === 'log.folding.discard')!
+    const band = entry.detail!.find((d) => d.key === 'log.folding.evBand')!
+    expect(band.params).toMatchObject({ model: 'statistical' })
+    // every candidate priced, the reader's own tile marked, and the best entry marked as such —
+    // `plans/EV-5` §2.5's "the grading UI must show the band it graded against"
+    expect(band.bars!.length).toBeGreaterThan(1)
+    expect(band.bars!.filter((b) => b.chosen)).toHaveLength(1)
+    expect(band.bars!.filter((b) => b.best)).toHaveLength(1)
+    expect(Math.max(...band.bars!.map((b) => b.fraction))).toBe(1)
+    expect(Math.min(...band.bars!.map((b) => b.fraction))).toBe(0)
+  })
+
+  it('falls back to tier grading when EV grading is off', async () => {
+    act(() => useLog.getState().clear())
+    const result = await deal({ wall: wall('ev-off-seed') })
+    const safe = result.current.ranked()[0]
+    act(() => result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)))
+    expect(result.current.lastResult?.ev).toBeUndefined()
+    const entry = useLog.getState().entries.find((e) => e.key === 'log.folding.discard')!
+    expect(entry.detail!.some((d) => d.key === 'log.folding.evBand')).toBe(false)
   })
 
   it('plays the fold out: every turn to the end of the hand is graded', async () => {

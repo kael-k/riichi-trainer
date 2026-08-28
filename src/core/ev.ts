@@ -856,6 +856,69 @@ function dealInPrice(
 }
 
 /**
+ * Every held tile's fold price: throw this one now, then betaori for the rest of the hand.
+ *
+ * `foldEv` below prices the fold *policy* and returns one `DiscardEv` for whichever tile happens to
+ * be safest — enough for the push/fold comparison, which only ever needs the branch's own value.
+ * A grader needs the branch priced **per candidate**, which this is: the same per-threat immediate
+ * term `evTerms` prices for the push branch (naming which seat each cost belongs to), then the same
+ * later-turn walk `foldEv` runs — `laterCost` over `turnRisks('safe', …)` — starting one turn in
+ * with the hand already discounted by *this* tile's own risk, exactly the push branch's `alive`.
+ *
+ * **No win term and no `'tenpai'` term.** A hand that has folded is noten by construction — that is
+ * exactly what `giveUpCost` already prices — so no DP runs and this is milliseconds, not the DP's
+ * cost per candidate `rankDiscards` pays.
+ *
+ * This is the number the folding trainer grades against (`plans/EV-5` §2.5/§2.8): the drill's own
+ * context is full fold, so the fold branch is the whole answer, and reading it from here rather
+ * than writing a second formula is what keeps a model change move the trainer's grades with it —
+ * `houou`'s empirical tables have no closed form a trainer could otherwise approximate.
+ */
+export function foldRanking(view: SeatView, opts: EvOptions = {}): DiscardEv[] {
+  const model = opts.model ?? STATISTICAL
+  const value = valuer(view, model, opts.objective ?? 'points')
+  const { board, threats, risks, combined } = context(view, model)
+  const honba = view.match.honba * 300
+  const notWinning = value(model.giveUpCost(threats, board))
+  const loss = value(-dealInPrice(model, threats, board, honba))
+
+  const priced = heldTiles(view).map((tile) => {
+    const terms: EvTerm[] = []
+    for (let j = 0; j < threats.length; j++) {
+      const probability = risks[j][tile].probability
+      if (probability === 0) continue
+      const seat = view.threats[j].seat
+      const cost = value(-(model.dealInCost(threats[j], board) + honba), seat)
+      terms.push({ kind: 'dealIn', probability, value: cost, points: probability * cost, seat })
+    }
+
+    const alive = (1 - combined[tile].probability) * (1 - board.tsumoChance)
+    const later = laterCost(
+      turnRisks('safe', view, combined, board, board.drawsLeft - 1),
+      board,
+      loss,
+      alive,
+    )
+    if (later.points !== 0) {
+      terms.push({ kind: 'danger', probability: later.probability, value: loss, points: later.points })
+    }
+
+    terms.push({ kind: 'notWinning', probability: 1, value: notWinning, points: notWinning })
+
+    return {
+      tile,
+      ev: terms.reduce((sum, term) => sum + term.points, 0),
+      dealIn: combined[tile].probability,
+      terms,
+    }
+  })
+
+  // same total order `rankDiscards` sorts by — never sort stability
+  priced.sort((a, b) => b.ev - a.ev || a.dealIn - b.dealIn || a.tile - b.tile)
+  return priced
+}
+
+/**
  * The fold branch: give up on the hand and stay safe for the rest of it.
  *
  * A folding hand does not throw one tile, it throws every tile it has left and every tile it draws

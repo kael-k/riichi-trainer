@@ -547,6 +547,21 @@ Partial credit per throw is `(worst - yours) / worst` over `dangerScore`, passed
 `useSessionStats.record`'s optional third argument and averaged into `averageQuality`.
 `showEquallySafe` and `feedbackAtEnd` are both off by default and neither touches the link.
 
+**Grading can read the EV model instead of tiers, Advanced-only and alpha** (ADR-0046). Tiers stay
+the permanent default; `Settings['folding'].evGrading` (resolved through `useAdvancedSettings`, so
+a hidden row cannot leave the mode running unseen) switches `onEvent`'s verdict to
+`core/ev.ts#foldRanking` — the fold branch of the EV identity, priced per held tile, with no win or
+`'tenpai'` term since a fold is noten by construction — read through `core/table.ts#foldRankingOf`
+(mirroring `evOf`'s on-demand shape) and never re-derived in the trainer, so a model change moves
+what it grades. `features/folding/evGrade.ts#gradeEv` bands the result on `Δ = best.ev − yours.ev`
+against per-model `EvBands { near, wrong }` (`plans/EV-5` §2.5's two-threshold grade — correct,
+partial, wrong — stored per `EvModelName` in `Settings['folding'].evBands` so switching models
+keeps each one's own calibration). Defaults are provisional, measured off real fold turns
+(`evGrade.bench.test.ts`, `EV_BENCH`-gated), not guessed. The tier detail lines stay under the EV
+band line as evidence — EV decides the verdict, tiers still teach the vocabulary — and
+`LogDetail.bars` (`store/log.ts`) draws every candidate as a bar normalized on the ranking's own
+best entry, which is what satisfies "the grading UI must show the band it graded against".
+
 Three reveal rules the UI must keep:
 
 - **`showOpponentHands` is board-wide**, not one that carves the drill's answer key back out: it
@@ -564,7 +579,7 @@ The algorithm badge has no setting at all — every seat's mode is always shown,
 (efficiency green, defense blue, EV amber, manual red). By design the drill is fold-only: no push control,
 no danger markers before the answer, threats up to `players - 1`.
 
-**Why:** [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0005](docs/adr/0005-walls-not-seeds.md)
+**Why:** [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0005](docs/adr/0005-walls-not-seeds.md), [ADR-0046](docs/adr/0046-folding-grades-on-the-ev-fold-branch.md)
 
 ### The EV model (`core/dealIn.ts`, `probability.ts`, `evModel.ts`, `ev.ts`, `placement.ts`)
 
@@ -762,7 +777,17 @@ board that priced every turn on the chance somebody looked would be a board nobo
 on. The lab's panel asks for it and stamps the answer with the discard count, so a stale one is
 recognisable rather than quietly wrong about the turn before.
 
-**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0044](docs/adr/0044-every-decision-is-priced.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0043](docs/adr/0043-one-turn-one-decision.md)
+**`core/ev.ts#foldRanking` is the fold branch priced per tile rather than per policy** — `foldEv`
+picks whichever tile happens to be safest for the push/fold comparison; a grader needs every
+candidate, so `foldRanking` prices each one's own immediate per-threat term plus the same
+`turnRisks('safe', …)`/`laterCost` walk `foldEv` runs, with no win or `'tenpai'` term (a fold is
+noten by construction, so no DP runs — milliseconds, not `rankDiscards`' DP cost per candidate).
+`foldEv` itself is untouched, so `EV_GOLDEN` does not move. `core/table.ts#foldRankingOf` is its
+on-demand accessor, `evOf`'s shape but taking the model as an explicit argument rather than reading
+`PlayerState.ev` — the folding trainer's graded seat is a person, not an `'ev'` seat, so its own
+setting picks the model (ADR-0046).
+
+**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0044](docs/adr/0044-every-decision-is-priced.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0043](docs/adr/0043-one-turn-one-decision.md), [ADR-0046](docs/adr/0046-folding-grades-on-the-ev-fold-branch.md)
 
 ### Tenhou notation + situation URLs (the shared DSL)
 
@@ -1093,6 +1118,11 @@ is a tap on its own row.
   tiles: the subject tile leads, the evidence follows past the rule — so a tier whose evidence
   _is_ the subject (genbutsu) must drop it rather than draw it twice. A row has no such field;
   only a detail line does.
+- **`LogDetail.bars`** is `ukeire`'s sibling for a different shape of number: per-tile EV, drawn as
+  a bar normalized on the ranking's own best entry (`fraction`, computed where the row is written,
+  never in the renderer — the best candidate is a full bar and the worst empty regardless of how
+  negative a fold's own figures run). Folding's EV grading mode is the one writer today
+  (ADR-0046); `chosen`/`best` pick the fill colour, everything else neutral.
 - **Ordinals are assigned before filtering**, so `log.rewound`'s "Rewound to entry {{number}}" stays
   honest.
 - **`log.dealt`/`log.dealtHand` carry no tiles** — a hand is drawn on exactly one row, the one that

@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router'
 import { formatLogDetail, formatLogEntry, splitTileCodes } from '../features/i18n/formatLogEntry'
 import { useTermName } from '../features/i18n/useTermName'
 import { copyText } from '../lib/clipboard'
-import { useLog, type LogDetail, type LogEntry, type LogSeverity } from '../store/log'
+import { useLog, type LogBar, type LogDetail, type LogEntry, type LogSeverity } from '../store/log'
 import { Tile, UkeireTiles } from './tiles/Tile'
 
 /** The verdict spine down the log's left edge, one segment per row: read top to bottom it *is* the
@@ -257,6 +257,41 @@ export function DetailLine({ detail }: { detail: LogDetail }) {
         </span>
       )}
       {detail.ukeire && detail.ukeire.length > 0 && <UkeireTiles tiles={detail.ukeire} />}
+      {detail.bars && detail.bars.length > 0 && <EvBars bars={detail.bars} />}
+    </div>
+  )
+}
+
+/** Every candidate discard's EV, normalized on the ranking's own best entry (`plans/EV-5` §2.5's
+ *  "the grading UI must show the band it graded against" — this is the evidence half; the band
+ *  itself is named in the line's own text). `w-full` inside the row's `flex-wrap` is what puts the
+ *  whole block on its own line without a second container: nothing else fits beside a 100%-wide
+ *  child, so it always wraps clean under the sentence and the ukeire block. */
+function EvBars({ bars }: { bars: LogBar[] }) {
+  return (
+    <div className="mt-0.5 flex w-full flex-col gap-0.5">
+      {bars.map((bar) => (
+        <div key={bar.tile} className="flex items-center gap-1.5">
+          <span className="flex items-center [--tile-w:calc(var(--tile-w-base)*0.7)]">
+            <Tile id={bar.tile} />
+          </span>
+          <div className="h-1 flex-1 rounded-full bg-neutral-200 dark:bg-neutral-800">
+            <div
+              className={`h-1 rounded-full ${
+                bar.best
+                  ? 'bg-green-600 dark:bg-green-400'
+                  : bar.chosen
+                    ? 'bg-red-600 dark:bg-red-400'
+                    : 'bg-neutral-400 dark:bg-neutral-600'
+              }`}
+              style={{ width: `${Math.round(Math.max(0, Math.min(1, bar.fraction)) * 100)}%` }}
+            />
+          </div>
+          <span className="w-12 shrink-0 text-right text-[10px] tabular-nums text-neutral-500">
+            {bar.value}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }

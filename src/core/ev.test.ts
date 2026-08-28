@@ -5,6 +5,7 @@ import {
   bestCall,
   DEFAULT_EV_SEAT,
   foldEv,
+  foldRanking,
   keepEv,
   rankCalls,
   rankDiscards,
@@ -295,6 +296,61 @@ describe('the push and fold branches', () => {
     expect(tenpai!.probability).toBeGreaterThan(0)
     expect(tenpai!.probability).toBeLessThan(1)
     expect(foldEv(view, { model: statistical }).terms.some((t) => t.kind === 'tenpai')).toBe(false)
+  })
+})
+
+describe('foldRanking', () => {
+  it('ranks a genbutsu above a live non-suji, same as the tier model would', () => {
+    const threat = threatOf('1z2z3z')
+    const view = viewOf(TERMINALS, [threat])
+    const ranked = foldRanking(view, { model: statistical })
+    // 1z is the threat's own discard: dead safe. 9s never appears in TERMINALS' visible tiles or
+    // the threat's river, so it is live — the fold branch must not rank it above the genbutsu
+    const safe = evOf(ranked, '1z')!
+    const live = evOf(ranked, '9s')!
+    expect(ranked.indexOf(safe)).toBeLessThan(ranked.indexOf(live))
+  })
+
+  it('agrees with foldEv about which tile the branch leads with', () => {
+    // `foldEv` prices the fold *policy* and its own immediate turn blends in a hypothetical safer
+    // draw (`turnRisks`' `'safe'` formula, shared with every later turn); `foldRanking` prices a
+    // *committed* tile and its immediate term is the real cost of that exact one, so the two
+    // numbers are not required to match — only the tile they each lead with is the same fact asked
+    // two ways, and the sign (a fold is always a loss once anyone is unaccounted for) agrees too
+    const threat = threatOf('1z2z3z')
+    const view = viewOf(TERMINALS, [threat])
+    const ranking = foldRanking(view, { model: statistical })
+    const policy = foldEv(view, { model: statistical })
+    expect(ranking[0].tile).toBe(policy.tile)
+    expect(Math.sign(ranking[0].ev)).toBe(Math.sign(policy.ev))
+  })
+
+  it('prices every held tile under both models, without borrowing one from the other', () => {
+    const threat = threatOf('1z2z3z')
+    const view = viewOf(TERMINALS, [threat])
+    const pure = foldRanking(view, { model: statistical })
+    const measured = foldRanking(view, { model: houou })
+    // same candidates (both read the same public river), different magnitude (different
+    // dealInCost/giveUpCost sources, and a different prior can legitimately reorder them) —
+    // proving the model is actually wired through rather than one borrowing the other's numbers
+    expect(new Set(pure.map((entry) => entry.tile))).toEqual(new Set(measured.map((entry) => entry.tile)))
+    expect(pure[0].ev).not.toBeCloseTo(measured[0].ev, 0)
+  })
+
+  it('is a flat ranking with no threats but the noten penalty', () => {
+    const ranked = foldRanking(viewOf(TERMINALS), { model: statistical })
+    for (const entry of ranked) {
+      expect(entry.ev).toBe(-1500)
+      expect(entry.dealIn).toBe(0)
+    }
+  })
+
+  it('never carries a win or tenpai term — a fold is noten by construction', () => {
+    const threat = threatOf('1z2z3z')
+    const ranked = foldRanking(viewOf(TERMINALS, [threat]), { model: statistical })
+    for (const entry of ranked) {
+      expect(entry.terms.some((term) => term.kind === 'win' || term.kind === 'tenpai')).toBe(false)
+    }
   })
 })
 

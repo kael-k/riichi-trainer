@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
+import { Alpha } from '../components/Alpha'
 import { IOSInstallHint } from '../components/IOSInstallHint'
 import { InfoButton } from '../components/tiles/BoardStage'
 import { Tile } from '../components/tiles/Tile'
@@ -54,6 +55,9 @@ const MODES = [
     descKey: 'trainer.match.desc',
     introKey: 'trainer.match.intro',
     wikiUrl: TRAINER_WIKI.match,
+    // alpha: the newest trainer, still missing dealer agari-yame/tenpai-yame and nagashi mangan
+    // (docs/STATUS.md item 22) — a full hanchan can be played, but not every rule of one yet
+    alpha: true,
   },
   // Lab is under development, disabled for now — see README.
   // {
@@ -76,13 +80,22 @@ function ModeCard({ mode }: { mode: Mode }) {
     <div className="relative flex items-center rounded-xl border border-neutral-200 transition-colors hover:border-neutral-400 has-[a:active]:bg-neutral-50 dark:border-neutral-800 dark:hover:border-neutral-600 dark:has-[a:active]:bg-neutral-900">
       <Link to={mode.to} className="absolute inset-0 rounded-xl" aria-label={t(mode.titleKey)} />
       <div className="pointer-events-none min-w-0 flex-1 p-4">
-        <div className="font-semibold">{t(mode.titleKey)}</div>
+        <div className="flex items-center gap-1.5 font-semibold">
+          {t(mode.titleKey)}
+          {'alpha' in mode && mode.alpha && <Alpha />}
+        </div>
         <div className="text-sm text-neutral-500">{t(mode.descKey)}</div>
       </div>
       <div className="relative pr-2">
         <InfoButton
           title={t(mode.titleKey)}
-          intro={{ text: t(mode.introKey), wikiUrl: mode.wikiUrl }}
+          intro={{
+            text:
+              'alpha' in mode && mode.alpha
+                ? `${t(mode.introKey)}\n\n${t('common.alphaNote')}`
+                : t(mode.introKey),
+            wikiUrl: mode.wikiUrl,
+          }}
         />
       </div>
     </div>

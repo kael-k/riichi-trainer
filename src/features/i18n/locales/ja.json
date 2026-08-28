@@ -24,7 +24,9 @@
     "deadWallMarker": "王牌",
     "rewind": "この操作の前まで巻き戻す",
     "undoAction": "直前の操作を取り消す",
-    "iosInstallHint": "ホーム画面に追加するとSafariのバーが消えます。共有ボタンから「ホーム画面に追加」を選んでください。"
+    "iosInstallHint": "ホーム画面に追加するとSafariのバーが消えます。共有ボタンから「ホーム画面に追加」を選んでください。",
+    "alpha": "アルファ",
+    "alphaNote": "これは初期段階の未検証機能です。数値は今後変わる可能性があります。確定した結果ではなくプレビューとして扱ってください。"
   },
   "settings": {
     "button": "設定",
@@ -400,7 +402,11 @@
     "settings": {
       "opponentWins": "相手の和了を有効にする",
       "feedbackAtEnd": "答えは局の終わりにまとめて表示",
-      "threats": "オリる相手のリーチ数"
+      "threats": "オリる相手のリーチ数",
+      "evGrading": "階層ではなくEVで採点する",
+      "evModel": "EVモデル",
+      "evNear": "正解とみなす範囲(点)",
+      "evWrong": "不正解とみなす範囲(点)"
     }
   },
   "lab": {
@@ -470,7 +476,8 @@
       "fu": "符",
       "fuTotal": "合計: {{exact}} → {{fu}}符",
       "fuTotalExact": "合計: {{fu}}符",
-      "ukeireLegend": "牌の下の数字: 山に残っている枚数"
+      "ukeireLegend": "牌の下の数字: 山に残っている枚数",
+      "evLegend": "各打牌の期待点数。バーは最善打に対する相対値"
     },
     "lab": {
       "abort": "{{turn}}巡目: {{wind}}が九種九牌で流局",
@@ -494,7 +501,8 @@
       "dealIn": "放銃: {{tile}}を{{wind}}に——{{points}}点",
       "yourTile": "あなたの牌{{vs}}——{{tier}}",
       "safestTile": "最も安全な牌{{vs}}——{{tier}}",
-      "vs": "（{{wind}}に対して）"
+      "vs": "（{{wind}}に対して）",
+      "evBand": "EV採点({{model}}): 最善から{{delta}}点差(正解は{{near}}点以内、不正解は{{wrong}}点超)"
     },
     "efficiency": {
       "shanten": "シャンテン {{count}}",

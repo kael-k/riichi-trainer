@@ -16,10 +16,13 @@ export function useAdvancedSettings() {
   const showTsumogiri = useSettings((s) => s.showTsumogiri)
   const aka = useSettings((s) => s.aka)
   const exactFu = useSettings((s) => s.scoring.exactFu)
+  const evGrading = useSettings((s) => s.folding.evGrading)
   return {
     showTsumogiri: advanced && showTsumogiri,
     // aka's default is true, unlike the other two — off means "use the default", not "off"
     aka: !advanced || aka,
     exactFu: advanced && exactFu,
+    // alpha (`plans/EV-5` §2.5/§2.8): a hidden row must not mean a live value, same rule as above
+    evGrading: advanced && evGrading,
   }
 }

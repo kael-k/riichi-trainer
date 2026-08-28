@@ -28,7 +28,9 @@
     "learnMoreWiki": "Approfondisci su riichi.wiki",
     "rewind": "Torna indietro a prima di questa azione",
     "undoAction": "Annulla ultima azione",
-    "iosInstallHint": "Aggiungi questa app alla schermata Home per eliminare le barre di Safari: tocca Condividi, poi \"Aggiungi a Home\"."
+    "iosInstallHint": "Aggiungi questa app alla schermata Home per eliminare le barre di Safari: tocca Condividi, poi \"Aggiungi a Home\".",
+    "alpha": "Alpha",
+    "alphaNote": "Funzione recente e non ancora rivista: i numeri potrebbero cambiare. Considerala unanteprima, non un risultato definitivo."
   },
   "settings": {
     "button": "Impostazioni",
@@ -502,7 +504,11 @@
     "settings": {
       "opponentWins": "Gli avversari possono vincere",
       "feedbackAtEnd": "Mostra le risposte solo a fine mano",
-      "threats": "Riichi contro cui difendersi"
+      "threats": "Riichi contro cui difendersi",
+      "evGrading": "Valuta su EV invece che sui livelli",
+      "evModel": "Modello EV",
+      "evNear": "Corretto entro (punti)",
+      "evWrong": "Sbagliato oltre (punti)"
     }
   },
   "lab": {
@@ -572,7 +578,8 @@
       "fu": "Fu",
       "fuTotal": "Totale: {{exact}} → {{fu}} fu",
       "fuTotalExact": "Totale: {{fu}} fu",
-      "ukeireLegend": "I numeri sotto le tessere: copie rimaste nel muro"
+      "ukeireLegend": "I numeri sotto le tessere: copie rimaste nel muro",
+      "evLegend": "Punti attesi per scarto; le barre sono relative al migliore"
     },
     "lab": {
       "abort": "Turno {{turn}}: {{wind}} dichiara nove orfani — la mano è annullata",
@@ -596,7 +603,8 @@
       "dealIn": "Ron subito: {{tile}} a {{wind}} — {{points}} punti",
       "yourTile": "La tua tessera{{vs}} — {{tier}}",
       "safestTile": "Tessera più sicura{{vs}} — {{tier}}",
-      "vs": " contro {{wind}}"
+      "vs": " contro {{wind}}",
+      "evBand": "Valutato su EV ({{model}}): {{delta}} punti dal migliore (corretto ≤{{near}}, sbagliato oltre {{wrong}})"
     },
     "efficiency": {
       "shanten": "shanten {{count}}",

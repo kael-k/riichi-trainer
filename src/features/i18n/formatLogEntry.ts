@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import type { EvModelName } from '../../core/evModel'
 import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import type { LogDetail, LogEntry } from '../../store/log'
@@ -197,6 +198,18 @@ export function formatLogDetail(
     const { seat, tier } = detail.params as unknown as { seat?: number; tier: string }
     const vs = seat === undefined ? '' : t('log.folding.vs', { wind: t(`wind.${WINDS[seat]}`) })
     return t(detail.key, { vs, tier: t(`folding.tier.${tier}`) })
+  }
+  // names the band the row was graded against (`plans/EV-5` §2.5's "the grading UI must show the
+  // band it graded against") — the model name is a term (`seats.evModel.*`), not raw text, since
+  // it is the same label the seat panel already uses for the same two models
+  if (detail.key === 'log.folding.evBand') {
+    const { model, near, wrong, delta } = detail.params as unknown as {
+      model: EvModelName
+      near: number
+      wrong: number
+      delta: number
+    }
+    return t('log.folding.evBand', { model: t(`seats.evModel.${model}`), near, wrong, delta })
   }
   if (detail.key === 'log.match.delta') {
     const { wind, amount } = detail.params as unknown as { wind: Wind; amount: string }

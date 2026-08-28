@@ -152,7 +152,7 @@ function MatchSetup({ onStart }: { onStart: (config: MatchConfig) => void }) {
                       disabled={hououReason !== null}
                     >
                       {choice.model
-                        ? t(`seats.evChoice.${choice.model}`)
+                        ? `${t(`seats.evChoice.${choice.model}`)} (${t('common.alpha')})`
                         : t(`seats.mode.${choice.mode}`)}
                     </option>
                   )
@@ -417,7 +417,12 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
     <BoardStage
       title={t('trainer.match.title')}
       app="match"
-      intro={{ text: t('trainer.match.intro'), wikiUrl: TRAINER_WIKI.match }}
+      // alpha: not every match rule is modelled yet (docs/STATUS.md item 22) — said once here
+      // rather than baked into four locales' worth of `trainer.match.intro` strings
+      intro={{
+        text: `${t('trainer.match.intro')}\n\n${t('common.alphaNote')}`,
+        wikiUrl: TRAINER_WIKI.match,
+      }}
       chrome={
         <>
           <BackButton canBack={canBack} onBack={back} backLabel={t('common.undoAction')} />
@@ -592,7 +597,10 @@ export function MatchPage() {
   if (!settled) return null
   if (!config) {
     return (
-      <BoardStage title={t('trainer.match.title')} intro={{ text: t('trainer.match.intro') }}>
+      <BoardStage
+        title={t('trainer.match.title')}
+        intro={{ text: `${t('trainer.match.intro')}\n\n${t('common.alphaNote')}` }}
+      >
         <MatchSetup onStart={transition} />
       </BoardStage>
     )

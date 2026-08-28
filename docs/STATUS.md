@@ -569,6 +569,23 @@ value`) or a direction, and none asserts a magnitude.**
     `libmanette-0.2.so.0`, so WebKit will not launch. A portrait phone is exactly where the hand
     still wraps by design, so that half is genuinely unverified rather than merely unrun.
 
+29. **Folding can grade on the EV model's fold branch, behind Advanced and marked alpha**
+    ([ADR-0046](adr/0046-folding-grades-on-the-ev-fold-branch.md), amending
+    [ADR-0004](adr/0004-ordinal-danger.md), closing `plans/EV-5` §2.5/§2.8). Tiers stay the
+    permanent default. `core/ev.ts#foldRanking` prices every held tile under the fold branch alone
+    (no win or `'tenpai'` term — a fold is noten by construction, so no DP runs), and the trainer
+    reads it straight through `core/table.ts#foldRankingOf` rather than computing anything of its
+    own — a model change moves the grade with it. `features/folding/evGrade.ts#gradeEv` bands the
+    result on `plans/EV-5` §2.5's two thresholds, per `EvModelName`, stored in the new
+    `Settings['folding'].evGrading`/`evModel`/`evBands` and read through `useAdvancedSettings` so a
+    hidden row cannot leave the mode running unseen. Defaults are measured off real fold turns
+    (`evGrade.bench.test.ts`, `EV_BENCH`-gated) rather than guessed. `LogDetail` gained `bars` — every
+    candidate drawn as a bar normalized on the ranking's own best entry, satisfying §2.5's "the
+    grading UI must show the band it graded against" — and the tier detail lines stay underneath as
+    evidence. `foldEv` is untouched, so `EV_GOLDEN` does not move. The same wave marked `/match` and
+    the two `'ev'` algorithm entries **alpha** (`components/Alpha.tsx`, `common.alphaNote`): none of
+    the three is calibrated against real play, and `plans/EV-5` §2.13's backtest is still open.
+
 ## In flight
 
 - Nothing. `plans/PLAN-ev-model.md`'s next-wave list is complete; what the EV work still owes is
@@ -688,11 +705,9 @@ Not decided, deliberately not guessed:
 
 Recorded so they stop being re-proposed:
 
-- **Push/fold _grading_.** The models exist, decide, and have a screen (items 19-21), but no
-  trainer grades against them: folding still grades on `rank === 0` and always will by default
-  ([ADR-0004](adr/0004-ordinal-danger.md), `plans/EV-5` §2.8). An EV trainer, and an Advanced
-  option letting folding grade on probability instead of tier, both want the models calibrated
-  first — which is the backtest below.
+- **A dedicated EV trainer** — a drill built around the push/fold identity itself rather than
+  folding's own Advanced grading option on it (item 29). Wants the models calibrated first, same as
+  that option did before its own backtest — see the open questions above.
 - **Reading a silent tenpai.** `dealIn.ts` refuses to speak about a seat that has not declared, and
   should keep refusing until the much weaker inference behind it is built (`plans/EV-5` §1.4).
 - **Chankan.** Kakan (`callKakan`, `/match` only) skips straight to completing the kan rather than

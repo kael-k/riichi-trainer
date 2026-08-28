@@ -28,7 +28,9 @@
     "learnMoreWiki": "Learn more on riichi.wiki",
     "rewind": "Rewind to before this action",
     "undoAction": "Undo last action",
-    "iosInstallHint": "Add this to your Home Screen to get rid of Safari's bars — tap Share, then \"Add to Home Screen\"."
+    "iosInstallHint": "Add this to your Home Screen to get rid of Safari's bars — tap Share, then \"Add to Home Screen\".",
+    "alpha": "Alpha",
+    "alphaNote": "This is an early, unreviewed feature — the numbers may still move. Treat it as a preview, not a settled result."
   },
   "settings": {
     "button": "Settings",
@@ -502,7 +504,11 @@
     "settings": {
       "opponentWins": "Opponents can win",
       "feedbackAtEnd": "Show answers only at the end of the hand",
-      "threats": "Riichi to fold against"
+      "threats": "Riichi to fold against",
+      "evGrading": "Grade on EV instead of tiers",
+      "evModel": "EV model",
+      "evNear": "Correct within (points)",
+      "evWrong": "Wrong beyond (points)"
     }
   },
   "lab": {
@@ -572,7 +578,8 @@
       "fu": "Fu",
       "fuTotal": "Total: {{exact}} → {{fu}} fu",
       "fuTotalExact": "Total: {{fu}} fu",
-      "ukeireLegend": "Numbers under each tile: copies left in the wall"
+      "ukeireLegend": "Numbers under each tile: copies left in the wall",
+      "evLegend": "Expected points per discard; bars are relative to the best one"
     },
     "lab": {
       "abort": "Turn {{turn}}: {{wind}} declared nine orphans — the hand is abandoned",
@@ -596,7 +603,8 @@
       "dealIn": "Dealt in: {{tile}} to {{wind}} — {{points}} points",
       "yourTile": "Your tile{{vs}} — {{tier}}",
       "safestTile": "Safest tile{{vs}} — {{tier}}",
-      "vs": " vs {{wind}}"
+      "vs": " vs {{wind}}",
+      "evBand": "Graded on EV ({{model}}): {{delta}} points off best (correct ≤{{near}}, wrong beyond {{wrong}})"
     },
     "efficiency": {
       "shanten": "shanten {{count}}",

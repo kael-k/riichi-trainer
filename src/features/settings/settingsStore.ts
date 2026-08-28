@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { EvModelName } from '../../core/evModel'
+import { EV_GRADE_BANDS, type EvBands } from '../folding/evGrade'
 import type { TableApp, TableSettings } from './tableSettings'
 
 export type Theme = 'system' | 'light' | 'dark'
@@ -29,6 +31,16 @@ export interface Settings {
      *  is how the trainer teaches; on, it stops the panel naming safe tiles that are still safe
      *  next turn, so the whole fold is read from the board. */
     feedbackAtEnd: boolean
+    /** Grade discards on the EV model's fold branch instead of ordinal danger tiers — Advanced
+     *  only, and read as `advanced && evGrading` (`useAdvancedSettings.ts`), so turning Advanced
+     *  off returns the drill to tiers rather than leaving an invisible mode running. **Alpha**:
+     *  `plans/EV-5` §2.5/§2.8, tiers stay the permanent default. */
+    evGrading: boolean
+    /** Which `EvModel` prices the fold branch it grades against. */
+    evModel: EvModelName
+    /** ε₁/ε₂ per model (`plans/EV-5` §2.5) — kept per-model so switching `evModel` back and forth
+     *  keeps each one's own calibration rather than sharing a single stored pair. */
+    evBands: Record<EvModelName, EvBands>
   }
   /** The five table settings shared by every board-rendering app (ADR-0015, ADR-0015): a global default
    *  layer plus a per-app override layer, both `Partial` since an absent key means inherit —
@@ -152,6 +164,9 @@ export const useSettings = create<SettingsState>()(
       },
       folding: {
         feedbackAtEnd: false,
+        evGrading: false,
+        evModel: 'statistical',
+        evBands: EV_GRADE_BANDS,
       },
       table: { global: {}, apps: {} },
       theme: 'system',
