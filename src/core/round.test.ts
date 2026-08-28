@@ -28,6 +28,7 @@ import {
 } from './round'
 import type { SeatAlgorithm } from './policy'
 import { scoreHand } from './score'
+import { shanten } from './shanten'
 import { inTileSet, MAN, NUM_TILE_TYPES, parseTenhou, SOU, type ParsedTile } from './tiles'
 import {
   completeWall,
@@ -1341,6 +1342,46 @@ describe('the turn seam', () => {
     expect(kanned(1)).toBe(false)
   })
 
+  /** Sanma, one `'ev'` seat on the derived model — the configuration the nukidora questions below
+   *  are asked in. */
+  const EV_SANMA: RoundOptions = {
+    ...SANMA,
+    algorithms: ['ev'],
+    ev: [{ model: 'statistical', objective: 'points' }],
+  }
+
+  it('does not pull a north that is holding up a suushiihou', () => {
+    // 111z 222z 333z 444z + a haku tanki: four concealed wind triplets, tenpai for daisuushii.
+    // Three of those winds are north, and nukidora would spend one — so the *ukeire* rule is what
+    // protects the yakuman, not a yaku-aware carve-out: discarding a north drops the hand off
+    // tenpai, so north's own `evaluateDiscards` entry cannot tie the best discard.
+    const wall = wallWithHand(0, parseTenhou('111z222z333z444z5z'), true, false, 'suushiihou-nuki')
+    wall[3 * INITIAL_HAND_SIZE] = parseTenhou('6z')[0] // a hatsu: junk, and never the tanki tile
+    const state = createRound(wall, 3, EV_SANMA)
+
+    beginTurn(state, EV_SANMA)
+    finishTurn(state, EV_SANMA)
+
+    expect(state.players[0].nuki).toHaveLength(0)
+    expect(state.log.some((e) => e.kind === 'kita')).toBe(false)
+    expect(state.players[0].hand.counts[NORTH]).toBe(3)
+  })
+
+  it('pulls a north the hand is not using, off an ordinary tenpai', () => {
+    // the other side of the same rule: `123456789p 1122s` is tenpai on a 1s/2s shanpon with all
+    // thirteen tiles committed, so the north that arrives on the draw is spare by construction —
+    // its `evaluateDiscards` entry ties the best discard on offer, and the pull is free dora
+    const wall = wallWithHand(0, parseTenhou('123456789p1122s'), true, false, 'ordinary-nuki')
+    wall[3 * INITIAL_HAND_SIZE] = parseTenhou('4z')[0]
+    const state = createRound(wall, 3, EV_SANMA)
+
+    beginTurn(state, EV_SANMA)
+    finishTurn(state, EV_SANMA)
+
+    expect(state.players[0].nuki).toEqual([{ id: NORTH, red: false }])
+    expect(state.log.some((e) => e.kind === 'kita')).toBe(true)
+  })
+
   it('takes a rinshan tsumo off an AI kan, which callAnkan never checks for itself', () => {
     // `callAnkan`/`callKakan`/`callKita` draw a replacement and never price it — the win check is
     // the turn loop's, and without it a hand completed by a kan's replacement vanishes silently
@@ -1354,6 +1395,122 @@ describe('the turn seam', () => {
     expect(state.win?.seat).toBe(0)
     expect(state.win?.from).toBeUndefined() // a tsumo
     expect(state.players[0].melds.map((m) => m.kind)).toEqual(['ankan'])
+  })
+})
+
+/**
+ * Daiminkan is offered to a person and to nobody else, and these pin both halves of that: the case
+ * where declining is obviously right, and the case where it is obviously wrong. **Both come out the
+ * same**, because `chooseCall` never receives `RoundOptions.calledKan` and so never sees a minkan
+ * at all (ADR-0041), and threading the flag through would not help — `shantenAfterCall` removes
+ * three tiles and adds a meld, so a hand holding a concealed triplet lands on the *same* shanten
+ * (the triplet was already a complete block) and the `after >= current` guard rejects it, always.
+ * A daiminkan needs a price of its own, on the call gate, which is `ADR-0043`'s stated rejection.
+ */
+describe("daiminkan is never an AI seat's call", () => {
+  /** The AI seats that call at all. `defense` and `tsumogiri` return `null` from `call`
+   *  unconditionally, so they would pass these by not being asked a question. */
+  const AI_MODES = [
+    ['efficiency', undefined],
+    ['ev, statistical', 'statistical'],
+    ['ev, houou', 'houou'],
+  ] as const
+
+  function aiOptions(model: 'statistical' | 'houou' | undefined): RoundOptions {
+    return {
+      ...YONMA,
+      calledKan: true,
+      algorithms: ['efficiency', model ? 'ev' : 'efficiency'],
+      ev: model ? [undefined, { model, objective: 'points' }] : undefined,
+    }
+  }
+
+  // --- declining is right: the kan would break a suuankou ---------------------------------------
+
+  /** Four concealed triplets and a 5s tanki. A daiminkan on the fourth 1m opens that triplet, and
+   *  suuankou wants all four concealed — the yakuman dies for one extra dora indicator. */
+  const SUUANKOU = '111m222m333m444p5s'
+  /** Seat 0: holds the last 1m and throws it. */
+  const THROWS_THE_LAST_1M = '1m456m789m123s456s'
+
+  it.each(AI_MODES)('%s declines the kan that would break its suuankou', (_label, model) => {
+    const options = aiOptions(model)
+    const state = createRound(handsWall('suuankou-kan', THROWS_THE_LAST_1M, SUUANKOU), 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: parseTenhou('1m')[0], fromDrawn: false })
+
+    expect(state.players[1].melds).toHaveLength(0)
+    expect(state.players[1].hand.counts[MAN]).toBe(3) // all three still concealed
+  })
+
+  it('and the kan was genuinely on offer — a manual seat in the same seat is shown it', () => {
+    // without this the row above would pass on a board where no kan was ever available
+    const options: RoundOptions = { ...YONMA, calledKan: true, claims: true, algorithms: manual(1) }
+    const state = createRound(handsWall('suuankou-kan', THROWS_THE_LAST_1M, SUUANKOU), 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: parseTenhou('1m')[0], fromDrawn: false })
+
+    expect(discardClaim(state).options.map((o) => o.kind)).toContain('minkan')
+  })
+
+  // --- declining is wrong: the kan is free ------------------------------------------------------
+
+  /** Seat 1 pons the haku, throws its spare west, and is left **open, tenpai and already yaku-ful**
+   *  on a 5s/8s ryanmen with `111m` sitting concealed beside it, doing nothing but being a set.
+   *  Kanning the fourth 1m leaves the wait exactly where it is, flips a dora indicator and draws a
+   *  replacement: free by every reading, and declined anyway. */
+  const PONS_THEN_TENPAI = '55z111m234p99s67s3z'
+  const THROWS_THE_HAKU = '5z456m789m123s456s'
+  const THROWS_THE_LAST_1M_TOO = '1m234m567m888p123p'
+
+  /** Plays seat 1 into that open tenpai with the seat still manual, and stops with seat 2 about to
+   *  act. The caller decides what seat 1 becomes before the fourth 1m is thrown — algorithms are
+   *  live, so flipping it here is the ordinary way to ask an AI a question a person set up. */
+  function openTenpai(): { state: RoundState; options: RoundOptions } {
+    const options: RoundOptions = { ...YONMA, calledKan: true, claims: true, algorithms: manual(1) }
+    const wall = wallWithHands(
+      [THROWS_THE_HAKU, PONS_THEN_TENPAI, THROWS_THE_LAST_1M_TOO].map(parseTenhou),
+      false,
+      true,
+      'daiminkan-free',
+    )
+    const state = createRound(wall, 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: parseTenhou('5z')[0], fromDrawn: false })
+    const pon = discardClaim(state).options.find((o) => o.kind === 'pon')!
+    answerClaim(state, options, { kind: 'pon', from: pon.from })
+    finishTurn(state, options, { tile: parseTenhou('3z')[0], fromDrawn: false })
+    return { state, options }
+  }
+
+  it('sets the free-kan board up: seat 1 open, tenpai, holding a concealed 111m', () => {
+    const { state } = openTenpai()
+
+    expect(state.players[1].melds.map((m) => m.kind)).toEqual(['pon'])
+    expect(state.players[1].hand.counts[MAN]).toBe(3)
+    expect(shanten(state.players[1].hand)).toBe(0)
+    expect(state.seat).toBe(2) // nobody called the west; seat 2 is about to throw the fourth 1m
+  })
+
+  it.each(AI_MODES)('%s declines the free kan too, which is the known gap', (_label, model) => {
+    const { state, options } = openTenpai()
+    state.players[1].algorithm = model ? 'ev' : 'efficiency'
+    if (model) state.players[1].ev = { model, objective: 'points' }
+
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: parseTenhou('1m')[0], fromDrawn: false })
+
+    expect(state.players[1].melds.map((m) => m.kind)).toEqual(['pon'])
+    expect(state.players[1].hand.counts[MAN]).toBe(3)
+  })
+
+  it('and that kan was on offer as well — the same board, seat 1 left manual', () => {
+    const { state, options } = openTenpai()
+
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: parseTenhou('1m')[0], fromDrawn: false })
+
+    expect(discardClaim(state).options.map((o) => o.kind)).toContain('minkan')
   })
 })
 
