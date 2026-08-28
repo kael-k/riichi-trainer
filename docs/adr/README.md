@@ -51,11 +51,12 @@ to propose the opposite next month. Do not write one for what the code plainly s
 | ---------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [0007](0007-every-seat-is-a-player.md)   | Every seat is a player; a player has an algorithm                 | Accepted                                                               |
 | [0008](0008-algorithms-are-live.md)      | Algorithm changes are live and never change the hand              | Accepted                                                               |
-| [0009](0009-decision-seam.md)            | The decision seam: `ALGORITHMS` over a curated `SeatView`         | Accepted                                                               |
+| [0009](0009-decision-seam.md)            | The decision seam: `ALGORITHMS` over a curated `SeatView`         | Amended by [0043](0043-one-turn-one-decision.md)                       |
 | [0010](0010-match-wide-permissions.md)   | Permissions are match-wide flags on `MatchOptions`                | Amended by [0041](0041-daiminkan-and-kakan-are-a-match-only-switch.md) |
 | [0011](0011-at-least-one-manual-seat.md) | At least one seat stays manual                                    | Superseded by [0012](0012-shared-table-layer.md)                       |
 | [0037](0037-the-ev-seat-decides.md)      | An EV seat decides through one identity; its model may not borrow | Amended by [0039](0039-the-currency-is-a-switch.md)                    |
 | [0039](0039-the-currency-is-a-switch.md) | The currency is a switch; an EV seat carries its model as a field | Accepted                                                               |
+| [0043](0043-one-turn-one-decision.md)    | One turn, one decision: `turn` replaces `discard` and `kita`      | Accepted                                                               |
 
 ### App layer
 

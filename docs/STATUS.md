@@ -432,6 +432,37 @@ value`) or a direction, and none asserts a magnitude.**
     moved from yellow to red, off the amber the EV seats sit on. `round.golden.test.ts`'s twenty
     frozen hashes do not move.
 
+26. **One turn, one decision — the turn-time seam collapses and the AI learns to kan**
+    ([ADR-0043](adr/0043-one-turn-one-decision.md), `plans/PLAN-turn-seam.md`). `Algorithm.discard`
+    and `Algorithm.kita` are gone, replaced by one `turn(view): TurnAction` returning a discard, a
+    kita, an ankan or a kakan — because a turn's actions **compete**, and independent methods
+    cannot rank them. `SeatView.calledKan` carries the ruleset, `policy.ts#kanOptions` is the one
+    notion of own-turn kan legality (the engine, the `'ev'` seat and `KitaKanControls` all read it),
+    and the loop lives in `finishTurn`, asked exactly as many times as the seat acts — asking from
+    `beginTurn` as well would cost an `'ev'` seat a second ~460ms `rankDiscards` every turn.
+
+    Two correctness fixes rode along. **`beginTurn` now prices the tsumo on the tile it drew**,
+    before any kita can spend it; it used to run its kita loop first and `tryWin` on the last
+    replacement. And **every replacement is win-checked by the loop**, since the three `call*`
+    functions never do it themselves — a rinshan tsumo off an AI kan used to vanish silently.
+    A seat in riichi keeps its nukidora (legal, and the engine already had it) and declares no kan.
+
+    An `'ev'` seat prices a kan by the **sign of the scaled terms** — a kan multiplies every hand at
+    the table by the same expected han, so the multiplier cancels and no constant is needed. Two
+    ceilings are stated in `bestKan` beside it: with nobody declared the cost side is zero, so it
+    kans every legal kan on a quiet board whose win the DP can price; above `maxShanten` the
+    collapsed chain prices no win, the sum is zero, and it declines for a reason unrelated to the
+    kan. **The yonma golden hashes did not move.** The sanma column moved once: every one of the
+    forty seeded rounds plays the same tiles, but an AI seat's kita now goes through `callKita` and
+    so raises the `'kita'` event a manual pull always did — previously invisible to the hash _and_
+    to every board consumer. The tsumo-before-kita fix fired on none of the twenty walls.
+
+    Still out of scope and now written down as such: **daiminkan by an AI seat** — `chooseCall`
+    structurally rejects it (a concealed triplet is already a complete block, so
+    `shantenAfterCall` returns `after === current` and the `after >= current` guard always fires),
+    so it needs a price of its own on the call gate, which costs a `rankDiscards` per seat per
+    discard.
+
 ## In flight
 
 - Nothing. `plans/PLAN-ev-model.md`'s next-wave list is complete; what the EV work still owes is
@@ -562,10 +593,12 @@ Recorded so they stop being re-proposed:
   giving every other seat a narrow ron window on the added tile first — a real third
   `PendingClaim` shape threaded through `answerClaim`/`reconsiderClaim`/`replayLog` for one rare
   yaku, out of proportion to what shipped ([ADR-0041](adr/0041-daiminkan-and-kakan-are-a-match-only-switch.md)).
-- **Rinshan kaihou.** `callAnkan`/`callKita`/`callKakan` all draw a replacement but never check
-  `tryWin` against it — a hand completed by that draw goes unnoticed in live play rather than
-  mis-scored (replay's own after-pull check is the one place it already fires, incidentally).
-  Pre-existing, not created or closed by ADR-0041.
+- **Rinshan kaihou the _yaku_.** The win itself is no longer dropped: `callAnkan`/`callKita`/
+  `callKakan` still never check `tryWin` against their own replacement, but every caller that
+  matters now does — the turn loop for an AI seat (ADR-0043) and `replayLog`'s after-pull check
+  for a replayed one. What stays unmodelled is the yaku, so a hand completed by a kan's
+  replacement is taken and scored as an ordinary tsumo. A _manual_ seat's own rinshan tsumo is
+  still not offered at all, since its kans come in through the three `call*` functions directly.
 - **Backward compatibility** for old links or persisted keys while pre-release —
   [ADR-0020](adr/0020-no-back-compat-pre-release.md).
 - **Restructuring the scoring trainer** — it generates a frozen result and renders `<Table>`

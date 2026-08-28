@@ -64,6 +64,7 @@ function viewOf(
     doraIndicators: [{ id: SOU + 0, red: false }],
     sanma: false,
     kiriageMangan: false,
+    calledKan: false,
     match: createMatch(false),
     seen,
     threats,

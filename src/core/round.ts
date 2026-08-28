@@ -6,6 +6,7 @@ import { addTile, createHand, removeTile, type Hand } from './hand'
 import type { MatchState, RoundResult } from './match'
 import {
   availableCalls,
+  chooseDiscard,
   isFuriten,
   KYUUSHU_KINDS,
   kyuushuKinds,
@@ -512,6 +513,7 @@ export function seatView(state: RoundState, options: RoundOptions, seat: number)
     doraIndicators: state.doraIndicators,
     sanma: options.sanma,
     kiriageMangan: options.kiriageMangan ?? false,
+    calledKan: options.calledKan ?? false,
     match: state.match,
     ev: player.ev,
     get seen() {
@@ -673,31 +675,13 @@ export function beginTurn(
   }
 
   const events: RoundEvent[] = []
-  let tile = take(state, player)!
+  const tile = take(state, player)!
   events.push({ kind: 'draw', seat: state.seat, tile })
 
-  // sanma nukidora: whether to pull a held north is the algorithm's own call (ADR-0009) — `efficiency`
-  // prices it exactly as the efficiency trainer grades a manual seat's own pull, `defense` never
-  // pulls (leaving the hand, not chasing dora). A fresh `SeatView` every iteration, same discipline
-  // as `analysisOf`'s own doc comment: the hand (and `state.visible`) just changed underneath it,
-  // so a reused view's cached `seen` would go stale on a second pull in the same turn.
-  while (
-    options.sanma &&
-    player.algorithm !== 'manual' &&
-    player.hand.counts[NORTH] > 0 &&
-    ALGORITHMS[player.algorithm].kita(seatView(state, options, state.seat))
-  ) {
-    removeTile(player.hand, NORTH)
-    removeConcealed(player, { id: NORTH, red: false })
-    player.nuki.push({ id: NORTH, red: false })
-    state.visible[NORTH]++
-    state.log.push({ kind: 'kita', seat: state.seat })
-    const replacement = drawReplacement(state, player)
-    if (!replacement) break
-    tile = replacement
-    events.push({ kind: 'draw', seat: state.seat, tile })
-  }
-
+  // the tsumo is priced on the tile just drawn, and nothing runs before it: a seat's own kita and
+  // kans are `finishTurn`'s (ADR-0043), which is what stops a kita from spending a tile that had
+  // already completed the hand. This used to be the other way round — the kita loop ran here and
+  // `tryWin` saw only the last replacement.
   const win = tryWin(state, state.seat, options, tile, true)
   if (win && !declineTsumo) return [...events, ...endWith(state, win)]
 
@@ -903,6 +887,73 @@ export function roundResult(state: RoundState): RoundResult | undefined {
   return undefined
 }
 
+/** Four kans and four kita is the whole of what one turn can physically hold. The bound is a
+ *  backstop against a rule bug spinning forever, the same posture `stepRound`'s own 400 takes. */
+const MAX_TURN_ACTIONS = 8
+
+/**
+ * Asks the seat's algorithm what to do with its own turn, over and over, until it answers with a
+ * discard — the kita and the kans of one turn, ranked by the algorithm rather than by this
+ * function's loop order (ADR-0043). Returns the tile kind to throw, or `undefined` when the hand
+ * ended here on a replacement draw.
+ *
+ * Three rules it keeps, each one an existing one:
+ *
+ * - **A manual seat never reaches it.** A manual seat is drawn for but never decided for
+ *   (ADR-0007/ADR-0011): its kita and kans come in through `callKita`/`callAnkan`/`callKakan`
+ *   from the UI, and `finishTurn` calls this only for a seat an algorithm really owns.
+ * - **A seat in riichi may pull a north and nothing else.** Nukidora is legal under a declared
+ *   hand and the engine has always allowed it — the pull replaces the tile the seat is locked to
+ *   and leaves the wait exactly where it was. A *kan* is refused: no wait-preserving-kan rule is
+ *   modelled here, so a declared seat declares none. This is why the loop runs before
+ *   `finishTurn` reads `forcedTsumogiri` rather than after — the locked tile is whatever the last
+ *   replacement turned out to be.
+ * - **An illegal action is a no-op, not a throw.** `callKita`/`callAnkan`/`callKakan` each check
+ *   their own legality and return no events, which is this loop's signal to stop asking and fall
+ *   through to a discard — the same untrusted-caller posture `finishTurn` and `answerClaim` hold.
+ *
+ * A fresh `SeatView` every iteration, same discipline as `analysisOf`'s own doc comment: the hand
+ * and `state.visible` just changed underneath it, so a reused view's cached `seen` would go stale.
+ * And every replacement is win-checked here, because `callAnkan`/`callKakan`/`callKita` never do
+ * it themselves — without this a rinshan tsumo would vanish silently (the yaku itself is still
+ * unimplemented, so the win is taken without it, exactly as a kita's replacement has always been).
+ */
+function takeTurn(
+  state: RoundState,
+  options: RoundOptions,
+  seat: number,
+  algorithm: AIAlgorithm,
+  events: RoundEvent[],
+): TileId | undefined {
+  const player = state.players[seat]
+  for (let guard = 0; guard < MAX_TURN_ACTIONS; guard++) {
+    const action = ALGORITHMS[algorithm].turn(seatView(state, options, seat))
+    if (action.kind === 'discard') return action.tile
+    if (player.riichiAt !== undefined && action.kind !== 'kita') break
+    const applied =
+      action.kind === 'kita'
+        ? callKita(state, options, seat)
+        : action.kind === 'ankan'
+          ? callAnkan(state, seat, action.tile)
+          : callKakan(state, options, seat, action.tile)
+    if (applied.length === 0) break
+    events.push(...applied)
+    // read off the events rather than `player.drawn`: with the dead wall spent there is no
+    // replacement at all, and the hand is left at thirteen tiles with nothing to rank
+    const replacement = applied.find((e) => e.kind === 'draw')
+    if (!replacement) break
+    const win = tryWin(state, seat, options, replacement.tile, true)
+    if (win) {
+      events.push(...endWith(state, win))
+      return undefined
+    }
+  }
+  // the loop stopped without a discard — an action the engine refused, a dead wall that ran out,
+  // or the bound. The seat still owes a tile, so it borrows `'efficiency'`'s, exactly as a manual
+  // seat caught by the branch below does.
+  return chooseDiscard(player.hand, seenBy(state, player), options.sanma).discard
+}
+
 /**
  * Plays the current seat's discard — `discard` overrides the AI, which is how a manual seat takes
  * its turn — then lets every other seat react to it: ron first, then calls.
@@ -931,6 +982,16 @@ export function finishTurn(
   const player = state.players[seat]
   const events: RoundEvent[] = []
 
+  // A seat an algorithm owns takes the whole of its own turn here — its kita and its kans ranked
+  // against its discard in one place (ADR-0043), *before* the locked-tile read below, since a
+  // nukidora pull replaces the tile a declared seat is locked to.
+  const decided =
+    !discard && player.algorithm !== 'manual'
+      ? takeTurn(state, options, seat, player.algorithm, events)
+      : undefined
+  // the loop can end the hand on a rinshan tsumo, and then there is nothing left to throw
+  if (state.ended) return events
+
   const forcedTsumogiri = player.riichiAt !== undefined && player.drawn !== undefined
   let tile: ParsedTile | undefined
   let fromDrawn: boolean
@@ -951,10 +1012,12 @@ export function finishTurn(
     // through the interactive `discard()` path, which always supplies a tile for a real manual
     // seat's own turn — `goRound` never reaches this function for a manual seat either (it stops
     // at the top of its loop instead). A 'manual' seat caught here anyway still needs *some*
-    // discard to keep the simulation moving, so it borrows 'efficiency''s.
-    const algorithm = player.algorithm === 'manual' ? 'efficiency' : player.algorithm
-    const picked = ALGORITHMS[algorithm].discard(seatView(state, options, seat))
-    tile = pickTile(player, picked.tile)
+    // discard to keep the simulation moving, so it borrows 'efficiency''s — and only its
+    // discard: the turn loop is not run for it, since a manual seat is never auto-kita'd or
+    // auto-kanned (ADR-0007/ADR-0011).
+    const picked =
+      decided ?? chooseDiscard(player.hand, seenBy(state, player), options.sanma).discard
+    tile = pickTile(player, picked)
     // not `picked.fromDrawn` — an algorithm decides at the kind level (`chooseDiscard` never sees
     // redness) and `pickTile` above always keeps a held red five over a duplicate plain one, which
     // can silently swap *which* physical copy leaves even when the kind matches the drawn one (draw

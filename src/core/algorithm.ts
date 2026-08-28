@@ -7,13 +7,22 @@ import {
   foldEv,
   rankDiscards,
   riichiWorthIt,
+  type DiscardEv,
   type EvOptions,
   type EvSeat,
 } from './ev'
 import { EV_MODELS } from './evModel'
 import type { Hand } from './hand'
 import type { MatchState } from './match'
-import { chooseCall, chooseDiscard, chooseFold, type Call, type SeatAlgorithm } from './policy'
+import {
+  chooseCall,
+  chooseDiscard,
+  chooseFold,
+  kanOptions,
+  type Call,
+  type KanOption,
+  type SeatAlgorithm,
+} from './policy'
 import { shanten } from './shanten'
 import type { ScoreResult } from './score'
 import { HONOR, type ParsedTile, type RiverTile, type TileId } from './tiles'
@@ -74,6 +83,11 @@ export interface SeatView {
    *  `'ev'` seat prices its own wins with the real scorer at the DP's leaf, so it has to price
    *  them under the ruleset the table is actually playing. */
   readonly kiriageMangan: boolean
+  /** Whether this table allows a called kan — daiminkan and kakan (`RoundOptions.calledKan`).
+   *  A rule of the match, on the same shelf as `sanma` and `kiriageMangan`, so an algorithm can
+   *  never propose a kakan the engine would then refuse. Ankan needs no flag: it is legal under
+   *  every ruleset this engine models. */
+  readonly calledKan: boolean
   /** Points, honba, riichi sticks, dealer seat, which round — the match this round sits inside.
    *  Live, not carry-in: a riichi declaration mid-round mutates `points`/`riichiSticks`, and this
    *  is the same object `RoundState.match` holds, not a snapshot taken at deal time. Nothing in
@@ -92,6 +106,17 @@ export interface SeatView {
   readonly furiten: boolean
 }
 
+/**
+ * What a seat does with its own turn. One type rather than three booleans and a tile, because the
+ * actions **compete**: "is pulling this north worth more than kanning" is a question three
+ * independent methods cannot ask, and leaving it to the engine's loop order made loop order into
+ * policy (ADR-0043).
+ *
+ * `'kita'` carries no tile — north is the only one there is (`round.ts#NORTH`).
+ */
+export type TurnAction =
+  { kind: 'discard'; tile: TileId; fromDrawn: boolean } | { kind: 'kita' } | KanOption
+
 /** A win offered to `win()`: the tile, the discarder on a ron (absent on a tsumo), and how much
  *  it scores. `tryWin` (`round.ts`) has already computed all three by the time it asks — an
  *  algorithm that can't see what it declines can't price it (ADR-0009). */
@@ -109,20 +134,27 @@ export interface WinCandidate {
  * never sort stability — which is what lets a whole match be reproduced from its seed.
  */
 export interface Algorithm {
-  /** 14-tile hand: which tile goes, and whether the algorithm sees no difference between that
-   *  kind and the one just drawn (`fromDrawn`) — advisory, not authoritative: `round.ts`'s own
-   *  `finishTurn` re-derives the river's actual tsumogiri flag from the tile it really discards,
-   *  since resolving *which* physical copy of a kind leaves (redness included) is `pickTile`'s
-   *  job, not the algorithm's — an algorithm decides at the kind level and never sees redness. */
-  discard(view: SeatView): { tile: TileId; fromDrawn: boolean }
+  /**
+   * The whole of a seat's own turn, ranked in one place: throw something, pull a north, or
+   * declare a kan. Asked repeatedly until it answers with a discard — a turn may hold several
+   * kans and several kita, and each one draws a replacement the next answer sees.
+   *
+   * On the `'discard'` variant, `fromDrawn` says whether the algorithm sees no difference between
+   * the kind it chose and the one just drawn — advisory, not authoritative: `round.ts`'s own
+   * `finishTurn` re-derives the river's actual tsumogiri flag from the tile it really discards,
+   * since resolving *which* physical copy of a kind leaves (redness included) is `pickTile`'s
+   * job, not the algorithm's — an algorithm decides at the kind level and never sees redness.
+   *
+   * An action the engine would refuse is a no-op, not a throw: `callKita`/`callAnkan`/`callKakan`
+   * each check their own legality and return nothing, and the loop falls through to a discard.
+   */
+  turn(view: SeatView): TurnAction
   /** Someone else discarded `tile`: pon/chi it, or decline. */
   call(view: SeatView, tile: TileId, fromKamicha: boolean): Call | null
   /** The discard just made reaches tenpai and riichi is legal: declare? */
   riichi(view: SeatView): boolean
   /** A legal, scored win is on the table: take it? */
   win(view: SeatView, candidate: WinCandidate): boolean
-  /** Sanma only: pull a held north? */
-  kita(view: SeatView): boolean
   /**
    * The opening hand holds nine or more distinct terminals and honours and nobody has called:
    * abort it? `round.ts` has already checked the legality (`canDeclareKyuushu`), so this is the
@@ -135,35 +167,44 @@ export interface Algorithm {
   abort(view: SeatView): boolean
 }
 
+/** Whether pulling a held north costs nothing: north's own `evaluateDiscards` entry ties the best
+ *  discard on offer, the same comparison the efficiency trainer grades a manual seat's own pull
+ *  against. Shared by `efficiency` and `ev` — the EV version prices the dora against the tempo,
+ *  and that is `plans/EV-3` §7's, not this wave's. */
+function pullsNorth(view: SeatView): boolean {
+  if (!view.sanma || view.hand.counts[NORTH] === 0) return false
+  const ranked = evaluateDiscards(view.hand, view.seen, view.sanma)
+  const north = ranked.find((o) => o.discard === NORTH)
+  return north !== undefined && isBestDiscard(north, ranked[0])
+}
+
 const efficiency: Algorithm = {
-  // `fromDrawn` here is advisory only (see the `Algorithm.discard` doc comment) — this algorithm
+  // `fromDrawn` here is advisory only (see the `Algorithm.turn` doc comment) — this algorithm
   // has no preference between two identical tiles, so reporting "the kind I picked is the kind I
   // drew" is honest, even though `round.ts` still re-derives the river flag from the tile it
-  // actually resolves through `pickTile`
-  discard: (view) => {
+  // actually resolves through `pickTile`.
+  //
+  // No kan: ukeire ranks the discards of whatever hand it is handed and has no opinion on whether
+  // to change the hand's shape — the same reasoning `abort` below gives.
+  turn: (view) => {
+    if (pullsNorth(view)) return { kind: 'kita' }
     const { discard: tile } = chooseDiscard(view.hand, view.seen, view.sanma)
-    return { tile, fromDrawn: tile === view.drawn?.id }
+    return { kind: 'discard', tile, fromDrawn: tile === view.drawn?.id }
   },
   call: (view, tile, fromKamicha) =>
     chooseCall(view.hand, view.melds, tile, fromKamicha, view.prevalentWind, view.seatWind),
   riichi: () => true,
   win: () => true,
-  // pulls whenever north's own `evaluateDiscards` entry ties the best discard on offer — the same
-  // comparison the efficiency trainer grades a manual seat's own pull against
-  kita: (view) => {
-    const ranked = evaluateDiscards(view.hand, view.seen, view.sanma)
-    const north = ranked.find((o) => o.discard === NORTH)
-    return north !== undefined && isBestDiscard(north, ranked[0])
-  },
   // ukeire says nothing about whether a hand is worth playing at all — it ranks the discards of
   // whatever hand it is handed. Declining is this algorithm staying inside its own definition.
   abort: () => false,
 }
 
 const defense: Algorithm = {
-  discard: (view) => {
+  // no kita and no kan: a folding seat is leaving the hand, not developing it or raising its stakes
+  turn: (view) => {
     const tile = chooseFold(view.hand, view.threats, view.seen, view.sanma)
-    return { tile, fromDrawn: tile === view.drawn?.id }
+    return { kind: 'discard', tile, fromDrawn: tile === view.drawn?.id }
   },
   // every meld opened is one more shape to defend a wait with, and a folding seat is trying to
   // leave the hand, not develop it
@@ -171,7 +212,6 @@ const defense: Algorithm = {
   riichi: () => false,
   // a folding seat is leaving the hand, not chasing dora
   win: () => false,
-  kita: () => false,
   // it would gladly be out of this hand, but it has no way to price what aborting gives up
   abort: () => false,
 }
@@ -192,14 +232,13 @@ function lowestHeld(hand: Hand): TileId {
  *  Harmless, since it never wins anyway, but it does mean this seat overlaps `defense` on that one
  *  axis. */
 const tsumogiri: Algorithm = {
-  discard: (view) =>
+  turn: (view) =>
     view.drawn
-      ? { tile: view.drawn.id, fromDrawn: true }
-      : { tile: lowestHeld(view.hand), fromDrawn: false },
+      ? { kind: 'discard', tile: view.drawn.id, fromDrawn: true }
+      : { kind: 'discard', tile: lowestHeld(view.hand), fromDrawn: false },
   call: () => null,
   riichi: () => false,
   win: () => false,
-  kita: () => false,
   abort: () => false,
 }
 
@@ -217,7 +256,8 @@ function evOptions(view: SeatView): EvOptions {
  * own `EvSeat`, read fresh on every decision, so both are live in exactly the way the algorithm
  * itself is (ADR-0008).
  *
- * **The discard, the riichi declaration and the abortive draw are priced through the identity.**
+ * **The discard, the kan, the riichi declaration and the abortive draw are priced through the
+ * identity.**
  * The other three decision points are honest stand-ins, and each says what it is standing in for:
  *
  * - `call` keeps `chooseCall`'s rule — a meld that lowers shanten and leaves a yaku route — with
@@ -227,22 +267,37 @@ function evOptions(view: SeatView): EvOptions {
  * - `win` takes every win offered. Declining prices a furiten branch — temporary, or permanent
  *   under riichi — that nothing models yet, and a decider that cannot price the cost of declining
  *   should not decline.
- * - `kita` reuses `efficiency`'s comparison. The EV version prices the dora against the tempo, and
- *   that is `plans/EV-3` §7's, not this wave's.
+ * - the kita half of `turn` reuses `efficiency`'s comparison (`pullsNorth`). The EV version prices
+ *   the dora against the tempo, and that is `plans/EV-3` §7's, not this wave's.
  *
  * `abort` is `EV(keep) < 0`, which is the identity read against a branch worth exactly nothing —
  * see `abortWorthIt` for the two ceilings that answer ships with.
  */
 const ev: Algorithm = {
-  discard: (view) => {
+  turn: (view) => {
+    // a declared hand has nothing left to rank: every later discard is the drawn tile, and the
+    // only choice still open is whether to pull a north. Short-circuited here rather than in
+    // `round.ts` because this is the one algorithm the DP would cost ~460ms a turn to ask.
+    if (view.riichi) {
+      if (pullsNorth(view)) return { kind: 'kita' }
+      return view.drawn
+        ? { kind: 'discard', tile: view.drawn.id, fromDrawn: true }
+        : { kind: 'discard', tile: lowestHeld(view.hand), fromDrawn: false }
+    }
     const opts = evOptions(view)
-    const push = rankDiscards(view, opts)[0]
+    // one ranking for the whole turn: the kan rule reads the same best push the discard does, so
+    // asking twice would double this seat's own most expensive call (~460ms at 2-shanten)
+    const ranked = rankDiscards(view, opts)
+    const kan = bestKan(view, ranked[0])
+    if (kan) return kan
+    if (pullsNorth(view)) return { kind: 'kita' }
+    const push = ranked[0]
     const fold = foldEv(view, opts)
     // a fold is a real branch, not the tail of the ranking: it gives up the win term entirely
     // and spends the hand's safe tiles in order, so it can beat every push without any single
     // discard looking wrong
     const tile = push !== undefined && push.ev >= fold.ev ? push.tile : fold.tile
-    return { tile, fromDrawn: tile === view.drawn?.id }
+    return { kind: 'discard', tile, fromDrawn: tile === view.drawn?.id }
   },
   call: (view, tile, fromKamicha) => {
     const call = chooseCall(
@@ -259,11 +314,47 @@ const ev: Algorithm = {
   riichi: (view) => riichiWorthIt(view, evOptions(view)),
   win: () => true,
   abort: (view) => abortWorthIt(view, evOptions(view)),
-  kita: (view) => {
-    const ranked = evaluateDiscards(view.hand, view.seen, view.sanma)
-    const north = ranked.find((o) => o.discard === NORTH)
-    return north !== undefined && isBestDiscard(north, ranked[0])
-  },
+}
+
+/**
+ * Which kan to declare on this turn, if any — decided by the **sign of the scaled terms**, which
+ * is why it needs no constant of its own.
+ *
+ * A kan flips one more dora indicator, and that multiplies every hand at the table by the same
+ * expected han — yours and every threat's alike. So
+ * `EV(kan) − EV(no kan) = m × Σ(the terms whose value is a hand's worth)` for some `m > 0`, and a
+ * binary decision needs only the sign: `m` cancels, and nothing has to be estimated.
+ *
+ * `'notWinning'` is excluded, and that is the stated approximation: `EvModel.giveUpCost` is
+ * opponents' tsumo payments (which scale with the dora) plus the noten penalty (which does not),
+ * and the interface cannot split them. `'tenpai'` is excluded because the tenpai payment is a
+ * fixed rule amount.
+ *
+ * **The ceiling, stated the way `abortWorthIt` states its two.** With nobody in riichi the cost
+ * side is *zero* — `dealIn.ts` refuses to speak about a seat that has not declared
+ * (`plans/EV-2` §2) — so the sum is the win term alone and an `'ev'` seat **kans every legal kan
+ * on an undeclared board whose win the DP can price at all**. That is arithmetic under a stated
+ * refusal rather than a judgement, exactly the shape of this algorithm aborting nearly every legal
+ * kyuushu hand, and it stops being one when the model can price a threat nobody has declared.
+ *
+ * The second half of that sentence is the other ceiling and it cuts the opposite way: above
+ * `maxShanten` the collapsed chain prices no win, so the sum is exactly zero and the kan is
+ * declined — for a reason that has nothing to do with the kan.
+ *
+ * Tie-break: kakan before ankan — the fourth copy of a melded pon is a dead tile where four
+ * concealed copies are not — then the lowest tile id, stated as arbitrary because the model sees
+ * no difference between one indicator and another.
+ */
+function bestKan(view: SeatView, best: DiscardEv | undefined): KanOption | undefined {
+  const options = kanOptions(view.hand, view.melds, view.calledKan)
+  if (options.length === 0) return undefined
+  const scaled =
+    best?.terms
+      .filter((t) => t.kind === 'win' || t.kind === 'dealIn' || t.kind === 'danger')
+      .reduce((sum, t) => sum + t.points, 0) ?? 0
+  if (scaled <= 0) return undefined
+  // `kanOptions` is already in tile order, so the first of either kind is the lowest id
+  return options.find((o) => o.kind === 'kakan') ?? options[0]
 }
 
 /** Whether taking this call leaves the hand tenpai — the cheap stand-in for pricing it. The two

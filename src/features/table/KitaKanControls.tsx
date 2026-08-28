@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { Tile } from '../../components/tiles/Tile'
 import type { Meld } from '../../core/agari'
+import { createHand } from '../../core/hand'
+import { kanOptions } from '../../core/policy'
 import { NORTH } from '../../core/round'
 import type { ParsedTile, TileId } from '../../core/tiles'
 
@@ -15,7 +17,10 @@ interface KitaKanControlsProps {
   drawn: ParsedTile | undefined
   /** The acting seat's own melds — read only to find a pon holding a kakan-eligible 4th copy.
    *  Omitted (with `onKakan`) on every trainer but the match board, which is what keeps kakan
-   *  ankan's-sibling-only there and off everywhere else. */
+   *  ankan's-sibling-only there and off everywhere else. **Its presence is what stands in for
+   *  `RoundOptions.calledKan` here**: the two travel together by contract, and reading one flag
+   *  in both `kitaKanVisible` and the render is what keeps the button row and the "is there a row
+   *  at all" answer from disagreeing. */
   melds?: readonly Meld[]
   /** Whether this seat's turn is actually live right now — the same guard each page already
    *  computes for its discard handler; this component makes no turn-order decision of its own. */
@@ -26,40 +31,28 @@ interface KitaKanControlsProps {
   onKakan?: (id: TileId) => void
 }
 
-/** Tile id → held count, hand plus the separated drawn tile — the one count both ankan (needs 4)
- *  and kakan (needs 1, on top of an existing pon) read. */
-function heldCounts(
-  hand: readonly ParsedTile[],
-  drawn: ParsedTile | undefined,
-): Map<number, number> {
-  const counts = new Map<number, number>()
-  for (const t of hand) counts.set(t.id, (counts.get(t.id) ?? 0) + 1)
-  if (drawn) counts.set(drawn.id, (counts.get(drawn.id) ?? 0) + 1)
-  return counts
-}
-
-function kakanEligible(melds: readonly Meld[] | undefined, counts: Map<number, number>): TileId[] {
-  if (!melds) return []
-  return melds
-    .filter((m) => m.kind === 'pon' && (counts.get(m.tiles[0].id) ?? 0) >= 1)
-    .map((m) => m.tiles[0].id)
+/** The kans this seat could declare, read off the engine's own rule (`policy.ts#kanOptions`)
+ *  rather than a second one drawn here — the reason the helper exists. The page hands this
+ *  component tiles as held rather than a `Hand`, so the counts are rebuilt: the drawn tile is
+ *  separated out on the way in and a kan on a triplet the draw just completed needs it counted.
+ *  `calledKan` rides on `onKakan` being passed at all, which is the match board alone. */
+function kansOf({ hand, drawn, melds }: Pick<KitaKanControlsProps, 'hand' | 'drawn' | 'melds'>) {
+  const counts = createHand()
+  for (const t of hand) counts.counts[t.id]++
+  if (drawn) counts.counts[drawn.id]++
+  return kanOptions(counts, melds ?? [], melds !== undefined)
 }
 
 /** Whether `KitaKanControls` would render anything for these props — same contract as
  *  `manualControlsVisible`: a caller floating this in a positioned card must be able to tell an
  *  empty turn from a busy one before rendering the card at all (ADR-0035). */
 // eslint-disable-next-line react-refresh/only-export-components
-export function kitaKanVisible({
-  sanma,
-  hand,
-  drawn,
-  melds,
-  canAct,
-}: Pick<KitaKanControlsProps, 'sanma' | 'hand' | 'drawn' | 'melds' | 'canAct'>): boolean {
-  if (!canAct) return false
-  if (sanma && hand.some((t) => t.id === NORTH)) return true
-  const counts = heldCounts(hand, drawn)
-  return [...counts.values()].some((c) => c === 4) || kakanEligible(melds, counts).length > 0
+export function kitaKanVisible(
+  props: Pick<KitaKanControlsProps, 'sanma' | 'hand' | 'drawn' | 'melds' | 'canAct'>,
+): boolean {
+  if (!props.canAct) return false
+  if (props.sanma && props.hand.some((t) => t.id === NORTH)) return true
+  return kansOf(props).length > 0
 }
 
 /**
@@ -68,22 +61,14 @@ export function kitaKanVisible({
  * held quad) is offered everywhere this component is used; kakan (an added kan on an open pon) is
  * offered only when the caller passes `melds`/`onKakan` — the match board alone.
  */
-export function KitaKanControls({
-  sanma,
-  hand,
-  drawn,
-  melds,
-  canAct,
-  onKita,
-  onKan,
-  onKakan,
-}: KitaKanControlsProps) {
+export function KitaKanControls(props: KitaKanControlsProps) {
+  const { sanma, hand, onKita, onKan, onKakan } = props
   const { t } = useTranslation()
-  if (!kitaKanVisible({ sanma, hand, drawn, melds, canAct })) return null
+  if (!kitaKanVisible(props)) return null
 
-  const counts = heldCounts(hand, drawn)
-  const ankanIds = [...counts.entries()].filter(([, c]) => c === 4).map(([id]) => id)
-  const kakanIds = onKakan ? kakanEligible(melds, counts) : []
+  const kans = kansOf(props)
+  const ankanIds = kans.filter((k) => k.kind === 'ankan').map((k) => k.tile)
+  const kakanIds = kans.filter((k) => k.kind === 'kakan').map((k) => k.tile)
   const hasNorth = sanma && hand.some((t) => t.id === NORTH)
 
   return (

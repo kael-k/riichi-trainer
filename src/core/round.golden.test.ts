@@ -39,6 +39,14 @@ function serialize(events: RoundEvent[]): string {
           return 'exhaustive'
         case 'abort':
           return `abort:${e.seat}:${e.reason}`
+        // an own-turn action was invisible to this hash until an algorithm could take one
+        // (ADR-0043): an `'ev'` seat's kans would otherwise move `EV_GOLDEN` not at all
+        case 'kita':
+          return `kita:${e.seat}`
+        case 'ankan':
+          return `ankan:${e.seat}:${e.tile}`
+        case 'kakan':
+          return `kakan:${e.seat}:${e.tile}`
       }
     })
     .join('|')
@@ -66,31 +74,40 @@ declare const process: { env: Record<string, string | undefined> }
 
 /** Frozen event streams. Regenerate with `GENERATE_GOLDEN=1 npx vitest run
  *  src/core/round.golden.test.ts --disable-console-intercept` and paste the printed table back in
- *  here — a change that has to move these says so in its own commit. Three have: T3 of the
+ *  here — a change that has to move these says so in its own commit. Four have: T3 of the
  *  seat-algorithm refactor (it changed what `defense`/`efficiency` decide), the move to real
- *  4/4/4+1 dealing (every seat is dealt different tiles off the same wall), and cutting the dead wall
- *  into real stacks (ADR-0028, which moves which tiles are dora and which ura pays out). */
+ *  4/4/4+1 dealing (every seat is dealt different tiles off the same wall), cutting the dead wall
+ *  into real stacks (ADR-0028, which moves which tiles are dora and which ura pays out), and the
+ *  turn seam (ADR-0043).
+ *
+ *  **The fourth move is the sanma column alone, and it is not a decision change.** Every one of
+ *  the forty seeded rounds plays exactly the tiles it played before; what moved is that an AI
+ *  seat's own kita now goes through `callKita` and so raises the `'kita'` event a manual seat's
+ *  pull always did — invisible to this hash until `serialize` above learned to spell it. The
+ *  correctness fix the seam carried (a tsumo is now priced on the drawn tile, before any kita
+ *  spends it) fired on **none** of the twenty walls, which is worth knowing: no seeded sanma hand
+ *  ever had a kita competing with a tsumo. */
 const GOLDEN: Record<string, [yonma: string, sanma: string]> = {
-  'golden-0': ['1771f2e19c0e5bf8', 'f8f21d751959f3d1'],
-  'golden-1': ['4047a43d61d584f0', '66d6d8dde8f00eaa'],
-  'golden-2': ['41b64dafd8de6987', 'b2b1a21d8d9e1e52'],
-  'golden-3': ['bb468b2afb281212', '093d886952bc7b19'],
-  'golden-4': ['afc54c91dc9d069a', '2a852d9026a370d5'],
+  'golden-0': ['1771f2e19c0e5bf8', '8a49ea858dd3ee22'],
+  'golden-1': ['4047a43d61d584f0', 'cb12eb6c48b69292'],
+  'golden-2': ['41b64dafd8de6987', '0848579437debaa9'],
+  'golden-3': ['bb468b2afb281212', '81038a99e244d0fa'],
+  'golden-4': ['afc54c91dc9d069a', '78a1694797b8d6ca'],
   'golden-5': ['2a79119f8bea1b22', '427c24dfbe769e35'],
-  'golden-6': ['3173e588cf15f213', '229f61d5553ffa7b'],
-  'golden-7': ['eca7cd5f289ec8ab', '0c18e1cc5162567e'],
-  'golden-8': ['37046f5637bdbdff', 'f0caa9459c793f57'],
-  'golden-9': ['d4813c6b02bcfeff', '05b752de4cbfb3c2'],
-  'golden-10': ['939714d757dc4101', '0fb2bd027169bd11'],
-  'golden-11': ['1d199abe707275f6', '867993f028ccac47'],
-  'golden-12': ['664af11d0925dde4', '3ec4629f54071bd0'],
-  'golden-13': ['d16d65d947b9955d', 'e3e6ef10c6a82b36'],
-  'golden-14': ['95b5ade0a11929f6', '01ed69f34db9fbde'],
-  'golden-15': ['5cac3039e5faffab', '9f33c6ed50ab298c'],
-  'golden-16': ['d9ad2a6b42c5f843', '4a34f4e9728fe8e3'],
-  'golden-17': ['e387e2fcea924abf', 'cd9b62651ad55b5f'],
-  'golden-18': ['098ff6ac78118d20', 'a48703b94847bfad'],
-  'golden-19': ['62be2ff8e1e0537f', 'f98026bd1740656d'],
+  'golden-6': ['3173e588cf15f213', '482da96e1005e2f2'],
+  'golden-7': ['eca7cd5f289ec8ab', 'a152ce5cc699f818'],
+  'golden-8': ['37046f5637bdbdff', '469f4b4b944ac8fe'],
+  'golden-9': ['d4813c6b02bcfeff', '31bd8844e96fcaf6'],
+  'golden-10': ['939714d757dc4101', 'f0faef8cf752794a'],
+  'golden-11': ['1d199abe707275f6', '75c57dcccef83fe7'],
+  'golden-12': ['664af11d0925dde4', '3c4ade876fa0a6f4'],
+  'golden-13': ['d16d65d947b9955d', '4e3b023ee012b237'],
+  'golden-14': ['95b5ade0a11929f6', '2523d073837811e1'],
+  'golden-15': ['5cac3039e5faffab', '5ee2df9821e265c2'],
+  'golden-16': ['d9ad2a6b42c5f843', '02a95faa3b120816'],
+  'golden-17': ['e387e2fcea924abf', 'd2f9740eca98f15a'],
+  'golden-18': ['098ff6ac78118d20', '0ddc8b802d748cb6'],
+  'golden-19': ['62be2ff8e1e0537f', '3214d0ee34a3f8e9'],
 }
 
 /**
@@ -110,6 +127,11 @@ const EV_GOLDEN: Record<'statistical' | 'houou', string> = {
   statistical: 'bb468b2afb281212',
   houou: '824333eb044ca5f5',
 }
+
+// Neither moved for the turn seam, and that is a fact about this one wall rather than about the
+// kan rule: `golden-3` deals no seat a concealed quad, and `YONMA` leaves `calledKan` off, so
+// there was never a legal kan for either model to price. What the rule does when there *is* one
+// is `round.test.ts`'s two `'ev'` kan tests.
 
 describe('match golden determinism', () => {
   if (process.env.GENERATE_GOLDEN) {

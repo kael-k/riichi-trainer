@@ -694,18 +694,23 @@ describe('defensive policy', () => {
   it('pulls a held north under efficiency; a defense seat never does (T3)', () => {
     // tenpai (shanpon on 1s/2s) plus a pinned North draw: discarding North is the unique best
     // line (every other discard breaks the tenpai), so pulling it — the same evaluateDiscards
-    // comparison a plain discard would make — is unambiguous, not just a tie
+    // comparison a plain discard would make — is unambiguous, not just a tie.
+    // The pull happens in `finishTurn` now, not `beginTurn`: a seat's own kita competes with its
+    // discard and its kans, so all three are asked at the one moment (ADR-0043).
     const hand = parseTenhou('123456789p1122s')
     const wall = wallWithHand(0, hand, true, false, 'kita-t3-seed')
     wall[3 * INITIAL_HAND_SIZE] = parseTenhou('4z')[0] // seat 0's draw: North
 
     const pulling = createRound(wall, 3, SANMA)
     beginTurn(pulling, SANMA)
+    expect(pulling.players[0].nuki).toHaveLength(0)
+    finishTurn(pulling, SANMA)
     expect(pulling.players[0].nuki).toEqual([{ id: NORTH, red: false }])
 
     const folding = createRound(wall, 3, SANMA)
     folding.players[0].algorithm = 'defense'
     beginTurn(folding, SANMA)
+    finishTurn(folding, SANMA)
     expect(folding.players[0].nuki).toHaveLength(0)
   })
 })
@@ -1075,13 +1080,16 @@ describe('RoundState.log', () => {
     }
   })
 
-  it("logs an AI seat's sanma kita pull without adding a distinct RoundEvent (T0 hazard)", () => {
-    // beginTurn's own kita loop must keep returning `draw` events only — state.log is a second,
-    // additive output, never something the golden-hash test's `serialize` can see move
+  it("reports an AI seat's sanma kita pull as the same event a manual seat's raises", () => {
+    // it used to raise none at all: the pull was `beginTurn`'s own inline mutation and only its
+    // replacement `draw` reached the stream, so nothing watching a board could tell a nukidora
+    // from an ordinary draw. Routing every pull through `callKita` (ADR-0043) is what fixed it,
+    // and it is the whole of why the sanma golden hashes moved.
     for (let i = 0; i < 40; i++) {
       const { state, events } = playRound(`log-sanma-${i}`, 3, SANMA)
-      if (state.log.some((e) => e.kind === 'kita')) {
-        expect(events.some((e) => e.kind === 'kita')).toBe(false)
+      const logged = state.log.filter((e) => e.kind === 'kita')
+      if (logged.length > 0) {
+        expect(events.filter((e) => e.kind === 'kita')).toHaveLength(logged.length)
         return
       }
     }
@@ -1234,6 +1242,118 @@ describe('called kan', () => {
     const on: RoundOptions = { ...off, calledKan: true }
     expect(callKakan(state, on, 0, SOU + 8)).toEqual([]) // not seat 0's pon
     expect(callKakan(state, on, 1, MAN)).toEqual([]) // no pon of 1m to upgrade
+  })
+})
+
+describe('the turn seam', () => {
+  /** Seat 0 is dealt three 1m and draws the fourth, so a closed kan is on the table from its very
+   *  first turn — and the hand is tenpai (shanpon on 1p/2p) either way, which is what lets the EV
+   *  model price a win at all: above 2-shanten the collapsed chain prices none, and the kan rule's
+   *  sum comes out at exactly zero. */
+  const QUAD_HAND = '111m456789m1122p'
+  const EV: RoundOptions = {
+    ...YONMA,
+    algorithms: ['ev'],
+    ev: [{ model: 'statistical', objective: 'points' }],
+  }
+  function quadWall(seed: string): ParsedTile[] {
+    const wall = wallWithHand(0, parseTenhou(QUAD_HAND), false, false, seed)
+    wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1m')[0]
+    return wall
+  }
+
+  it('an ev seat declares a closed kan that efficiency leaves alone', () => {
+    const wall = quadWall('turn-seam-kan')
+
+    const priced = createRound(wall, 4, EV)
+    beginTurn(priced, EV)
+    finishTurn(priced, EV)
+    expect(priced.players[0].melds.map((m) => m.kind)).toEqual(['ankan'])
+    expect(priced.log.some((e) => e.kind === 'ankan')).toBe(true)
+
+    // ukeire ranks the discards of whatever hand it is handed and has no opinion on changing its
+    // shape — the same reasoning `efficiency.abort` gives
+    const plain = createRound(wall, 4, YONMA)
+    beginTurn(plain, YONMA)
+    finishTurn(plain, YONMA)
+    expect(plain.players[0].melds).toHaveLength(0)
+  })
+
+  it('never auto-kans a manual seat, the way it never auto-pulls its north', () => {
+    // the same seat, carrying the same EV pricing, but on `'manual'`: an algorithm is never
+    // consulted for it at all (ADR-0007/ADR-0011), so the kan the row above takes is left for the
+    // reader's own `callAnkan`
+    const options: RoundOptions = { ...EV, algorithms: manual(0) }
+    const state = createRound(quadWall('turn-seam-manual'), 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options)
+
+    expect(state.players[0].melds).toHaveLength(0)
+    expect(state.log.some((e) => e.kind === 'ankan')).toBe(false)
+  })
+
+  it('declares no kan in riichi, where no wait-preserving rule is modelled', () => {
+    const state = createRound(quadWall('turn-seam-riichi'), 4, EV)
+    beginTurn(state, EV)
+    state.players[0].riichiAt = 0 // declared on a previous turn; the hand is locked
+
+    finishTurn(state, EV)
+
+    expect(state.players[0].melds).toHaveLength(0)
+    expect(state.players[0].river[0].tsumogiri).toBe(true)
+  })
+
+  it('still pulls a north in riichi, which nukidora has always allowed', () => {
+    // the half the seam must not lose: a pull replaces the tile a declared seat is locked to and
+    // leaves its wait exactly where it was, so it is legal where a kan is not
+    const wall = wallWithHand(0, parseTenhou('123456789p1122s'), true, false, 'kita-t3-seed')
+    wall[3 * INITIAL_HAND_SIZE] = parseTenhou('4z')[0]
+    const state = createRound(wall, 3, SANMA)
+    beginTurn(state, SANMA)
+    state.players[0].riichiAt = 0
+
+    finishTurn(state, SANMA)
+
+    expect(state.players[0].nuki).toEqual([{ id: NORTH, red: false }])
+    expect(state.players[0].river[0].tsumogiri).toBe(true)
+  })
+
+  it('takes the kan on a quiet board and declines the same one into a riichi', () => {
+    // the two ends of the sign rule on one hand. A kan multiplies every hand at the table by the
+    // same expected han — yours and every threat's alike — so it is worth taking exactly when the
+    // scaled terms already sum in your favour. This hand is middling enough for one declared seat
+    // to turn that sum negative, where the tenpai hand above stays worth kanning against three.
+    const MIDDLING = '111m456m78p1234s'
+    const kanned = (threats: number): boolean => {
+      const wall = wallWithHand(0, parseTenhou(MIDDLING), false, false, 'turn-seam-kan')
+      wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1m')[0]
+      const state = createRound(wall, 4, EV)
+      beginTurn(state, EV)
+      for (let seat = 1; seat <= threats; seat++) {
+        state.players[seat].riichiAt = 0
+        state.players[seat].riichiTurn = 1
+      }
+      finishTurn(state, EV)
+      return state.players[0].melds.length > 0
+    }
+
+    expect(kanned(0)).toBe(true)
+    expect(kanned(1)).toBe(false)
+  })
+
+  it('takes a rinshan tsumo off an AI kan, which callAnkan never checks for itself', () => {
+    // `callAnkan`/`callKakan`/`callKita` draw a replacement and never price it — the win check is
+    // the turn loop's, and without it a hand completed by a kan's replacement vanishes silently
+    const wall = quadWall('turn-seam-rinshan')
+    wall[wall.length - 1] = parseTenhou('1p')[0] // the first rinshan tile drawReplacement pops
+    const state = createRound(wall, 4, EV)
+    beginTurn(state, EV)
+    finishTurn(state, EV)
+
+    expect(state.ended).toBe('win')
+    expect(state.win?.seat).toBe(0)
+    expect(state.win?.from).toBeUndefined() // a tsumo
+    expect(state.players[0].melds.map((m) => m.kind)).toEqual(['ankan'])
   })
 })
 

@@ -188,6 +188,35 @@ export function availableCalls(
   return calls
 }
 
+/** One own-turn kan this seat could declare. A discriminated pair rather than one object with a
+ *  union discriminant, so it drops straight into `TurnAction` (`core/algorithm.ts`) unchanged. */
+export type KanOption = { kind: 'ankan'; tile: TileId } | { kind: 'kakan'; tile: TileId }
+
+/**
+ * Kans this seat could declare on its own turn, in tile order: a closed kan on any held quad,
+ * and — only under `calledKan` — an added kan on a pon it already holds the fourth copy of.
+ *
+ * One notion of the rule for three readers: `round.ts`'s own turn loop, the `'ev'` algorithm that
+ * prices them, and `KitaKanControls`, which drew its own before this existed. The two kinds are
+ * mutually exclusive per kind, and not by a rule that needs stating: a melded pon's three copies
+ * are not in `hand.counts` at all, so a kind held four times concealed can never also be a pon
+ * this seat holds the fourth of.
+ *
+ * Daiminkan is deliberately absent — it is a claim on somebody else's discard (`availableCalls`
+ * above), not an own-turn action.
+ */
+export function kanOptions(hand: Hand, melds: readonly Meld[], calledKan: boolean): KanOption[] {
+  const options: KanOption[] = []
+  const ponned = new Set(melds.filter((m) => m.kind === 'pon').map((m) => m.tiles[0].id))
+  for (let id = 0; id < hand.counts.length; id++) {
+    if (hand.counts[id] === 4) options.push({ kind: 'ankan', tile: id })
+    else if (calledKan && hand.counts[id] >= 1 && ponned.has(id)) {
+      options.push({ kind: 'kakan', tile: id })
+    }
+  }
+  return options
+}
+
 /** Shanten this hand would reach by taking `call` and then discarding its best tile. Shanten
  *  only: whether to call never depends on the ukeire behind it, and pricing it would put the
  *  simulator's most expensive operation on a path walked by every opponent on every discard. */

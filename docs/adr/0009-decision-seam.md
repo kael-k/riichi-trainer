@@ -5,6 +5,9 @@
 **Amended by** [ADR-0023](0023-round-inside-match.md): the last rejected row below (points, honba
 and riichi sticks off the view) no longer holds — `SeatView.match` carries them, now that
 `core/match.ts` models them and no field is left permanently `undefined`.
+**Amended by** [ADR-0043](0043-one-turn-one-decision.md): `discard` and `kita` are no longer
+separate methods. A turn's actions compete, so they collapse into one `turn(view): TurnAction`
+that also covers the kans this ADR never modelled. Everything else below stands.
 
 ## Context
 
