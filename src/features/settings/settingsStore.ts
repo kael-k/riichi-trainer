@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { EvModelName } from '../../core/evModel'
-import { EV_GRADE_BANDS, type EvBands } from '../folding/evGrade'
+import { FOLD_EV_BANDS, PUSH_EV_BANDS, type EvBands } from '../table/evGrade'
 import type { TableApp, TableSettings } from './tableSettings'
 
 export type Theme = 'system' | 'light' | 'dark'
@@ -40,6 +40,19 @@ export interface Settings {
     evModel: EvModelName
     /** ε₁/ε₂ per model (`plans/EV-5` §2.5) — kept per-model so switching `evModel` back and forth
      *  keeps each one's own calibration rather than sharing a single stored pair. */
+    evBands: Record<EvModelName, EvBands>
+  }
+  efficiency: {
+    /** Grade plain discards on the EV model's push branch instead of ukeire — Advanced only, table
+     *  app only (`useEfficiencyRound.ts` is the only reader; solo never builds this field at all,
+     *  so the mode is structurally unreachable there rather than merely defaulted off). Read as
+     *  `advanced && evGrading` (`useAdvancedSettings.ts`), the same rule folding's own flag
+     *  follows. **Alpha**: `plans/EV-5` §2.5, ADR-0046's efficiency half. */
+    evGrading: boolean
+    /** Which `EvModel` prices the push branch it grades against. */
+    evModel: EvModelName
+    /** ε₁/ε₂ per model (`plans/EV-5` §2.5) — kept per-model for the same reason folding's own
+     *  `evBands` is. */
     evBands: Record<EvModelName, EvBands>
   }
   /** The five table settings shared by every board-rendering app (ADR-0015, ADR-0015): a global default
@@ -166,7 +179,12 @@ export const useSettings = create<SettingsState>()(
         feedbackAtEnd: false,
         evGrading: false,
         evModel: 'statistical',
-        evBands: EV_GRADE_BANDS,
+        evBands: FOLD_EV_BANDS,
+      },
+      efficiency: {
+        evGrading: false,
+        evModel: 'statistical',
+        evBands: PUSH_EV_BANDS,
       },
       table: { global: {}, apps: {} },
       theme: 'system',
@@ -209,13 +227,14 @@ export const useSettings = create<SettingsState>()(
       //
       // Deliberately *not* bumped when the `efficiency` and `shanten` sections were removed: a
       // bump drops the whole blob, which would cost every existing reader their theme, language
-      // and scoring settings to clear two keys that nothing reads any more. A stale
-      // `efficiency`/`shanten` object stays in the persisted JSON and is spread back onto state
-      // by the merge below, but it is off the `Settings` type and nothing reads it.
+      // and scoring settings to clear two keys that nothing reads any more. A stale `shanten`
+      // object (and any stale key of `efficiency`'s own old shape, from before EV grading gave the
+      // section a real reason to exist again) stays in the persisted JSON and is spread back onto
+      // state by the merge below, off the `Settings` type and unread.
       version: 3,
-      // zustand's default merge is shallow at the top level, so a persisted `scoring`/`folding`
-      // object from an older schema would wholesale overwrite (not fill in defaults for) new
-      // fields added to those sections later — merge each section too
+      // zustand's default merge is shallow at the top level, so a persisted `scoring`/`folding`/
+      // `efficiency` object from an older schema would wholesale overwrite (not fill in defaults
+      // for) new fields added to those sections later — merge each section too
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SettingsState>
         return {
@@ -223,6 +242,7 @@ export const useSettings = create<SettingsState>()(
           ...p,
           scoring: { ...current.scoring, ...p.scoring },
           folding: { ...current.folding, ...p.folding },
+          efficiency: { ...current.efficiency, ...p.efficiency },
           table: { ...current.table, ...p.table },
         }
       },

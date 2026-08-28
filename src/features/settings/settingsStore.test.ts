@@ -86,12 +86,30 @@ describe('settingsStore table section', () => {
       }),
     )
     const { useSettings } = await import('./settingsStore')
-    const { EV_GRADE_BANDS } = await import('../folding/evGrade')
+    const { FOLD_EV_BANDS } = await import('../table/evGrade')
     const folding = useSettings.getState().folding
     expect(folding.feedbackAtEnd).toBe(true)
     expect(folding.evGrading).toBe(false)
     expect(folding.evModel).toBe('statistical')
-    expect(folding.evBands).toEqual(EV_GRADE_BANDS)
+    expect(folding.evBands).toEqual(FOLD_EV_BANDS)
+  })
+
+  it('defaults efficiency EV grading off, and merges a stale pre-existing blob key harmlessly', async () => {
+    // this section existed once with a different shape (`showShanten`/`timerEnabled`/`showUkeire`)
+    // and was removed; a blob from that era carries those keys under the same name
+    localStorage.setItem(
+      'riichi-trainer-settings',
+      JSON.stringify({
+        state: { efficiency: { showShanten: true, timerEnabled: true } },
+        version: 3,
+      }),
+    )
+    const { useSettings } = await import('./settingsStore')
+    const { PUSH_EV_BANDS } = await import('../table/evGrade')
+    const efficiency = useSettings.getState().efficiency
+    expect(efficiency.evGrading).toBe(false)
+    expect(efficiency.evModel).toBe('statistical')
+    expect(efficiency.evBands).toEqual(PUSH_EV_BANDS)
   })
 
   it('bumps persist version to 3', async () => {
@@ -162,5 +180,14 @@ describe('useAdvancedSettings', () => {
     expect(renderHook(() => useAdvancedSettings()).result.current.evGrading).toBe(false)
     useSettings.getState().setAdvanced(true)
     expect(renderHook(() => useAdvancedSettings()).result.current.evGrading).toBe(true)
+  })
+
+  it('efficiencyEvGrading resolves independently of folding’s own evGrading', async () => {
+    const { useSettings } = await import('./settingsStore')
+    const { useAdvancedSettings } = await import('./useAdvancedSettings')
+    useSettings.getState().setAdvanced(true)
+    useSettings.getState().update('efficiency', { evGrading: true })
+    expect(renderHook(() => useAdvancedSettings()).result.current.efficiencyEvGrading).toBe(true)
+    expect(renderHook(() => useAdvancedSettings()).result.current.evGrading).toBe(false)
   })
 })

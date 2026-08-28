@@ -5,7 +5,7 @@
 deal-in rates and win-rate modelling is lifted on the condition this ADR named — measure them.
 The tier model and its `rank === 0` grading below are unchanged and stay in force; the
 **TO REVIEW** flag is discharged there rather than by editing this text.
-**Amended by** [ADR-0046](0046-folding-grades-on-the-ev-fold-branch.md): "grading the push/fold
+**Amended by** [ADR-0046](0046-ev-grading-behind-advanced.md): "grading the push/fold
 decision itself" below is lifted for the one case that ADR settles — an Advanced-only option
 reading `core/ev.ts`'s own fold branch, never a formula the trainer writes itself. Tiers stay the
 permanent default and this file's own tier model is otherwise unchanged.

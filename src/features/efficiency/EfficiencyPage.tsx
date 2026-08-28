@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { Alpha } from '../../components/Alpha'
 import { GlossaryTerm } from '../../components/GlossaryTerm'
 import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { splitDrawn } from '../../core/table'
 import { Timer, TrainerToggles } from '../../components/TrainerControls'
+import { EV_MODELS, type EvModelName } from '../../core/evModel'
 import { HandDisplay, WallDetails } from '../../components/tiles/Tile'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import { useLogBack } from '../../lib/useLogBack'
@@ -12,6 +14,7 @@ import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { SeatStrip } from '../table/SeatStrip'
 import { KitaKanControls, kitaKanVisible } from '../table/KitaKanControls'
 import { ManualControls, manualControlsVisible } from '../table/ManualControls'
+import { SettingRow } from '../settings/SettingsDialog'
 import { Verdict } from '../table/Verdict'
 import { useAdvancedSettings } from '../settings/useAdvancedSettings'
 import { useBotDelay, useSettings } from '../settings/settingsStore'
@@ -31,7 +34,10 @@ export function EfficiencyPage() {
   const situation = useUrlData(decodeSituation)
   const sanma = useSettings((s) => s.sanma)
   const pace = useBotDelay()
-  const { aka } = useAdvancedSettings()
+  const { aka, efficiencyEvGrading } = useAdvancedSettings()
+  const advanced = useSettings((s) => s.advanced)
+  const efficiencySettings = useSettings((s) => s.efficiency)
+  const update = useSettings((s) => s.update)
   const { showOpponentHands, showSeatWaits, seatsEnabled } = useTableSettings('efficiency')
 
   // per-seat algorithms are board state, not a preference (ADR-0015): page state with the same
@@ -48,11 +54,115 @@ export function EfficiencyPage() {
       showSeatWaits,
       showOpponentHands,
       pace,
+      // the advanced-resolved value, not `efficiencySettings.evGrading` straight — a hidden row
+      // must not mean a live mode (`useAdvancedSettings.ts`), and it is table-only by construction:
+      // solo's own options never carry this field at all
+      ev: efficiencyEvGrading
+        ? {
+            model: efficiencySettings.evModel,
+            bands: efficiencySettings.evBands[efficiencySettings.evModel],
+          }
+        : null,
     }),
-    [situation, aka, sanma, seatConfig, showSeatWaits, showOpponentHands, pace],
+    [
+      situation,
+      aka,
+      sanma,
+      seatConfig,
+      showSeatWaits,
+      showOpponentHands,
+      pace,
+      efficiencyEvGrading,
+      efficiencySettings,
+    ],
   )
 
   const round = useEfficiencyRound(situation, options)
+  const players = options.sanma ? 3 : 4
+
+  // alpha (`plans/EV-5` §2.5, ADR-0046's efficiency half): tiers/ukeire stay the permanent
+  // default; this switches what a plain discard is graded *against*, table-only. All four rows
+  // are gated on `advanced` — a hidden row must not mean a live mode either
+  const settingsRows = advanced && (
+    <>
+      <SettingRow
+        label={
+          <span className="flex items-center gap-1.5">
+            {t('efficiency.settings.evGrading')}
+            <Alpha />
+          </span>
+        }
+      >
+        <input
+          type="checkbox"
+          checked={efficiencySettings.evGrading}
+          onChange={(e) => update('efficiency', { evGrading: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
+      {efficiencySettings.evGrading && (
+        <>
+          <p className="text-xs text-neutral-500">{t('common.alphaNote')}</p>
+          <SettingRow label={t('evGrading.model')}>
+            <select
+              value={efficiencySettings.evModel}
+              onChange={(e) => update('efficiency', { evModel: e.target.value as EvModelName })}
+              className="min-h-11 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              {(Object.keys(EV_MODELS) as EvModelName[]).map((model) => (
+                <option key={model} value={model}>
+                  {t(`seats.evModel.${model}`)}
+                </option>
+              ))}
+            </select>
+          </SettingRow>
+          {EV_MODELS[efficiencySettings.evModel].unsupported(players === 3) && (
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              {EV_MODELS[efficiencySettings.evModel].unsupported(players === 3)}
+            </p>
+          )}
+          <SettingRow label={t('evGrading.near')}>
+            <input
+              type="number"
+              min={0}
+              value={efficiencySettings.evBands[efficiencySettings.evModel].near}
+              onChange={(e) =>
+                update('efficiency', {
+                  evBands: {
+                    ...efficiencySettings.evBands,
+                    [efficiencySettings.evModel]: {
+                      ...efficiencySettings.evBands[efficiencySettings.evModel],
+                      near: Number(e.target.value),
+                    },
+                  },
+                })
+              }
+              className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </SettingRow>
+          <SettingRow label={t('evGrading.wrong')}>
+            <input
+              type="number"
+              min={0}
+              value={efficiencySettings.evBands[efficiencySettings.evModel].wrong}
+              onChange={(e) =>
+                update('efficiency', {
+                  evBands: {
+                    ...efficiencySettings.evBands,
+                    [efficiencySettings.evModel]: {
+                      ...efficiencySettings.evBands[efficiencySettings.evModel],
+                      wrong: Number(e.target.value),
+                    },
+                  },
+                })
+              }
+              className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </SettingRow>
+        </>
+      )}
+    </>
+  )
 
   // perspective is view-only and ephemeral: the page's own state, never the round's — reset to
   // the drill's own seat on every new hand (a link's identity changing, or an explicit restart),
@@ -183,6 +293,7 @@ export function EfficiencyPage() {
       title={t('trainer.efficiency.title')}
       app="efficiency"
       intro={{ text: t('trainer.efficiency.intro'), wikiUrl: TRAINER_WIKI.efficiency }}
+      settings={settingsRows}
       onLogOpen={(open) => open !== round.paused && round.togglePause()}
       status={
         <>

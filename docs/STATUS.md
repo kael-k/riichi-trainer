@@ -569,22 +569,32 @@ value`) or a direction, and none asserts a magnitude.**
     `libmanette-0.2.so.0`, so WebKit will not launch. A portrait phone is exactly where the hand
     still wraps by design, so that half is genuinely unverified rather than merely unrun.
 
-29. **Folding can grade on the EV model's fold branch, behind Advanced and marked alpha**
-    ([ADR-0046](adr/0046-folding-grades-on-the-ev-fold-branch.md), amending
-    [ADR-0004](adr/0004-ordinal-danger.md), closing `plans/EV-5` §2.5/§2.8). Tiers stay the
-    permanent default. `core/ev.ts#foldRanking` prices every held tile under the fold branch alone
-    (no win or `'tenpai'` term — a fold is noten by construction, so no DP runs), and the trainer
-    reads it straight through `core/table.ts#foldRankingOf` rather than computing anything of its
-    own — a model change moves the grade with it. `features/folding/evGrade.ts#gradeEv` bands the
-    result on `plans/EV-5` §2.5's two thresholds, per `EvModelName`, stored in the new
-    `Settings['folding'].evGrading`/`evModel`/`evBands` and read through `useAdvancedSettings` so a
-    hidden row cannot leave the mode running unseen. Defaults are measured off real fold turns
-    (`evGrade.bench.test.ts`, `EV_BENCH`-gated) rather than guessed. `LogDetail` gained `bars` — every
-    candidate drawn as a bar normalized on the ranking's own best entry, satisfying §2.5's "the
-    grading UI must show the band it graded against" — and the tier detail lines stay underneath as
-    evidence. `foldEv` is untouched, so `EV_GOLDEN` does not move. The same wave marked `/match` and
-    the two `'ev'` algorithm entries **alpha** (`components/Alpha.tsx`, `common.alphaNote`): none of
-    the three is calibrated against real play, and `plans/EV-5` §2.13's backtest is still open.
+29. **Folding and efficiency can grade on the EV model, behind Advanced and marked alpha**
+    ([ADR-0046](adr/0046-ev-grading-behind-advanced.md), amending
+    [ADR-0004](adr/0004-ordinal-danger.md), closing `plans/EV-5` §2.5/§2.8). Tiers/ukeire stay each
+    trainer's permanent default. Folding reads `core/ev.ts#foldRanking` (the fold branch, no win or
+    `'tenpai'` term — a fold is noten by construction, so no DP runs); efficiency (table only, never
+    solo) reads `rankDiscards(…, { exhaustive: true })` (the push branch, priced for every held tile
+    rather than the cheap candidate union an `'ev'` seat plays with). Both go through a matching
+    on-demand accessor in `core/table.ts` (`foldRankingOf`/`pushRankingOf`, `evOf`'s own shape)
+    rather than computing anything of their own — a model change moves both trainers' grades with
+    it. The grading band and its rendering are one shared module, `features/table/evGrade.ts`:
+    `gradeEv`/`evBandDetail` are generic over either branch's `DiscardEv[]`, while `FOLD_EV_BANDS`
+    and `PUSH_EV_BANDS` are separate tables (the push branch's spread runs measurably wider — it
+    carries the win term the fold branch never does) measured off real turns
+    (`evGrade.bench.test.ts`, `EV_BENCH`-gated) rather than guessed. `Settings['folding']` and the
+    reintroduced `Settings['efficiency']` each carry their own `evGrading`/`evModel`/`evBands`, read
+    through `useAdvancedSettings` so a hidden row cannot leave a mode running unseen. `LogDetail`
+    gained `bars` — every candidate drawn as a bar normalized on the ranking's own best entry,
+    satisfying §2.5's "the grading UI must show the band it graded against" — behind one shared
+    `log.evBand` line, with each trainer's own tier/ukeire detail lines kept underneath as evidence.
+    Efficiency's EV grade collapses to a binary ok/error rather than reusing ukeire's `'warning'`
+    (already means "missed a free kan/kita", a different question); the finer partial credit lives
+    in `TurnResult.ev.quality`, which both the session average and the compact verdict's severity
+    now read. `foldEv` and the ukeire grading path are both untouched, so `EV_GOLDEN`/`GOLDEN` do
+    not move. The same wave marked `/match`, the two `'ev'` algorithm entries, and both trainers'
+    new options **alpha** (`components/Alpha.tsx`, `common.alphaNote`): none of the four is
+    calibrated against real play, and `plans/EV-5` §2.13's backtest is still open.
 
 ## In flight
 

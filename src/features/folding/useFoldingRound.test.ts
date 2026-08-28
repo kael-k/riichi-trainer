@@ -7,7 +7,7 @@ import type { SeatAlgorithm } from '../../core/policy'
 import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
 import { useLog } from '../../store/log'
-import { EV_GRADE_BANDS } from './evGrade'
+import { FOLD_EV_BANDS } from '../table/evGrade'
 import {
   BACK_TILE,
   decodeFoldingUrl,
@@ -25,7 +25,7 @@ const OPTIONS: FoldingOptions = {
   feedbackAtEnd: false,
   evGrading: false,
   evModel: 'statistical',
-  evBands: EV_GRADE_BANDS,
+  evBands: FOLD_EV_BANDS,
   showOpponentHands: false,
   // unpaced, so the whole board settles inside a synchronous `act()`
   pace: 0,
@@ -191,10 +191,10 @@ describe('useFoldingRound', () => {
     // the tier model's own safest tile is graded through the EV branch instead of `rank === 0`
     expect(result.current.lastResult?.ev).toBeDefined()
     expect(result.current.lastResult?.ev?.model).toBe('statistical')
-    expect(result.current.lastResult?.ev?.bands).toEqual(EV_GRADE_BANDS.statistical)
+    expect(result.current.lastResult?.ev?.bands).toEqual(FOLD_EV_BANDS.statistical)
 
     const entry = useLog.getState().entries.find((e) => e.key === 'log.folding.discard')!
-    const band = entry.detail!.find((d) => d.key === 'log.folding.evBand')!
+    const band = entry.detail!.find((d) => d.key === 'log.evBand')!
     expect(band.params).toMatchObject({ model: 'statistical' })
     // every candidate priced, the reader's own tile marked, and the best entry marked as such —
     // `plans/EV-5` §2.5's "the grading UI must show the band it graded against"
@@ -212,7 +212,7 @@ describe('useFoldingRound', () => {
     act(() => result.current.discard(indexOf(result.current.hand, result.current.drawn, safe.tile)))
     expect(result.current.lastResult?.ev).toBeUndefined()
     const entry = useLog.getState().entries.find((e) => e.key === 'log.folding.discard')!
-    expect(entry.detail!.some((d) => d.key === 'log.folding.evBand')).toBe(false)
+    expect(entry.detail!.some((d) => d.key === 'log.evBand')).toBe(false)
   })
 
   it('plays the fold out: every turn to the end of the hand is graded', async () => {

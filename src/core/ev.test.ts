@@ -333,7 +333,9 @@ describe('foldRanking', () => {
     // same candidates (both read the same public river), different magnitude (different
     // dealInCost/giveUpCost sources, and a different prior can legitimately reorder them) —
     // proving the model is actually wired through rather than one borrowing the other's numbers
-    expect(new Set(pure.map((entry) => entry.tile))).toEqual(new Set(measured.map((entry) => entry.tile)))
+    expect(new Set(pure.map((entry) => entry.tile))).toEqual(
+      new Set(measured.map((entry) => entry.tile)),
+    )
     expect(pure[0].ev).not.toBeCloseTo(measured[0].ev, 0)
   })
 

@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
+import type { DiscardEv } from '../../core/ev'
+import { EV_MODELS, type EvModelName } from '../../core/evModel'
 import { NORTH, type RoundOptions } from '../../core/round'
 import { shanten } from '../../core/shanten'
-import { splitDrawn } from '../../core/table'
+import { pushRankingOf, splitDrawn } from '../../core/table'
 import { tileCode, type ParsedTile } from '../../core/tiles'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useLog } from '../../store/log'
 import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
 import { encodeSituation, type Situation } from '../situation/urlCodec'
+import type { EvBands } from '../table/evGrade'
 import {
   actionStats,
+  applyEvGrade,
   efficiencyLogRows,
   gradeAction,
   handFromSnapshot,
@@ -36,6 +40,11 @@ export interface EfficiencyDrillInput {
   /** `useRound`'s pacing beat, in milliseconds. Solo never passes it: one seat, no opponents,
    *  nothing to wait for. */
   pace?: number
+  /** Grade plain discards on the EV model's push branch instead of ukeire — the table app's own
+   *  Advanced setting, alpha (`plans/EV-5` §2.5, ADR-0046's efficiency half). `undefined`/`null`
+   *  for solo (which never passes this at all) and for the table app with the setting off, so EV
+   *  grading is structurally table-only rather than gated by a flag solo also carries. */
+  ev?: { model: EvModelName; bands: EvBands } | null
 }
 
 /** Drives one efficiency round on top of `useRound`: dealing, replay and the go-round loop all
@@ -68,10 +77,16 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
   // graded choices made in *this* round, for the round-complete panel's own average — distinct
   // from `stats.averageTime`, which keeps running across every round until the log is cleared
   const roundActionCount = useRef(0)
+  // set just before `table.discard` is called, mid-turn while the hand is still fourteen tiles —
+  // `pushRankingOf` refuses anything else — and read (then cleared) by `onEvent` once the same
+  // discard is reported. `null` whenever `input.ev` is unset (solo, or the table setting off) or
+  // the discard belongs to a seat this drill never asked (a replay, or a seat the reader isn't
+  // playing through this hook's own `discard`)
+  const evRanking = useRef<DiscardEv[] | null>(null)
 
   function recordChoice(result: TurnResult) {
     const elapsed = stats.elapsedNow()
-    stats.record(result.grade !== 'error', elapsed - lastChoiceElapsed.current)
+    stats.record(result.grade !== 'error', elapsed - lastChoiceElapsed.current, result.ev?.quality)
     lastChoiceElapsed.current = elapsed
     roundActionCount.current++
   }
@@ -135,12 +150,19 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     const situationBefore = encodeSituation(
       table.situation(seatIndex, core.round.log.slice(0, logLength)),
     )
-    const result = gradeAction(actionStats(analysis, kind, tile.id, sanma), core.round.turn, sanma)
+    let result = gradeAction(actionStats(analysis, kind, tile.id, sanma), core.round.turn, sanma)
 
     if (kind !== 'discard') {
       pending.current = { result, tile, situationBefore }
       return
     }
+    // set by `discard()` just before this tile left the fourteen — never for kita/kan, which are
+    // themselves the call being evaluated rather than a discard among candidates (a stated
+    // ceiling, `grade.ts#applyEvGrade`'s own doc comment)
+    const ranking = evRanking.current
+    evRanking.current = null
+    if (ranking && input.ev) result = applyEvGrade(result, ranking, input.ev.model, input.ev.bands)
+
     settle(result, analysis.drawn, tile, situationBefore)
 
     // a per-turn drill ends at the discard that reaches tenpai, leaving 13 tiles so it reads as
@@ -285,7 +307,17 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     discard: (index: number, declareRiichi?: boolean) => {
       const fromDrawn = index === hand.length
       const tile = fromDrawn ? drawn : hand[index]
-      if (tile) table.discard(tile, fromDrawn, declareRiichi)
+      if (!tile) return
+      // priced while the hand is still fourteen tiles — `pushRankingOf` refuses anything else —
+      // and only for this drill's own graded seat: `onEvent`'s `event.seat === seatIndex` gate is
+      // what actually decides whether this turn is graded, so pricing any other acting seat here
+      // would be wasted work nothing reads
+      if (input.ev && acting === seatIndex && table.core) {
+        evRanking.current = pushRankingOf(table.core, seatIndex, {
+          model: EV_MODELS[input.ev.model],
+        })
+      }
+      table.discard(tile, fromDrawn, declareRiichi)
     },
     situationQuery: () => encodeSituation(table.situation(seatIndex)),
     togglePause: () => (stats.paused ? stats.resume() : stats.pause()),

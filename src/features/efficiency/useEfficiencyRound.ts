@@ -1,7 +1,9 @@
+import type { EvModelName } from '../../core/evModel'
 import { createMatch } from '../../core/match'
 import { NORTH, type RoundOptions } from '../../core/round'
 import { HONOR } from '../../core/tiles'
 import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
+import type { EvBands } from '../table/evGrade'
 import { matchOverrides, WINDS, type Situation } from '../situation/urlCodec'
 import { useEfficiencyDrill } from './useEfficiencyDrill'
 
@@ -27,6 +29,11 @@ export interface EfficiencyOptions {
   showOpponentHands: boolean
   /** How long a seat nobody plays holds before its action is committed (`useRound`'s `pace`). */
   pace: number
+  /** Grade plain discards on the EV model's push branch instead of ukeire — Advanced-gated, alpha,
+   *  table-only (`plans/EV-5` §2.5, ADR-0046's efficiency half). `null`/`undefined` with the
+   *  setting off, which is what makes the mode structurally unreachable from solo: only this
+   *  hook's own page ever builds one. */
+  ev?: { model: EvModelName; bands: EvBands } | null
 }
 
 /** Drives one efficiency round for the full table on `useEfficiencyDrill` — dealing, grading and
@@ -77,6 +84,7 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     options: roundOptions,
     showReads: options.showSeatWaits || options.showOpponentHands,
     pace: options.pace,
+    ev: options.ev,
   })
   const { table, snapshot } = drill
 

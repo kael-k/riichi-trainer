@@ -214,7 +214,10 @@
     "kitaButton": "拔北",
     "kanButton": "杠",
     "nukiPile": "已拔北",
-    "kanPile": "已杠"
+    "kanPile": "已杠",
+    "settings": {
+      "evGrading": "按EV而非有效牌评分"
+    }
   },
   "discardFeedback": {
     "shantenLine": "<term>上听数</term> {{count}}",
@@ -403,10 +406,7 @@
       "opponentWins": "允许对手和牌",
       "feedbackAtEnd": "仅在牌局结束后显示答案",
       "threats": "要防守的立直数",
-      "evGrading": "按EV而非等级评分",
-      "evModel": "EV模型",
-      "evNear": "正确范围(分)",
-      "evWrong": "错误范围(分)"
+      "evGrading": "按EV而非等级评分"
     }
   },
   "lab": {
@@ -501,8 +501,7 @@
       "dealIn": "放铳: {{tile}} 给{{wind}}——{{points}} 点",
       "yourTile": "你的牌{{vs}}——{{tier}}",
       "safestTile": "最安全的牌{{vs}}——{{tier}}",
-      "vs": "（对{{wind}}）",
-      "evBand": "按EV评分({{model}}): 与最佳差{{delta}}分(≤{{near}}为正确,超过{{wrong}}为错误)"
+      "vs": "（对{{wind}}）"
     },
     "efficiency": {
       "shanten": "上听数 {{count}}",
@@ -528,6 +527,12 @@
       "field": "{{label}}: {{expected}}",
       "fieldWrong": "{{label}}: {{expected}} — 你的答案是{{answer}}",
       "detailLine": "{{label}} — {{value}}"
-    }
+    },
+    "evBand": "按EV评分({{model}}): 与最佳差{{delta}}分(≤{{near}}为正确,超过{{wrong}}为错误)"
+  },
+  "evGrading": {
+    "model": "EV模型",
+    "near": "正确范围(分)",
+    "wrong": "错误范围(分)"
   }
 }

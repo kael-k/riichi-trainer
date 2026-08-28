@@ -9,7 +9,9 @@ import { DEAD_WALL_SIZE, INITIAL_HAND_SIZE, wallWithHands } from './wall'
 import {
   actingSeat,
   analysisOf,
+  foldRankingOf,
   goRound,
+  pushRankingOf,
   seatRead,
   seenBy,
   snapshotTable,
@@ -266,6 +268,28 @@ describe('analysisOf', () => {
     const player = round.players[0]
     const distinctKinds = player.hand.counts.filter((c) => c > 0).length
     expect(analysisOf(core, 0).danger.length).toBe(distinctKinds)
+  })
+})
+
+describe('pushRankingOf / foldRankingOf', () => {
+  it('return null off the live hand, not the fourteen-tile one', () => {
+    const round = createRound([], 4, YONMA, 'push-ranking-1')
+    const core: TableCore = { round, options: YONMA }
+    // before `beginTurn`, seat 0 holds thirteen — nothing to rank yet
+    expect(pushRankingOf(core, 0)).toBeNull()
+    expect(foldRankingOf(core, 0)).toBeNull()
+  })
+
+  it('price every held tile, not a candidate subset', () => {
+    const round = createRound([], 4, YONMA, 'push-ranking-2')
+    const core: TableCore = { round, options: YONMA }
+    beginTurn(round, YONMA)
+    const distinctKinds = round.players[0].hand.counts.filter((c) => c > 0).length
+    // `pushRankingOf` forces `exhaustive: true` regardless of what it is asked — efficiency's own
+    // request is "rate every possible discard", not the cheap candidate union an `'ev'` seat plays
+    // with
+    expect(pushRankingOf(core, 0)).toHaveLength(distinctKinds)
+    expect(foldRankingOf(core, 0)).toHaveLength(distinctKinds)
   })
 })
 

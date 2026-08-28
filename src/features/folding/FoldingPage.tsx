@@ -198,12 +198,10 @@ export function FoldingPage() {
           {settings.evGrading && (
             <>
               <p className="text-xs text-neutral-500">{t('common.alphaNote')}</p>
-              <SettingRow label={t('folding.settings.evModel')}>
+              <SettingRow label={t('evGrading.model')}>
                 <select
                   value={settings.evModel}
-                  onChange={(e) =>
-                    update('folding', { evModel: e.target.value as EvModelName })
-                  }
+                  onChange={(e) => update('folding', { evModel: e.target.value as EvModelName })}
                   className="min-h-11 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
                 >
                   {(Object.keys(EV_MODELS) as EvModelName[]).map((model) => (
@@ -218,7 +216,7 @@ export function FoldingPage() {
                   {EV_MODELS[settings.evModel].unsupported(players === 3)}
                 </p>
               )}
-              <SettingRow label={t('folding.settings.evNear')}>
+              <SettingRow label={t('evGrading.near')}>
                 <input
                   type="number"
                   min={0}
@@ -237,7 +235,7 @@ export function FoldingPage() {
                   className="min-h-11 w-24 rounded border border-neutral-300 px-2 dark:border-neutral-700 dark:bg-neutral-900"
                 />
               </SettingRow>
-              <SettingRow label={t('folding.settings.evWrong')}>
+              <SettingRow label={t('evGrading.wrong')}>
                 <input
                   type="number"
                   min={0}

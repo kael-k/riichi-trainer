@@ -517,6 +517,38 @@ describe('useEfficiencyRound', () => {
     expect(result.current.lastResult?.grade).toBe('warning')
     expect(result.current.lastResult?.missed).toEqual({ kind: 'kan', tile: HONOR + 2 })
   })
+
+  it('grades on the EV model instead of ukeire when ev is set, and logs the band it graded against', () => {
+    useLog.getState().clear()
+    const situation = emptySituation()
+    situation.wall = completeWall(parseTenhou('1112345678999m'), false, false, 'ev-eff-seed')
+    // absurdly wide bands: this test is about the wiring reaching the log, not about which tile
+    // the model actually prefers, so any legal discard must grade correct regardless
+    const options: EfficiencyOptions = {
+      ...BARE,
+      ev: { model: 'statistical', bands: { near: 1_000_000, wrong: 2_000_000 } },
+    }
+    const { result } = renderHook(() => useEfficiencyRound(situation, options))
+    act(() => result.current.discard(0))
+
+    expect(result.current.lastResult?.ev).toBeDefined()
+    expect(result.current.lastResult?.ev?.model).toBe('statistical')
+    expect(result.current.lastResult?.grade).toBe('ok')
+
+    const entry = useLog.getState().entries.find((e) => e.key.startsWith('log.efficiency.discard'))!
+    const band = entry.detail!.find((d) => d.key === 'log.evBand')!
+    expect(band.params).toMatchObject({ model: 'statistical' })
+    expect(band.bars!.length).toBeGreaterThan(1)
+    expect(band.bars!.filter((b) => b.best)).toHaveLength(1)
+  })
+
+  it('falls back to ukeire grading when ev is not set', () => {
+    const situation = emptySituation()
+    situation.wall = completeWall(parseTenhou('1112345678999m'), false, false, 'ev-off-seed')
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
+    act(() => result.current.discard(0))
+    expect(result.current.lastResult?.ev).toBeUndefined()
+  })
 })
 
 describe('efficiency never offers a call, and the second manual seat', () => {

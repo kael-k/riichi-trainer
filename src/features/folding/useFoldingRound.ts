@@ -29,13 +29,13 @@ import {
 import { completeWall, validateWall, type WallError } from '../../core/wall'
 import { useSessionStats } from '../../lib/useSessionStats'
 import { useRound, type RoundCommand, type RoundEventContext } from '../table/useRound'
-import { useLog, type LogBar, type LogDetail, type LogEntry as UiLogEntry } from '../../store/log'
+import { useLog, type LogDetail, type LogEntry as UiLogEntry } from '../../store/log'
 import { resolveSanma } from '../situation/urlCodec'
 import { useLinkedHand } from '../situation/useLinkedHand'
 import type { Settings } from '../settings/settingsStore'
 import type { SeatConfig } from '../settings/tableSettings'
 import type { VerdictSeverity } from '../table/Verdict'
-import { gradeEv, type EvBands } from './evGrade'
+import { evBandDetail, gradeEv, type EvBands } from '../table/evGrade'
 
 /** The folding settings section plus the ruleset the round runs under (which a link can pin, so
  *  it is not a plain setting) and the two table settings (`threats`, `opponentWins`) that moved
@@ -163,35 +163,6 @@ function foldingDetail(result: TurnResult, seats: number[]): LogDetail[] {
     })
   }
   return detail
-}
-
-/** The band a turn was graded against, drawn as a line naming the model and ε pair plus one bar
- *  per candidate — `plans/EV-5` §2.5's "the grading UI must show the band it graded against". Sits
- *  ahead of the tier lines: EV decides the verdict in this mode, tiers stay underneath as the
- *  human-readable why. `fraction` is `(ev - worst) / (best - worst)`, computed here rather than in
- *  the renderer, so the best candidate is always a full bar and the worst always empty regardless
- *  of how negative a fold's own numbers run. */
-function evBandDetail(ranking: DiscardEv[], model: EvModelName, bands: EvBands, tile: TileId): LogDetail {
-  const best = ranking[0]!.ev
-  const worst = ranking[ranking.length - 1]!.ev
-  const span = best - worst
-  const bars: LogBar[] = ranking.map((entry) => ({
-    tile: entry.tile,
-    value: Math.round(entry.ev),
-    fraction: span > 0 ? (entry.ev - worst) / span : 1,
-    chosen: entry.tile === tile,
-    best: entry === ranking[0],
-  }))
-  return {
-    key: 'log.folding.evBand',
-    params: {
-      model,
-      near: Math.round(bands.near),
-      wrong: Math.round(bands.wrong),
-      delta: Math.round(best - (ranking.find((entry) => entry.tile === tile)?.ev ?? best)),
-    },
-    bars,
-  }
 }
 
 export interface ThreatReveal {
@@ -679,7 +650,10 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
       severity: foldingVerdictSeverity(result),
       // EV decides the verdict in this mode; the tier lines stay underneath as the human-readable
       // why (`plans/EV-5` §2.8) — evidence, not a second grading
-      detail: [...(evDetail ? [evDetail] : []), ...foldingDetail(result, riichiSeats(core.round))],
+      detail: [
+        ...(evDetail ? [evDetail, { key: 'log.detail.evLegend' }] : []),
+        ...foldingDetail(result, riichiSeats(core.round)),
+      ],
     })
     stats.record(correct, elapsed, quality)
     roundActionCount.current++

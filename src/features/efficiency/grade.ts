@@ -1,9 +1,12 @@
 import { evaluateKan, isBestDiscard, type DiscardOption } from '../../core/efficiency'
+import type { DiscardEv } from '../../core/ev'
+import type { EvModelName } from '../../core/evModel'
 import { addTile, createHand, type Hand } from '../../core/hand'
 import { NORTH } from '../../core/round'
 import type { TableAnalysis } from '../../core/table'
 import { tileCode, type ParsedTile, type TileId } from '../../core/tiles'
 import type { LogDetail, LogEntry } from '../../store/log'
+import { evBandDetail, gradeEv, type EvBands } from '../table/evGrade'
 import type { VerdictSeverity } from '../table/Verdict'
 
 /**
@@ -26,14 +29,61 @@ export interface TurnResult {
   grade: 'ok' | 'warning' | 'error'
   /** Set alongside a 'warning' grade: which call was available for free and skipped. */
   missed?: { kind: 'kan' | 'kita'; tile: TileId }
+  /** Set only when this turn was graded on the EV model's push branch instead of ukeire — the
+   *  table app's own Advanced setting, alpha (`plans/EV-5` §2.5, ADR-0046's efficiency half).
+   *  `grade` above already reflects it (`applyEvGrade` collapses to a plain ok/error: the
+   *  ukeire-specific 'warning' — a missed free kan/kita — is a different question EV does not
+   *  answer, so `missed` still rides on the ukeire pass underneath, unaffected by this). */
+  ev?: {
+    model: EvModelName
+    bands: EvBands
+    ranking: DiscardEv[]
+    delta: number
+    quality: number
+  }
+}
+
+/**
+ * Overrides a ukeire-graded `TurnResult`'s verdict with the EV model's push branch — never a
+ * second grading pass over different data, so `yours`/`best`/`missed` (and the ukeire numbers the
+ * log sentence already names) stay exactly what `gradeAction` computed. Only `kind === 'discard'`
+ * is covered: kita/kan are themselves the call being evaluated, and pricing those through the
+ * identity is `core/ev.ts#kitaWorthIt`/`bestKan`'s job, not this trainer's — a stated ceiling, not
+ * an oversight.
+ *
+ * Collapses to a binary `grade` (`'ok'`/`'error'`) rather than reusing `'warning'` for a
+ * near-miss: `'warning'` already means one specific thing here (a discard that tied ukeire's best
+ * while passing up a free kan/kita), and reusing it for "close in EV but not quite" would conflate
+ * two different questions. The finer partial credit still exists — `ev.quality` — for whatever
+ * reads it (the session average, in place of the ukeire-based one).
+ */
+export function applyEvGrade(
+  result: TurnResult,
+  ranking: DiscardEv[],
+  model: EvModelName,
+  bands: EvBands,
+): TurnResult {
+  const graded = gradeEv(ranking, result.yours.discard, bands)
+  return {
+    ...result,
+    grade: graded.correct ? 'ok' : 'error',
+    ev: { model, bands, ranking, delta: graded.delta, quality: graded.quality },
+  }
 }
 
 /** The compact mobile verdict's severity — a coarser read of the same `grade`/shanten gap, no
  *  new grading concept. `grade === 'ok'` is green regardless of kind; red is reserved for an
  *  actual shanten regression, so a same-shanten ukeire loss (or the softer 'warning' grade) reads
- *  as yellow instead of red. */
+ *  as yellow instead of red.
+ *
+ *  Under EV grading, `applyEvGrade` already collapsed `grade` to a binary ok/error, so the shanten
+ *  check above would band every EV mistake as an "actual regression" (a same-shanten shape choice
+ *  most often is not) or every non-regression as the soft yellow (however far off best it ran).
+ *  `ev.quality` is the finer signal `gradeEv` already computed for exactly this, so it takes over
+ *  the red/yellow split — the same banding folding's own `foldingVerdictSeverity` uses. */
 export function efficiencyVerdictSeverity(result: TurnResult): VerdictSeverity {
   if (result.grade === 'ok') return 'ok'
+  if (result.ev) return result.ev.quality < 0.5 ? 'error' : 'warning'
   return result.yours.shanten > result.best.shanten ? 'error' : 'warning'
 }
 
@@ -131,14 +181,19 @@ type LogRow = Omit<LogEntry, 'id' | 'situation'>
  *  and the block closes on one legend saying what the number under each tile is — a footnote line
  *  rather than a `title`, since a hover is not available to the phone this trainer is built for. */
 export function discardDetail(result: TurnResult): LogDetail[] {
-  const { yours, best, grade } = result
-  const detail: LogDetail[] = [
-    {
-      key: 'log.efficiency.yourDiscardTotal',
-      params: { count: yours.ukeireCount },
-      ukeire: yours.ukeireTiles,
-    },
-  ]
+  const { yours, best, grade, ev } = result
+  const detail: LogDetail[] = []
+  // EV decides the verdict in this mode (`plans/EV-5` §2.5's "show the band it graded against");
+  // the ukeire lines below still carry the vocabulary the trainer otherwise teaches, unconditionally
+  if (ev)
+    detail.push(evBandDetail(ev.ranking, ev.model, ev.bands, yours.discard), {
+      key: 'log.detail.evLegend',
+    })
+  detail.push({
+    key: 'log.efficiency.yourDiscardTotal',
+    params: { count: yours.ukeireCount },
+    ukeire: yours.ukeireTiles,
+  })
   if (grade === 'error') {
     detail.push({
       key: 'log.efficiency.bestDiscardTotal',

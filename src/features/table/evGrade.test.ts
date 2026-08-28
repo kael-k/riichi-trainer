@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { DiscardEv } from '../../core/ev'
-import { EV_GRADE_BANDS, gradeEv } from './evGrade'
+import { evBandDetail, FOLD_EV_BANDS, gradeEv } from './evGrade'
 
 function ranking(evs: number[]): DiscardEv[] {
-  return evs
-    .map((ev, tile) => ({ tile, ev, dealIn: 0, terms: [] }))
-    .sort((a, b) => b.ev - a.ev)
+  return evs.map((ev, tile) => ({ tile, ev, dealIn: 0, terms: [] })).sort((a, b) => b.ev - a.ev)
 }
 
 describe('gradeEv', () => {
-  const bands = EV_GRADE_BANDS.statistical
+  const bands = FOLD_EV_BANDS.statistical
 
   it('grades the best tile itself as correct with full quality', () => {
     const ranked = ranking([100, 0, -400])
@@ -49,5 +47,29 @@ describe('gradeEv', () => {
     const grade = gradeEv(ranked, 99 as never, bands)
     expect(grade.yours).toBe(grade.best)
     expect(grade.correct).toBe(true)
+  })
+})
+
+describe('evBandDetail', () => {
+  const bands = FOLD_EV_BANDS.statistical
+
+  it('draws one bar per candidate, the best full and the worst empty', () => {
+    const ranked = ranking([100, 0, -400])
+    const detail = evBandDetail(ranked, 'statistical', bands, 2)
+    expect(detail.key).toBe('log.evBand')
+    expect(detail.params).toMatchObject({
+      model: 'statistical',
+      near: bands.near,
+      wrong: bands.wrong,
+    })
+    expect(detail.bars).toHaveLength(3)
+    expect(detail.bars![0]).toMatchObject({ tile: 0, fraction: 1, best: true })
+    expect(detail.bars![2]).toMatchObject({ tile: 2, fraction: 0, chosen: true })
+  })
+
+  it('gives every candidate a full bar when the ranking has no spread', () => {
+    const ranked = ranking([50, 50])
+    const detail = evBandDetail(ranked, 'houou', FOLD_EV_BANDS.houou, 0)
+    expect(detail.bars!.every((bar) => bar.fraction === 1)).toBe(true)
   })
 })

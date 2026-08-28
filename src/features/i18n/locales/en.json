@@ -264,7 +264,10 @@
     "kitaButton": "Kita",
     "kanButton": "Kan",
     "nukiPile": "Nuki",
-    "kanPile": "Kan"
+    "kanPile": "Kan",
+    "settings": {
+      "evGrading": "Grade on EV instead of ukeire"
+    }
   },
   "discardFeedback": {
     "shantenLine": "<term>shanten</term> {{count}}",
@@ -505,10 +508,7 @@
       "opponentWins": "Opponents can win",
       "feedbackAtEnd": "Show answers only at the end of the hand",
       "threats": "Riichi to fold against",
-      "evGrading": "Grade on EV instead of tiers",
-      "evModel": "EV model",
-      "evNear": "Correct within (points)",
-      "evWrong": "Wrong beyond (points)"
+      "evGrading": "Grade on EV instead of tiers"
     }
   },
   "lab": {
@@ -603,8 +603,7 @@
       "dealIn": "Dealt in: {{tile}} to {{wind}} — {{points}} points",
       "yourTile": "Your tile{{vs}} — {{tier}}",
       "safestTile": "Safest tile{{vs}} — {{tier}}",
-      "vs": " vs {{wind}}",
-      "evBand": "Graded on EV ({{model}}): {{delta}} points off best (correct ≤{{near}}, wrong beyond {{wrong}})"
+      "vs": " vs {{wind}}"
     },
     "efficiency": {
       "shanten": "shanten {{count}}",
@@ -632,6 +631,12 @@
       "field": "{{label}}: {{expected}}",
       "fieldWrong": "{{label}}: {{expected}} — you answered {{answer}}",
       "detailLine": "{{label}} — {{value}}"
-    }
+    },
+    "evBand": "Graded on EV ({{model}}): {{delta}} points off best (correct ≤{{near}}, wrong beyond {{wrong}})"
+  },
+  "evGrading": {
+    "model": "EV model",
+    "near": "Correct within (points)",
+    "wrong": "Wrong beyond (points)"
   }
 }

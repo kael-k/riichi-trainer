@@ -264,7 +264,10 @@
     "kitaButton": "Kita",
     "kanButton": "Kan",
     "nukiPile": "Nuki",
-    "kanPile": "Kan"
+    "kanPile": "Kan",
+    "settings": {
+      "evGrading": "Valuta su EV invece che sulla ukeire"
+    }
   },
   "discardFeedback": {
     "shantenLine": "<term>shanten</term> {{count}}",
@@ -505,10 +508,7 @@
       "opponentWins": "Gli avversari possono vincere",
       "feedbackAtEnd": "Mostra le risposte solo a fine mano",
       "threats": "Riichi contro cui difendersi",
-      "evGrading": "Valuta su EV invece che sui livelli",
-      "evModel": "Modello EV",
-      "evNear": "Corretto entro (punti)",
-      "evWrong": "Sbagliato oltre (punti)"
+      "evGrading": "Valuta su EV invece che sui livelli"
     }
   },
   "lab": {
@@ -603,8 +603,7 @@
       "dealIn": "Ron subito: {{tile}} a {{wind}} — {{points}} punti",
       "yourTile": "La tua tessera{{vs}} — {{tier}}",
       "safestTile": "Tessera più sicura{{vs}} — {{tier}}",
-      "vs": " contro {{wind}}",
-      "evBand": "Valutato su EV ({{model}}): {{delta}} punti dal migliore (corretto ≤{{near}}, sbagliato oltre {{wrong}})"
+      "vs": " contro {{wind}}"
     },
     "efficiency": {
       "shanten": "shanten {{count}}",
@@ -632,6 +631,12 @@
       "field": "{{label}}: {{expected}}",
       "fieldWrong": "{{label}}: {{expected}} — hai risposto {{answer}}",
       "detailLine": "{{label}} — {{value}}"
-    }
+    },
+    "evBand": "Valutato su EV ({{model}}): {{delta}} punti dal migliore (corretto ≤{{near}}, sbagliato oltre {{wrong}})"
+  },
+  "evGrading": {
+    "model": "Modello EV",
+    "near": "Corretto entro (punti)",
+    "wrong": "Sbagliato oltre (punti)"
   }
 }

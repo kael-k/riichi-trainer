@@ -900,7 +900,12 @@ export function foldRanking(view: SeatView, opts: EvOptions = {}): DiscardEv[] {
       alive,
     )
     if (later.points !== 0) {
-      terms.push({ kind: 'danger', probability: later.probability, value: loss, points: later.points })
+      terms.push({
+        kind: 'danger',
+        probability: later.probability,
+        value: loss,
+        points: later.points,
+      })
     }
 
     terms.push({ kind: 'notWinning', probability: 1, value: notWinning, points: notWinning })

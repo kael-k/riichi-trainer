@@ -553,10 +553,11 @@ a hidden row cannot leave the mode running unseen) switches `onEvent`'s verdict 
 `core/ev.ts#foldRanking` — the fold branch of the EV identity, priced per held tile, with no win or
 `'tenpai'` term since a fold is noten by construction — read through `core/table.ts#foldRankingOf`
 (mirroring `evOf`'s on-demand shape) and never re-derived in the trainer, so a model change moves
-what it grades. `features/folding/evGrade.ts#gradeEv` bands the result on `Δ = best.ev − yours.ev`
-against per-model `EvBands { near, wrong }` (`plans/EV-5` §2.5's two-threshold grade — correct,
-partial, wrong — stored per `EvModelName` in `Settings['folding'].evBands` so switching models
-keeps each one's own calibration). Defaults are provisional, measured off real fold turns
+what it grades. `features/table/evGrade.ts#gradeEv` — the module efficiency's own EV grading shares,
+see below — bands the result on `Δ = best.ev − yours.ev` against per-model `EvBands { near, wrong }`
+(`plans/EV-5` §2.5's two-threshold grade — correct, partial, wrong — stored per `EvModelName` in
+`Settings['folding'].evBands` so switching models keeps each one's own calibration, off
+`FOLD_EV_BANDS`' own defaults). Defaults are provisional, measured off real fold turns
 (`evGrade.bench.test.ts`, `EV_BENCH`-gated), not guessed. The tier detail lines stay under the EV
 band line as evidence — EV decides the verdict, tiers still teach the vocabulary — and
 `LogDetail.bars` (`store/log.ts`) draws every candidate as a bar normalized on the ranking's own
@@ -579,7 +580,7 @@ The algorithm badge has no setting at all — every seat's mode is always shown,
 (efficiency green, defense blue, EV amber, manual red). By design the drill is fold-only: no push control,
 no danger markers before the answer, threats up to `players - 1`.
 
-**Why:** [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0005](docs/adr/0005-walls-not-seeds.md), [ADR-0046](docs/adr/0046-folding-grades-on-the-ev-fold-branch.md)
+**Why:** [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0005](docs/adr/0005-walls-not-seeds.md), [ADR-0046](docs/adr/0046-ev-grading-behind-advanced.md)
 
 ### The EV model (`core/dealIn.ts`, `probability.ts`, `evModel.ts`, `ev.ts`, `placement.ts`)
 
@@ -785,9 +786,15 @@ noten by construction, so no DP runs — milliseconds, not `rankDiscards`' DP co
 `foldEv` itself is untouched, so `EV_GOLDEN` does not move. `core/table.ts#foldRankingOf` is its
 on-demand accessor, `evOf`'s shape but taking the model as an explicit argument rather than reading
 `PlayerState.ev` — the folding trainer's graded seat is a person, not an `'ev'` seat, so its own
-setting picks the model (ADR-0046).
+setting picks the model (ADR-0046). **`pushRankingOf` is its efficiency-side twin**, over
+`rankDiscards` rather than `foldRanking` and always forcing `exhaustive: true` — efficiency's own
+premise is "rate every possible discard", not the cheap candidate union an `'ev'` seat plays with.
+The grading band both accessors feed (`gradeEv`, per-model `FOLD_EV_BANDS`/`PUSH_EV_BANDS`) lives
+in `features/table/evGrade.ts`, not either trainer's own folder — it is generic over any
+`DiscardEv[]` ranking, so folding's fold branch and efficiency's push branch share the grading code
+and only differ in which table of ε constants they read.
 
-**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0044](docs/adr/0044-every-decision-is-priced.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0043](docs/adr/0043-one-turn-one-decision.md), [ADR-0046](docs/adr/0046-folding-grades-on-the-ev-fold-branch.md)
+**Why:** [ADR-0036](docs/adr/0036-probability-beside-the-tiers.md), [ADR-0037](docs/adr/0037-the-ev-seat-decides.md), [ADR-0044](docs/adr/0044-every-decision-is-priced.md), [ADR-0039](docs/adr/0039-the-currency-is-a-switch.md), [ADR-0004](docs/adr/0004-ordinal-danger.md), [ADR-0009](docs/adr/0009-decision-seam.md), [ADR-0043](docs/adr/0043-one-turn-one-decision.md), [ADR-0046](docs/adr/0046-ev-grading-behind-advanced.md)
 
 ### Tenhou notation + situation URLs (the shared DSL)
 
@@ -885,6 +892,25 @@ Other rules that hold across trainers:
   tie-break is needed: `ranked[0]` is already the global optimum, so north's entry only ties it when
   pulling really is as good as the best discard. `TurnResult.kind` (`'discard' | 'kita'`) exists
   only to key the log row, and carries no grading logic.
+- **The table app (never solo) can grade a plain discard on the EV model instead of ukeire,
+  Advanced-only and alpha** (ADR-0046). `Settings['efficiency'].evGrading` (resolved through
+  `useAdvancedSettings`) feeds `EfficiencyOptions.ev` → `EfficiencyDrillInput.ev`, which exists
+  only on the table hook's own types — solo's hook never builds one, so the mode is structurally
+  unreachable there, not merely defaulted off. When set, `useEfficiencyDrill`'s `discard()` prices
+  `core/table.ts#pushRankingOf` (the push branch, forced `exhaustive: true` — every held tile, not
+  the cheap candidate union an `'ev'` seat plays with) before the tile leaves the fourteen, and
+  `onEvent` runs `grade.ts#applyEvGrade` over the ukeire-graded `TurnResult` `gradeAction` already
+  built: it overrides only `grade` (collapsed to a binary ok/error — ukeire's own `'warning'`
+  already means "missed a free kan/kita", a different question EV does not answer) and adds
+  `TurnResult.ev { model, bands, ranking, delta, quality }`, leaving `yours`/`best`/`missed` (and
+  the ukeire numbers the log sentence already names) untouched. `discardDetail` prepends the shared
+  `evBandDetail` line and its bars ahead of the ukeire lines when `ev` is set — the ukeire evidence
+  stays, EV only adds to it. `efficiencyVerdictSeverity` bands the compact verdict on `ev.quality`
+  when it is set, the same red/yellow split `foldingVerdictSeverity` uses, rather than the
+  ukeire-shanten check (which would call every same-shanten EV mistake merely "soft" and every
+  non-regression "still a mistake"). Kita/kan are never priced this way — they are themselves the
+  call being evaluated, `core/ev.ts#kitaWorthIt`/`bestKan`'s job, not this trainer's grading pass —
+  so they stay ukeire-graded regardless of the setting, a stated ceiling.
 
 **Stores.** Zustand: `settingsStore.ts` (persisted; **has a custom section-wise `merge` — extend it
 when adding a section**, or old persisted schemas drop the new fields) and `store/log.ts`
@@ -977,7 +1003,7 @@ is displaced out of its own river row and ringed amber (`SeatView.claiming`) rat
 repeating which tile in text; the prompt itself draws each call option as the meld it would make,
 the claimed tile ringed in place, `Ron` filled/emphatic and `Pass` a ghost button.
 
-**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0032](docs/adr/0032-one-efficiency-drill-core.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0034](docs/adr/0034-you-act-from-where-you-watch.md), [ADR-0035](docs/adr/0035-efficiency-asks-for-no-calls.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md)
+**Why:** [ADR-0013](docs/adr/0013-efficiency-split.md), [ADR-0032](docs/adr/0032-one-efficiency-drill-core.md), [ADR-0015](docs/adr/0015-what-persists.md), [ADR-0034](docs/adr/0034-you-act-from-where-you-watch.md), [ADR-0035](docs/adr/0035-efficiency-asks-for-no-calls.md), [ADR-0017](docs/adr/0017-imperative-log-rows.md), [ADR-0008](docs/adr/0008-algorithms-are-live.md), [ADR-0014](docs/adr/0014-table-is-a-pure-view.md), [ADR-0033](docs/adr/0033-settings-sections.md), [ADR-0046](docs/adr/0046-ev-grading-behind-advanced.md)
 
 ### UI
 
@@ -1121,8 +1147,10 @@ is a tap on its own row.
 - **`LogDetail.bars`** is `ukeire`'s sibling for a different shape of number: per-tile EV, drawn as
   a bar normalized on the ranking's own best entry (`fraction`, computed where the row is written,
   never in the renderer — the best candidate is a full bar and the worst empty regardless of how
-  negative a fold's own figures run). Folding's EV grading mode is the one writer today
-  (ADR-0046); `chosen`/`best` pick the fill colour, everything else neutral.
+  negative a fold's own figures run). Built by the one shared `features/table/evGrade.ts#evBandDetail`
+  under one locale key (`log.evBand`) for both trainers that write it — folding's fold branch and
+  efficiency's push branch (ADR-0046); `chosen`/`best` pick the fill colour, everything else
+  neutral.
 - **Ordinals are assigned before filtering**, so `log.rewound`'s "Rewound to entry {{number}}" stays
   honest.
 - **`log.dealt`/`log.dealtHand` carry no tiles** — a hand is drawn on exactly one row, the one that

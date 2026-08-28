@@ -17,6 +17,7 @@ export function useAdvancedSettings() {
   const aka = useSettings((s) => s.aka)
   const exactFu = useSettings((s) => s.scoring.exactFu)
   const evGrading = useSettings((s) => s.folding.evGrading)
+  const efficiencyEvGrading = useSettings((s) => s.efficiency.evGrading)
   return {
     showTsumogiri: advanced && showTsumogiri,
     // aka's default is true, unlike the other two — off means "use the default", not "off"
@@ -24,5 +25,7 @@ export function useAdvancedSettings() {
     exactFu: advanced && exactFu,
     // alpha (`plans/EV-5` §2.5/§2.8): a hidden row must not mean a live value, same rule as above
     evGrading: advanced && evGrading,
+    // alpha, ADR-0046's efficiency half, table-only: `useEfficiencyRound.ts` is the only reader
+    efficiencyEvGrading: advanced && efficiencyEvGrading,
   }
 }

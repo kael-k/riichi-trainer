@@ -110,7 +110,7 @@ describe('LogList detail lines', () => {
   it('draws one bar per candidate, normalized on the best entry', () => {
     const { container } = renderLog([
       {
-        key: 'log.folding.evBand',
+        key: 'log.evBand',
         params: { model: 'statistical', near: 100, wrong: 400, delta: 0 },
         bars: [
           { tile: 27, value: -300, fraction: 1, best: true, chosen: true },
@@ -136,7 +136,7 @@ describe('LogList detail lines', () => {
   it('marks a chosen tile that is not the best one in the wrong colour', () => {
     const { container } = renderLog([
       {
-        key: 'log.folding.evBand',
+        key: 'log.evBand',
         params: { model: 'houou', near: 200, wrong: 800, delta: 900 },
         bars: [
           { tile: 27, value: -300, fraction: 1, best: true },

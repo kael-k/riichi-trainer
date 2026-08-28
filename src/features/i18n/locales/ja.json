@@ -214,7 +214,10 @@
     "kitaButton": "北抜き",
     "kanButton": "カン",
     "nukiPile": "抜き北",
-    "kanPile": "カン"
+    "kanPile": "カン",
+    "settings": {
+      "evGrading": "受け入れ枚数ではなくEVで採点する"
+    }
   },
   "discardFeedback": {
     "shantenLine": "<term>シャンテン</term> {{count}}",
@@ -403,10 +406,7 @@
       "opponentWins": "相手の和了を有効にする",
       "feedbackAtEnd": "答えは局の終わりにまとめて表示",
       "threats": "オリる相手のリーチ数",
-      "evGrading": "階層ではなくEVで採点する",
-      "evModel": "EVモデル",
-      "evNear": "正解とみなす範囲(点)",
-      "evWrong": "不正解とみなす範囲(点)"
+      "evGrading": "階層ではなくEVで採点する"
     }
   },
   "lab": {
@@ -501,8 +501,7 @@
       "dealIn": "放銃: {{tile}}を{{wind}}に——{{points}}点",
       "yourTile": "あなたの牌{{vs}}——{{tier}}",
       "safestTile": "最も安全な牌{{vs}}——{{tier}}",
-      "vs": "（{{wind}}に対して）",
-      "evBand": "EV採点({{model}}): 最善から{{delta}}点差(正解は{{near}}点以内、不正解は{{wrong}}点超)"
+      "vs": "（{{wind}}に対して）"
     },
     "efficiency": {
       "shanten": "シャンテン {{count}}",
@@ -528,6 +527,12 @@
       "field": "{{label}}: {{expected}}",
       "fieldWrong": "{{label}}: {{expected}} — 回答は{{answer}}",
       "detailLine": "{{label}} — {{value}}"
-    }
+    },
+    "evBand": "EV採点({{model}}): 最善から{{delta}}点差(正解は{{near}}点以内、不正解は{{wrong}}点超)"
+  },
+  "evGrading": {
+    "model": "EVモデル",
+    "near": "正解とみなす範囲(点)",
+    "wrong": "不正解とみなす範囲(点)"
   }
 }

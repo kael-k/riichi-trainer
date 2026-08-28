@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateDiscards, type DiscardOption } from '../../core/efficiency'
+import type { DiscardEv } from '../../core/ev'
 import { addTile, createHand, type Hand } from '../../core/hand'
 import { NORTH } from '../../core/round'
 import { HONOR, parseTenhou } from '../../core/tiles'
+import { PUSH_EV_BANDS } from '../table/evGrade'
 import {
   actionStats,
+  applyEvGrade,
   discardDetail,
   efficiencyLogRows,
+  efficiencyVerdictSeverity,
   gradeAction,
   handFromSnapshot,
   lostVs,
@@ -217,6 +221,84 @@ describe('grade', () => {
         { id: HONOR + 2, red: false },
         { id: 10, red: false },
       ])
+    })
+  })
+
+  describe('applyEvGrade', () => {
+    const bands = PUSH_EV_BANDS.statistical
+
+    function evRanking(tiles: number[], evs: number[]): DiscardEv[] {
+      return tiles
+        .map((tile, i) => ({ tile, ev: evs[i]!, dealIn: 0, terms: [] }))
+        .sort((a, b) => b.ev - a.ev)
+    }
+
+    it('overrides an ukeire-ok grade to error when EV disagrees', () => {
+      // ukeire ties two discards; EV says one keeps a much better shape
+      const hand = handFrom('123456789m11223p')
+      const base = gradeAction(statsFor(hand, 'discard', 10), 3, false) // 2p, tied for best
+      expect(base.grade).toBe('ok')
+
+      const ranking = evRanking([8, 10], [0, -1200])
+      const graded = applyEvGrade(base, ranking, 'statistical', bands)
+      expect(graded.grade).toBe('error')
+      expect(graded.ev?.delta).toBe(1200)
+      // the ukeire numbers stay exactly what the base pass computed — EV overrides the verdict,
+      // never the evidence
+      expect(graded.yours).toBe(base.yours)
+      expect(graded.best).toBe(base.best)
+    })
+
+    it('stays ok when the EV ranking agrees within ε₁, even off a ukeire mistake', () => {
+      const hand = handFrom('123456789m11223p')
+      const mistake = gradeAction(statsFor(hand, 'discard', 8), 3, false)
+      expect(mistake.grade).toBe('error')
+
+      const ranking = evRanking([10, 8], [0, -bands.near])
+      const graded = applyEvGrade(mistake, ranking, 'statistical', bands)
+      expect(graded.grade).toBe('ok')
+    })
+
+    it('never turns "warning" (a missed free kan) into a third EV bucket', () => {
+      const hand = handFrom('123456m78s22p3333z')
+      const warned = gradeAction(statsFor(hand, 'discard', HONOR + 2), 4, false)
+      expect(warned.grade).toBe('warning')
+
+      const ranking = evRanking([HONOR + 2], [0])
+      const graded = applyEvGrade(warned, ranking, 'statistical', bands)
+      expect(graded.grade).toBe('ok')
+      expect(graded.missed).toEqual(warned.missed)
+    })
+
+    it('prepends the EV band and legend ahead of the ukeire lines', () => {
+      const hand = handFrom('123456789m11223p')
+      const base = gradeAction(statsFor(hand, 'discard', 10), 3, false)
+      const ranking = evRanking([10, 8], [0, -900])
+      const graded = applyEvGrade(base, ranking, 'houou', PUSH_EV_BANDS.houou)
+      const detail = discardDetail(graded)
+      expect(detail[0].key).toBe('log.evBand')
+      expect(detail[0].bars).toHaveLength(2)
+      expect(detail[1].key).toBe('log.detail.evLegend')
+      expect(detail.some((line) => line.key === 'log.efficiency.yourDiscardTotal')).toBe(true)
+    })
+
+    it('bands the compact verdict on ev.quality rather than the shanten check', () => {
+      const hand = handFrom('123456789m11223p')
+      const base = gradeAction(statsFor(hand, 'discard', 10), 3, false) // tied shanten either way
+      const nearMiss = applyEvGrade(
+        base,
+        evRanking([8, 10], [0, -bands.near - 1]),
+        'statistical',
+        bands,
+      )
+      const badMiss = applyEvGrade(
+        base,
+        evRanking([8, 10], [0, -bands.wrong]),
+        'statistical',
+        bands,
+      )
+      expect(efficiencyVerdictSeverity(nearMiss)).toBe('warning')
+      expect(efficiencyVerdictSeverity(badMiss)).toBe('error')
     })
   })
 })

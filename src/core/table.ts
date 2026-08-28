@@ -1,7 +1,14 @@
 import type { Meld } from './agari'
 import { assessDiscards, type TileDanger } from './danger'
 import { evaluateDiscards, type DiscardOption } from './efficiency'
-import { foldEv, foldRanking, rankDiscards, type DiscardEv, type EvObjective, type EvOptions } from './ev'
+import {
+  foldEv,
+  foldRanking,
+  rankDiscards,
+  type DiscardEv,
+  type EvObjective,
+  type EvOptions,
+} from './ev'
 import { EV_MODELS, type EvModelName } from './evModel'
 import { tileCount, type Hand } from './hand'
 import {
@@ -308,6 +315,24 @@ export function foldRankingOf(core: TableCore, seat: number, opts?: EvOptions): 
   if (tileCount(player.hand) % 3 !== 2) return null
   const view = seatView(core.round, core.options, seat)
   return foldRanking(view, opts)
+}
+
+/**
+ * Every held tile's push price for `seat`, on demand — the efficiency trainer's own reading of
+ * `core/ev.ts`, on the same terms `foldRankingOf` reads the fold branch on: the trainer's own
+ * setting picks the model, never `player.ev`, and `null` under the same mid-turn rule.
+ *
+ * **Always `exhaustive: true`**, whatever `opts` asks: efficiency's own request is "rate every
+ * possible discard", and `rankDiscards`' default candidate union exists to make an `'ev'` seat's
+ * own turn cheap, not to answer that question. The cost is real — the DP runs once per held tile
+ * rather than once per ~5 candidates — and efficiency's own turns are usually low shanten, where
+ * that DP is cheapest.
+ */
+export function pushRankingOf(core: TableCore, seat: number, opts?: EvOptions): DiscardEv[] | null {
+  const player = core.round.players[seat]
+  if (tileCount(player.hand) % 3 !== 2) return null
+  const view = seatView(core.round, core.options, seat)
+  return rankDiscards(view, { ...opts, exhaustive: true })
 }
 
 export function analysisOf(core: TableCore, seat: number): TableAnalysis {
