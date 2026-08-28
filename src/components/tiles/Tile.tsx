@@ -1,5 +1,5 @@
 import { BrickWall } from 'lucide-react'
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Meld } from '../../core/agari'
 import {
@@ -66,14 +66,21 @@ export function Tile({ id, red = false, className = '' }: TileProps) {
 
 interface TileButtonProps extends TileProps {
   onClick?: () => void
+  /** Renders the same box inert rather than swapping it for a bare `Tile` when a tile isn't
+   *  playable — a hand whose own box changes shape turn to turn is what resizes the felt under
+   *  it (`HandDisplay` is the one caller that varies this per tile). `active:scale-95` needs no
+   *  override for it: a disabled `<button>` never fires `:active` in any browser this app
+   *  supports. */
+  disabled?: boolean
 }
 
 /** Tappable tile with a ≥44px hit area. */
-function TileButton({ id, red, onClick, className = '' }: TileButtonProps) {
+function TileButton({ id, red, onClick, disabled, className = '' }: TileButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={`flex min-h-11 flex-col items-center justify-start rounded p-0.5 transition-transform active:scale-95 ${className}`}
     >
       <Tile id={id} red={red} />
@@ -189,27 +196,68 @@ export function HandDisplay({
   tedashi,
 }: HandDisplayProps) {
   const gap = tedashi ? gapIndex(tiles, tedashi, concealed) : -1
-  const render = (tile: ParsedTile, i: number) =>
-    // `i === tiles.length` is the drawn tile, the one thing still live under the lock
-    onTileClick && !(lockedToDrawn && i < tiles.length) ? (
+  const render = (tile: ParsedTile, i: number) => {
+    // `i === tiles.length` is the drawn tile, the one thing still live under the lock. Always a
+    // `TileButton` now, playable or not — a bare `Tile` here used to swap the row's own box
+    // (`p-0.5`, `min-h-11`) in and out the instant a turn arrived and left, which is what resized
+    // the felt under it (`BoardStage`'s board area caps itself off this strip's own height).
+    const playable = Boolean(onTileClick) && !(lockedToDrawn && i < tiles.length)
+    return (
       <TileButton
         key={i}
         id={concealed ? undefined : tile.id}
         red={tile.red}
-        onClick={() => onTileClick(i)}
+        disabled={!playable}
+        onClick={playable ? () => onTileClick?.(i) : undefined}
       />
-    ) : (
-      <Tile key={i} id={concealed ? undefined : tile.id} red={tile.red} />
     )
+  }
+  const callTileCount = (melds?.reduce((n, m) => n + m.tiles.length, 0) ?? 0) + (nuki?.length ?? 0)
+  const hasCalls = callTileCount > 0
+  // How wide this row needs to be, in tile-width units. Three things routinely pushed a hand past
+  // a flat 14-tile budget and wrapped it — which doubles the strip's height, and with it changes
+  // the board's size, since the felt caps itself off whatever the strip leaves: the drawn tile's
+  // own slot plus its `ml-2` (1.2), the tedashi spacer (1), and the calls block — its own left
+  // margin plus every tile in it at 3/4 scale (0.8 + 0.75 per tile). Floored at 14 so a plain
+  // hand, the common case mid another seat's turn, is never capped tighter than a full one.
+  //
+  // **The cap is declared here, on the row that knows the count, not on the strip around it**: a
+  // custom property only cascades downward, so a `var(--hand-slots)` in a declaration on an
+  // ancestor would silently take the fallback and never see this number at all.
+  const handSlots = Math.max(
+    14,
+    tiles.length +
+      (drawn ? 1.2 : 0) +
+      (gap >= 0 ? 1 : 0) +
+      (hasCalls ? 0.8 + 0.75 * callTileCount : 0),
+  )
   return (
     // `items-end`: the calls are drawn smaller than the hand, and they sit on the same line the
     // tiles do rather than hanging from its top edge.
-    // `justify-center` is about the line *after* a wrap: a called hand is wider than the column it
-    // sits in, so the calls drop to a second line and the tiles above them were left flush to the
-    // left edge — visibly off-centre from the felt the same seat is drawn on, even though the
-    // caller had already centred this box as a whole. Unwrapped it changes nothing: the box is
-    // sized to its own content
-    <div className="flex flex-wrap items-end justify-center">
+    // `--hand-tile-w` is this row's own tile width: the caller's `--tile-w-base` while it fits,
+    // and the strip's own room divided by `--hand-slots` when it doesn't — measured against the
+    // nearest inline-size container (`BoardStage`'s hand strip), so the docked session panel is
+    // not room the hand thinks it has. The 4.5rem beside it is what stays fixed regardless of the
+    // count: `p-0.5` each side of every tile button, the gap before the drawn one, and 0.5rem of
+    // slack against fractional widths. Re-declaring `--tile-w` off it is not optional — its own
+    // `var()` resolved once at whichever ancestor declared it, so overriding only the base would
+    // leave every plain tile uncapped.
+    //
+    // **Both the cap and `flex-nowrap` are gated to the screens where a second row costs the board
+    // its size** (`sizable:` — a tablet or a desktop; `short:` — a phone held sideways, which is
+    // height-limited the same way). A phone held upright is limited by its *width*, so the felt
+    // does not shrink when this row takes two lines — and there, wrapping at the default tile size
+    // reads far better than fitting fourteen tiles plus a meld across 390px would. The two
+    // variants repeat the same declarations rather than sharing a selector: they are separate
+    // media queries that never overlap, and a custom variant cannot be OR'd onto another.
+    //
+    // `justify-center` is for the wrapped case and for a short hand: either way the row can end up
+    // narrower than the strip around it, and would otherwise sit flush left of the felt the same
+    // seat is drawn on.
+    <div
+      className="flex flex-wrap items-end justify-center [--hand-tile-w:var(--tile-w-base)] [--tile-w:var(--hand-tile-w)] sizable:flex-nowrap sizable:[--hand-tile-w:min(var(--tile-w-base),calc((100cqw-4.5rem)/var(--hand-slots)))] short:flex-nowrap short:[--hand-tile-w:min(var(--tile-w-base),calc((100cqw-4.5rem)/var(--hand-slots)))]"
+      style={{ '--hand-slots': handSlots } as CSSProperties}
+    >
       {tiles.map((tile, i) => (
         // the hole a tedashi leaves, held open for the tile's flight — a spacer rather than a
         // margin, since `render` hands back a button whose className is its own business
@@ -220,10 +268,13 @@ export function HandDisplay({
       ))}
       {gap === tiles.length && <span className="w-(--tile-w) shrink-0" />}
       {drawn && <div className={`ml-2 ${drawnClassName}`}>{render(drawn, tiles.length)}</div>}
-      {((melds?.length ?? 0) > 0 || (nuki?.length ?? 0) > 0) && (
+      {hasCalls && (
         <div
           data-testid="hand-calls"
-          className="ml-[calc(var(--tile-w-base)*0.8)] flex items-end gap-1 [--tile-w:calc(var(--tile-w-base)*0.75)]"
+          // off `--hand-tile-w`, not `--tile-w-base`: the calls are part of what `--hand-slots`
+          // priced, so they have to shrink with the rest of the row rather than staying at the
+          // uncapped size and pushing it past the strip anyway
+          className="ml-[calc(var(--hand-tile-w)*0.8)] flex items-end gap-1 [--tile-w:calc(var(--hand-tile-w)*0.75)]"
         >
           {melds?.map((meld, i) => (
             <MeldDisplay key={i} meld={meld} />

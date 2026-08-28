@@ -494,31 +494,21 @@ export function BoardStage({
           {/* Always the bottom-most (and, held sideways, still the full-width) row regardless of
             orientation, so it carries the bottom inset (the home indicator) plus the side ones (a
             landscape notch) rather than the chrome row above, which only ever owns one edge at a
-            time. Its own height no longer varies turn to turn — the claim prompt and the kita/kan
-            row float over the board instead (`controls` above) — so `max-h-[35svh]`/`overflow-auto`
-            here is only ever exercised by the hand itself wrapping on a narrow strip. */}
+            time. Its own height no longer varies turn to turn wherever the board is limited by
+            height: the claim prompt and the kita/kan row float over the board instead (`controls`
+            above), and `HandDisplay` sizes itself to this strip rather than wrapping into a second
+            row (its own `--hand-slots`/`--hand-tile-w`, declared there because a custom property
+            only cascades downward — a cap written here could never read a count published inside).
+            `[container-type:inline-size]` is what makes that measurable: `100cqw` in the row below
+            is this box's content width, so the docked session panel is not room the hand has.
+            `max-h-[35svh]`/`overflow-auto` are what is left for a phone held upright, where the
+            row does still wrap — and can, because the felt there is limited by width, not by what
+            this strip leaves. */}
           <div
             data-testid="hand-strip"
             className="flex max-h-[35svh] shrink-0 justify-center overflow-auto pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] [container-type:inline-size]"
           >
-            {/* the hand is 14 tiles wide and cannot exceed the room under the board without
-              wrapping, and a wrapped hand costs the board a tile row of height wherever the board
-              is limited by height (a tablet held sideways, a desktop) — which is how asking for
-              bigger tiles used to make the *table* smaller. So on the same screens the size
-              setting applies to, it is a **ceiling** rather than a width: the tiles take it while
-              it fits and shrink to the strip when it doesn't. Below `sizable:` nothing is capped
-              — the tiles are at the default there, and on a phone held upright the board is
-              limited by width, so a second hand row costs it nothing and is easier to read than
-              the sliver a cap would leave. Measured against the strip (a container, so `100cqw`
-              is its content box) rather than the viewport, since the docked session panel is not
-              room the hand has. The 4.5rem is what the tiles do not get: `p-0.5` each side of all
-              14 tile buttons, the 0.5rem gap before the drawn one, and 0.5rem of slack, an exact
-              fit wrapping anyway with fractional widths. Re-declaring `--tile-w` is not optional:
-              its `var()` resolved once at the stage root, so overriding only the base would leave
-              every plain tile uncapped */}
-            <div className="sizable:[--tile-w-base:min(calc(var(--tile-w-raw)*var(--tile-scale)),calc((100cqw-4.5rem)/14))] sizable:[--tile-w:var(--tile-w-base)]">
-              {hand}
-            </div>
+            {hand}
           </div>
         </div>
 

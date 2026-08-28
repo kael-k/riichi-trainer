@@ -428,18 +428,27 @@ for (const trainer of TABLE_TRAINERS) {
     await page.goto(`/${trainer}`)
     await waitForStage(page)
 
+    // no carve-out for `[data-testid="hand-calls"]` any more: `HandDisplay` budgets the calls
+    // block into its own `--hand-slots`, so the strip's cap has to keep the whole row — hand,
+    // drawn tile, calls and all — on one line, not just the hand tiles counted here. Folding can
+    // land this on a seat that already opened a call by the time perspective reaches it (the
+    // felt hand it omits is the seat drawn *from*, not the drill's own graded seat), so this is a
+    // real state here, not just a no-op like it is on efficiency's always-closed manual seat.
+    //
+    // Measured as a *spread*, not a set of exact rounded values: `items-end` aligns each tile's
+    // own outer box to a shared bottom, but a hand tile's box is a padded `TileButton` (`p-0.5`)
+    // while a call is a bare `Tile` with none, so the two `<svg>`s this reads sit a couple of
+    // pixels apart even inside one genuinely unwrapped row — measured and confirmed against a
+    // real called hand, not assumed. A real second line moves the spread by a whole tile's
+    // height, tens of pixels at this size, nowhere near the tolerance below.
     const hand = await page.getByTestId('hand-strip').evaluate((el) => {
-      // the calls ride on the same line at 0.75 size, so their tops differ by design
-      const tiles = [...el.querySelectorAll('svg[role="img"]')].filter(
-        (tile) => !tile.closest('[data-testid="hand-calls"]'),
+      const bottoms = [...el.querySelectorAll('svg[role="img"]')].map(
+        (tile) => tile.getBoundingClientRect().bottom,
       )
-      return {
-        count: tiles.length,
-        rows: new Set(tiles.map((tile) => Math.round(tile.getBoundingClientRect().top))).size,
-      }
+      return { count: bottoms.length, spread: Math.max(...bottoms) - Math.min(...bottoms) }
     })
     expect(hand.count).toBeGreaterThanOrEqual(8)
-    expect(hand.rows, `${hand.count} tiles over ${hand.rows} rows`).toBe(1)
+    expect(hand.spread, `${hand.count} tiles spread over ${hand.spread}px`).toBeLessThan(8)
   })
 
   test(`${trainer}: no seat plate lands on a river`, async ({ page }) => {
@@ -939,7 +948,13 @@ test('a declared seat may only throw the tile it just drew', async ({ page }) =>
 
   const hand = page.locator('div.flex.justify-center').last()
   await expect(hand.getByRole('img'), 'thirteen tiles plus the draw').toHaveCount(14)
-  await expect(hand.getByRole('button'), 'only the drawn tile is live').toHaveCount(1)
+  // every tile is a button now, playable or not — a bare `Tile` swapping in for a locked one is
+  // what used to resize the hand strip turn to turn, which `TileButton`'s own `disabled` fixes.
+  // Locked reads as inert, not gone: all fourteen stay buttons, and only the drawn tile's is live
+  await expect(hand.getByRole('button'), 'every tile stays a button, locked or not').toHaveCount(14)
+  await expect(hand.locator('button:not([disabled])'), 'only the drawn tile is live').toHaveCount(
+    1,
+  )
 })
 
 /**
@@ -1097,4 +1112,60 @@ test('a kita and a kan appearing and disappearing never resize the board or move
   await expect(kita).toHaveCount(0)
   expectSameBox(await board.boundingBox(), boardBefore, 'the board, after Kan')
   expectSameBox(await handStrip.boundingBox(), stripBefore, 'the hand strip, after Kan')
+})
+
+/**
+ * The reported bug, and the one thing the board must never do: "actions cause the table size to
+ * change". The felt caps itself at `100cqh` of `board-area`, which is whatever is left once the
+ * chrome row, the HUD strip and the hand strip have taken theirs — so anything that resizes the
+ * hand strip resizes the square, on every screen where the square is limited by its height.
+ * Two states this file cannot reach from one board are covered together:
+ * a turn arriving at the reader's own seat and leaving it again (the old bug swapped `TileButton`
+ * for a bare `Tile` and back, changing the strip's own padding and min-height turn to turn), and
+ * a hand gaining a kita and a kan (the old flat 14-tile cap did not budget for the calls block at
+ * all, so a called hand could wrap onto a second line). A third state, an *open* meld (pon/chi)
+ * on the reader's own hand, is left uncovered: efficiency never asks a manual seat about another
+ * seat's discard (ADR-0035), so its own manual seat can never acquire one live, and no other
+ * fixture in this file drives an open call onto the graded seat either — `kitaKanBoard`'s ankan
+ * is the closest reachable stand-in, and it exercises the same `hasCalls` branch of
+ * `HandDisplay`'s `--hand-slots` an open meld would.
+ */
+test('the felt never resizes across a turn, a kita or a kan', async ({ page, context }) => {
+  await paced(context)
+  await page.goto('/efficiency')
+  await waitForStage(page)
+
+  // the **felt**, not `board-area`: the square is what the reader sees change size, and it is the
+  // only box whose stability holds at every viewport. A phone held upright limits the square by
+  // its *width*, so the hand there is still allowed a second row — `board-area`'s own height moves
+  // when it takes one, and the felt does not.
+  const felt = page.getByTestId('board')
+  const handStrip = page.getByTestId('hand-strip')
+  const baseline = await felt.boundingBox()
+
+  // the reader's own turn, discarding the leftmost (never the drawn) tile: every hand tile stays
+  // a `TileButton`, now just disabled, rather than swapping for the bare `Tile` that used to
+  // shrink this strip's own box the instant the turn left
+  await handTiles(handStrip).first().click()
+  await expect(page.locator('[data-testid="turn-mark"][data-seat="0"]')).toHaveCount(0)
+  await expect(handTiles(handStrip).first()).toBeDisabled()
+  expectSameBox(await felt.boundingBox(), baseline, 'the felt, an opponent’s turn')
+
+  // three opponents at up to a second each, so it comes back around
+  await expect(page.locator('[data-testid="turn-mark"][data-seat="0"]')).toBeVisible({
+    timeout: 15_000,
+  })
+  expectSameBox(await felt.boundingBox(), baseline, 'the felt, the turn back')
+
+  // a different board, a different hand: the dealer's very first draw already completes a quad
+  // and holds a lone north, so Kita and Kan are both live the moment it loads (`kitaKanBoard`)
+  await page.goto(kitaKanBoard())
+  await waitForStage(page)
+  expectSameBox(await felt.boundingBox(), baseline, 'the felt, a fresh hand')
+
+  await page.getByRole('button', { name: 'Kita' }).click()
+  expectSameBox(await felt.boundingBox(), baseline, 'the felt, holding a kita')
+
+  await page.getByRole('button', { name: 'Kan' }).click()
+  expectSameBox(await felt.boundingBox(), baseline, 'the felt, holding a kita and a kan')
 })
