@@ -132,6 +132,12 @@ const EV_GOLDEN: Record<'statistical' | 'houou', string> = {
 // kan rule: `golden-3` deals no seat a concealed quad, and `YONMA` leaves `calledKan` off, so
 // there was never a legal kan for either model to price. What the rule does when there *is* one
 // is `round.test.ts`'s two `'ev'` kan tests.
+//
+// Neither moved for pricing the claim gate either, and that is the same kind of fact. `calledKan`
+// is off here so no minkan is ever a candidate, and on this one wall the priced answer to every
+// call the seat was offered is the answer `chooseCall` already gave — a measured ~2.4 call
+// opportunities a hand leaves plenty of walls where the two never part. The tests that pin the
+// difference name their own boards; this table pins determinism, and it still does.
 
 describe('match golden determinism', () => {
   if (process.env.GENERATE_GOLDEN) {
@@ -214,8 +220,9 @@ describe('match golden determinism', () => {
    * The two seeds are a **re-scan, not a constant**: which walls happen to divide the two
    * currencies is a property of the arithmetic, so a deliberate change to the identity moves them.
    * `golden-12`/`golden-19` were the pair before the win term stopped counting `P(win)` twice;
-   * `golden-2`/`golden-6` are the pair after, from the same twenty-seed sweep. What the test pins
-   * is the claim — the objective is a switch, not a label — never these particular walls.
+   * `golden-2`/`golden-6` after that; `golden-2`/`golden-8` after every decision point was priced.
+   * Each is the whole twenty-seed sweep re-run. What the test pins is the claim — the objective is
+   * a switch, not a label — never these particular walls.
    */
   it('an ev seat playing for placement does not play the same hand as one playing for points', () => {
     const allLast = createMatch(false, {
@@ -229,11 +236,11 @@ describe('match golden determinism', () => {
       algorithms: ['ev'],
       ev: [{ model: 'houou', objective }],
     })
-    const diverged = ['golden-2', 'golden-6'].filter(
+    const diverged = ['golden-2', 'golden-8'].filter(
       (seed) =>
         hash(serialize(playRound(seed, 4, evSeat('placement')).events)) !==
         hash(serialize(playRound(seed, 4, evSeat('points')).events)),
     )
-    expect(diverged).toEqual(['golden-2', 'golden-6'])
+    expect(diverged).toEqual(['golden-2', 'golden-8'])
   })
 })

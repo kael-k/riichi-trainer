@@ -1,6 +1,8 @@
 # ADR-0043 — One turn, one decision: `Algorithm.turn` replaces `discard` and `kita`
 
-**Status:** Accepted · **Date:** 2026-08-28
+**Status:** Accepted, amended by [ADR-0044](0044-every-decision-is-priced.md) (which prices the
+claim gate this one deferred, on a cost estimate that turned out to be off by a factor of
+eighteen) · **Date:** 2026-08-28
 **Amends:** [ADR-0009](0009-decision-seam.md) in the part naming the decision points — six become
 five, and `discard`/`kita` are gone as separate methods.
 **Source:** `core/algorithm.ts#TurnAction`, `core/round.ts#takeTurn`, `core/policy.ts#kanOptions`,
@@ -48,10 +50,11 @@ time is already one ranked choice, since `call` returns _which_ call and `Call` 
 `'minkan'`. Six methods become five, not three.
 
 **The loop lives in `finishTurn`, not `beginTurn`.** Two alternatives were weighed and rejected:
-asking `turn` from both entry points would make an `'ev'` seat evaluate `rankDiscards` twice a turn
-at ~460ms each; stashing a chosen discard on `PlayerState` between them would add mutable state
-beside `drawn` that can drift, which is exactly what the census test exists to catch. The discard is
-already `finishTurn`'s job, so `turn` is asked exactly as many times as the seat acts.
+asking `turn` from both entry points would make an `'ev'` seat evaluate `rankDiscards` twice a
+turn, doubling the ~35ms it costs; stashing a chosen discard on `PlayerState` between them would
+add mutable state beside `drawn` that can drift, which is exactly what the census test exists to
+catch. The discard is already `finishTurn`'s job, so `turn` is asked exactly as many times as the
+seat acts.
 
 `beginTurn` therefore becomes **draw → `tryWin` on the drawn tile → kyuushu**, and that is the
 correctness fix: a tsumo is now priced before anything can spend the tile that completed the hand.

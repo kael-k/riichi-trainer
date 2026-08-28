@@ -42,31 +42,56 @@ function isValuableHonor(id: TileId, round: TileId, seat: TileId): boolean {
  * "will this hand get there". A false positive costs one questionable call; a false negative
  * would make the AI refuse calls it should obviously take.
  */
+/** The yaku an unfinished hand could still be built around. Deliberately the column set
+ *  `HOUOU_HAND_SCORE.open` measures, so a route is a price rather than only a label. */
+export type YakuRoute = 'tanyao' | 'yakuhai' | 'honitsu' | 'chinitsu' | 'other'
+
 export function hasYakuRoute(hand: Hand, melds: Meld[], round: TileId, seat: TileId): boolean {
+  return yakuRoute(hand, melds, round, seat) !== null
+}
+
+/**
+ * *Which* yaku the hand could still be built around, or `null` for none — the same judgement
+ * `hasYakuRoute` makes, kept as one function so the two can never drift apart.
+ *
+ * The five answers are not an arbitrary carve-up: they are the columns
+ * `hououPrior.ts#HOUOU_HAND_SCORE.open` publishes, so a route names a measured win value
+ * directly. `'other'` is the analyzer's own remainder bucket, which is where toitoi lands.
+ *
+ * Order matters where a hand qualifies twice, and it is the order below: a hand that is both
+ * flush and yakuhai is priced as the flush, because that is the bigger hand and the one it will
+ * actually be built into.
+ */
+export function yakuRoute(
+  hand: Hand,
+  melds: Meld[],
+  round: TileId,
+  seat: TileId,
+): YakuRoute | null {
   const counts = hand.counts
   const meldTiles = melds.flatMap((m) => m.tiles.map((t) => t.id))
-
-  // yakuhai: a pair is enough, since it can still become the triplet
-  for (let id = HONOR; id < HONOR + 7; id++) {
-    if (!isValuableHonor(id, round, seat)) continue
-    if (counts[id] >= 2) return true
-    if (meldTiles.filter((t) => t === id).length >= 3) return true
-  }
 
   const all: TileId[] = [...meldTiles]
   for (let id = 0; id < counts.length; id++) for (let k = 0; k < counts[id]; k++) all.push(id)
 
-  // tanyao: nothing terminal or honour anywhere
-  if (all.every((id) => !isTerminalOrHonor(id))) return true
-
   // honitsu / chinitsu: at most one numbered suit in play
   const suits = new Set(all.map(suitOf).filter((s) => s !== 'z'))
-  if (suits.size <= 1) return true
+  if (suits.size <= 1) return all.some((id) => id >= HONOR) ? 'honitsu' : 'chinitsu'
+
+  // yakuhai: a pair is enough, since it can still become the triplet
+  for (let id = HONOR; id < HONOR + 7; id++) {
+    if (!isValuableHonor(id, round, seat)) continue
+    if (counts[id] >= 2) return 'yakuhai'
+    if (meldTiles.filter((t) => t === id).length >= 3) return 'yakuhai'
+  }
+
+  // tanyao: nothing terminal or honour anywhere
+  if (all.every((id) => !isTerminalOrHonor(id))) return 'tanyao'
 
   // toitoi: already sitting on enough triplets that going all-triplets is realistic
   let triplets = melds.filter((m) => m.kind !== 'chi').length
   for (let id = 0; id < counts.length; id++) if (counts[id] >= 3) triplets++
-  return triplets >= 2
+  return triplets >= 2 ? 'other' : null
 }
 
 /**
@@ -217,13 +242,22 @@ export function kanOptions(hand: Hand, melds: readonly Meld[], calledKan: boolea
   return options
 }
 
-/** Shanten this hand would reach by taking `call` and then discarding its best tile. Shanten
- *  only: whether to call never depends on the ukeire behind it, and pricing it would put the
- *  simulator's most expensive operation on a path walked by every opponent on every discard. */
-function shantenAfterCall(hand: Hand, call: Call): number {
+/**
+ * Shanten this hand would reach by taking `call` and then discarding its best tile. Shanten
+ * only: whether to call never depends on the ukeire behind it, and pricing it would put the
+ * simulator's most expensive operation on a path walked by every opponent on every discard.
+ *
+ * **A minkan is the one call that leaves no discard to take.** Pon and chi spend two tiles for a
+ * meld and leave a fourteen-tile hand, so `bestDiscards` is the right question. A minkan spends
+ * three and leaves a thirteen-tile one, drawing its replacement from the dead wall instead — ask
+ * `bestDiscards` there and it probes a twelve-tile hand, reporting the shanten of a hand with a
+ * tile missing. `shanten` is tile-count-blind, so nothing throws; the number is just wrong, and
+ * it is wrong upward, which is what makes a screen built on it reject every open kan.
+ */
+export function shantenAfterCall(hand: Hand, call: Call): number {
   for (const id of call.from) removeTile(hand, id)
   hand.melds++
-  const { shanten: after } = bestDiscards(hand)
+  const after = call.kind === 'minkan' ? shanten(hand) : bestDiscards(hand).shanten
   hand.melds--
   for (const id of call.from) addTile(hand, id)
   return after

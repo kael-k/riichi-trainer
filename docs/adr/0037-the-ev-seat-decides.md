@@ -1,6 +1,8 @@
 # ADR-0037 — An EV seat decides through one identity, and its model may not borrow
 
-**Status:** Accepted · **Date:** 2026-08-27
+**Status:** Accepted, superseded in part by
+[ADR-0044](0044-every-decision-is-priced.md) (which prices the three decision points this one left
+as stand-ins) · **Date:** 2026-08-27
 **Builds on:** [ADR-0036](0036-probability-beside-the-tiers.md) (the two probability modules this
 one decides with), [ADR-0009](0009-decision-seam.md) (the seam it adds two members to),
 [ADR-0008](0008-algorithms-are-live.md) (which is why the model is a key rather than a field)

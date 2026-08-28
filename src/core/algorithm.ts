@@ -3,10 +3,13 @@ import type { ThreatView } from './danger'
 import { evaluateDiscards, isBestDiscard } from './efficiency'
 import {
   abortWorthIt,
+  bestCall,
   DEFAULT_EV_SEAT,
   foldEv,
   rankDiscards,
+  kitaWorthIt,
   riichiWorthIt,
+  winWorthIt,
   type DiscardEv,
   type EvOptions,
   type EvSeat,
@@ -23,7 +26,6 @@ import {
   type KanOption,
   type SeatAlgorithm,
 } from './policy'
-import { shanten } from './shanten'
 import type { ScoreResult } from './score'
 import { HONOR, type ParsedTile, type RiverTile, type TileId } from './tiles'
 
@@ -256,41 +258,46 @@ function evOptions(view: SeatView): EvOptions {
  * own `EvSeat`, read fresh on every decision, so both are live in exactly the way the algorithm
  * itself is (ADR-0008).
  *
- * **The discard, the kan, the riichi declaration and the abortive draw are priced through the
- * identity.**
- * The other three decision points are honest stand-ins, and each says what it is standing in for:
+ * **Every decision point is priced through the identity**, which is what `plans/EV-3` §7 and
+ * `plans/PLAN-ev-model.md` asked for and what took three waves to finish. Each one is one line
+ * here and a named function in `ev.ts`, so this file holds no arithmetic of its own:
  *
- * - `call` keeps `chooseCall`'s rule — a meld that lowers shanten and leaves a yaku route — with
- *   one EV-shaped guard on top: a seat facing a declared threat will not open a hand that does not
- *   reach tenpai on the call. Pricing a call properly means re-solving the melded hand through the
- *   DP, and the call gate runs for every seat on every discard (`plans/EV-5` §1.9).
- * - `win` takes every win offered. Declining prices a furiten branch — temporary, or permanent
- *   under riichi — that nothing models yet, and a decider that cannot price the cost of declining
- *   should not decline.
- * - the kita half of `turn` reuses `efficiency`'s comparison (`pullsNorth`). The EV version prices
- *   the dora against the tempo, and that is `plans/EV-3` §7's, not this wave's.
+ * - `turn` is `rankDiscards` against `foldEv`, with `bestKan` reading the same ranking.
+ * - `call` is `bestCall` — every branch open at claim time, the pass included, priced as a hand.
+ *   It is what lets this seat take a daiminkan: `chooseCall` never could, since every open kan is
+ *   shanten-neutral and its rule demands a strict improvement.
+ * - `riichi` is `riichiWorthIt`, `abort` is `abortWorthIt` (`EV(keep) < 0`, the identity read
+ *   against a branch worth exactly nothing).
+ * - `win` is `winWorthIt`: the payment against what the hand is worth if it plays on instead.
  *
- * `abort` is `EV(keep) < 0`, which is the identity read against a branch worth exactly nothing —
- * see `abortWorthIt` for the two ceilings that answer ships with.
+ * The remaining stand-in is the kita half of `turn`, which still reuses `efficiency`'s comparison
+ * (`pullsNorth`). Each priced function carries the ceilings its own answer ships with — read
+ * `bestCall` and `abortWorthIt` before trusting either near its edges.
  */
 const ev: Algorithm = {
   turn: (view) => {
-    // a declared hand has nothing left to rank: every later discard is the drawn tile, and the
-    // only choice still open is whether to pull a north. Short-circuited here rather than in
-    // `round.ts` because this is the one algorithm the DP would cost ~460ms a turn to ask.
+    // A declared hand has nothing left to rank: every later discard is the drawn tile, and the only
+    // choice still open is whether to pull a north. Short-circuited here rather than in `round.ts`
+    // because this is the one algorithm the DP would cost a whole ranking a turn to ask.
+    //
+    // And in riichi it pulls only a north it has just *drawn*. That is the pull nukidora is free
+    // on — the locked thirteen are untouched and the wait cannot move. Pulling one out of the
+    // thirteen would change the wait, which riichi forbids; `callKita` checks only that a north is
+    // held, so the restraint has to be here.
     if (view.riichi) {
-      if (pullsNorth(view)) return { kind: 'kita' }
+      if (view.sanma && view.drawn?.id === NORTH) return { kind: 'kita' }
       return view.drawn
         ? { kind: 'discard', tile: view.drawn.id, fromDrawn: true }
         : { kind: 'discard', tile: lowestHeld(view.hand), fromDrawn: false }
     }
     const opts = evOptions(view)
     // one ranking for the whole turn: the kan rule reads the same best push the discard does, so
-    // asking twice would double this seat's own most expensive call (~460ms at 2-shanten)
+    // asking twice would double this seat's own most expensive call (~35ms a turn, and a whole
+    // ranking of it at 2-shanten)
     const ranked = rankDiscards(view, opts)
     const kan = bestKan(view, ranked[0])
     if (kan) return kan
-    if (pullsNorth(view)) return { kind: 'kita' }
+    if (kitaWorthIt(view, opts)) return { kind: 'kita' }
     const push = ranked[0]
     const fold = foldEv(view, opts)
     // a fold is a real branch, not the tail of the ranking: it gives up the win term entirely
@@ -299,20 +306,9 @@ const ev: Algorithm = {
     const tile = push !== undefined && push.ev >= fold.ev ? push.tile : fold.tile
     return { kind: 'discard', tile, fromDrawn: tile === view.drawn?.id }
   },
-  call: (view, tile, fromKamicha) => {
-    const call = chooseCall(
-      view.hand,
-      view.melds,
-      tile,
-      fromKamicha,
-      view.prevalentWind,
-      view.seatWind,
-    )
-    if (call === null || view.threats.length === 0) return call
-    return callReachesTenpai(view, call) ? call : null
-  },
+  call: (view, tile, fromKamicha) => bestCall(view, tile, fromKamicha, evOptions(view)),
   riichi: (view) => riichiWorthIt(view, evOptions(view)),
-  win: () => true,
+  win: (view, candidate) => winWorthIt(view, candidate, evOptions(view)),
   abort: (view) => abortWorthIt(view, evOptions(view)),
 }
 
@@ -330,16 +326,20 @@ const ev: Algorithm = {
  * and the interface cannot split them. `'tenpai'` is excluded because the tenpai payment is a
  * fixed rule amount.
  *
- * **The ceiling, stated the way `abortWorthIt` states its two.** With nobody in riichi the cost
+ * **The ceiling, stated the way `abortWorthIt` states its own.** With nobody in riichi the cost
  * side is *zero* — `dealIn.ts` refuses to speak about a seat that has not declared
  * (`plans/EV-2` §2) — so the sum is the win term alone and an `'ev'` seat **kans every legal kan
- * on an undeclared board whose win the DP can price at all**. That is arithmetic under a stated
- * refusal rather than a judgement, exactly the shape of this algorithm aborting nearly every legal
- * kyuushu hand, and it stops being one when the model can price a threat nobody has declared.
+ * on an undeclared board**. That is arithmetic under a stated refusal rather than a judgement, and
+ * it stops being one when the model can price a threat nobody has declared.
  *
- * The second half of that sentence is the other ceiling and it cuts the opposite way: above
- * `maxShanten` the collapsed chain prices no win, so the sum is exactly zero and the kan is
- * declined — for a reason that has nothing to do with the kan.
+ * There used to be a second ceiling cutting the opposite way — above `maxShanten` the collapsed
+ * chain priced no win, the sum was zero, and the kan was declined for a reason that had nothing to
+ * do with the kan. `EvModel.winValue` closed it, so a deep hand is now priced rather than passed
+ * over. What survives is smaller and worth naming: the win term's value still carries the riichi
+ * sticks on the table, and a dora indicator does not multiply those any more than it multiplies
+ * the two terms excluded above. It is one term of one row, always the same sign as the win term it
+ * rides on, and correcting it would need the win value split out of a number the identity keeps
+ * whole.
  *
  * Tie-break: kakan before ankan — the fourth copy of a melded pon is a dead tile where four
  * concealed copies are not — then the lowest tile id, stated as arbitrary because the model sees
@@ -355,18 +355,6 @@ function bestKan(view: SeatView, best: DiscardEv | undefined): KanOption | undef
   if (scaled <= 0) return undefined
   // `kanOptions` is already in tile order, so the first of either kind is the lowest id
   return options.find((o) => o.kind === 'kakan') ?? options[0]
-}
-
-/** Whether taking this call leaves the hand tenpai — the cheap stand-in for pricing it. The two
- *  tiles the meld uses leave the concealed hand and the claimed tile joins them from outside, so
- *  what is left is one meld heavier and two tiles lighter. */
-function callReachesTenpai(view: SeatView, call: Call): boolean {
-  const hand = { counts: Uint8Array.from(view.hand.counts), melds: view.hand.melds + 1 }
-  for (const own of call.from) {
-    if (hand.counts[own] === 0) return false
-    hand.counts[own]--
-  }
-  return shanten(hand) === 0
 }
 
 /** One object per AI algorithm. Adding a new one is this object plus its own `AIAlgorithm` member

@@ -26,9 +26,9 @@ Pure TypeScript. Zero dependencies, no React, no imports from `features/` or `co
 | `hououPrior.ts`   | **Generated** (`npm run build-ev-models`) — measured wait-shape counts `dealIn.ts` reads                                                                                                                                 |
 | `probability.ts`  | `handOutlook`, `discardOutlooks` — win probability and expected score, the one-player DP                                                                                                                                 |
 | `evModel.ts`      | The swappable prices: `EV_MODELS` — `statistical` (derived) and `houou` (measured) ([ADR-0037](adr/0037-the-ev-seat-decides.md))                                                                                         |
-| `ev.ts`           | The push/fold identity: `rankDiscards`, `foldEv`, `riichiWorthIt`, `abortWorthIt` — what an `'ev'` seat decides with                                                                                                     |
+| `ev.ts`           | The push/fold identity, and every decision an `'ev'` seat makes through it: `rankDiscards`, `foldEv`, `keepEv`, `rankCalls`/`bestCall`, `winWorthIt`, `riichiWorthIt`, `kitaWorthIt`, `abortWorthIt`                     |
 | `placement.ts`    | Rank odds and what a rank is worth: the placement objective's integral and ruleset ([ADR-0039](adr/0039-the-currency-is-a-switch.md))                                                                                    |
-| `policy.ts`       | The pure maths algorithms are written in: `chooseDiscard`, `chooseFold`, `chooseCall`, `kanOptions`, `waits`, …                                                                                                          |
+| `policy.ts`       | The pure maths algorithms are written in: `chooseDiscard`, `chooseFold`, `chooseCall`, `shantenAfterCall`, `kanOptions`, `yakuRoute`, `waits`, …                                                                         |
 | `algorithm.ts`    | The decision seam: `SeatView`, `Algorithm`, `TurnAction`, `ALGORITHMS` ([ADR-0009](adr/0009-decision-seam.md), [ADR-0043](adr/0043-one-turn-one-decision.md))                                                            |
 | `round.ts`        | The round engine (one deal): `createRound`/`beginTurn`/`finishTurn`/`playRound`/`stepRound`, claims, `isManual`                                                                                                          |
 | `match.ts`        | The game a round sits inside: `MatchState`, `createMatch`, `settleRound` — carry-in plus the pure step between rounds ([ADR-0023](adr/0023-round-inside-match.md), [ADR-0040](adr/0040-rounds-sequence-into-a-match.md)) |
@@ -42,8 +42,11 @@ round is one deal, a match is the game. ADRs written before it (0006, 0007, 0009
 
 `dealIn.ts` and `probability.ts` are the EV model's two probability halves
 ([ADR-0036](adr/0036-probability-beside-the-tiers.md)); `evModel.ts` prices them and `ev.ts`
-decides with them ([ADR-0037](adr/0037-the-ev-seat-decides.md)). The one-way chain is
-`dealIn`/`probability` → `evModel` → `ev` → `algorithm.ts`, and nothing in it reads back.
+decides with them ([ADR-0037](adr/0037-the-ev-seat-decides.md)) — every decision point through the
+one identity, claim time included ([ADR-0044](adr/0044-every-decision-is-priced.md)). The one-way
+chain is `dealIn`/`probability` → `evModel` → `ev` → `algorithm.ts`, and nothing in it reads back;
+`evModel.ts` type-imports `YakuRoute` from `policy.ts` and that is the only edge between them, in
+that direction alone.
 `placement.ts` hangs off `ev.ts` the same way — it holds the integral and the ruleset and no
 weights, since the moments belong to each model ([ADR-0039](adr/0039-the-currency-is-a-switch.md)).
 Their specification is `plans/EV-1`–`EV-5`; the three recap files beside them record where the

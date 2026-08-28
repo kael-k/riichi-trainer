@@ -183,9 +183,21 @@ function foldCost(values, counts) {
  * for: by the threat's dealership and by the turn they declared. `tsumo` is the winner's whole
  * take, before the three-way split — what the payer owes is the model's arithmetic, not the table's.
  */
+/** The open-hand columns of `HandScore.csv`, and the yaku routes `policy.ts` classifies a hand
+ *  into. The mapping is one-to-one by construction — upstream's analyzer buckets an open win by
+ *  the same four yaku a hand can still legally be built around once it has been opened, with
+ *  everything else (toitoi, chanta, a lone yakuhai that is not the seat's own) in the fifth. */
+const OPEN_COLUMNS = ['tanyao', 'yakuhai', 'honitsu', 'chinitsu', 'other open yaku']
+
 function handScore(values, counts) {
   const turns = Array.from({ length: 19 }, (_, i) => i)
   const round = (v) => (v === null ? null : Math.round(v))
+  const open = {}
+  const openSamples = {}
+  for (const name of OPEN_COLUMNS) {
+    open[name] = column(values, turns, name).map(round)
+    openSamples[name] = column(counts, turns, name).map((v) => v ?? 0)
+  }
   return {
     ron: column(values, turns, 'riichi ron').map(round),
     tsumo: column(values, turns, 'riichi tsumo').map(round),
@@ -193,6 +205,8 @@ function handScore(values, counts) {
     tsumoSamples: column(counts, turns, 'riichi tsumo').map((v) => v ?? 0),
     damaRon: column(values, turns, 'dama ron').map(round),
     damaRonSamples: column(counts, turns, 'dama ron').map((v) => v ?? 0),
+    open,
+    openSamples,
   }
 }
 
@@ -475,6 +489,11 @@ ${matchups(fold.samples, 4)}
  *
  * Indexed by turn 0-18 directly. The early turns are thin — check \`ronSamples\`.
  *
+ * \`open\` is the same measurement for a hand that *called*, one column per yaku the opened hand
+ * won on — which is the same classification \`policy.ts#yakuRoute\` makes from a hand still being
+ * built, so a route names a column directly. There is no open \`tsumo\` split upstream and no dama
+ * distinction to make: an open hand never declared.
+ *
  * source \`analyzers/hand_score.py\`.
  */
 export const HOUOU_HAND_SCORE = {
@@ -485,6 +504,20 @@ export const HOUOU_HAND_SCORE = {
     tsumoSamples: ${arr(dealerScore.tsumoSamples)},
     damaRon: ${arr(dealerScore.damaRon)},
     damaRonSamples: ${arr(dealerScore.damaRonSamples)},
+    open: {
+      tanyao: ${arr(dealerScore.open['tanyao'])},
+      yakuhai: ${arr(dealerScore.open['yakuhai'])},
+      honitsu: ${arr(dealerScore.open['honitsu'])},
+      chinitsu: ${arr(dealerScore.open['chinitsu'])},
+      'other open yaku': ${arr(dealerScore.open['other open yaku'])},
+    },
+    openSamples: {
+      tanyao: ${arr(dealerScore.openSamples['tanyao'])},
+      yakuhai: ${arr(dealerScore.openSamples['yakuhai'])},
+      honitsu: ${arr(dealerScore.openSamples['honitsu'])},
+      chinitsu: ${arr(dealerScore.openSamples['chinitsu'])},
+      'other open yaku': ${arr(dealerScore.openSamples['other open yaku'])},
+    },
   },
   nonDealer: {
     ron: ${arr(nonDealerScore.ron)},
@@ -493,6 +526,20 @@ export const HOUOU_HAND_SCORE = {
     tsumoSamples: ${arr(nonDealerScore.tsumoSamples)},
     damaRon: ${arr(nonDealerScore.damaRon)},
     damaRonSamples: ${arr(nonDealerScore.damaRonSamples)},
+    open: {
+      tanyao: ${arr(nonDealerScore.open['tanyao'])},
+      yakuhai: ${arr(nonDealerScore.open['yakuhai'])},
+      honitsu: ${arr(nonDealerScore.open['honitsu'])},
+      chinitsu: ${arr(nonDealerScore.open['chinitsu'])},
+      'other open yaku': ${arr(nonDealerScore.open['other open yaku'])},
+    },
+    openSamples: {
+      tanyao: ${arr(nonDealerScore.openSamples['tanyao'])},
+      yakuhai: ${arr(nonDealerScore.openSamples['yakuhai'])},
+      honitsu: ${arr(nonDealerScore.openSamples['honitsu'])},
+      chinitsu: ${arr(nonDealerScore.openSamples['chinitsu'])},
+      'other open yaku': ${arr(nonDealerScore.openSamples['other open yaku'])},
+    },
   },
 } as const
 

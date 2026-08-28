@@ -1,5 +1,6 @@
 import { UNIFORM_PRIOR, type ShapePrior } from './dealIn'
 import { HOUOU_FOLD_COST, HOUOU_HAND_SCORE, HOUOU_PRIOR, HOUOU_SWING } from './hououPrior'
+import type { YakuRoute } from './policy'
 import { totalRounds, type Swing } from './placement'
 import { ronValue, type ScoringRules } from './score'
 import { NUM_TILE_TYPES, type TileId } from './tiles'
@@ -54,12 +55,44 @@ export interface BoardCost {
   tsumoChance: number
 }
 
+/**
+ * A hand as a *price* sees it: never the tiles, only the four facts that decide what it pays.
+ *
+ * The same shelf `ThreatCost` sits on, and for the same reason — a model prices, it does not
+ * decide, so nothing here lets it read a shape. `EvModel.riichiUplift` set the precedent by taking
+ * a hand-derived scalar and letting `houou` ignore it; this is that argument grown four fields.
+ */
+export interface HandShape {
+  /** Dora the hand already holds, indicators resolved, kita included. */
+  dora: number
+  /** No melds and no kita pulled — still eligible for riichi, menzen tsumo and ura. */
+  closed: boolean
+  /** Already declared. */
+  riichi: boolean
+  /** Which yaku it could still be built around (`policy.ts#yakuRoute`), or `null` for none. */
+  route: YakuRoute | null
+}
+
 export interface EvModel {
   readonly name: EvModelName
   /** The wait-shape prior `dealInRisk` runs under. */
   readonly prior: ShapePrior
   /** Points a ron by this threat costs the discarder — `plans/EV-3` §4's `value_j`. */
   dealInCost(threat: ThreatCost, board: BoardCost): number
+  /**
+   * What **this seat's own** hand pays when it wins, honba included — the `E[value | win]` the
+   * exact DP produces at its leaf, for the hands the DP declined to reach one for.
+   *
+   * `probability.ts` swaps the DP for a collapsed chain above `OutlookOptions.maxShanten`, and
+   * that chain never reaches a leaf, so `Outlook.score` comes back undefined and every win term
+   * built on it was worth zero. That single hole is why a kan was declined above 2 shanten, why
+   * nearly every kyuushu hand was abandoned, and why a call could not be priced early in a hand.
+   * This is the number that fills it, and it is a *price*, so each model sources its own.
+   *
+   * Not a substitute for the DP where the DP ran: `ev.ts#conditionalWin` reads this only when
+   * `Outlook.score` is undefined.
+   */
+  winValue(hand: HandShape, board: BoardCost): number
   /**
    * Points lost over the rest of the hand by giving up on it: opponents' tsumo payments plus the
    * noten penalty. **Deal-ins are not in here** — they are priced per turn against the tile
@@ -111,6 +144,23 @@ const CLOSED_RON_FU = 30
  */
 const TYPICAL_CLOSED_YAKU_HAN = 1
 
+/**
+ * Han the route itself carries once the hand is open, before dora — the derived model's answer to
+ * "what is this hand worth if it gets there". Open values throughout: a closed hand is priced off
+ * riichi instead, which is the branch `winValue` takes first.
+ *
+ * Stated rather than derived, for `TYPICAL_CLOSED_YAKU_HAN`'s reason and no other: a yaku is a
+ * decision already taken, and combinatorics cannot see one. `'other'` is a lone open yakuhai,
+ * toitoi or chanta — one han is the mode of that bucket.
+ */
+const ROUTE_HAN: Record<YakuRoute, number> = {
+  tanyao: 1,
+  yakuhai: 1,
+  honitsu: 2,
+  chinitsu: 5,
+  other: 1,
+}
+
 /** What a noten seat pays at an exhaustive draw. The real figure is 1000/1500/3000 by how many
  *  seats are tenpai; 1500 is the two-tenpai middle and the stated choice.
  *
@@ -124,9 +174,13 @@ export const NOTEN_PENALTY = 1500
  *  instead. Some cells in the fold table hold two hands. */
 const MIN_SAMPLES = 100
 
-/** Tiles a threat's completed hand holds — thirteen plus the winning one. Used only to turn a
- *  per-tile dora probability into an expected count. */
-const WINNING_HAND_SIZE = 14
+/** Tiles a completed hand holds — thirteen plus the winning one. Turns a per-tile dora probability
+ *  into an expected count, here and wherever else one indicator has to be priced.
+ *
+ *  Exported for `ev.ts#KAN_DORA_UPLIFT`, which is the same arithmetic about the same rule. It is a
+ *  property of mahjong rather than a figure either model measured, so sharing it breaches no
+ *  borrowing rule — `NOTEN_PENALTY` above is exported for the same reason. */
+export const WINNING_HAND_SIZE = 14
 
 /**
  * The pure model: every number derived from the tiles nobody has seen, with nothing measured and
@@ -175,6 +229,31 @@ export const STATISTICAL: EvModel = {
         ronValue(1 + TYPICAL_CLOSED_YAKU_HAN + extra, CLOSED_RON_FU, threat.dealer, board.rules)
     }
     return value
+  },
+
+  /**
+   * The same arithmetic `dealInCost` runs, with one difference that changes everything: the tiles
+   * are **known**. An opponent's hand has to be sampled from the unseen pool, which is why that
+   * function needs `TYPICAL_CLOSED_YAKU_HAN` to stand in for a decision it cannot see. Here the
+   * decision is this seat's own, so the dora are counted rather than integrated over, and the yaku
+   * route is read off the hand.
+   *
+   * Han: the route's own (one for anything but a flush, two for honitsu, five for chinitsu — open
+   * values, since an open hand is the case that needs this most), plus riichi and the expected ura
+   * where the hand is closed and declared, plus the dora it holds. At `CLOSED_RON_FU`, through the
+   * same `ronValue` every other figure in this model goes through.
+   *
+   * Understated, and knowingly: ippatsu, menzen tsumo, and any shape worth more than 30 fu. A hand
+   * with no yaku route at all is worth **nothing** rather than a little — it cannot legally win,
+   * and pricing it above zero is what would let a seat chase one.
+   */
+  winValue(hand, board) {
+    if (hand.route === null && !hand.closed) return 0
+    // a closed hand always has riichi available to it, so it always has a route
+    const yaku = hand.closed ? 1 : ROUTE_HAN[hand.route ?? 'other']
+    const declared = hand.closed ? 1 + WINNING_HAND_SIZE / NUM_TILE_TYPES : 0
+    const han = yaku + declared + hand.dora
+    return ronValue(han, CLOSED_RON_FU, board.dealer, board.rules) + board.rules.honba * 300
   },
 
   /**
@@ -298,6 +377,36 @@ export const HOUOU: EvModel = {
     const table = threat.dealer ? HOUOU_HAND_SCORE.dealer : HOUOU_HAND_SCORE.nonDealer
     const turn = clamp(threat.riichiTurn ?? board.turn, 0, table.ron.length - 1)
     return nearestSample(table.ron, table.ronSamples, turn) ?? 0
+  },
+
+  /**
+   * What a hand of this kind actually paid, measured — the same `HandScore.csv` the deal-in cost
+   * reads, from the columns for the hand the *deciding* seat is holding rather than the one it is
+   * afraid of.
+   *
+   * Three columns, and which one applies is the hand's own state: `ron` once it has declared,
+   * `damaRon` while it is closed and has not, and the `open` column for its yaku route once it has
+   * called. Conditioning on the win is what makes this the right table rather than a stretch —
+   * every figure in it is what a hand paid *when it won*, which is exactly `E[value | win]`.
+   *
+   * **Two ceilings.** A hand with no route at all still gets the remainder column rather than
+   * zero, because the measurement has no bucket for a hand that could not have won — the pure
+   * model prices that case at zero and this one cannot follow it. And an open hand's turn axis is
+   * the turn it *won* on upstream, read here as the turn it is being asked about, which is early
+   * — the columns rise with the turn, so this understates.
+   */
+  winValue(hand, board) {
+    const table = board.dealer ? HOUOU_HAND_SCORE.dealer : HOUOU_HAND_SCORE.nonDealer
+    const honba = board.rules.honba * 300
+    if (!hand.closed) {
+      const key = hand.route === null || hand.route === 'other' ? 'other open yaku' : hand.route
+      const turn = clamp(board.turn, 0, table.open[key].length - 1)
+      return (nearestSample(table.open[key], table.openSamples[key], turn) ?? 0) + honba
+    }
+    const column = hand.riichi ? table.ron : table.damaRon
+    const samples = hand.riichi ? table.ronSamples : table.damaRonSamples
+    const turn = clamp(board.turn, 0, column.length - 1)
+    return (nearestSample(column, samples, turn) ?? 0) + honba
   },
 
   /**

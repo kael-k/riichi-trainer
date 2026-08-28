@@ -1,4 +1,5 @@
-import type { SeatView } from './algorithm'
+import type { Meld } from './agari'
+import type { SeatView, WinCandidate } from './algorithm'
 import { combineThreats, dealInRisk, type DealInRisk } from './dealIn'
 import { evaluateDiscards } from './efficiency'
 import { tileCount } from './hand'
@@ -8,12 +9,17 @@ import {
   type BoardCost,
   type EvModel,
   type EvModelName,
+  WINNING_HAND_SIZE,
+  type HandShape,
   type ThreatCost,
 } from './evModel'
 import { expectedResult, ranks, roundIndex } from './placement'
+import { availableCalls, shantenAfterCall, yakuRoute, type Call } from './policy'
 import { discardOutlooks, handOutlook, type Outlook, type ScoringContext } from './probability'
 import type { ScoringRules } from './score'
-import { doraFromIndicator, inTileSet, NUM_TILE_TYPES, type TileId } from './tiles'
+import { isMenzen } from './yaku'
+import { shanten } from './shanten'
+import { doraFromIndicator, HONOR, inTileSet, NUM_TILE_TYPES, type TileId } from './tiles'
 import { TILES_PER_KIND } from './wall'
 
 /**
@@ -140,6 +146,9 @@ export const EV_SAFE_CANDIDATES = 2
 /** Riichi's own stick, which the declaration pays whether or not the hand wins. */
 const RIICHI_STICK = 1000
 
+/** The north wind, which sanma plays as a pullable dora rather than as an ordinary honour. */
+const NORTH = HONOR + 3
+
 /**
  * Every candidate discard, priced, best first.
  *
@@ -200,12 +209,8 @@ export function riichiWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
   // the thirteen-tile hand as it now stands: this is asked *after* the discard, so there is
   // nothing left to choose and nothing to rank — asking `rankDiscards` here would take a tile out
   // of a hand that has already thrown one, and a twelve-tile hand can never complete
-  const outlook = handOutlook(view.hand, view.seen, view.sanma, board.drawsLeft, {
-    objective: 'score',
-    maxShanten: opts.maxShanten,
-    scoring: scoringContext(view),
-  })
-  const won = conditionalWin(outlook)
+  const outlook = holdOutlook(view, board, opts)
+  const won = conditionalWin(outlook, model.winValue(handShape(view), board))
   // the stick is paid whether or not the hand wins, and under placement the two halves are not
   // each other's negative — a thousand points off a comfortable lead is not what a thousand
   // points onto a desperate one is worth
@@ -214,16 +219,261 @@ export function riichiWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
 }
 
 /**
- * What playing this hand out is worth, both branches weighed: the better of the best push and the
- * fold. Exported because it is what an abort decision is made of, and a screen showing the decision
- * has to be able to show the number it compared.
+ * What playing this hand out is worth, both branches weighed: the better of pushing and folding.
+ * Exported because it is what an abort decision is made of, and a screen showing the decision has
+ * to be able to show the number it compared.
  *
- * Needs the fourteen-tile hand, for `rankDiscards`' reason.
+ * **Takes the hand at either size, and which one it got decides what "pushing" means.** With
+ * fourteen tiles the seat owes a discard, so the push branch is the best of `rankDiscards`. With
+ * thirteen it owes nothing and the push branch is `passEv` — the hand held as it stands. That is
+ * what lets one function price a call against a pass, and a ron against declining it: a pon leaves
+ * eleven concealed tiles and a new meld, which is fourteen-equivalent and owes a throw; a minkan
+ * leaves ten and a meld, which is thirteen-equivalent and draws instead.
+ *
+ * The fold is on **both** branches, and that is not decoration. A thirteen-tile branch priced as a
+ * pure push would understate what the seat's alternative is worth, and every comparison against it
+ * would then lean toward acting — calling more into a board it should be leaving.
  */
 export function keepEv(view: SeatView, opts: EvOptions = {}): number {
-  const push = rankDiscards(view, opts)[0]
+  return branchEv(view, opts).ev
+}
+
+/** Whichever branch this hand should take, and the arithmetic behind it. `keepEv` is its `ev`;
+ *  everything that has to *show* the comparison wants the terms too. */
+function branchEv(view: SeatView, opts: EvOptions): Omit<CallEv, 'call'> {
   const fold = foldEv(view, opts)
-  return push ? Math.max(push.ev, fold.ev) : fold.ev
+  const push =
+    tileCount(view.hand) % 3 === 1
+      ? passEv(view, opts)
+      : (rankDiscards(view, opts)[0] as
+          { ev: number; terms: EvTerm[]; outlook?: Outlook } | undefined)
+  if (push && push.ev >= fold.ev) return { ev: push.ev, terms: push.terms, outlook: push.outlook }
+  return { ev: fold.ev, terms: fold.terms, outlook: fold.outlook }
+}
+
+/** One branch of a claim, priced: a call this seat could make, or the pass every call is measured
+ *  against. `call: null` is that pass — a first-class row rather than an absence, so a reader can
+ *  see the number the decision turned on rather than only the winner. */
+export interface CallEv {
+  call: Call | null
+  ev: number
+  terms: EvTerm[]
+  outlook?: Outlook
+}
+
+/**
+ * Every branch open to this seat on somebody else's discard, priced through the same identity as
+ * a discard, best first — with the pass among them.
+ *
+ * `EV(pass)` is the thirteen-tile hand held as it stands. `EV(call)` is the hand the call would
+ * leave, and which shape that is depends on the call: a pon or a chi spends two tiles for a meld
+ * and leaves a fourteen-equivalent hand that owes a throw, so it is ranked by `rankDiscards`; a
+ * minkan spends three and draws its replacement, leaving a thirteen-equivalent hand, so it is
+ * priced by `passEv`. `keepEv` dispatches on exactly that, which is why one function covers both.
+ *
+ * The screen in front of the pricing is `chooseCall`'s own two rules with one deliberately
+ * loosened. A candidate is dropped when it *raises* shanten, or when the opened hand would have no
+ * yaku route at all — both cheap, and neither decides anything, they only spare the DP a run it
+ * would waste. What is loosened is `chooseCall`'s demand that a call *lower* shanten: every
+ * daiminkan is shanten-neutral by construction (a concealed triplet is already a complete block),
+ * and so is a pon taken for value or for tempo, so a strict rule is exactly the rule that can
+ * never say yes to the calls this function exists to weigh.
+ *
+ * **Three ceilings, stated the way `bestKan` states its own.**
+ *
+ * A **daiminkan is priced without its kan dora**. The indicator is `state.doraStack.shift()` —
+ * hidden until the kan completes and so unknowable from a `SeatView` — so the single largest
+ * reason to declare one is absent from the benefit side while the whole cost (menzen gone, the
+ * hand's decompositions frozen) is charged. This decider therefore under-prices every open kan,
+ * and the direction is known. It is exactly why `bestKan` prices a *closed* kan by the sign of the
+ * scaled terms instead of by a comparison like this one.
+ *
+ * **A pon steals turns, and that prices at zero.** `board.drawsLeft` is `wallLeft / players` and is
+ * identical on both branches, so the classic reason to pon from toimen — arriving at your own turn
+ * two seats early — is invisible here. Understates every call, again in a known direction.
+ *
+ * **On a quiet board a call has no cost side at all.** `dealIn.ts` refuses to speak about a seat
+ * that has not declared, so opening is priced at zero risk and this seat will open more in the
+ * first half of a hand than it should. Same stated refusal `bestKan` carries, and it lifts in the
+ * same place: when the model can read a silent tenpai.
+ */
+export function rankCalls(
+  view: SeatView,
+  tile: TileId,
+  fromKamicha: boolean,
+  opts: EvOptions = {},
+): CallEv[] {
+  const calls = availableCalls(view.hand, tile, fromKamicha, view.calledKan)
+  // nothing to weigh, and no reason to pay for a pass nobody asked about
+  if (calls.length === 0) return []
+
+  const current = shanten(view.hand)
+  const priced: CallEv[] = [{ call: null, ...branchEv(view, opts) }]
+  for (const call of calls) {
+    if (shantenAfterCall(view.hand, call) > current) continue
+    const after = afterCall(view, call, tile)
+    if (yakuRoute(after.hand, [...after.melds], view.prevalentWind, view.seatWind) === null)
+      continue
+    const branch = branchEv(after, opts)
+    // a kan flips one more indicator, which the post-kan hand cannot be shown holding — the
+    // indicator is still face down. Priced as the multiplier it is instead of left at zero
+    priced.push({ call, ...(call.kind === 'minkan' ? withKanDora(branch) : branch) })
+  }
+  // a total order, never sort stability: expected points, then the call that commits least of the
+  // hand, then the lowest tile. The last two are stated as arbitrary — at equal EV the model sees
+  // no difference between them
+  priced.sort((a, b) => b.ev - a.ev || callRank(a.call) - callRank(b.call) || first(a) - first(b))
+  return priced
+}
+
+/** Which call to take on another seat's discard, or `null` to pass — the whole of `ALGORITHMS.ev`'s
+ *  claim-time decision. A call must *beat* the pass rather than tie it: opening a hand cannot be
+ *  taken back, so a branch worth exactly as much is not worth the commitment. */
+export function bestCall(
+  view: SeatView,
+  tile: TileId,
+  fromKamicha: boolean,
+  opts: EvOptions = {},
+): Call | null {
+  const ranked = rankCalls(view, tile, fromKamicha, opts)
+  const pass = ranked.find((row) => row.call === null)
+  const best = ranked[0]
+  if (!best || !pass || best.call === null || best.ev <= pass.ev) return null
+  return best.call
+}
+
+/**
+ * What one more dora indicator is worth, as a multiplier on every hand at the table.
+ *
+ * A kan flips an indicator, and an indicator points at one kind out of the thirty-four with no
+ * reason to prefer any, so each of a winning hand's fourteen tiles carries `1/34` of a han — and a
+ * han doubles. That is `STATISTICAL.riichiUplift`'s ura argument applied to the other indicator,
+ * and it is arithmetic about the **ruleset** rather than a figure either model measured, so both
+ * read it (`NOTEN_PENALTY` is shared on the same grounds).
+ *
+ * `bestKan` needs no such constant, and the difference is worth understanding rather than reading
+ * as an inconsistency: a closed kan is a *binary* choice against the identical hand, so the
+ * multiplier cancels and only the sign of the scaled terms matters. A daiminkan is not — it is
+ * ranked against a pon, a chi and a pass, all of which leave different hands — so the magnitude
+ * has to be named. Without it the kan branch loses its whole benefit while keeping its whole cost,
+ * and the model would refuse a free kan for a reason that has nothing to do with the kan.
+ *
+ * Which terms it scales, and why the other two are excluded, is `bestKan`'s list exactly: a dora
+ * multiplies what a *hand* is worth — yours and every threat's alike — and neither the noten
+ * penalty nor the tenpai payment is a hand.
+ *
+ * Doubling is exact below the limit brackets and too generous at them, the stated approximation
+ * `riichiUplift` already carries for the same reason.
+ */
+const KAN_DORA_UPLIFT = 2 ** (WINNING_HAND_SIZE / NUM_TILE_TYPES) - 1
+
+/** The branch as a kan leaves it: the same terms, with everything a dora multiplies scaled up. */
+function withKanDora(branch: Omit<CallEv, 'call'>): Omit<CallEv, 'call'> {
+  const scalable = branch.terms
+    .filter((t) => t.kind === 'win' || t.kind === 'dealIn' || t.kind === 'danger')
+    .reduce((sum, t) => sum + t.points, 0)
+  return { ...branch, ev: branch.ev + KAN_DORA_UPLIFT * scalable }
+}
+
+/** `minkan` 0, `pon` 1, `chi` 2, the pass last: the order a tie is broken in. */
+function callRank(call: Call | null): number {
+  if (call === null) return 3
+  return call.kind === 'minkan' ? 0 : call.kind === 'pon' ? 1 : 2
+}
+
+function first(row: CallEv): number {
+  return row.call?.from[0] ?? -1
+}
+
+/**
+ * The same board, seen with the hand a call would leave behind.
+ *
+ * **Prototype delegation, not a spread.** `seatView`'s `seen`, `threats` and `furiten` are lazy
+ * getters precisely because the call gate builds a view per seat per discard, and `furiten` alone
+ * is ~34 shanten probes; spreading reads every own enumerable property and so would force all
+ * three on the hottest path in the engine. Delegating leaves their memos on the original view,
+ * where every branch of one decision shares them for free.
+ *
+ * `seen` is genuinely the same set after a pon or a chi: `resolveReactions` takes the tiles out of
+ * the hand and adds the same ids to `state.visible`, and `seenBy` is their sum. After a minkan it
+ * is not — a kan flips an indicator nobody can see yet — which is the first ceiling `rankCalls`
+ * states.
+ *
+ * `red: false` on the meld is correct rather than lazy: the DP draws at kind level and never sees
+ * redness on the pass branch either (`probability.ts#priceWin`), so both sides stay comparable.
+ */
+function afterCall(view: SeatView, call: Call, tile: TileId): SeatView {
+  const counts = Uint8Array.from(view.hand.counts)
+  for (const id of call.from) counts[id]--
+  const tiles = [tile, ...call.from].map((id) => ({ id, red: false }))
+  const meld: Meld = { kind: call.kind, tiles }
+  return Object.create(view, {
+    hand: { value: { counts, melds: view.hand.melds + 1 }, enumerable: true },
+    melds: { value: [...view.melds, meld], enumerable: true },
+    drawn: { value: undefined, enumerable: true },
+  }) as SeatView
+}
+
+/**
+ * Whether pulling a north is worth more than the best thing this hand could throw instead — the
+ * last of the five decision points to stop being `efficiency`'s ukeire comparison.
+ *
+ * The two branches are not the same shape, and that asymmetry is the decision. Throwing leaves a
+ * thirteen-tile hand and passes the turn on; pulling leaves a thirteen-tile hand *and draws a
+ * replacement*, so the seat is still mid-turn and still owes a throw. What the pull buys is a dora
+ * that follows the hand wherever it goes, and what it costs is whatever the north was still doing
+ * in the shape — which for a hand that needs it is a great deal, and for a spare fourth honour is
+ * nothing at all.
+ *
+ * `ScoringContext.kita` already reaches the DP's leaf, so the extra dora is priced by the same
+ * scorer that prices every other one rather than by a constant here.
+ *
+ * **One ceiling, shared with every kan.** The replacement draw is modelled as an ordinary draw
+ * from the unseen pool — `probability.ts`' DP has no notion of a dead wall (`plans/EV-5` §1.10) —
+ * so the pull neither gains a free draw nor spends one, and the tempo half of `plans/EV-3` §7's
+ * "the dora against the tempo" is priced at zero. Understates the pull, in a known direction.
+ */
+export function kitaWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
+  if (!view.sanma || view.hand.counts[NORTH] === 0) return false
+  const counts = Uint8Array.from(view.hand.counts)
+  counts[NORTH]--
+  const pulled = Object.create(view, {
+    hand: { value: { counts, melds: view.hand.melds }, enumerable: true },
+    nuki: { value: view.nuki + 1, enumerable: true },
+    drawn: { value: undefined, enumerable: true },
+  }) as SeatView
+  return keepEv(pulled, opts) > keepEv(view, opts)
+}
+
+/**
+ * Whether to take a win that is being offered, priced against playing the hand on instead.
+ *
+ * The take side is the one exact figure in the whole model — the hand is complete and
+ * `tryWin` has already scored it, so `payments.total` is what it really pays, honba folded in by
+ * `score.ts#computePayments`. The riichi sticks on the table are added here because nothing in
+ * `score.ts` knows about them.
+ *
+ * The decline side is `keepEv`, and which shape it gets is decided by what is being declined:
+ * `tryWin` takes the ron tile back out of the hand before it asks, so a ron is weighed from
+ * thirteen tiles and a tsumo from fourteen. One expression covers both.
+ *
+ * **Why declining a ron is honestly priced and declining a tsumo is not.** `Outlook.soloWin` counts
+ * self-draws only, which is exactly what a hand has left once it is furiten — so for a seat in
+ * riichi, where the furiten is permanent, `keepEv` *is* the post-decline value. For a seat not in
+ * riichi the furiten lifts on its own next discard, so the decline is worth more than this says and
+ * the answer leans toward taking the win. That lean is the safe direction and it is deliberate:
+ * `plans/EV-3` §7 wants the decline branch to price the furiten state itself, and this prices a
+ * proxy for it. Expect `true` in nearly every real position; the cases where it is not are what
+ * the placement objective was built to see — a cheap win that locks a seat out of a place it could
+ * still have reached.
+ */
+export function winWorthIt(view: SeatView, candidate: WinCandidate, opts: EvOptions = {}): boolean {
+  const model = opts.model ?? STATISTICAL
+  const value = valuer(view, model, opts.objective ?? 'points')
+  // no `to`: a tsumo is paid by every other seat and `valuer`'s second argument names one, so both
+  // sides of this comparison stay seat-blind, exactly as `price`'s own win term does
+  const taken = value(candidate.score.payments.total + view.match.riichiSticks * RIICHI_STICK)
+  return taken >= keepEv(view, opts)
 }
 
 /**
@@ -233,13 +483,15 @@ export function keepEv(view: SeatView, opts: EvOptions = {}): number {
  * honba +1 and the dealership rotating) nobody pays and nobody collects, so the whole decision is
  * whether playing the hand out is worth more than nothing.
  *
- * **Two ceilings, both stated rather than hidden.** A hand with nine distinct terminals and honours
- * is four or more shanten, which is above `probability.ts`' exact ceiling — the collapsed chain
- * runs and prices *no win value at all*, so `EV(keep)` is dominated by the give-up term and comes
- * out negative for almost every legal kyuushu hand. That is close to how the hand is really played,
- * but it is arithmetic rather than a judgement, and it stops being one only when the win side can
- * price a 4-shanten hand. And a dealer that aborts gives up a dealership the points objective
- * cannot price at all, because nothing in this engine sequences to a next round (ADR-0023).
+ * **One ceiling now, where there were two.** A hand with nine distinct terminals and honours is
+ * four or more shanten, above `probability.ts`' exact ceiling, so the collapsed chain runs — and it
+ * used to price *no win value at all*, which left `EV(keep)` dominated by the give-up term and
+ * negative for almost every legal kyuushu hand. That was arithmetic rather than a judgement, and it
+ * is gone: `conditionalWin` now falls back to `EvModel.winValue` exactly where the DP declined to
+ * reach a leaf, so what a kyuushu hand is worth is a real figure and the decision turns on it.
+ * The remaining ceiling is unchanged: a dealer that aborts gives up a dealership the points
+ * objective cannot price at all, because nothing in this engine sequences to a next round
+ * (ADR-0023).
  */
 export function abortWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
   return keepEv(view, opts) < 0
@@ -254,9 +506,36 @@ export function abortWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
  * hardest at 1- and 2-shanten, where the interesting decisions are. Zero when the hand cannot win,
  * and when the collapsed chain ran and priced no leaf to divide.
  */
-function conditionalWin(outlook: Outlook | undefined): number {
-  if (!outlook || outlook.score === undefined || outlook.soloWin <= 0) return 0
-  return outlook.score / outlook.soloWin
+function conditionalWin(outlook: Outlook | undefined, fallback: number): number {
+  if (!outlook || outlook.soloWin <= 0) return 0
+  // the DP is exact wherever it ran; the fallback speaks only where it declined to reach a leaf
+  return outlook.score === undefined ? fallback : outlook.score / outlook.soloWin
+}
+
+/**
+ * The hand as a price sees it — four facts, no tiles (`EvModel.HandShape`).
+ *
+ * Dora are counted at *kind* level, off `hand.counts` plus the melds plus the kita pile, which is
+ * the same blindness the DP's own leaf has (`probability.ts` never sees redness), so the two halves
+ * of the win term stay comparable rather than one of them being quietly richer.
+ */
+function handShape(view: SeatView): HandShape {
+  const dora = view.doraIndicators.map((indicator) => doraFromIndicator(indicator.id))
+  let held = 0
+  for (const id of dora) {
+    held += view.hand.counts[id]
+    for (const meld of view.melds) held += meld.tiles.filter((t) => t.id === id).length
+  }
+  // a pulled north is a dora of its own in sanma, whatever the indicators say
+  return {
+    dora: held + view.nuki,
+    // `isMenzen`, not "no melds": a closed kan leaves the hand closed and so does a kita pull, and
+    // `closed` here means exactly what it means to `canDeclareRiichi` — still able to declare, and
+    // still collecting menzen tsumo and ura when it wins
+    closed: isMenzen([...view.melds]),
+    riichi: view.riichi,
+    route: yakuRoute(view.hand, [...view.melds], view.prevalentWind, view.seatWind),
+  }
 }
 
 /** The tiles worth pricing: the fastest few, plus the safest few. Duplicates collapse, so a tile
@@ -280,9 +559,27 @@ function heldTiles(view: SeatView): TileId[] {
   return held
 }
 
-/** One candidate, with every term written down. */
-function price(
-  tile: TileId,
+/**
+ * Every term of the identity, for a hand that throws `tile` this turn — or, with `null`, throws
+ * nothing at all and simply waits for its next draw.
+ *
+ * The `null` shape is what a decision that is not a discard is made of: passing on a call, and
+ * declining a ron. Two differences, and no others. There is no immediate per-threat `'dealIn'`
+ * term, because nothing was thrown. And the later-turn walk starts a turn earlier, from a hand
+ * that has survived nothing yet rather than one that has survived the tile it just threw.
+ *
+ * **Both shapes cover exactly `board.drawsLeft` turns**, and it is worth writing down because it
+ * reads like an off-by-one and is not. With a tile: one turn priced directly, then `drawsLeft − 1`
+ * in the walk. Without: none priced directly, then `drawsLeft` in the walk, starting at an `alive`
+ * already discounted by the board's tsumo chance. Same horizon; only the phase of the first hazard
+ * differs, which is the honest difference between throwing now and not.
+ *
+ * The `'tenpai'` term is identical either way on purpose: its `(1 − tsumoChance) ** drawsLeft` is
+ * how likely the *hand* reaches the exhaustive draw, a property of the board and not of what this
+ * seat does with its turn.
+ */
+function evTerms(
+  tile: TileId | null,
   view: SeatView,
   model: EvModel,
   value: Value,
@@ -292,17 +589,25 @@ function price(
   combined: DealInRisk[],
   outlook: Outlook | undefined,
   notWinning: number,
-): DiscardEv {
+): EvTerm[] {
   const terms: EvTerm[] = []
   const honba = view.match.honba * 300
   const win = outlook?.soloWin ?? 0
-  const winValue = value(conditionalWin(outlook) + honba + view.match.riichiSticks * RIICHI_STICK)
+  // honba is *not* added here: `scoringRules` hands `view.match.honba` to the DP's own leaf and
+  // `score.ts#computePayments` folds it into `payments.total`, so `Outlook.score` already carries
+  // it. Adding it again paid the repeat counter twice — invisible until a hand is played at
+  // honba > 0, which no seeded test ever was. Riichi sticks are the other way round: nothing in
+  // `score.ts` knows about them, so they are collected exactly once, here.
+  const winValue = value(
+    conditionalWin(outlook, model.winValue(handShape(view), board)) +
+      view.match.riichiSticks * RIICHI_STICK,
+  )
   if (outlook) {
     terms.push({ kind: 'win', probability: win, value: winValue, points: win * winValue })
   }
 
   // this turn's throw, per threat, so an explanation can name which seat each cost belongs to
-  for (let j = 0; j < threats.length; j++) {
+  for (let j = 0; tile !== null && j < threats.length; j++) {
     const probability = risks[j][tile].probability
     if (probability === 0) continue
     // the points go *to* that seat, which is worth naming under the placement objective: dealing
@@ -318,9 +623,12 @@ function price(
   // averaged over the threats, so no one seat is the recipient — the later turns are priced as a
   // loss to this seat and nothing more
   const loss = value(-dealInPrice(model, threats, board, honba))
-  const alive = (1 - combined[tile].probability) * (1 - board.tsumoChance)
+  const alive =
+    tile === null
+      ? 1 - board.tsumoChance
+      : (1 - combined[tile].probability) * (1 - board.tsumoChance)
   const later = laterCost(
-    turnRisks('push', view, combined, board, board.drawsLeft - 1),
+    turnRisks('push', view, combined, board, board.drawsLeft - (tile === null ? 0 : 1)),
     board,
     loss,
     alive,
@@ -359,6 +667,34 @@ function price(
     terms.push({ kind: 'tenpai', probability, value: swing, points: probability * swing })
   }
 
+  return terms
+}
+
+/** One candidate discard, with every term written down. */
+function price(
+  tile: TileId,
+  view: SeatView,
+  model: EvModel,
+  value: Value,
+  board: BoardCost,
+  threats: readonly ThreatCost[],
+  risks: readonly DealInRisk[][],
+  combined: DealInRisk[],
+  outlook: Outlook | undefined,
+  notWinning: number,
+): DiscardEv {
+  const terms = evTerms(
+    tile,
+    view,
+    model,
+    value,
+    board,
+    threats,
+    risks,
+    combined,
+    outlook,
+    notWinning,
+  )
   return {
     tile,
     ev: terms.reduce((sum, term) => sum + term.points, 0),
@@ -366,6 +702,47 @@ function price(
     outlook,
     terms,
   }
+}
+
+/**
+ * What this hand is worth *without acting on it* — the thirteen-tile branch: no tile leaves, the
+ * seat simply waits for its next draw.
+ *
+ * It is the baseline every decision that is not a discard is measured against. Passing on a call
+ * is this; declining a ron is this. `rankDiscards` cannot answer it — it needs the hand mid-turn,
+ * and taking a tile out of thirteen leaves a twelve-tile hand the DP can never complete.
+ */
+function passEv(
+  view: SeatView,
+  opts: EvOptions,
+): { ev: number; terms: EvTerm[]; outlook: Outlook } {
+  const model = opts.model ?? STATISTICAL
+  const value = valuer(view, model, opts.objective ?? 'points')
+  const { board, threats, risks, combined } = context(view, model)
+  const outlook = holdOutlook(view, board, opts)
+  const terms = evTerms(
+    null,
+    view,
+    model,
+    value,
+    board,
+    threats,
+    risks,
+    combined,
+    outlook,
+    model.giveUpCost(threats, board),
+  )
+  return { ev: terms.reduce((sum, term) => sum + term.points, 0), terms, outlook }
+}
+
+/** The outlook for the thirteen-tile hand as it now stands. One call, shared by everything that
+ *  prices a hand nobody is about to throw from. */
+function holdOutlook(view: SeatView, board: BoardCost, opts: EvOptions): Outlook {
+  return handOutlook(view.hand, view.seen, view.sanma, board.drawsLeft, {
+    objective: 'score',
+    maxShanten: opts.maxShanten,
+    scoring: scoringContext(view),
+  })
 }
 
 /**

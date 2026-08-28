@@ -2,18 +2,23 @@ import { describe, expect, it } from 'vitest'
 import type { SeatView } from './algorithm'
 import type { ThreatView } from './danger'
 import {
+  bestCall,
   DEFAULT_EV_SEAT,
   foldEv,
+  keepEv,
+  rankCalls,
   rankDiscards,
   riichiWorthIt,
   tsumoChance,
+  winWorthIt,
   type DiscardEv,
 } from './ev'
 import { EV_MODELS } from './evModel'
 import { handFromTenhou, handToTiles } from './hand'
 import { createMatch } from './match'
 import { dealInRisk } from './dealIn'
-import { HONOR, NUM_TILE_TYPES, PIN, parseTenhou, SOU, type TileId } from './tiles'
+import { HONOR, MAN, NUM_TILE_TYPES, PIN, parseTenhou, SOU, type TileId } from './tiles'
+import { scoreHand } from './score'
 import { TILES_PER_KIND } from './wall'
 
 const { statistical, houou } = EV_MODELS
@@ -404,4 +409,142 @@ it('leaves the hand exactly as it found it', () => {
   foldEv(view, { model: statistical })
   expect(Array.from(view.hand.counts)).toEqual(before)
   void PIN
+})
+
+describe('the branch that throws nothing', () => {
+  /** The same tenpai hand `TENPAI` describes, one tile lighter: the shape a seat is left holding
+   *  once it has thrown, and the shape every decision that is not a discard is weighed from. */
+  const THIRTEEN = '234m234p234s5567s'
+
+  it('prices a thirteen-tile hand, which rankDiscards cannot be asked about at all', () => {
+    const view = viewOf(THIRTEEN)
+    expect(() => rankDiscards(view)).toThrow(/mid-turn/)
+    expect(Number.isFinite(keepEv(view))).toBe(true)
+  })
+
+  it('charges no deal-in for a turn it throws nothing on, and still charges the later ones', () => {
+    const threats = [threatOf('123p456p')]
+    const held = keepEv(viewOf(THIRTEEN, threats))
+    const quiet = keepEv(viewOf(THIRTEEN))
+    // a threat still costs the hand something over the turns it has left, even on a turn where
+    // this seat put no tile on the table
+    expect(held).toBeLessThan(quiet)
+  })
+
+  it('takes the fold when folding is what the hand is worth', () => {
+    // junk against a declared threat: there is no win to wait for, so the better branch is the
+    // one that gives up, and a thirteen-tile hand must be able to reach it like any other
+    const view = viewOf('147m258p369s1122z', [threatOf('123p456p')])
+    expect(keepEv(view)).toBeGreaterThanOrEqual(foldEv(view).ev)
+  })
+})
+
+describe('rankCalls', () => {
+  /** `78999m` with a 9m coming from the left: chi, pon and kan are all legal at once, which is the
+   *  three-way comparison a shanten rule cannot make — every one of them is shanten-neutral or
+   *  better, and only their *value* separates them.
+   *
+   *  The haku pair is load-bearing rather than decoration. Open, this hand holds a terminal in two
+   *  suits and so can never be tanyao or a flush, and `yakuRoute` is right to refuse a call that
+   *  would leave a hand unable to win at all — with `11s` there instead, every one of the three is
+   *  screened out before it is ever priced, and correctly so. */
+  const THREE_WAY = '78999m234p567p55z'
+
+  /** Thirteen tiles, not fourteen: a call is answered before this seat has drawn anything. */
+  function callView(overrides: Partial<SeatView> = {}): SeatView {
+    return viewOf(THREE_WAY, [], { calledKan: true, ...overrides })
+  }
+
+  it('prices chi, pon and kan against the pass, all in one ranking', () => {
+    const ranked = rankCalls(callView(), MAN + 8, true)
+    const kinds = ranked.map((row) => row.call?.kind ?? 'pass')
+
+    expect(new Set(kinds)).toEqual(new Set(['chi', 'pon', 'minkan', 'pass']))
+    // and it really is a ranking: descending, with no two rows depending on sort stability
+    for (let i = 1; i < ranked.length; i++)
+      expect(ranked[i - 1].ev).toBeGreaterThanOrEqual(ranked[i].ev)
+  })
+
+  it('adds up, the way a discard does: every row is the sum of its own terms', () => {
+    for (const row of rankCalls(callView(), MAN + 8, true)) {
+      const summed = row.terms.reduce((total, term) => total + term.points, 0)
+      // the kan row carries its dora uplift on top of its terms, which is the one row that does
+      const uplift = row.call?.kind === 'minkan' ? row.ev - summed : 0
+      expect(row.ev - uplift).toBeCloseTo(summed, 9)
+      for (const term of row.terms)
+        expect(term.points).toBeCloseTo(term.probability * term.value, 9)
+    }
+  })
+
+  it('offers nothing at all when no call is legal, and pays for no pricing to say so', () => {
+    expect(rankCalls(callView(), PIN + 8, true)).toEqual([])
+    expect(bestCall(callView(), PIN + 8, true)).toBeNull()
+  })
+
+  it('never offers a chi from anywhere but the left', () => {
+    const kinds = rankCalls(callView(), MAN + 8, false).map((row) => row.call?.kind ?? 'pass')
+    expect(kinds).not.toContain('chi')
+  })
+
+  it('leaves the hand it priced exactly as it found it', () => {
+    const view = callView()
+    const before = view.hand.counts.slice()
+    rankCalls(view, MAN + 8, true)
+    expect(view.hand.counts).toEqual(before)
+    expect(view.hand.melds).toBe(0)
+  })
+
+  it('is a decision, not a preference: a call has to beat the pass rather than tie it', () => {
+    const ranked = rankCalls(callView(), MAN + 8, true)
+    const best = ranked[0]
+    const pass = ranked.find((row) => row.call === null)!
+    const taken = bestCall(callView(), MAN + 8, true)
+    if (best.call === null || best.ev <= pass.ev) expect(taken).toBeNull()
+    else expect(taken).toEqual(best.call)
+  })
+
+  it('answers differently under the two models, the same as every other priced decision', () => {
+    // a threat is what separates them: on a quiet board the two models agree by construction,
+    // since everything they disagree about is a cost nobody is imposing yet
+    const threats = [threatOf('123p456p')]
+    const under = (model: 'statistical' | 'houou') =>
+      rankCalls(callView({ threats }), MAN + 8, true, { model: EV_MODELS[model] }).map((r) => r.ev)
+    expect(under('statistical')).not.toEqual(under('houou'))
+  })
+})
+
+describe('winWorthIt', () => {
+  /** A completed hand and its real score, which is what `tryWin` hands the algorithm. */
+  function candidate(view: SeatView, tenhou: string) {
+    const tiles = parseTenhou(tenhou)
+    const winTile = tiles[tiles.length - 1]
+    const score = scoreHand({
+      concealed: tiles,
+      melds: [],
+      ctx: {
+        round: view.prevalentWind,
+        seat: view.seatWind,
+        tsumo: true,
+        riichi: false,
+        doubleRiichi: false,
+        ippatsu: false,
+        haitei: false,
+        houtei: false,
+        rinshan: false,
+        chankan: false,
+        winTile: winTile.id,
+      },
+      doraIndicators: view.doraIndicators.map((tile) => tile.id),
+      uraIndicators: [],
+      kita: 0,
+      rules: { kiriageMangan: false, honba: 0, sanma: false },
+    })
+    return { tile: winTile, score: score! }
+  }
+
+  it('takes an ordinary win rather than playing a tenpai hand on', () => {
+    const won = '234m234p234s55588s'
+    const view = viewOf(won)
+    expect(winWorthIt(view, candidate(view, won))).toBe(true)
+  })
 })

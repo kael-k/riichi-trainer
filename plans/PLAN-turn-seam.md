@@ -108,7 +108,7 @@ take the third.
 
 |                                                         |                                                                                                                      |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Loop in `beginTurn`, ask again in `finishTurn`          | Correct, but an `'ev'` seat evaluates `rankDiscards` **twice a turn** (~460ms each). Rejected on cost.               |
+| Loop in `beginTurn`, ask again in `finishTurn`          | Correct, but an `'ev'` seat evaluates `rankDiscards` **twice a turn**. Rejected on cost.                             |
 | Loop in `beginTurn`, stash the discard on `PlayerState` | New mutable state beside `drawn` that can drift, which is what the census test exists to catch. Rejected.            |
 | **Loop in `finishTurn`**                                | **Take this.** The discard is already `finishTurn`'s job, so `turn` is asked exactly as many times as the seat acts. |
 
@@ -247,3 +247,297 @@ they kan into a riichi with a hopeless hand, the term filter in §4 is wrong.
   and the EV section for the kan rule and its stated ceiling.
 - `docs/STRUCTURE.md` if `policy.ts` gains `kanOptions`.
 - `docs/STATUS.md` — a new numbered entry.
+
+## CHAT AFTER IMPLEMENTATION
+
+What's follow is a copy paste of the chat with user and opus after implementing this plan
+
+---
+
+Committed a1bd93d (signed). 670 tests, lint 0, build clean.
+
+Tests 1 & 2 — nukidora, sanma, 'ev' statistical. Both pass, and the reason the suushiihou case works is worth knowing: no yaku-aware logic is involved. 111z222z333z444z5z is tenpai for daisuushii; discarding a north drops it off tenpai, so north's evaluateDiscards entry can't tie the best discard and pullsNorth declines. The ordinary-tenpai case (123456789p1122s + drawn north) pulls, because all thirteen are committed and the north is spare by construction.
+
+Tests 3 & 4 — daiminkan, yonma, efficiency + 'ev' under both models. Test 3 passes. Test 4 as you asked for it cannot exist, and that's the finding:
+
+No AI seat can ever call an open kan, in any position. chooseCall never receives RoundOptions.calledKan, so availableCalls never returns a minkan to a bot (ADR-0041). Threading the flag through wouldn't help either — shantenAfterCall removes three tiles and adds a meld, so a hand holding a concealed triplet lands on the same shanten (the triplet was already a complete block), and the after >= current guard rejects it every time. That's the §1 finding your plan author flagged, and ADR-0043's stated rejection.
+
+So I built your case anyway and pinned it as the gap: seat 1 pons a haku, ends open, yaku-ful, tenpai on a 5s/8s ryanmen with 111m concealed and idle. Kanning keeps the wait, flips a dora, draws a replacement — free by every reading. All three algorithms decline. A separate test asserts that board really is what I claim (open, tenpai, 111m intact, seat 2 about to throw the fourth 1m).
+
+Every declining case is paired with the identical board run with the seat left 'manual', asserting claimOptions genuinely offers the minkan — otherwise the declines would pass on a board where no kan existed.
+
+Two flaky tests to flag, both pre-existing and load-related (this box runs 45 files in parallel): useMatchRound's "nextRound deals a fresh board" hit its 20s budget once at 26.8s (3.4s in isolation), and useFoldingRound's "a mid-hand link replays the discards behind it" failed once. Both pass alone and on re-run; the full suite was green on the final run. The match one is nearer the edge now — 'ev' seats pay a second rankDiscards on any turn they kan.
+
+If you want AI daiminkan for real, that's the call-gate pricing ADR-0043 defers — say the word and I'll scope it.
+
+✻ Worked for 7m 42s · done 12:38 PM
+
+❯ Can you explain me better the The §4 ceiling you flagged is sharper than the plan states, in a way that helps. problem (and the Test 4 as you asked for it cannot exist which I guess is related) this is a gap to me
+
+Good question — they're related, but not in the way it looks. Let me verify the numbers before explaining, rather than assert from reading.
+
+Ran 2 shell commands
+
+They're related, but not as cause-and-effect — they're the same structural gap seen on two different surfaces. And verifying it just now showed my earlier "in a way that helps" was too generous. Let me take that first.
+
+Correction: the second gate is weaker than I said
+
+I told you an 'ev' seat only kans on a quiet board when the DP can price a win, so junk hands wouldn't kan-spam. That holds only on a pristine board. Measured just now:
+
+hand shanten honba0 honba2 1 stick
+111m456789m1122p 0 KAN KAN KAN
+111m456m789m12p3s 1 KAN KAN KAN
+111m456m78p1234s 1 KAN KAN KAN
+111m258p258s347z 5 no KAN KAN ← the one I claimed was safe
+
+Why: scaled sums the win/dealIn/danger terms. With nobody declared, dealIn and danger are zero. The win term is P(win) × value(hand value + honba×300 + sticks×1000). Above 2 shanten the collapsed chain leaves hand value at zero — but honba and sticks survive. So a 5-shanten hand kans the moment there's a repeat counter or a stick on the table, which in a real match is most of the time.
+
+Worse, that's a defect in the rule as I wrote it, not just a surprise: the sign test is supposed to sum the terms a dora indicator multiplies. A dora doesn't multiply honba or riichi sticks — those are fixed collects. They shouldn't be in scaled at all.
+
+So bestKan's committed doc comment ("above maxShanten… the sum is exactly zero and the kan is declined") is wrong as shipped, and so is the matching line in ADR-0043 and CLAUDE.md. One of the two has to move.
+
+Now the actual gap, and why the two questions are one question
+
+The engine has two decision surfaces, and only one of them is priced:
+
+┌──────────────────────────┬─────────────────────────────────┬───────────────────────────────────────────────────────────────────────┐
+│ │ own-turn (Algorithm.turn) │ claim-time (Algorithm.call) │
+├──────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+│ which kan │ ankan, kakan │ daiminkan │
+├──────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+│ who decides │ 'ev' prices it via rankDiscards │ chooseCall — a shanten heuristic — for every algorithm, 'ev' included │
+├──────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+│ what the decider can see │ probability × value │ shanten, and nothing else │
+├──────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+│ cost │ once per turn, one seat │ every seat, every discard │
+└──────────────────────────┴─────────────────────────────────┴───────────────────────────────────────────────────────────────────────┘
+
+Ankan and kakan got a price for one reason: they are turn actions, and turn already had a rankDiscards sitting in it for the discard. The kan rule was free to bolt on.
+
+Daiminkan is a call action, and call has no price at all. ev.call does not price anything — it delegates to chooseCall and adds one guard on top (don't open into a hand that won't be tenpai when a threat is out). The ranking is still pure shanten.
+
+And shanten structurally cannot see a kan. A concealed triplet is already a complete block, so melding it changes nothing:
+
+111m222m333m444p5s shanten 0 -> 0 (the suuankou hand: after === current)
+111m234p567p99s12s shanten 0 -> 1 (worse — the triplet was doing double duty)
+111m345m678m22p34s shanten 0 -> 1
+111m19m19p19s1234z shanten 2 -> 6
+
+Six shapes probed, none lowered. chooseCall's only filter is if (after >= current) continue. So a daiminkan is rejected 100% of the time — not by policy, by arithmetic. A kan's actual value (one modraw, fu) lives entirely outside what shanten measures.
+
+That's why there are two barriers, and why removing the shipped one doesn't help: chooseCall never receives calledKan so a minkan is never even a candidate (ADR-0041, deliberate — it keeps the gold flag through and you hit the shanten wall behind it.
+
+So: same gap, two surfaces. The priced surface fails only at its edges — the cost side is a hard zero when nobody has declared, the benefit side a hard zero above 2 shanten. Both are the model refuzero. The unpriced surface fails everywhere, because it was never asked to speak.
+
+Giving daiminkan a real price means running the sign rule on the call gate — which costs a rankDiscards (~460ms) for every seat on every discard, against ~460ms per turn today. That's a round going from half a second to minutes. It's ADR-0043's stated rejection, and it needs a cheap P(win) first.
+
+> **Both numbers in that paragraph are wrong, and the conclusion with them.** The measured ~460ms is a whole _hand_, not a turn (`core/ev.bench.test.ts` settles it: ~35ms a turn, and `efficiency`'s paired ~40ms is a hand too). And the call gate is not asked on every discard — a seat has a legal call on ~2.4 of them a hand. Pricing every decision point measured **+23%** on a hand. See ADR-0044.
+
+What I'd do about the scaled defect
+
+One line in bestKan, no new constant:
+
+// a sign test over a term the model declined to price is not a decision
+if (best?.outlook?.score === undefined) return undefined
+
+That makes the shipped documentation true, kills the honba/stick artefact, and states its own reason. It doesn't move EV_GOLDEN (golden-3 deals no quad, honba 0) or any golden hash, and my existing so they're unaffected.
+
+The alternative is to keep the behaviour and rewrite the three doc sites to say "kans on any quiet board once there's honba or a stick, at any shanten" — honest, but it's documenting an artefact as
+
+Want me to apply the one-liner?
+
+---
+
+## IMPLEMENTATION REPORT — closing the gap the chat above describes
+
+_Written 2026-08-28, the session after the one that produced the chat. **This section supersedes
+the chat above wherever they disagree**, and they disagree about two load-bearing facts. Everything
+here is shipped: 699 tests, lint 0, `tsc -b` and `npm run build` clean. Decision record is
+[ADR-0044](../docs/adr/0044-every-decision-is-priced.md)._
+
+### 0. The two things the chat above got wrong
+
+Both were the stated reasons not to do this work, and both are false.
+
+**The cost is off by a factor of eighteen.** "That's a round going from half a second to minutes"
+rests on `~460ms` being a _turn_. It is a whole **hand**. `core/ev.bench.test.ts` (new, gated on
+`EV_BENCH`, never runs in CI) measures it directly:
+
+```
+efficiency        17.7 ms/hand
+ev (statistical)  424.5 ms/hand over 12 own turns = 35.4 ms/turn
+```
+
+The paired `~40ms` quoted for `efficiency` in the same sentences settles it on its own — one
+`evaluateDiscards` plus one `chooseDiscard` cannot be 40ms, and 40ms over ~12 turns is right. Four
+doc sites said "hand" and seven said "a turn"; the seven were citation drift (`algorithm.ts:280`,
+`:289`, `CLAUDE.md`, ADR-0043, `docs/STATUS.md`, and §3/§5 of this very file). All corrected.
+
+The second half of the estimate was wrong too. The call gate is **not** priced on every discard: a
+seat has a legal call on ~2.4 discards a hand, and `availableCalls` says so in pure counts
+arithmetic before anything is priced. Measured after the change: **+23% on a hand**, 424 → 520ms.
+
+**`chooseCall` does not reject a daiminkan for the reason everyone recorded.** "A hand holding a
+concealed triplet lands on the _same_ shanten, so `after >= current` rejects it, always" is a
+generalisation from the suuankou hand and is false in general. `shantenAfterCall` (`policy.ts:223`)
+calls `bestDiscards`, which removes one more tile — correct for a pon or chi, whose post-call hand
+is fourteen-equivalent and owes a throw, and **wrong for a minkan**, whose post-call hand is already
+thirteen-equivalent and draws its replacement instead. So it was probing a twelve-tile hand and
+usually answering `current + 1`. `shanten` is tile-count-blind, so nothing threw; the number was
+just one too high — which is exactly enough to make any screen built on it reject every open kan.
+
+**This was the prerequisite.** Ship the call pricing without fixing it and the screen silently eats
+every daiminkan and the feature is a no-op that passes its own tests.
+
+### 1. The root cause under all of it
+
+`probability.ts#collapsed` runs above `maxShanten` (2) and **never reaches a leaf**, so
+`Outlook.score` came back undefined and `ev.ts#conditionalWin` returned **zero**. One hole, three
+stated ceilings:
+
+- `bestKan` declined above 2 shanten "for a reason that has nothing to do with the kan";
+- `abortWorthIt` abandoned nearly every kyuushu hand — they are 4+ shanten, so the zero _was_ the
+  decision;
+- any call priced early in a hand compared two branches that both carried no win value.
+
+The chat's proposed one-liner (`if (best?.outlook?.score === undefined) return undefined`) was
+**not** applied. It makes the documentation true by making the model refuse to answer, which is the
+wrong direction — the fix is to give it something to say.
+
+### 2. What landed, in dependency order
+
+| #   | Change                                                                                                                         | Files                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| 0   | `EV_BENCH`-gated benchmark: ms/hand vs ms/turn, per-decision-point ask counts, call-gate yield                                 | `core/ev.bench.test.ts` (new)                                          |
+| 1   | `shantenAfterCall`'s minkan guard, and it is exported                                                                          | `core/policy.ts`                                                       |
+| 2   | Drop the double honba from the win term                                                                                        | `core/ev.ts`                                                           |
+| 3   | `EvModel.winValue` + `HandShape`; `HandScore.csv`'s five open columns extracted                                                | `core/evModel.ts`, `scripts/build-ev-models.mjs`, `core/hououPrior.ts` |
+| 3b  | `hasYakuRoute` splits into `yakuRoute(): YakuRoute \| null`                                                                    | `core/policy.ts`                                                       |
+| 4   | `conditionalWin(outlook, fallback)`; three ceiling comments rewritten                                                          | `core/ev.ts`, `core/algorithm.ts`                                      |
+| 5   | `price` splits into `evTerms(tile: TileId \| null, …)`; `passEv`, `holdOutlook`, `branchEv`; `keepEv` dispatches on tile count | `core/ev.ts`                                                           |
+| 6   | Win-check the daiminkan replacement                                                                                            | `core/round.ts`                                                        |
+| 7   | `rankCalls`/`bestCall`/`CallEv`/`afterCall`/`KAN_DORA_UPLIFT`; `callReachesTenpai` deleted                                     | `core/ev.ts`, `core/algorithm.ts`                                      |
+| 8   | `winWorthIt`                                                                                                                   | `core/ev.ts`, `core/algorithm.ts`                                      |
+| 9   | `kitaWorthIt`; a declared seat pulls only a north it just **drew**                                                             | `core/ev.ts`, `core/algorithm.ts`                                      |
+
+Steps 0-6 moved no golden value, which is the gate each one was run against.
+
+### 3. Three findings worth not re-deriving
+
+**`keepEv` must keep the fold on both branches.** A thirteen-tile branch priced as a pure push
+understates what the seat's alternative is worth, and every comparison against it then leans toward
+acting — calling more into a board it should be leaving. That matters because step 7 deletes
+`callReachesTenpai`, which was the only thing guarding that today.
+
+**`afterCall` uses `Object.create(view, …)`, never a spread.** A spread reads every own enumerable
+property, which fires `seatView`'s three lazy getters — `furiten` alone is ~34 shanten probes — on
+the hottest path in the engine. Prototype delegation leaves their memos on the original view, where
+every branch of one decision shares them for free. `seen` is genuinely invariant under a pon or chi
+(`round.ts:1197` removes the tiles, `:1207` adds the same ids to `state.visible`, and `seenBy` is
+their sum); after a minkan it is not, which is a stated ceiling rather than a bug.
+
+**A daiminkan needs its kan dora priced as a multiplier, or the model refuses a free kan.** The
+indicator is `state.doraStack.shift()` — face down, unknowable from a `SeatView` — so the post-kan
+hand cannot be shown holding it, and the branch lost its whole benefit while keeping its whole cost.
+Measured before the fix on the free-kan board: `minkan=-282` against `pass=-213`. `KAN_DORA_UPLIFT`
+is `2 ** (14/34) - 1` — one indicator, thirty-four kinds, fourteen tiles, a han doubles — the same
+argument `STATISTICAL.riichiUplift` already makes about ura, applied to the same win/dealIn/danger
+terms `bestKan` scales. It is arithmetic about the ruleset rather than a figure either model
+measured, so both read it and the no-borrowing rule holds. `bestKan` needs no such constant because
+a closed kan is a **binary** choice against the identical hand and the multiplier cancels; a
+daiminkan ranked against a pon, a chi and a pass has to name the magnitude.
+
+### 4. The decision, on the board this was built for
+
+`78999m` open-hand shape, kamicha discards `9m`, `calledKan` on, nobody declared:
+
+```
+minkan=1949   pass=1500   pon=1425
+```
+
+Kan keeps the wait and flips an indicator; pon breaks the tenpai; pass does neither. Pinned in
+`round.test.ts` (`'%s ranks that kan above both the pon and the pass'`) and in `ev.test.ts`
+(`rankCalls` on a `78999m234p567p55z` view).
+
+The haku pair in that test hand is load-bearing, not decoration: open, a hand holding a terminal in
+two suits can never be tanyao or a flush, so `yakuRoute` correctly screens out all three calls and
+the test measures nothing. First draft used `11s` and the ranking came back `['pass']`.
+
+### 5. Golden protocol — what actually happened
+
+- **`GOLDEN`'s forty hashes did not move.** `chooseCall` is untouched; `bestCall` reaches the minkan
+  through `availableCalls(…, view.calledKan)` instead, which is the whole reason it is wired that
+  way.
+- **`EV_GOLDEN` did not move either**, which the plan expected it to. Verified by regenerating, not
+  by the tests passing: `GENERATE_GOLDEN=1` prints the committed values back. It is a fact about
+  `golden-3` — `calledKan` off, so no minkan is a candidate, and on that one wall every priced call
+  answer matched `chooseCall`'s. Noted in the file beside the existing sanma note.
+- **The placement-divergence pair re-scanned to `golden-2`/`golden-8`** (was `golden-2`/`golden-6`).
+  Full twenty-seed sweep, not a hunt.
+
+### 6. Tests that changed, and why
+
+- `round.test.ts`'s `describe("daiminkan is never an AI seat's call")` → `'daiminkan is priced by an
+ev seat and invisible to efficiency'`. The suuankou case keeps `it.each(AI_MODES)` — all three
+  still decline, now for two different reasons — plus a new row asserting the `'ev'` seats were
+  _shown_ the kan, so "priced and declined" is distinguishable from "never offered". The free-kan
+  case splits: `efficiency` declines, `EV_MODES` take it.
+- **`openTenpai` now runs `riichi: false`.** With a declared threat on that board the three
+  concealed `1m` are genbutsu and kanning spends all three at once — a real cost an `'ev'` seat is
+  right to weigh, and nothing to do with what the board was built to ask. The setup test now asserts
+  `threatViews(state)` is empty rather than trusting the docblock's "free by every reading".
+- **`'replays off the log…'` (kyuushu) takes its abort from a person now.** It was quietly a test of
+  the old zero win term: with `abortWorthIt` fixed, the `'ev'` seat keeps that hand. The test is
+  about `replayLog`, so hanging it on a model's judgement was wrong to begin with.
+- `'an AI seat never calls minkan…'` renamed to name `efficiency`; the general claim is false now.
+- Two budgets raised, both with the reason in the code. The suuankou board is `decompose`'s worst
+  case — `111m222m333m` arranges as three triplets _and_ as three runs, so every leaf scores several
+  arrangements and three call branches over it take ~2s against a turn's ~35ms. And
+  `useMatchRound`'s two tests are the only ones that play a whole hand through React; they run ~1.7s
+  in isolation and tens of seconds under a 45-file parallel run. Both guard against a hang, not
+  against a regression — `ev.bench.test.ts` is what watches cost.
+
+### 7. Ceilings shipped, each stated in the code
+
+- A daiminkan is priced without knowing _which_ dora the indicator turns out to be, only what one is
+  worth on average.
+- A pon steals turns and that prices at **zero**: `drawsLeft` is identical on both branches.
+- On a quiet board a call has no cost side at all (`dealIn.ts` refuses to speak about an undeclared
+  seat), so an `'ev'` seat opens more in the first half of a hand than it should. Same refusal
+  `bestKan` carries, and it lifts in the same place.
+- Declining a **ron** is honestly priced only for a seat in riichi, where the furiten is permanent
+  and the DP's tsumo-only `soloWin` _is_ the post-decline value. Elsewhere the decline is understated
+  and the answer leans toward taking — safe direction, and it means `winWorthIt` returns `true` in
+  nearly every real position. That is a proxy for `EV-3` §7's "the decline branch's EV prices that
+  state", not a closure of it.
+- `bestKan`'s `scaled` still carries the riichi sticks in its win term, which a dora does not
+  multiply. One term of one row, always the same sign as the win term it rides on; correcting it
+  needs the win value split out of a number the identity keeps whole.
+- The kita replacement is modelled as an ordinary draw, so the tempo half of "the dora against the
+  tempo" prices at zero.
+
+### 8. Still open
+
+- **`plans/EV-5` §2.13's backtest** and §2.7's memo-lifetime measurement, both unchanged.
+- **Reading a silent tenpai** (`EV-5` §1.4) — it is what lifts the quiet-board ceiling above.
+- **Chankan and rinshan kaihou the yaku** — still unmodelled. The rinshan _win_ is no longer dropped
+  anywhere: the turn loop, `replayLog` and now `resolveReactions` all check it.
+- **The call ranking has no UI.** `CallEv` carries its terms and the tests read them; `table.ts#evOf`
+  stays a discard surface. Decided deliberately, recorded in ADR-0044's Rejected section.
+- **`evModel.ts` now type-imports `YakuRoute` from `policy.ts`** — the only edge between them, in
+  that direction alone, noted in `docs/STRUCTURE.md`. Worth watching if the layering is revisited.
+
+### 9. Verification
+
+```sh
+EV_BENCH=1 npx vitest run src/core/ev.bench.test.ts --disable-console-intercept
+npx vitest run src/core/round.golden.test.ts     # 40 GOLDEN + 2 EV_GOLDEN + the divergence pair
+npx vitest run src/core/policy.test.ts src/core/evModel.test.ts src/core/ev.test.ts
+npx vitest run src/core/round.test.ts src/core/algorithm.test.ts
+npm test && npm run lint && npm run build
+npm run build-ev-models && git diff --stat src/core/hououPrior.ts   # additive only
+```
+
+Then play `/match` with three `'ev'` seats and `calledKan` on: they open more in the first half of a
+hand than they used to, take a free daiminkan on an open tenpai hand, and stop calling into a
+declared threat.

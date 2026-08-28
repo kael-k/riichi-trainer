@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { Meld } from './agari'
 import { handFromTenhou } from './hand'
-import { chooseCall, chooseDiscard, chooseFold, hasYakuRoute, isFuriten, waits } from './policy'
+import {
+  chooseCall,
+  chooseDiscard,
+  chooseFold,
+  hasYakuRoute,
+  isFuriten,
+  shantenAfterCall,
+  waits,
+} from './policy'
 import { HONOR, MAN, NUM_TILE_TYPES, parseTenhou, PIN, type TileId } from './tiles'
 
 const NONE = new Uint8Array(NUM_TILE_TYPES)
@@ -103,5 +111,33 @@ describe('chooseCall', () => {
     const other = chooseCall(hand, [], MAN + 3, false, EAST, HONOR + 1)
     expect(other).toBeNull()
     if (left) expect(left.kind).toBe('chi')
+  })
+})
+
+describe('shantenAfterCall', () => {
+  /**
+   * A pon and a chi spend two tiles for a meld, so the hand is still fourteen and still owes a
+   * discard. A minkan spends three and draws its replacement instead, so the hand is thirteen and
+   * owes nothing — `bestDiscards` there would take a *fourth* tile out and report the shanten of a
+   * hand that is a tile short. `shanten` is tile-count-blind, so the bug is silent: no throw, just
+   * a number one too high, which is exactly enough to make any `after <= current` screen reject
+   * every open kan.
+   */
+  it('counts a minkan as the thirteen-tile hand it leaves, not one tile short', () => {
+    // open tenpai on a 5s/8s ryanmen with a concealed 111m sitting idle beside it: kanning the
+    // fourth 1m leaves the wait exactly where it was, so the hand is still tenpai afterwards
+    const hand = handFromTenhou('111m234p99s67s')
+    hand.melds = 1
+    expect(shantenAfterCall(hand, { kind: 'minkan', from: [MAN, MAN, MAN] })).toBe(0)
+  })
+
+  it('leaves the hand it probed exactly as it found it', () => {
+    const hand = handFromTenhou('111m234p99s67s')
+    hand.melds = 1
+    const before = hand.counts.slice()
+    shantenAfterCall(hand, { kind: 'minkan', from: [MAN, MAN, MAN] })
+    shantenAfterCall(hand, { kind: 'pon', from: [MAN, MAN] })
+    expect(hand.counts).toEqual(before)
+    expect(hand.melds).toBe(1)
   })
 })
