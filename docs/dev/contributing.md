@@ -12,8 +12,8 @@ npm run build                # tsc -b + vite build
 npm run ui-test              # playwright
 npm run format               # prettier
 
-npm run docs:dev             # this site, with hot reload
-npm run docs:build           # this site, into dist/docs
+npm run docs:dev             # docs site, with hot reload
+npm run docs:build           # docs site, into dist/docs
 ```
 
 Two of those have an ordering trap worth knowing once:
@@ -57,11 +57,6 @@ regenerates them without explaining why is itself the finding.
 
 ## Compatibility
 
-Before 1.0 this project deliberately kept no backward compatibility: old links and persisted keys
-were not migrated, because nobody had any.
-
-**From 1.0, two formats are committed**, and once a change is merged to `main` it is public:
-
 **Situation URLs.** A shared link must keep resolving. These get pasted into chat and sat on for
 months, and a training link that rots is worse than no link.
 
@@ -93,7 +88,7 @@ Three places, one job each, and nothing repeats another.
 |                            | Answers                                                                                                                            | Churn                  |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | `CLAUDE.md`                | **How the code works today** — commands, layer rules, and the invariants whose default guess is wrong and whose breakage is silent | Every behaviour change |
-| This site                  | **Why the models say what they say** — the deep dive a popover cannot carry                                                        | When a model moves     |
+| Docs site                  | **Why the models say what they say** — the deep dive a popover cannot carry                                                        | When a model moves     |
 | The app's own locale files | **What a trainer is and how to use it**                                                                                            | With the feature       |
 
 The test for `CLAUDE.md` is a single question: _would somebody get this wrong by guessing, and would
