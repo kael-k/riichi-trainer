@@ -24,3 +24,29 @@ for (const trainer of TRAINERS) {
     expect(errors).toEqual([])
   })
 }
+
+/**
+ * The docs are a separate static site under `/docs/`, not a route this app knows about, so the
+ * link to them has to cause a real document navigation. A react-router `<Link>` renders the same
+ * `<a href>` and would pass an href assertion while silently rendering the crash page instead —
+ * so the assertion is that the document itself was replaced.
+ *
+ * The dev server this suite runs against does not serve `/docs/` (only the production build
+ * stitches the two sites together), so what lands there is not asserted. That it was fetched at
+ * all is the whole point.
+ */
+test('the docs link leaves the app instead of routing inside it', async ({ page }) => {
+  await page.goto('/')
+
+  // survives a client-side route, dies with the document
+  await page.evaluate(() => ((window as unknown as Record<string, unknown>).__stayed = true))
+
+  const link = page.getByRole('link', { name: 'Documentation' })
+  await expect(link).toHaveAttribute('href', '/docs/')
+
+  await Promise.all([page.waitForURL('**/docs/'), link.click()])
+
+  expect(
+    await page.evaluate(() => (window as unknown as Record<string, unknown>).__stayed),
+  ).toBeUndefined()
+})

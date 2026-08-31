@@ -12,3 +12,10 @@ export const TRAINER_WIKI = {
   // general rules page rather than a guessed /Hanchan slug, so this never links a dead page
   match: 'https://riichi.wiki/Japanese_mahjong',
 } as const satisfies Record<string, string>
+
+/**
+ * The docs site. It is a separate static site built into `dist/docs`, not a route in this app, so
+ * every link to it must be a plain `<a href>` — a react-router `<Link>` would be handled
+ * client-side, match no route, and render the crash page without ever hitting the network.
+ */
+export const DOCS_URL = '/docs/'

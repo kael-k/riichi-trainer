@@ -30,7 +30,8 @@
     "undoAction": "Annulla ultima azione",
     "iosInstallHint": "Aggiungi questa app alla schermata Home per eliminare le barre di Safari: tocca Condividi, poi \"Aggiungi a Home\".",
     "alpha": "Alpha",
-    "alphaNote": "Funzione recente e non ancora rivista: i numeri potrebbero cambiare. Considerala unanteprima, non un risultato definitivo."
+    "alphaNote": "Funzione recente e non ancora rivista: i numeri potrebbero cambiare. Considerala unanteprima, non un risultato definitivo.",
+    "docs": "Documentazione"
   },
   "settings": {
     "button": "Impostazioni",

@@ -6,7 +6,7 @@ import { IOSInstallHint } from '../components/IOSInstallHint'
 import { InfoButton } from '../components/tiles/BoardStage'
 import { Tile } from '../components/tiles/Tile'
 import { parseTenhou } from '../core/tiles'
-import { TRAINER_WIKI } from '../features/i18n/trainerLinks'
+import { DOCS_URL, TRAINER_WIKI } from '../features/i18n/trainerLinks'
 import { SettingsButton } from '../features/settings/SettingsDialog'
 
 const REPO_URL = 'https://github.com/kael-k/riichi-trainer'
@@ -147,6 +147,15 @@ export function HomePage() {
                   className="underline underline-offset-2 hover:text-neutral-600 dark:hover:text-neutral-200"
                 >
                   {t('home.sourceLink')}
+                </a>
+                {' · '}
+                {/* a plain anchor, never `<Link>`: the docs are a separate static site under
+                    `/docs/`, not a route this router knows about */}
+                <a
+                  href={DOCS_URL}
+                  className="underline underline-offset-2 hover:text-neutral-600 dark:hover:text-neutral-200"
+                >
+                  {t('common.docs')}
                 </a>
               </p>
               {/* the short sha is what shows, the whole one is the `title` (and what

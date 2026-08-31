@@ -1,4 +1,4 @@
-import { HelpCircle, Moon, Settings, Sun, SunMoon, X } from 'lucide-react'
+import { BookOpen, HelpCircle, Moon, Settings, Sun, SunMoon, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +7,7 @@ import { InfoPopover } from '../../components/InfoPopover'
 import { ChromeLabel, CHROME_BUTTON } from '../../components/TrainerControls'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 import { resolveLocale } from '../i18n'
+import { DOCS_URL } from '../i18n/trainerLinks'
 import {
   BOT_DELAY_MAX,
   BOT_DELAY_STEP,
@@ -526,6 +527,17 @@ export function SettingsButton({ title, children, app, labelled, container }: Se
                 <UiSettings />
                 <hr className="border-neutral-200 dark:border-neutral-800" />
                 <MiscSettings />
+                <hr className="border-neutral-200 dark:border-neutral-800" />
+                {/* the one surface that reaches every trainer: the home page's footer is the only
+                    other docs link, and a board page has no footer to put one in. A plain anchor,
+                    never `<Link>` — see `DOCS_URL`. */}
+                <a
+                  href={DOCS_URL}
+                  className="flex min-h-11 items-center gap-2 text-sm text-neutral-500 underline underline-offset-2 hover:text-neutral-800 dark:hover:text-neutral-200"
+                >
+                  <BookOpen className="size-4 shrink-0" aria-hidden />
+                  {t('common.docs')}
+                </a>
               </div>
             </div>
           </div>,
