@@ -1,7 +1,14 @@
+import type { TFunction } from 'i18next'
+import { Check, Download } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BoardStage } from '../../components/tiles/BoardStage'
-import { BackButton, ResetButton } from '../../components/TrainerControls'
+import {
+  BackButton,
+  CHROME_BUTTON,
+  ChromeLabel,
+  ResetButton,
+} from '../../components/TrainerControls'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, Tile, WallDetails } from '../../components/tiles/Tile'
 import { EV_MODELS } from '../../core/evModel'
@@ -9,9 +16,12 @@ import { ranks, resultPoints } from '../../core/placement'
 import { DetailLine } from '../../components/LogList'
 import type { MatchFormat, MatchState } from '../../core/match'
 import type { WinRecord } from '../../core/round'
+import { tenhouMatchLog, type TenhouRules } from '../../core/tenhouLog'
 import { scoreDetail } from '../scoring/useScoringRound'
 import { mulberry32, shuffle } from '../../core/rng'
 import { HONOR } from '../../core/tiles'
+import { copyText } from '../../lib/clipboard'
+import { downloadText } from '../../lib/download'
 import { useLogBack } from '../../lib/useLogBack'
 import { splitConcealedDrawn } from '../folding/useFoldingRound'
 import { formatMatchResult } from '../i18n/formatLogEntry'
@@ -38,6 +48,30 @@ import { linkedSeats, useMatchRound, type RoundSettlement } from './useMatchRoun
 /** Stable identity, so the "ignore the link this board mounted with" swap below never itself looks
  *  like a navigation. */
 const EMPTY_SITUATION = emptySituation()
+
+/** One name per seat for the tenhou export — "You" for the seat the reader plays, otherwise the
+ *  same algorithm label `SeatStrip`'s own badge shows (`seats.mode.*`/`seats.modeBadge.ev`), so the
+ *  exported log says who actually played each seat rather than a generic placeholder. */
+function exportNames(t: TFunction, seatConfig: SeatConfig | null, players: number): string[] {
+  const resolved = resolveSeatConfig(seatConfig, players, 0, matchDefaultModes(players), false)
+  return resolved.modes.map((mode, seat) =>
+    mode === 'manual'
+      ? t('match.export.you')
+      : mode === 'ev'
+        ? t('seats.modeBadge.ev', { model: t(`seats.evModel.${resolved.ev[seat].model}`) })
+        : t(`seats.mode.${mode}`),
+  )
+}
+
+/** `riichi-match-20260831-1420.json` — sortable, and unambiguous about which export is which once
+ *  a reader has downloaded a few. */
+function exportFilename(): string {
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const date = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`
+  const time = `${pad(now.getHours())}${pad(now.getMinutes())}`
+  return `riichi-match-${date}-${time}.json`
+}
 
 /** What Start hands to the board: the ruleset, captured once rather than read live — a match that
  *  changed player count or red-fives mid-game would corrupt its own carried-over `MatchState`. */
@@ -261,6 +295,38 @@ function RoundCard({
   )
 }
 
+/** Download / copy a tenhou.net/6 export — `buildLog` is called lazily, only on click, since
+ *  building it replays every settled round through the real engine (`tenhouMatchLog`) and there is
+ *  no reason to pay that on every render of a board that changes turn to turn. */
+function ExportButtons({ buildLog }: { buildLog: () => string }) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() => downloadText(exportFilename(), buildLog())}
+        className="min-h-11 rounded-lg bg-neutral-200 px-4 text-sm font-medium text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
+      >
+        {t('match.export.download')}
+      </button>
+      <button
+        type="button"
+        onClick={async () => {
+          if (await copyText(buildLog())) {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1200)
+          }
+        }}
+        className="flex min-h-11 items-center gap-1.5 rounded-lg bg-neutral-200 px-4 text-sm font-medium text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
+      >
+        {copied && <Check className="size-4" />}
+        {copied ? t('common.copied') : t('match.export.copy')}
+      </button>
+    </div>
+  )
+}
+
 /** The match is over: final standings by rank, raw points, and the Tenhou result points
  *  (`core/placement.ts#resultPoints`) the placement objective is itself maximising. */
 function FinalCard({
@@ -269,6 +335,7 @@ function FinalCard({
   win,
   sanma,
   onNewMatch,
+  buildLog,
 }: {
   /** The **settled** match — `settleRound`'s own output, not the ended round's carry-in, or the
    *  standings would be missing the very payments that ended the match. */
@@ -281,6 +348,7 @@ function FinalCard({
   win: WinRecord | undefined
   sanma: boolean
   onNewMatch: () => void
+  buildLog: () => string
 }) {
   const { t } = useTranslation()
   const rank = ranks(match.points)
@@ -308,6 +376,7 @@ function FinalCard({
           )
         })}
       </div>
+      <ExportButtons buildLog={buildLog} />
       <button
         type="button"
         onClick={onNewMatch}
@@ -413,6 +482,22 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
 
   const myRank = ranks(round.match.points)[round.seatIndex]
 
+  // lazy: `tenhouMatchLog` replays every settled round through the real engine, so this only runs
+  // when the reader actually asks for the file rather than on every turn's re-render
+  function buildLog(): string {
+    const rules: TenhouRules = {
+      sanma: config.sanma,
+      aka: config.aka,
+      kiriageMangan: config.kiriageMangan,
+      format: config.format,
+    }
+    const names = exportNames(t, seatConfig, round.rivers.length)
+    // the settled match's own points once the match is over (`FinalCard`'s own source), the live
+    // in-progress ones otherwise — `round.match` never steps past its own round's carry-in
+    const finalPoints = round.settlement?.settlement.match.points ?? round.match.points
+    return JSON.stringify(tenhouMatchLog(round.tenhouRounds, finalPoints, rules, names))
+  }
+
   return (
     <BoardStage
       title={t('trainer.match.title')}
@@ -427,6 +512,18 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
         <>
           <BackButton canBack={canBack} onBack={back} backLabel={t('common.undoAction')} />
           <ResetButton onReset={onExit} resetLabel={t('match.quit')} />
+          {/* disabled, not hidden, while no round has settled yet — same rule `BackButton` follows
+              for "nothing to act on yet" rather than shifting the row's layout as rounds finish */}
+          <button
+            type="button"
+            onClick={() => downloadText(exportFilename(), buildLog())}
+            disabled={round.tenhouRounds.length === 0}
+            aria-label={t('match.export.download')}
+            className={`${CHROME_BUTTON} disabled:opacity-30`}
+          >
+            <Download className="size-5" />
+            <ChromeLabel>{t('match.export.download')}</ChromeLabel>
+          </button>
         </>
       }
       status={
@@ -534,6 +631,7 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
             win={round.win}
             sanma={config.sanma}
             onNewMatch={onExit}
+            buildLog={buildLog}
           />
         ) : (
           <RoundCard settlement={round.settlement} win={round.win} onNext={round.nextRound} />

@@ -470,7 +470,12 @@
     "handValueLimit": "{{han}}翻 — {{limit}}",
     "payout": "{{points}}点",
     "winningHand": "和了手",
-    "indicators": "ドラ / 裏ドラ"
+    "indicators": "ドラ / 裏ドラ",
+    "export": {
+      "you": "あなた",
+      "download": "ログをダウンロード",
+      "copy": "ログをコピー"
+    }
   },
   "log": {
     "rewound": "{{number}}件目の記録まで巻き戻しました",

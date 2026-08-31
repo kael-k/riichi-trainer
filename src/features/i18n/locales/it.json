@@ -566,7 +566,12 @@
     "handValueLimit": "{{han}} han — {{limit}}",
     "payout": "{{points}} punti",
     "winningHand": "Mano vincente",
-    "indicators": "Dora / ura"
+    "indicators": "Dora / ura",
+    "export": {
+      "you": "Tu",
+      "download": "Scarica log",
+      "copy": "Copia log"
+    }
   },
   "log": {
     "rewound": "Tornato indietro alla voce {{number}}",

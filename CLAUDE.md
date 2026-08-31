@@ -88,6 +88,13 @@ players)`, "am I dealer" is `seat === state.match.dealer`, and the turn counter 
 - **The sequencer is `match.ts#settleRound`, never called from `round.ts`.** It prices from
   `Payments.total`/`.main`/`.fromDealer` (honba already folded in), never re-deriving ruleset math.
 - **A round is "redealt" by a fresh wall array identity, nothing more.**
+- **The tenhou.net/6 export (`core/tenhouLog.ts`, `/match` only) replays, it never records live.**
+  `TenhouRoundInput.match` is the round's **starting** `MatchState` — `useMatchRound`'s own `match`
+  state, never `RoundState.match` (already riichi-mutated) or `settleRound`'s stepped output (the
+  *next* round's carry-in). `buildKyoku` feeds it back through `createRound`/`replayLog` to
+  reconstruct every draw/discard/call, and folds each riichi's −1000 back into the round's own
+  deltas itself — `settleRound`'s own deltas never carry it, since the deduction already landed on
+  `match.points` mid-round, before settlement ever ran.
 
 ### The round engine (`core/round.ts` + `core/policy.ts`)
 

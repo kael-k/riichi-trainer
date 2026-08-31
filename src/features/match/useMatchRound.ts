@@ -7,6 +7,7 @@ import {
   type Settlement,
 } from '../../core/match'
 import { roundResult, type RoundOptions, type RoundState } from '../../core/round'
+import type { TenhouRoundInput } from '../../core/tenhouLog'
 import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
 import { matchDefaultModes, resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
@@ -71,6 +72,15 @@ export interface RoundSettlement {
   winds: Wind[]
 }
 
+/** A round's chronological position within its match, as one sortable number — `prevalentWind`
+ *  only ever increases and `honba` only ever increases within a repeated (`prevalentWind`,
+ *  `round`) pair, so the triple is a valid total order over every round a match plays. Used to
+ *  dedupe/truncate the tenhou export history below on a rewind that revisits or steps past an
+ *  already-settled round. */
+function roundKey(m: Pick<MatchState, 'prevalentWind' | 'round' | 'honba'>): number {
+  return m.prevalentWind * 10000 + m.round * 1000 + m.honba
+}
+
 /** The cast a link implies: its own `?seat=` plays the hand, every other seat is a bot — what
  *  `/match` opens with when a shared link (or the log's own rewind) names a wall, since there is no
  *  setup left to run for it and running one anyway would reshuffle the seats the link reproduces.
@@ -119,6 +129,11 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
 
   const [wall, setWall] = useState<ParsedTile[]>(() => (linked ? situation.wall : dealWall(match)))
   const [settlement, setSettlement] = useState<RoundSettlement | null>(null)
+  // every settled round, for a tenhou.net/6 export — pushed once per round-end below, keyed on
+  // `roundKey` so a rewind that replays an already-settled round overwrites rather than duplicates
+  // it, and truncated in the resync block below so a rewind past an already-settled round drops
+  // the now-invalid ones rather than exporting a timeline that was never actually played.
+  const [tenhouRounds, setTenhouRounds] = useState<TenhouRoundInput[]>([])
 
   // a link names one round of the match, not every round from here on — same rule every other
   // trainer's own hand link follows (CLAUDE.md). `situation`'s identity changes only on a real
@@ -131,8 +146,14 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
   if (situation !== lastSituation) {
     setLastSituation(situation)
     if (situation.wall.length > 0) {
-      setMatch(createMatch(options.sanma, matchOverrides(situation)))
+      const resumed = createMatch(options.sanma, matchOverrides(situation))
+      setMatch(resumed)
       setWall(situation.wall)
+      // a rewind (or a shared link) landing at or before an already-settled round means that
+      // round, and everything after it, is about to be replayed differently — drop them from the
+      // export history rather than keep a timeline that no longer matches what gets played
+      const resumedKey = roundKey(resumed)
+      setTenhouRounds((rounds) => rounds.filter((r) => roundKey(r.match) < resumedKey))
     }
     setSettlement(null)
   }
@@ -184,6 +205,19 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
         loser: rr.win?.from === undefined ? undefined : winds[rr.win.from],
       }
       setSettlement({ result, deltas: stepped.deltas, settlement: stepped, winds })
+      // `match`/`wall` (this render's closure, not `core.round.match`) are this round's own
+      // *starting* state — see `TenhouRoundInput.match`'s own doc comment on why it must never be
+      // the live, riichi-mutated one
+      setTenhouRounds((rounds) => {
+        const key = roundKey(match)
+        const entry: TenhouRoundInput = {
+          match,
+          wall,
+          log: [...core.round.log],
+          deltas: stepped.deltas,
+        }
+        return [...rounds.filter((r) => roundKey(r.match) !== key), entry]
+      })
 
       log({
         key: 'log.match.result',
@@ -362,5 +396,8 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
     over: settlement?.settlement.over ?? false,
     nextRound,
     situationQuery: () => encodeSituation(table.situation(seatIndex)),
+    /** Every settled round so far, for a tenhou.net/6 export — `MatchPage` builds the log lazily
+     *  from this rather than the hook keeping a serialized copy nobody may ever ask for. */
+    tenhouRounds,
   }
 }

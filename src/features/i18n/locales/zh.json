@@ -470,7 +470,12 @@
     "handValueLimit": "{{han}}番 — {{limit}}",
     "payout": "{{points}}点",
     "winningHand": "和牌",
-    "indicators": "宝牌 / 里宝牌"
+    "indicators": "宝牌 / 里宝牌",
+    "export": {
+      "you": "你",
+      "download": "下载牌谱",
+      "copy": "复制牌谱"
+    }
   },
   "log": {
     "rewound": "已撤回到第 {{number}} 条记录",
