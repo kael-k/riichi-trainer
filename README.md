@@ -28,7 +28,7 @@ Mobile-first riichi mahjong trainer: efficiency, shanten, scoring and defensive 
 
 ## Stack
 
-React 19 + TypeScript + Vite, react-router, zustand (persisted settings), Tailwind 4, Vitest. Mahjong engine (`src/core/`) is pure TypeScript with no dependencies. Tiles render from a build-time SVG sprite generated from [FluffyStuff/riichi-mahjong-tiles](https://github.com/FluffyStuff/riichi-mahjong-tiles) (CC0). Installable PWA with offline support. Pushes to `main` deploy to GitHub Pages via `.github/workflows/deploy.yml`.
+React 19 + TypeScript + Vite, react-router, zustand (persisted settings), Tailwind 4, Vitest. Mahjong engine (`src/core/`) is pure TypeScript with no dependencies. Tiles render from a build-time SVG sprite generated from [FluffyStuff/riichi-mahjong-tiles](https://github.com/FluffyStuff/riichi-mahjong-tiles) (CC0). Installable PWA with offline support. Pushes to `main` deploy to GitHub Pages via `.github/workflows/ci.yml`.
 
 ## Development
 
@@ -41,6 +41,7 @@ npm test          # engine + component tests
 npm run lint      # oxlint
 npm run build     # typecheck + production build
 npm run tiles     # regenerate the tile sprite from source SVGs
+npm run docs:dev  # the documentation site
 ```
 
-Architecture notes live in `CLAUDE.md`; the decisions behind them are in [`docs/adr/`](docs/adr/), with a source map in [`docs/STRUCTURE.md`](docs/STRUCTURE.md) and current state in [`docs/STATUS.md`](docs/STATUS.md).
+How the models work — danger tiers, win probability, push/fold — and how the code is laid out: [riichi-trainer.kael-k.io/docs](https://riichi-trainer.kael-k.io/docs/).
