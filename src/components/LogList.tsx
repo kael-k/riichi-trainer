@@ -262,7 +262,7 @@ export function DetailLine({ detail }: { detail: LogDetail }) {
   )
 }
 
-/** Every candidate discard's EV, normalized on the ranking's own best entry (`plans/EV-5` §2.5's
+/** Every candidate discard's EV, normalized on the ranking's own best entry (the
  *  "the grading UI must show the band it graded against" — this is the evidence half; the band
  *  itself is named in the line's own text). `w-full` inside the row's `flex-wrap` is what puts the
  *  whole block on its own line without a second container: nothing else fits beside a 100%-wide

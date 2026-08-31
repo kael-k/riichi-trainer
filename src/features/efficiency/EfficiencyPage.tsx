@@ -80,7 +80,7 @@ export function EfficiencyPage() {
   const round = useEfficiencyRound(situation, options)
   const players = options.sanma ? 3 : 4
 
-  // alpha (`plans/EV-5` §2.5, ADR-0046's efficiency half): tiers/ukeire stay the permanent
+  // alpha: tiers/ukeire stay the permanent
   // default; this switches what a plain discard is graded *against*, table-only. All four rows
   // are gated on `advanced` — a hidden row must not mean a live mode either
   const settingsRows = advanced && (

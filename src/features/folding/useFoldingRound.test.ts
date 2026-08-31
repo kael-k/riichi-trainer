@@ -211,7 +211,7 @@ describe('useFoldingRound', () => {
     const band = entry.detail!.find((d) => d.key === 'log.evBand')!
     expect(band.params).toMatchObject({ model: 'statistical' })
     // every candidate priced, the reader's own tile marked, and the best entry marked as such —
-    // `plans/EV-5` §2.5's "the grading UI must show the band it graded against"
+    // the grading UI must show the band it graded against
     expect(band.bars!.length).toBeGreaterThan(1)
     expect(band.bars!.filter((b) => b.chosen)).toHaveLength(1)
     expect(band.bars!.filter((b) => b.best)).toHaveLength(1)

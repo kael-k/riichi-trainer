@@ -31,7 +31,7 @@ export interface LogDetail {
   /** Rendered through the existing `UkeireTiles` (per-tile remaining counts). */
   ukeire?: UkeireTile[]
   /** Per-discard EV scores, drawn as bars normalized on the best one — the folding trainer's EV
-   *  grading mode (alpha, `plans/EV-5` §2.5). */
+   *  grading mode (alpha). */
   bars?: LogBar[]
   /** Index in `tiles` where the *evidence* for the line begins — the subject tile leads, what
    *  explains it follows past a hairline seam; absent means the line's tiles are all one

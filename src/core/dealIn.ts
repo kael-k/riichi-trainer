@@ -516,7 +516,8 @@ export function combineThreats(risks: DealInRisk[][]): DealInRisk[] {
  * approximates, and each term's `probability` comes back as its **joint marginal** so an
  * explanation drawn from these terms is consistent with the total.
  *
- * **It is off by default, and the measurement is why.** `plans/EV-2` §5 expected the joint path to
+ * **It is off by default, and the measurement is why**
+ * (`docs/model/limits.md#the-joint-enumeration`). The design expected the joint path to
  * be sub-millisecond and the product to overstate. Both are wrong: the hypothesis space is ~650 per
  * threat rather than the ~140 that estimate assumed (shanpon is a wait-pair matrix, not a
  * marginalised column), so the pair loop is ~422k pairs at **46ms against the product's 2.5ms** —

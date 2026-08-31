@@ -120,7 +120,8 @@ describe('the placement objective', () => {
 })
 
 describe('the two models derive the same shape from different sources', () => {
-  // `plans/EV-5` §2.10's owed derivation, against the measurement it may not read
+  // the derived placement odds, against the measurement they may not read
+  // (`docs/model/limits.md#placement-odds`)
   it('agrees within a factor on how much a match has left to move, and on how it decays', () => {
     for (const round of [0, 3, 7]) {
       const derived = statistical.swing(1, round, YONMA).stddev

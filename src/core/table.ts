@@ -257,7 +257,8 @@ export function seatRead(state: RoundState, seat: number, sanma: boolean): SeatR
  *
  *  Still per-moment: build a new one after the board moves rather than reusing an old one. */
 /** One seat's whole push/fold arithmetic, priced under that seat's own EV model and objective —
- *  `plans/EV-3` §9's screen, as data. Both branches, every candidate, every term. */
+ *  the priced decision as data — both branches, every candidate, every term
+ *  (`docs/model/push-fold.md#the-terms-are-the-output`). */
 export interface SeatEv {
   seat: number
   model: EvModelName
@@ -267,7 +268,8 @@ export interface SeatEv {
   fold: DiscardEv
   /** Which branch the seat would actually take — the same comparison `ALGORITHMS.ev` makes. */
   best: 'push' | 'fold'
-  /** Why the model may not speak about this ruleset, when it may not (`plans/EV-5` §2.11). Never
+  /** Why the model may not speak about this ruleset, when it may not
+   *  (`docs/model/limits.md#sanma`). Never
    *  a silent swap: the numbers below it were still produced by the model that was asked. */
   unsupported: string | null
 }

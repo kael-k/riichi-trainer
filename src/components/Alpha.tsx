@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 /** A small "this is new and may still move" tag — three surfaces carry it today: `/match`, the two
- *  EV algorithm entries, and folding's EV grading option (`plans/EV-5` §2.5, ADR-0046). One shared
+ *  EV algorithm entries, and folding's EV grading option. One shared
  *  span rather than three copies, so a later change to how alpha reads changes in one place. */
 export function Alpha() {
   const { t } = useTranslation()

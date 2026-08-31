@@ -174,7 +174,7 @@ export function FoldingPage() {
           ))}
         </select>
       </SettingRow>
-      {/* alpha (`plans/EV-5` §2.5/§2.8): tiers stay the permanent default grading, this only
+      {/* alpha: tiers stay the permanent default grading, this only
           switches what a turn is graded *against* — and it is read through `useAdvancedSettings`
           (`evGrading` above), so hiding this row when Advanced is off actually turns the mode off
           rather than leaving it running unseen */}

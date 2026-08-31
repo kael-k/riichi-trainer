@@ -11,7 +11,7 @@ import { playRound, type RoundOptions } from '../../core/round'
  *
  *   EV_BENCH=1 npx vitest run src/features/table/evGrade.bench.test.ts --disable-console-intercept
  *
- * `plans/EV-5` §2.5 asks for a probability-graded trainer's grading bands (ε₁ correct, ε₂ still
+ * A probability-graded trainer needs grading bands (ε₁ correct, ε₂ still
  * partial credit) to be **per-EV-model defaults**, "provisional constants... re-fixed after
  * calibration". This prints the spread each trainer's own ranking actually produces —
  * `best.ev - worst.ev` over every held tile — across real seeded hands, so `evGrade.ts`'s two

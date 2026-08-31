@@ -34,11 +34,11 @@ export interface Settings {
     /** Grade discards on the EV model's fold branch instead of ordinal danger tiers — Advanced
      *  only, and read as `advanced && evGrading` (`useAdvancedSettings.ts`), so turning Advanced
      *  off returns the drill to tiers rather than leaving an invisible mode running. **Alpha**:
-     *  `plans/EV-5` §2.5/§2.8, tiers stay the permanent default. */
+     *  alpha; tiers stay the permanent default. */
     evGrading: boolean
     /** Which `EvModel` prices the fold branch it grades against. */
     evModel: EvModelName
-    /** ε₁/ε₂ per model (`plans/EV-5` §2.5) — kept per-model so switching `evModel` back and forth
+    /** ε₁/ε₂ per model — kept per-model so switching `evModel` back and forth
      *  keeps each one's own calibration rather than sharing a single stored pair. */
     evBands: Record<EvModelName, EvBands>
   }
@@ -47,11 +47,11 @@ export interface Settings {
      *  app only (`useEfficiencyRound.ts` is the only reader; solo never builds this field at all,
      *  so the mode is structurally unreachable there rather than merely defaulted off). Read as
      *  `advanced && evGrading` (`useAdvancedSettings.ts`), the same rule folding's own flag
-     *  follows. **Alpha**: `plans/EV-5` §2.5, ADR-0046's efficiency half. */
+     *  follows. **Alpha.** */
     evGrading: boolean
     /** Which `EvModel` prices the push branch it grades against. */
     evModel: EvModelName
-    /** ε₁/ε₂ per model (`plans/EV-5` §2.5) — kept per-model for the same reason folding's own
+    /** ε₁/ε₂ per model — kept per-model for the same reason folding's own
      *  `evBands` is. */
     evBands: Record<EvModelName, EvBands>
   }

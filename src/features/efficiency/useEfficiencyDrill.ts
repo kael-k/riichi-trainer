@@ -41,7 +41,7 @@ export interface EfficiencyDrillInput {
    *  nothing to wait for. */
   pace?: number
   /** Grade plain discards on the EV model's push branch instead of ukeire — the table app's own
-   *  Advanced setting, alpha (`plans/EV-5` §2.5, ADR-0046's efficiency half). `undefined`/`null`
+   *  Advanced setting, alpha. `undefined`/`null`
    *  for solo (which never passes this at all) and for the table app with the setting off, so EV
    *  grading is structurally table-only rather than gated by a flag solo also carries. */
   ev?: { model: EvModelName; bands: EvBands } | null

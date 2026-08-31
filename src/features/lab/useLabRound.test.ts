@@ -145,7 +145,7 @@ describe('useLabRound', () => {
 })
 
 describe('priceTurn', () => {
-  /** The lab's own copy of `plans/EV-3` §9: both branches, every candidate, every term, stamped
+  /** The lab's priced decision: both branches, every candidate, every term, stamped
    *  with the turn it is about. */
   it('prices both branches for the acting seat, under that seat’s own model and objective', () => {
     const situation: Situation = {

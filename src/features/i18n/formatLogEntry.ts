@@ -199,7 +199,7 @@ export function formatLogDetail(
     const vs = seat === undefined ? '' : t('log.folding.vs', { wind: t(`wind.${WINDS[seat]}`) })
     return t(detail.key, { vs, tier: t(`folding.tier.${tier}`) })
   }
-  // names the band the row was graded against (`plans/EV-5` §2.5's "the grading UI must show the
+  // names the band the row was graded against (the grading UI must show the
   // band it graded against") — one shared key for every trainer that writes it (folding's fold
   // branch, efficiency's push branch), and the model name is a term (`seats.evModel.*`), not raw
   // text, since it is the same label the seat panel already uses for the same two models

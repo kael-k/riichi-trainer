@@ -17,10 +17,10 @@ import { NUM_TILE_TYPES, type TileId } from './tiles'
  *
  * What is *not* in here: probabilities. `dealIn.ts` and `probability.ts` compute those, and the
  * only weight either takes is `prior`. Table status is not in here either — points, placement and
- * honba are decision-layer input (`plans/EV-3` §8), so an evaluation does not change when the score
+ * honba are decision-layer input, so an evaluation does not change when the score
  * does, which is what keeps two models comparable on one board.
  *
- * The one exception, and it is the exception `plans/EV-3` §8 names: **the placement-odds function
+ * The one exception: **the placement-odds function
  * is a property of the EV model.** Each supplies `swing` — how much a seat's score still has to
  * move before the match ends — and `core/placement.ts` integrates the seats against each other
  * from there. It is still not table status leaking downward: `swing` is asked about a rank and a
@@ -77,7 +77,8 @@ export interface EvModel {
   readonly name: EvModelName
   /** The wait-shape prior `dealInRisk` runs under. */
   readonly prior: ShapePrior
-  /** Points a ron by this threat costs the discarder — `plans/EV-3` §4's `value_j`. */
+  /** Points a ron by this threat costs the discarder
+   *  (`docs/model/push-fold.md#what-a-deal-in-costs`). */
   dealInCost(threat: ThreatCost, board: BoardCost): number
   /**
    * What **this seat's own** hand pays when it wins, honba included — the `E[value | win]` the
@@ -114,7 +115,7 @@ export interface EvModel {
    */
   swing(rank: number, round: number, rules: ScoringRules): Swing
   /** `null` when the model may speak about this ruleset, else the reason it may not — which the UI
-   *  must show rather than swapping models silently (`plans/EV-5` §2.11). */
+   *  must show rather than swapping models silently (`docs/model/limits.md#sanma`). */
   unsupported(sanma: boolean): string | null
 }
 
@@ -307,7 +308,8 @@ export const STATISTICAL: EvModel = {
 
   /**
    * A round of mahjong as one point transfer, and the rest of the match as a sum of them — the
-   * pure derivation `plans/EV-5` §2.10 owed.
+   * pure derivation the placement objective needs
+   * (`docs/model/limits.md#placement-odds`).
    *
    * Nothing distinguishes the seats a priori, so each round one of them wins a hand worth `V` and
    * one pays it: a given seat gains `V` with probability `1/n`, loses it with probability `1/n`,
@@ -352,7 +354,7 @@ export const STATISTICAL: EvModel = {
  * `scripts/build-ev-models.mjs` extracts.
  *
  * Its domain is those logs, so it declares one incompatibility: the database is four-player, and
- * there is no three-player wait distribution or fold cost in it (`plans/EV-5` §2.11).
+ * there is no three-player wait distribution or fold cost in it (`docs/model/limits.md#sanma`).
  */
 export const HOUOU: EvModel = {
   name: 'houou',

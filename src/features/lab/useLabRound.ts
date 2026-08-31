@@ -206,7 +206,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     restart: table.restart,
     /**
      * The acting seat's whole push/fold arithmetic, priced on demand under that seat's own EV
-     * model and objective — `plans/EV-3` §9's screen, as data.
+     * model and objective — the priced decision as data.
      *
      * A function rather than a value, and not computed at the draw the way `ranked`/`danger` are:
      * an exact ranking is hundreds of milliseconds at 2-shanten, so pricing every turn on the

@@ -11,7 +11,7 @@
 //   commit   80dc535dc7eab1a0faf18a2fbcfe72db2067976a (2023-11-25)
 //   upstream forked from https://github.com/Euophrys/houou-analysis (MIT). No code is copied here, only
 //            aggregate counts, which are measured facts rather than expression.
-//   fetched  2026-08-28
+//   fetched  2026-08-31
 //
 // The sample is 142,461 riichi tenpai hands (182,490 open), NOT the full
 // 893,440-game database: upstream's `rowcount` caps how many logs an analyzer reads.
@@ -52,9 +52,9 @@ export const HOUOU_PRIOR: ShapePrior = {
 
 /** Open tenpai, whose shape mix is materially different — far more kanchan and shanpon, far fewer
  *  ryanmen. Nothing reads it yet: `ThreatView` does not say whether a seat has melded, and the
- *  model refuses to speak about undeclared seats at all (plans/EV-2 §2). Extracted because the
+ *  model refuses to speak about undeclared seats at all. Extracted because the
  *  same parse produces it, and because using the riichi block against a melded threat is one of
- *  the known wrongnesses (plans/EV-5 §1.10). */
+ *  the known wrongnesses (docs/model/limits.md#not-modelled). */
 export const HOUOU_OPEN_PRIOR: ShapePrior = {
   name: 'houou-open',
   kind: 'measured',
@@ -122,8 +122,8 @@ export const HOUOU_FOLD_COST = {
 } as const
 
 /**
- * What a riichi hand pays when it wins, by the turn it declared — the deal-in cost `plans/EV-3` §4
- * calls `value_j`, conditioned by the threat's dealership as that section's option 2 asks for.
+ * What a riichi hand pays when it wins, by the turn it declared — the deal-in cost
+ * (docs/model/push-fold.md#what-a-deal-in-costs), conditioned by the threat's dealership.
  *
  * Points as scored: riichi and honba sticks are excluded upstream, yakuman are excluded upstream,
  * and ura and dora are included because these are real wins off real logs rather than a shape

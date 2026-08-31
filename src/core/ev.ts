@@ -23,7 +23,8 @@ import { doraFromIndicator, HONOR, inTileSet, NUM_TILE_TYPES, type TileId } from
 import { TILES_PER_KIND } from './wall'
 
 /**
- * The decision layer: `plans/EV-3`'s push/fold identity, evaluated over the two probability models
+ * The decision layer: the push/fold identity (`docs/model/push-fold.md`), evaluated over the two
+ * probability models
  * beside it (`probability.ts` for what a hand wins, `dealIn.ts` for what a tile costs) with an
  * `EvModel` supplying the prices.
  *
@@ -42,7 +43,7 @@ import { TILES_PER_KIND } from './wall'
  * tiles drawn from the safe end of the hand instead of the useful end, which is what stops the two
  * branches from ever disagreeing about a term they share.
  *
- * **Both branches are integrated over the rest of the hand, turn by turn** (`plans/EV-3` §5).
+ * **Both branches are integrated over the rest of the hand, turn by turn.**
  * `turnRisks` produces the sequence of per-turn risks each policy faces and `laterCost` discounts
  * it by the chance the hand is still going, so the question the trainer is actually about — *is
  * this tile more dangerous than the safest tile I will still be holding in three turns* — is one
@@ -54,15 +55,15 @@ import { TILES_PER_KIND } from './wall'
  * the sequence it is priced against is "keep throwing what the shape needs" for every turn left,
  * where a real hand folds the moment folding is cheaper. Letting it switch needs the win
  * probability *from turn t onward*, and `Outlook` carries one scalar for the whole hand rather
- * than a per-draw curve (`plans/RECAP-IMPLEMENTATION-1-3.md` §2.6). And the win value comes from
- * an advance-only DP that understates (`plans/EV-1` §6), which biases the comparison toward
+ * than a per-draw curve. And the win value comes from
+ * an advance-only DP that understates, which biases the comparison toward
  * folding.
  *
  * **The currency is a switch, and it is one substitution rather than a second identity.** Every
  * term is a probability times a *value*, and `valuer` is what a value means: under `'points'` a
  * point swing is worth itself, under `'placement'` it is worth the change in expected Tenhou
  * result it buys (`core/placement.ts`). Nothing below this layer knows which — that is what keeps
- * two models comparable on one board (`plans/EV-3` §8), and it is why the identity has to stay
+ * two models comparable on one board, and it is why the identity has to stay
  * linear in the value function.
  *
  * A consumer of these numbers must say which objective produced them. They are not the same
@@ -154,16 +155,16 @@ export interface EvOptions {
 /**
  * How many tiles reach the DP, and where they come from. **Changing either number changes which
  * discards an `'ev'` seat makes**, so they are versioned with the algorithm and the golden tests
- * rather than tuned casually (`plans/EV-5` §1.9).
+ * rather than tuned casually.
  *
  * The set is a union, deliberately: the fastest tiles by shanten and ukeire, *plus* the safest
  * tiles against the board. A push/fold decision that never prices the fold option is not a
  * decision, and the efficiency prefilter alone would never surface a genbutsu that keeps the hand
  * alive.
  *
- * This union is the whole of the cheap path `plans/EV-5` §1.9 asks for, and it is enough: an
+ * This union is the whole of the cheap path, and it is enough (`docs/model/limits.md#the-cheap-path`): an
  * `'ev'` seat plays a measured **~460ms hand** against `efficiency`'s ~40ms, with the DP left
- * exact to 2-shanten as `plans/EV-1` §6's boundary intends. Capping the look-ahead and collapsing
+ * exact to 2-shanten, as that boundary intends. Capping the look-ahead and collapsing
  * 2-shanten as well was tried and taken back out — it bought 2.5x for a real loss of accuracy in
  * the middle of the hand, where the interesting decisions are.
  */
@@ -456,8 +457,8 @@ function afterCall(view: SeatView, call: Call, tile: TileId): SeatView {
  * scorer that prices every other one rather than by a constant here.
  *
  * **One ceiling, shared with every kan.** The replacement draw is modelled as an ordinary draw
- * from the unseen pool — `probability.ts`' DP has no notion of a dead wall (`plans/EV-5` §1.10) —
- * so the pull neither gains a free draw nor spends one, and the tempo half of `plans/EV-3` §7's
+ * from the unseen pool — `probability.ts`' DP has no notion of a dead wall —
+ * so the pull neither gains a free draw nor spends one, and the tempo half of the
  * "the dora against the tempo" is priced at zero. Understates the pull, in a known direction.
  */
 export function kitaWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
@@ -489,7 +490,7 @@ export function kitaWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
  * riichi, where the furiten is permanent, `keepEv` *is* the post-decline value. For a seat not in
  * riichi the furiten lifts on its own next discard, so the decline is worth more than this says and
  * the answer leans toward taking the win. That lean is the safe direction and it is deliberate:
- * `plans/EV-3` §7 wants the decline branch to price the furiten state itself, and this prices a
+ * The decline branch should price the furiten state itself, and this prices a
  * proxy for it. Expect `true` in nearly every real position; the cases where it is not are what
  * the placement objective was built to see — a cheap win that locks a seat out of a place it could
  * still have reached.
@@ -525,7 +526,8 @@ export function abortWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
 }
 
 /**
- * What this hand pays **when it wins** — `plans/EV-1` §4's `S_solo / P_solo`.
+ * What this hand pays **when it wins**, `score / soloWin` — never `score` alone, which already
+ * carries `P(win)` (`docs/model/push-fold.md#a-value-is-not-an-expectation`).
  *
  * `Outlook.score` is the *unconditional* expectation, `P(win) × E[value | win]`, and every term of
  * the identity is a probability times a value. Pairing `soloWin` with `score` counts `P(win)`
@@ -721,7 +723,7 @@ function evTerms(
   // `giveUpCost` ends on the noten penalty, which is right for the branch it is named after: a
   // hand that has stopped trying is noten by construction. A *pushing* hand that does not win may
   // still be tenpai when the wall runs out, and then it collects the penalty rather than paying
-  // it — so the swing is the penalty twice over. This is `plans/EV-3` §2's
+  // it — so the swing is the penalty twice over. This is the identity's
   // `P_exhaustive × tenpai_payment`, the one term of that identity the give-up price cannot carry.
   // `soloTenpai` is free off the same DP traversal `soloWin` comes from, and under advance-only a
   // hand that reaches tenpai stays there, so `soloTenpai − soloWin` is "tenpai at the end, having
@@ -815,7 +817,8 @@ function holdOutlook(view: SeatView, board: BoardCost, opts: EvOptions): Outlook
 
 /**
  * The risk the hand faces on each of the turns still to come, under one of two policies — the
- * recursion `plans/EV-3` §5 asks for, and the reason it asks: the question a player has is not
+ * recursion the fold branch needs (`docs/model/push-fold.md#folding-is-not-free`), and the reason
+ * it needs it: the question a player has is not
  * "is this tile dangerous" but "is it more dangerous than the safest tile I will still be holding
  * in three turns", and only a *sequence* can answer that.
  *
@@ -829,7 +832,7 @@ function holdOutlook(view: SeatView, board: BoardCost, opts: EvOptions): Outlook
  * is spent fractionally rather than one per turn — it goes only on the turns it is genuinely the
  * cheaper of the two. The sequence it produces is free while the genbutsu last and then settles at
  * whatever the unseen pool can keep supplying, which is where the published betaori figures
- * (3-5% a turn, `plans/EV-3` §5) come from and roughly where this lands.
+ * (3-5% a turn) come from and roughly where this lands.
  *
  * The one approximation inside it: the count of safe tiles left is carried as an expectation and
  * indexed by its floor, rather than the model branching on which tile was actually thrown. That
@@ -949,7 +952,8 @@ function dealInPrice(
  * cheap (no DP) but moves every fold grade, so it wants its own change and its own re-measured
  * `FOLD_EV_BANDS`. Until then this understates the cost of throwing a scarce safe tile early.
  *
- * This is the number the folding trainer grades against (`plans/EV-5` §2.5/§2.8): the drill's own
+ * This is the number the folding trainer grades against (`docs/model/limits.md#the-grading-band`):
+ * the drill's own
  * context is full fold, so the fold branch is the whole answer, and reading it from here rather
  * than writing a second formula is what keeps a model change move the trainer's grades with it —
  * `houou`'s empirical tables have no closed form a trainer could otherwise approximate.
@@ -1010,7 +1014,7 @@ export function foldRanking(view: SeatView, opts: EvOptions = {}): DiscardEv[] {
  * A folding hand does not throw one tile, it throws every tile it has left and every tile it draws
  * on the way, so the price is the whole sequence — `turnRisks('safe')` walks it, spending the
  * hand's own safe tiles only on the turns they beat the draw. That replenishment is the half
- * `plans/EV-3` §5 named as the largest unbuilt piece of this design; without it a long fold was
+ * was once the largest unbuilt piece of this design; without it a long fold was
  * priced as a hand that runs out of genbutsu and then throws its worst tile every turn to the end.
  *
  * The turn-by-turn terms are kept rather than collapsed into one: "these turns are free and then

@@ -172,7 +172,7 @@ export interface Algorithm {
 /** Whether pulling a held north costs nothing: north's own `evaluateDiscards` entry ties the best
  *  discard on offer, the same comparison the efficiency trainer grades a manual seat's own pull
  *  against. Shared by `efficiency` and `ev` — the EV version prices the dora against the tempo,
- *  and that is `plans/EV-3` §7's, not this wave's. */
+ *  and that is the EV seat's job, not this one's. */
 function pullsNorth(view: SeatView): boolean {
   if (!view.sanma || view.hand.counts[NORTH] === 0) return false
   const ranked = evaluateDiscards(view.hand, view.seen, view.sanma)
@@ -258,8 +258,8 @@ function evOptions(view: SeatView): EvOptions {
  * own `EvSeat`, read fresh on every decision, so both are live in exactly the way the algorithm
  * itself is (ADR-0008).
  *
- * **Every decision point is priced through the identity**, which is what `plans/EV-3` §7 and
- * `plans/PLAN-ev-model.md` asked for and what took three waves to finish. Each one is one line
+ * **Every decision point is priced through the identity**
+ * (`docs/model/push-fold.md#every-decision-is-priced`). Each one is one line
  * here and a named function in `ev.ts`, so this file holds no arithmetic of its own:
  *
  * - `turn` is `rankDiscards` against `foldEv`, with `bestKan` reading the same ranking.
@@ -328,7 +328,7 @@ const ev: Algorithm = {
  *
  * **The ceiling, stated the way `abortWorthIt` states its own.** With nobody in riichi the cost
  * side is *zero* — `dealIn.ts` refuses to speak about a seat that has not declared
- * (`plans/EV-2` §2) — so the sum is the win term alone and an `'ev'` seat **kans every legal kan
+ * — so the sum is the win term alone and an `'ev'` seat **kans every legal kan
  * on an undeclared board**. That is arithmetic under a stated refusal rather than a judgement, and
  * it stops being one when the model can price a threat nobody has declared.
  *

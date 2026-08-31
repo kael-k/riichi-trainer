@@ -61,7 +61,7 @@ function RankedRow({ option }: { option: DiscardOption }) {
 
 /** How a term reads on screen: how often, times how much, equals what goes into the total. Kept
  *  to three cells so a reader can check the multiplication by eye, which is the whole reason to
- *  prefer a formula to a network that would be more accurate (`plans/EV-3` §9). */
+ *  prefer a formula to a network that would be more accurate. */
 function EvTermRow({ term, seats }: { term: EvTerm; seats: number[] }) {
   const { t } = useTranslation()
   const seat = term.seat === undefined ? '' : ` (${t(`wind.${WINDS[term.seat]}`)})`
@@ -82,7 +82,7 @@ function EvTermRow({ term, seats }: { term: EvTerm; seats: number[] }) {
   )
 }
 
-/** One priced branch: the tile, what it is worth, and every term underneath it. `plans/EV-3` §9's
+/** One priced branch: the tile, what it is worth, and every term underneath it. The
  *  screen — the fold row is the same shape as a push row because it is the same expression with
  *  `P(win)` at zero, not a second kind of answer. */
 function EvRow({

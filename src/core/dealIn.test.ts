@@ -294,7 +294,8 @@ describe('dealInRisk', () => {
     })
 
     // The measurement that made the joint path opt-in: it costs ~20x the product and moves the
-    // answer by a tenth of a point. `plans/EV-2` §5 expected sub-millisecond and the opposite sign.
+    // answer by a tenth of a point; the design expected sub-millisecond and the opposite sign
+    // (`docs/model/limits.md#the-joint-enumeration`).
     it('lands within a tenth of a point of the product, mostly above it', () => {
       const product = combineThreats([
         dealInRisk(alone, seen, false),

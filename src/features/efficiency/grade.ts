@@ -30,7 +30,7 @@ export interface TurnResult {
   /** Set alongside a 'warning' grade: which call was available for free and skipped. */
   missed?: { kind: 'kan' | 'kita'; tile: TileId }
   /** Set only when this turn was graded on the EV model's push branch instead of ukeire — the
-   *  table app's own Advanced setting, alpha (`plans/EV-5` §2.5, ADR-0046's efficiency half).
+   *  table app's own Advanced setting, alpha.
    *  `grade` above already reflects it (`applyEvGrade` collapses to a plain ok/error: the
    *  ukeire-specific 'warning' — a missed free kan/kita — is a different question EV does not
    *  answer, so `missed` still rides on the ukeire pass underneath, unaffected by this). */
@@ -183,7 +183,7 @@ type LogRow = Omit<LogEntry, 'id' | 'situation'>
 export function discardDetail(result: TurnResult): LogDetail[] {
   const { yours, best, grade, ev } = result
   const detail: LogDetail[] = []
-  // EV decides the verdict in this mode (`plans/EV-5` §2.5's "show the band it graded against");
+  // EV decides the verdict in this mode, and the band it graded against is shown;
   // the ukeire lines below still carry the vocabulary the trainer otherwise teaches, unconditionally
   if (ev)
     detail.push(evBandDetail(ev.ranking, ev.model, ev.bands, yours.discard), {

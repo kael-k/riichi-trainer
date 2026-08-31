@@ -4,7 +4,8 @@ import { HONOR } from './tiles'
 /**
  * Where a match is likely to finish, and what finishing there is worth.
  *
- * This is the maths behind the placement objective (`plans/EV-3` §8) and nothing else: it holds no
+ * This is the maths behind the placement objective
+ * (`docs/model/push-fold.md#the-currency-switch`) and nothing else: it holds no
  * weights of its own. Each EV model supplies the **moments** — how much a seat's score still has
  * left to move — and this module integrates the seats against each other for rank probabilities
  * and prices the result under the ruleset. That split is what keeps the no-borrowing rule

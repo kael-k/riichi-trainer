@@ -120,7 +120,8 @@ describe('rankDiscards', () => {
   })
 
   // The regression this pins: `Outlook.score` is the *unconditional* expectation, P(win) times
-  // what the hand pays when it wins (`plans/EV-1` §4). A term is a probability times what the
+  // what the hand pays when it wins
+  // (`docs/model/push-fold.md#a-value-is-not-an-expectation`). A term is a probability times what the
   // outcome is *worth*, so pairing `soloWin` with `score` counts P(win) twice and shrinks every
   // push quadratically. Every other test here checks that a row adds up, which the double-count
   // preserved — only the magnitude of `value` catches it.
@@ -231,7 +232,8 @@ describe('the push and fold branches', () => {
     expect(fold.ev).toBe(-1500)
   })
 
-  // `plans/EV-3` §5: the price of folding is the whole sequence, not this turn's tile. The turns
+  // `docs/model/push-fold.md#folding-is-not-free`: the price of folding is the whole sequence,
+  // not this turn's tile. The turns
   // the hand's own genbutsu cover cost nothing and come first; after that the rate is set by what
   // the unseen pool keeps supplying, and the published betaori band is 3-5% a turn.
   it('prices the fold turn by turn: free while the genbutsu last, then a steady rate', () => {
@@ -283,7 +285,7 @@ describe('the push and fold branches', () => {
     )
   })
 
-  // `plans/EV-3` §2's `P_exhaustive × tenpai_payment`, which `giveUpCost` cannot carry: it is the
+  // the identity's `P_exhaustive × tenpai_payment`, which `giveUpCost` cannot carry: it is the
   // *give-up* price, and a hand that has given up is noten by construction. A pushing hand that
   // does not win may still be tenpai when the wall runs out, and then the penalty is collected
   // rather than paid — a swing of twice the penalty against what `notWinning` already charged.

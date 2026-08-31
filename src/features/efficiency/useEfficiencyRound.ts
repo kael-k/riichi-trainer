@@ -30,7 +30,7 @@ export interface EfficiencyOptions {
   /** How long a seat nobody plays holds before its action is committed (`useRound`'s `pace`). */
   pace: number
   /** Grade plain discards on the EV model's push branch instead of ukeire — Advanced-gated, alpha,
-   *  table-only (`plans/EV-5` §2.5, ADR-0046's efficiency half). `null`/`undefined` with the
+   *  table-only, alpha. `null`/`undefined` with the
    *  setting off, which is what makes the mode structurally unreachable from solo: only this
    *  hook's own page ever builds one. */
   ev?: { model: EvModelName; bands: EvBands } | null

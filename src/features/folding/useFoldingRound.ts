@@ -110,7 +110,7 @@ export interface TurnResult {
    *  when `correct` is false. */
   quality: number
   /** Set only when this turn was graded on the EV model's fold branch instead of danger tiers
-   *  (`plans/EV-5` §2.5, alpha) — `correct`/`quality` above already reflect it either way, so
+   *  (alpha) — `correct`/`quality` above already reflect it either way, so
    *  `foldingVerdictSeverity` needs no change; this is what the log row's band line and bars read. */
   ev?: {
     model: EvModelName
@@ -550,7 +550,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
   const roundTotalMs = useRef(0)
   // set just before `table.discard` is called, mid-turn while the hand is still fourteen tiles —
   // `foldRankingOf` refuses anything else — and read (then cleared) by `onEvent` once the same
-  // discard is reported. Alpha (`plans/EV-5` §2.5): `null` whenever EV grading is off, or the
+  // discard is reported. Alpha: `null` whenever EV grading is off, or the
   // discard belongs to a seat this hook never asked (a replay, or a seat the reader isn't playing)
   const evRanking = useRef<DiscardEv[] | null>(null)
 
@@ -677,7 +677,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
       situation: situationBefore,
       severity: foldingVerdictSeverity(result),
       // EV decides the verdict in this mode; the tier lines stay underneath as the human-readable
-      // why (`plans/EV-5` §2.8) — evidence, not a second grading
+      // why — evidence, not a second grading
       detail: [
         ...(evDetail ? [evDetail, { key: 'log.detail.evLegend' }] : []),
         ...foldingDetail(result, riichiSeats(core.round)),

@@ -12,7 +12,7 @@
 // `/results/*.csv`. The CSVs are therefore the finished measurement, and re-running the Python
 // over the database would reproduce numbers already committed upstream. The database is only
 // worth fetching for work that needs the raw logs — backtesting our own model against real
-// decision points (plans/EV-5 §2.13) — which is a session of its own, not a build step.
+// decision points (docs/model/limits.md#still-owed) — a session of its own, not a build step.
 //
 // LICENCE. The CSVs are measured facts, not copyrightable expression; upstream states it is
 // forked from Euophrys/houou-analysis, which carries an MIT LICENSE; no code is copied here, only
@@ -153,7 +153,7 @@ function column(frame, rows, name) {
  * What giving up on a hand costs, per turn, per matchup — `analyzers/betaori_cost.py` over the
  * same database.
  *
- * **Units are pinned here** (plans/EV-3 §5 asks for exactly that): the analyzer sums Tenhou's `sc`
+ * **Units are pinned here**: the analyzer sums Tenhou's `sc`
  * score deltas, which are in HUNDREDS of points, so a raw -19.5 is -1950 points.
  *
  * **What it measures, and what it does not.** The sample is every seat that neither won nor dealt
@@ -179,8 +179,8 @@ function foldCost(values, counts) {
  * scored — riichi and honba sticks excluded upstream, yakuman excluded upstream, ura and dora
  * included because these are real wins off real logs.
  *
- * `ron` is the deal-in cost `plans/EV-3` §4 calls `value_j`, conditioned the way §4's option 2 asks
- * for: by the threat's dealership and by the turn they declared. `tsumo` is the winner's whole
+ * `ron` is the deal-in cost (docs/model/push-fold.md#what-a-deal-in-costs), conditioned by the
+ * threat's dealership and by the turn they declared. `tsumo` is the winner's whole
  * take, before the three-way split — what the payer owes is the model's arithmetic, not the table's.
  */
 /** The open-hand columns of `HandScore.csv`, and the yaku routes `policy.ts` classifies a hand
@@ -292,7 +292,7 @@ function waitByRank(text) {
 }
 
 /** Hands counted and wait kinds counted; their ratio is the expected wait width in kinds, which
- *  `dealIn.test.ts` reproduces from the model side. That check is what catches the plans/EV-2 §8
+ *  `dealIn.test.ts` reproduces from the model side. That check is what catches the
  *  double-counting error. */
 function totals({ weights, shanpon }) {
   const kinds = { sanmenchan: 3, ryanmen: 2, penchan: 1, kanchan: 1, tanki: 1 }
@@ -441,9 +441,9 @@ ${literal(riichi, 2)}
 
 /** Open tenpai, whose shape mix is materially different — far more kanchan and shanpon, far fewer
  *  ryanmen. Nothing reads it yet: \`ThreatView\` does not say whether a seat has melded, and the
- *  model refuses to speak about undeclared seats at all (plans/EV-2 §2). Extracted because the
+ *  model refuses to speak about undeclared seats at all. Extracted because the
  *  same parse produces it, and because using the riichi block against a melded threat is one of
- *  the known wrongnesses (plans/EV-5 §1.10). */
+ *  the known wrongnesses (docs/model/limits.md#not-modelled). */
 export const HOUOU_OPEN_PRIOR: ShapePrior = {
   name: 'houou-open',
   kind: 'measured',
@@ -479,8 +479,8 @@ ${matchups(fold.samples, 4)}
 } as const
 
 /**
- * What a riichi hand pays when it wins, by the turn it declared — the deal-in cost \`plans/EV-3\` §4
- * calls \`value_j\`, conditioned by the threat's dealership as that section's option 2 asks for.
+ * What a riichi hand pays when it wins, by the turn it declared — the deal-in cost
+ * (docs/model/push-fold.md#what-a-deal-in-costs), conditioned by the threat's dealership.
  *
  * Points as scored: riichi and honba sticks are excluded upstream, yakuman are excluded upstream,
  * and ura and dora are included because these are real wins off real logs rather than a shape

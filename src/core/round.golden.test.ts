@@ -113,7 +113,7 @@ const GOLDEN: Record<string, [yonma: string, sanma: string]> = {
 /**
  * One frozen event stream per EV model, on the same wall the divergence tests use.
  *
- * `plans/EV-5` §1.9 asks that `EV_FAST_CANDIDATES` and `EV_SAFE_CANDIDATES` — how many tiles reach
+ * `EV_FAST_CANDIDATES` and `EV_SAFE_CANDIDATES` — how many tiles reach
  * the DP, and from which end of the hand — be versioned rather than tuned casually, because
  * changing either changes which discards an `'ev'` seat makes. Until this table existed nothing
  * pinned them: the tests below check that an EV seat *differs* from `efficiency` and from the
