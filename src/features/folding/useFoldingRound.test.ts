@@ -54,6 +54,9 @@ function wall(seed: string, sanma = false): ParsedTile[] {
 async function deal(urlData: FoldingUrl, options: FoldingOptions = OPTIONS) {
   const { result } = renderHook(() => useFoldingRound(urlData, options))
   await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 })
+  // generation can exhaust its attempt budget and clear `loading` with no round dealt — the
+  // callers assume a dealt hand, so surface that as a failed wait rather than a silent no-op
+  expect(result.current.failed).toBe(false)
   return result
 }
 
