@@ -115,7 +115,7 @@ describe('replayLog', () => {
 
   it('replays a defense seat declining a mid-hand tsumo — the log never claims it, and replay never takes it either', () => {
     // shanpon tenpai on 1p/2p; the very next draw completes it, but a defense-algorithm seat
-    // never takes a win it draws into (ADR-0021's whole reason for existing)
+    // never takes a win it draws into, which is replay's whole reason for existing
     const wall = wallWithHand(0, parseTenhou('123456789m1122p'), false, false, 'replay-decline')
     wall[4 * INITIAL_HAND_SIZE] = parseTenhou('1p')[0]
     const options: RoundOptions = { ...YONMA, algorithms: ['defense'] }

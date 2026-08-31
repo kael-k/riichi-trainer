@@ -254,7 +254,7 @@ const TILE_CODE = /\b(0[mps]|[1-9][mps]|[1-7]z)\b/
 
 /** Splits a formatted sentence into its prose and the tiles it names, so the log can draw them
  *  rather than leave `0p` and `4z` on screen — expert shorthand a beginner cannot read
- *  ([ADR-0018](../../../docs/adr/0018-beginner-defaults-advanced-depth.md)).
+ *  advanced depth stays behind a setting, beginner-safe defaults do not.
  *
  *  Tokenizing the finished sentence rather than giving `LogEntry` tile slots is deliberate: the
  *  codes are unambiguous, and slots would touch every log call site and every special case above

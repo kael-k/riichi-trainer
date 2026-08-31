@@ -86,7 +86,7 @@ export function FoldingPage() {
   const updateTable = (patch: Partial<TableSettings>) =>
     update('table', { apps: { ...rawTable.apps, folding: { ...rawTable.apps.folding, ...patch } } })
 
-  // per-seat algorithms are board state, not a preference (ADR-0015): page state with the same
+  // per-seat algorithms are board state, not a preference: page state with the same
   // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
   // persisted.
   const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)

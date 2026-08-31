@@ -35,7 +35,7 @@ import { WINDS, type Situation } from '../situation/urlCodec'
 
 /**
  * The React layer over `core/table.ts`. It drives a match and **reports what the engine did**; it
- * has no opinion about what any of it means (ADR-0012). Every trainer built on a real match —
+ * has no opinion about what any of it means. Every trainer built on a real match —
  * efficiency (both routes), folding, scoring's replay, the lab — subscribes to one callback,
  * `onEvent`, and decides for itself which seat it grades, when a round is over, and whether a
  * board is worth keeping.
@@ -63,7 +63,7 @@ export type RoundCommand = void | { stop: true } | { restart: ParsedTile[] }
  *
  *  `core` is the live `TableCore`, so a handler can call `analysisOf`/`snapshotTable`/`shanten` on
  *  the board as it stands at exactly this moment. `replaying` marks an event reconstructed by
- *  `replayLog` rather than played live (ADR-0021): the board really did reach this state, so a
+ *  `replayLog` rather than played live: the board really did reach this state, so a
  *  handler deriving *state* should treat it like any other event, while one that grades or writes
  *  a log row must skip it. Suppressing replayed events outright was this layer deciding a grading
  *  policy on the consumer's behalf, and it left folding unable to see the riichi its own drill is
@@ -94,7 +94,7 @@ export interface UseRoundInput {
   options: RoundOptions
   /** Every seat's decisions so far, replayed via `replayLog` to fast-forward to a mid-round
    *  decision point — a shared link or a log rewind. Consults no algorithm at all, which is what
-   *  makes it immune to a later algorithm change (ADR-0021), and adds no tiles: everything named
+   *  makes it immune to a later algorithm change, and adds no tiles: everything named
    *  is already accounted for by `wall`. */
   replay?: readonly LogEntry[]
   /** "The reader can see everyone's tiles" — `showSeatWaits || showOpponentHands` at every call
@@ -106,14 +106,14 @@ export interface UseRoundInput {
    *  default) keeps the driver fully synchronous**: no `await` is evaluated and no per-event
    *  snapshot is taken, so the entire AI burst still lands in the one terminal commit it always
    *  did, and every caller that settles a round inside a synchronous `act()` still does. Read
-   *  through a ref, so changing it mid-hand takes effect on the next turn (ADR-0008). */
+   *  through a ref, so changing it mid-hand takes effect on the next turn. */
   pace?: number
   onEvent?: RoundEventHandler
 }
 
 /** The call a seat has just made, for as long as the board should say so. Produced here because
  *  only the driver knows *when* — `Table` is handed this as board truth and never derives which
- *  call a meld represents (ADR-0042). */
+ *  call a meld represents. */
 export interface CallBanner {
   seat: number
   kind: MeldKind | 'riichi' | 'ron' | 'tsumo'
@@ -121,7 +121,7 @@ export interface CallBanner {
 
 /** A tile a seat has just thrown out of its hand — the hole it left, for as long as whoever owns
  *  this keeps it set. Produced here for the same reason `CallBanner` is: only the driver knows
- *  when the tile lands (ADR-0042). */
+ *  when the tile lands. */
 export interface Tedashi {
   seat: number
   tile: ParsedTile
@@ -199,7 +199,7 @@ export function useRound(input: UseRoundInput) {
   // an identity dep would redeal the board each time it rendered
   const algorithmsKey = input.options.algorithms?.join()
   // same reasoning, and same effect: an `'ev'` seat's model and objective are live board state,
-  // not a redeal (ADR-0008)
+  // not a redeal
   const evKey = input.options.ev?.map((seat) => `${seat?.model}/${seat?.objective}`).join()
 
   const handler = useRef<RoundEventHandler | undefined>(input.onEvent)
@@ -207,7 +207,7 @@ export function useRound(input: UseRoundInput) {
 
   // read through a ref for the same reason `handler` is: a page rebuilds its input object every
   // render, and the driver has to see the value as it stands at the turn it is about to pace, not
-  // the one captured when the drive started (ADR-0008)
+  // the one captured when the drive started
   const pace = useRef(input.pace ?? 0)
   pace.current = input.pace ?? 0
 
@@ -458,7 +458,7 @@ export function useRound(input: UseRoundInput) {
     core.current = c
     queued.current = []
 
-    // `replayLog` reconstructs every seat's turn exactly, consulting no algorithm (ADR-0021), and
+    // `replayLog` reconstructs every seat's turn exactly, consulting no algorithm, and
     // hands back the events those turns really emitted — the same shapes a live turn produces, so
     // a consumer rebuilds from one stream rather than needing a second path for links. A command
     // is not honoured mid-replay: the recording says what happened, and a handler cannot stop or
@@ -507,7 +507,7 @@ export function useRound(input: UseRoundInput) {
     restartCount,
   ])
 
-  // algorithm and claims changes are live (ADR-0008, ADR-0015): neither may redeal, so both are
+  // algorithm and claims changes are live: neither may redeal, so both are
   // written straight onto the running match. Two cases can't wait for the board to advance on its
   // own: a seat that stopped being manual with its draw already sitting there (`stepRound`'s own
   // `drawn` guard stops it re-drawing), and a claim pending on a seat that stopped being
@@ -700,7 +700,7 @@ export function useRound(input: UseRoundInput) {
      *  tsumogiri, which left no hole, and only ever while the board is paced. */
     tedashi,
     /** The call to draw on the board right now, or nothing. Board truth, produced by the pacer
-     *  and passed straight to `Table` — a page never derives it (ADR-0042). Only ever set while
+     *  and passed straight to `Table` — a page never derives it. Only ever set while
      *  the board is paced: with `pace` at 0 there is no frame to put it in. */
     callBanner,
     /** The analysis for the turn currently in progress, if a seat is holding 14 tiles. */

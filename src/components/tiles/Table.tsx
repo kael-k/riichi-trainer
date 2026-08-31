@@ -75,7 +75,7 @@ interface TableProps {
   /** The call a seat has just made, drawn big on that seat's own edge for as long as whoever owns
    *  this keeps it set. Board truth like `activeSeat`, and a **value**: `Table` never derives
    *  which call a meld represents — a meld-count diff plus `meld.kind` would be game logic in a
-   *  pure view (ADR-0014, ADR-0042). Its lifetime belongs to the driver that raised it
+   *  pure view. Its lifetime belongs to the driver that raised it
    *  (`useRound`'s `callBanner`), which is the only thing that knows when the board moved on. */
   call?: CallBanner
   /** Extra centre content — the scoring trainer's win-condition badges. */

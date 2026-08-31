@@ -40,7 +40,7 @@ function serialize(events: RoundEvent[]): string {
         case 'abort':
           return `abort:${e.seat}:${e.reason}`
         // an own-turn action was invisible to this hash until an algorithm could take one
-        // (ADR-0043): an `'ev'` seat's kans would otherwise move `EV_GOLDEN` not at all
+        //: an `'ev'` seat's kans would otherwise move `EV_GOLDEN` not at all
         case 'kita':
           return `kita:${e.seat}`
         case 'ankan':
@@ -77,8 +77,8 @@ declare const process: { env: Record<string, string | undefined> }
  *  here — a change that has to move these says so in its own commit. Four have: T3 of the
  *  seat-algorithm refactor (it changed what `defense`/`efficiency` decide), the move to real
  *  4/4/4+1 dealing (every seat is dealt different tiles off the same wall), cutting the dead wall
- *  into real stacks (ADR-0028, which moves which tiles are dora and which ura pays out), and the
- *  turn seam (ADR-0043).
+ *  into real stacks (which moves which tiles are dora and which ura pays out), and the
+ *  turn seam.
  *
  *  **The fourth move is the sanma column alone, and it is not a decision change.** Every one of
  *  the forty seeded rounds plays exactly the tiles it played before; what moved is that an AI

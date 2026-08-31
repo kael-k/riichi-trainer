@@ -859,7 +859,7 @@ function handTiles(handStrip: Locator): Locator {
   return handStrip.getByRole('button')
 }
 
-/** Waits for the hand strip to reach a full 14-tile hand. Efficiency asks no claims (ADR-0035),
+/** Waits for the hand strip to reach a full 14-tile hand. Efficiency asks no claims,
  *  so there is nothing to decline here any more; kept defensive in case a future trainer reusing
  *  this helper still does. */
 async function waitForFullHand(page: Page, handStrip: Locator) {
@@ -952,9 +952,7 @@ test('a declared seat may only throw the tile it just drew', async ({ page }) =>
   // what used to resize the hand strip turn to turn, which `TileButton`'s own `disabled` fixes.
   // Locked reads as inert, not gone: all fourteen stay buttons, and only the drawn tile's is live
   await expect(hand.getByRole('button'), 'every tile stays a button, locked or not').toHaveCount(14)
-  await expect(hand.locator('button:not([disabled])'), 'only the drawn tile is live').toHaveCount(
-    1,
-  )
+  await expect(hand.locator('button:not([disabled])'), 'only the drawn tile is live').toHaveCount(1)
 })
 
 /**
@@ -962,7 +960,7 @@ test('a declared seat may only throw the tile it just drew', async ({ page }) =>
  * kamicha, the only seat chi ever offers from — holds the fourth and last copy of 3s. Discarding
  * it is simultaneously pon-able (2+ held), chi-able (the kanchan) and shaped like a daiminkan
  * (3+ held) — one discard exercises all three named calls at once. Daiminkan stays unavailable
- * here specifically because efficiency never sets `RoundOptions.calledKan` (ADR-0041; it exists
+ * here specifically because efficiency never sets `RoundOptions.calledKan` (it exists
  * now, gated to `/match` alone), not because the engine can never offer one. Everyone else's
  * tiles are single copies spaced 3 apart within every suit, which makes chi structurally
  * impossible off any of *their* discards too (a run needs two held tiles within 2 of each other),
@@ -1125,7 +1123,7 @@ test('a kita and a kan appearing and disappearing never resize the board or move
  * a hand gaining a kita and a kan (the old flat 14-tile cap did not budget for the calls block at
  * all, so a called hand could wrap onto a second line). A third state, an *open* meld (pon/chi)
  * on the reader's own hand, is left uncovered: efficiency never asks a manual seat about another
- * seat's discard (ADR-0035), so its own manual seat can never acquire one live, and no other
+ * seat's discard, so its own manual seat can never acquire one live, and no other
  * fixture in this file drives an open call onto the graded seat either — `kitaKanBoard`'s ankan
  * is the closest reachable stand-in, and it exercises the same `hasCalls` branch of
  * `HandDisplay`'s `--hand-slots` an open meld would.

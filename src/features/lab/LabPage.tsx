@@ -161,7 +161,7 @@ function DangerRow({ entry, seats }: { entry: TileDanger; seats: number[] }) {
   )
 }
 
-/** The inline, single-sentence wall-validation error (ADR-0005): names the offending zone and tile,
+/** The inline, single-sentence wall-validation error: names the offending zone and tile,
  *  in the same red the wrong-answer feedback rows already use — never a modal, never a repaired
  *  board. */
 function wallErrorMessage(
@@ -197,7 +197,7 @@ export function LabPage() {
   const updateTable = (patch: Partial<TableSettings>) =>
     update('table', { apps: { ...rawTable.apps, lab: { ...rawTable.apps.lab, ...patch } } })
 
-  // per-seat algorithms are board state, not a preference (ADR-0015): page state with the same
+  // per-seat algorithms are board state, not a preference: page state with the same
   // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
   // persisted.
   const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
@@ -324,7 +324,7 @@ export function LabPage() {
   const bottomConcealed = !(round.finished || showOpponentHands || viewingManual)
   // `!round.claim` as well: a pending claim suspends `finishTurn`, so a live-looking tile that
   // silently does nothing is worse than an inert one — and the seat being asked is the acting
-  // seat, so without this a reader offered a pon (or, since ADR-0045, their own tsumo) still
+  // seat, so without this a reader offered a pon (or their own tsumo) still
   // has a clickable hand that the engine refuses
   const canAct = perspective === round.acting && !round.finished && !round.claim
 

@@ -14,7 +14,7 @@ import { useRound, type RoundEventContext } from '../table/useRound'
 /**
  * The statistical lab's own round hook: full analysis, zero grading. Built on `useRound` exactly
  * like `useEfficiencyRound`, minus every bit of grading that hook layers on top — no score, no
- * correct/incorrect flag, no session counters, and no `useSessionStats` (ADR-0004). It never
+ * correct/incorrect flag, no session counters, and no `useSessionStats`. It never
  * returns a stop command, so the hand plays out to its natural end rather than stopping at a
  * drill's decision point — there is no drill here to end early.
  */
@@ -32,7 +32,7 @@ export interface LabOptions {
    *  the hand ends. */
   showOpponentHands: boolean
   /** Who plays which seat, from the board's seat panel; `null` is the shipped default (you at
-   *  the link's own seat, every other seat on the efficiency AI). Page state (ADR-0015), not settings
+   *  the link's own seat, every other seat on the efficiency AI). Page state, not settings
    *  — see `LabPage`. */
   seats: SeatConfig | null
   /** The seat panel's "show tenpai/waits" setting — threaded to `useRound`, which is where the
@@ -44,7 +44,7 @@ export interface LabOptions {
 
 /** The full analysis for the current 14-tile hand: `evaluateDiscards`'s whole ranking and
  *  `assessDiscards`'s whole tier list — the lab is the one consumer that wants both, read once
- *  per turn off the draw event's analysis (ADR-0012) rather than during render. */
+ *  per turn off the draw event's analysis rather than during render. */
 export interface LabAnalysis {
   ranked: DiscardOption[]
   danger: TileDanger[]
@@ -58,7 +58,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
   // the graded seat is decided by the link alone, never by the seat panel: flipping your own
-  // seat's algorithm live must freeze grading in place (ADR-0008), not move it to whichever other seat
+  // seat's algorithm live must freeze grading in place, not move it to whichever other seat
   // the panel happens to have marked manual — so this never goes through `options.seats`
   const seatIndex = linkSeat
   const seats = resolveSeatConfig(options.seats, players, seatIndex)
@@ -75,7 +75,7 @@ export function useLabRound(situation: Situation, options: LabOptions) {
     kiriageMangan: options.kiriageMangan,
     algorithms,
     ev: seats.ev,
-    // the lab is the free-play board: manual seats are the point, so it always asks (ADR-0034)
+    // the lab is the free-play board: manual seats are the point, so it always asks
     claims: true,
   }
 

@@ -14,7 +14,7 @@ interface ManualControlsProps {
   riichiArmed: boolean
   onArmRiichi: (armed: boolean) => void
   onAnswer: (answer: ClaimAnswer) => void
-  /** The seat the board is currently *drawn from* — perspective. ADR-0034 ("you act from where
+  /** The seat the board is currently *drawn from* — perspective. ("You act from where
    *  you watch") still gates the riichi offer on `acting === viewSeat`: riichi is optional, so
    *  requiring a rotation to the seat it belongs to before arming it costs nothing, and the
    *  felt's own turn glow (`Table`'s `activeSeat`) plus the seat plate's eye icon already say
@@ -63,7 +63,7 @@ export function manualControlsVisible({
 /**
  * The controls a manual seat needs beyond picking a tile: the claim prompt on someone else's
  * discard (plus the kyuushu-kyuuhai abort offer) and the riichi declaration. Only the riichi half
- * stays gated on watching the seat it belongs to (ADR-0034) — it is an offer, so nothing is
+ * stays gated on watching the seat it belongs to — it is an offer, so nothing is
  * blocked by ignoring it. The claim half is not: the engine suspends every seat's turn until a
  * pending claim is answered, so it renders for whoever is owed it no matter which seat the board
  * is drawn from — gating it on perspective the same way left the board frozen with no way to
@@ -91,7 +91,7 @@ export function ManualControls({
   const wind = (seat: number) => t(`wind.${seatWind(seat, dealer, players)}`)
   if (ended && !claim) return null
 
-  // the acting seat's own completed hand (ADR-0045). Like the abort offer it is nobody's reaction
+  // the acting seat's own completed hand. Like the abort offer it is nobody's reaction
   // to a discard, so it names no other seat — but unlike it, the hand is already priced, and what
   // the reader is really deciding is whether that price is worth ending the hand for
   if (claim?.kind === 'win') {

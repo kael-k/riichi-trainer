@@ -8,7 +8,7 @@ import { HONOR, NUM_TILE_TYPES, parseTenhou } from './tiles'
 
 // `defense` declining a legal win is already covered end-to-end by
 // round.test.ts's "never tsumos for a defense-algorithm seat" — this file covers what has no
-// coverage yet: `turn` now differs per algorithm (T3, ADR-0043), and a third algorithm needs
+// coverage yet: `turn` now differs per algorithm (T3), and a third algorithm needs
 // nothing from `round.ts` to plug in.
 
 function baseView(overrides: Partial<SeatView> = {}): SeatView {
@@ -75,7 +75,7 @@ describe('ALGORITHMS.tsumogiri', () => {
   })
 
   it('falls back to the lowest held tile, not marked fromDrawn, when there is nothing to tsumogiri', () => {
-    // reachable by flipping a seat to tsumogiri mid-hand right after it called (ADR-0008) — no `drawn`
+    // reachable by flipping a seat to tsumogiri mid-hand right after it called — no `drawn`
     // sits on the hand between a call and this seat's own next draw
     const hand = handFromTenhou('19m19p19s1234567z')
     const view = baseView({ hand })

@@ -9,7 +9,7 @@ import { EV_MODELS, type EvModelName } from '../../core/evModel'
 import type { SeatAlgorithm } from '../../core/policy'
 
 /** One flat list of choices: the four plain algorithms, the two EV models named as their own
- *  entries (ADR-0037's model is a seat field, not an algorithm — this is presentation only, so
+ *  entries (the model is a seat field, not an algorithm — this is presentation only, so
  *  picking one still writes `mode: 'ev'` plus `EvSeat.model`), and manual. Exported for the match
  *  drill's setup screen (`MatchPage.tsx`), which offers the same choices before any board exists
  *  to hang a corner button off. */

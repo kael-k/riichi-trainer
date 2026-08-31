@@ -25,12 +25,12 @@ export interface Situation {
   hand?: ParsedTile[]
   /** Explicit wall in draw order for wall-based trainers: seat 0's 13 tiles, seat 1's 13, …,
    *  then the live draws, then the last 14 tiles as the dead wall — five indicator-over-ura stacks
-   *  then the four rinshan tiles, so the flipped indicator is the 9th of the 14 (ADR-0028). A
+   *  then the four rinshan tiles, so the flipped indicator is the 9th of the 14. A
    *  short wall is a prefix — the remainder is completed at random from the copies it leaves
-   *  (ADR-0005). This is the deal itself, not a "prefix consumed on next draw" the way `wall` used
-   *  to mean before this phase (ADR-0005). */
+   *. This is the deal itself, not a "prefix consumed on next draw" the way `wall` used
+   *  to mean before this phase. */
   wall: ParsedTile[]
-  /** Set when `wall` failed `validateWall` (ADR-0005) — `wall` is then empty and must never reach
+  /** Set when `wall` failed `validateWall` — `wall` is then empty and must never reach
    *  `createRound`. This is the one codec in the repo that rejects rather than silently drops
    *  (contrast `parseTenhou`, which drops a malformed digit): a wall is positionally meaningful,
    *  so repairing it would hand back a different board than the link claimed to share. */

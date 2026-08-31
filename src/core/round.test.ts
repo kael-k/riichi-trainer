@@ -758,7 +758,7 @@ describe('defensive policy', () => {
     // line (every other discard breaks the tenpai), so pulling it — the same evaluateDiscards
     // comparison a plain discard would make — is unambiguous, not just a tie.
     // The pull happens in `finishTurn` now, not `beginTurn`: a seat's own kita competes with its
-    // discard and its kans, so all three are asked at the one moment (ADR-0043).
+    // discard and its kans, so all three are asked at the one moment.
     const hand = parseTenhou('123456789p1122s')
     const wall = wallWithHand(0, hand, true, false, 'kita-t3-seed')
     wall[3 * INITIAL_HAND_SIZE] = parseTenhou('4z')[0] // seat 0's draw: North
@@ -1127,7 +1127,7 @@ describe('manual riichi declaration', () => {
 })
 
 describe("a manual seat's own tsumo", () => {
-  // ADR-0045: a person's win is a call, not something the engine takes for them. The offer is a
+  // A person's win is a call, not something the engine takes for them. The offer is a
   // one-seat `PendingClaim` exactly like kyuushu's, so `beginTurn`/`finishTurn` are no-ops until
   // it is answered — and declining leaves no furiten behind, because the tile was self-drawn.
   const wall = () => {
@@ -1233,7 +1233,7 @@ describe('beginTurn declineTsumo', () => {
     expect(state.ended).toBeUndefined()
     expect(state.win).toBeUndefined()
     expect(tileCount(state.players[0].hand)).toBe(14) // drawn tile still sitting in hand, ungraded
-    expect(state.log).toHaveLength(0) // nothing to log — the decline itself is never logged (ADR-0021)
+    expect(state.log).toHaveLength(0) // nothing to log — the decline itself is never logged
   })
 })
 
@@ -1258,7 +1258,7 @@ describe('RoundState.log', () => {
   it("reports an AI seat's sanma kita pull as the same event a manual seat's raises", () => {
     // it used to raise none at all: the pull was `beginTurn`'s own inline mutation and only its
     // replacement `draw` reached the stream, so nothing watching a board could tell a nukidora
-    // from an ordinary draw. Routing every pull through `callKita` (ADR-0043) is what fixed it,
+    // from an ordinary draw. Routing every pull through `callKita` is what fixed it,
     // and it is the whole of why the sanma golden hashes moved.
     for (let i = 0; i < 40; i++) {
       const { state, events } = playRound(`log-sanma-${i}`, 3, SANMA)
@@ -1323,7 +1323,8 @@ describe('RoundState.log', () => {
 })
 
 /** Daiminkan (kan on a discard) and kakan (an added kan on an open pon) — match-only
- *  (`RoundOptions.calledKan`), ADR-0010's amendment. Seat 1 in every case here holds a triplet
+ *  (`RoundOptions.calledKan`), a ruleset switch rather than one of the four permissions. Seat 1 in
+ *  every case here holds a triplet
  *  of 9s, which is both pon- and minkan-eligible on the same discard — leaving one 9s behind
  *  after a pon is exactly what a kakan test needs, so the same two hands serve both. */
 describe('called kan', () => {
@@ -1462,7 +1463,7 @@ describe('the turn seam', () => {
 
   it('never auto-kans a manual seat, the way it never auto-pulls its north', () => {
     // the same seat, carrying the same EV pricing, but on `'manual'`: an algorithm is never
-    // consulted for it at all (ADR-0007/ADR-0011), so the kan the row above takes is left for the
+    // consulted for it at all, so the kan the row above takes is left for the
     // reader's own `callAnkan`
     const options: RoundOptions = { ...EV, algorithms: manual(0) }
     const state = createRound(quadWall('turn-seam-manual'), 4, options)
@@ -1585,12 +1586,12 @@ describe('the turn seam', () => {
  *
  * `efficiency` declines both, and cannot do otherwise. `chooseCall` calls the three-argument
  * `availableCalls`, so `RoundOptions.calledKan` never reaches it and a minkan is never even a
- * candidate (ADR-0041); and its rule wants a call to *lower* shanten, which an open kan never does,
+ * candidate; and its rule wants a call to *lower* shanten, which an open kan never does,
  * since the concealed triplet it is made from was already a complete block.
  *
  * An `'ev'` seat prices the branch instead — `ev.ts#rankCalls`, every call weighed against the pass
  * as a hand — so it takes the free one and declines the one that costs it a yakuman. That is the
- * gap ADR-0043 deferred, and closing it is what these tests now pin.
+ * gap the turn seam deferred, and closing it is what these tests now pin.
  */
 describe('daiminkan is priced by an ev seat and invisible to efficiency', () => {
   /** The AI seats that call at all. `defense` and `tsumogiri` return `null` from `call`

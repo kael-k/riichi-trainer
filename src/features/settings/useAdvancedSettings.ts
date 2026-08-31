@@ -25,7 +25,7 @@ export function useAdvancedSettings() {
     exactFu: advanced && exactFu,
     // alpha: a hidden row must not mean a live value, same rule as above
     evGrading: advanced && evGrading,
-    // alpha, ADR-0046's efficiency half, table-only: `useEfficiencyRound.ts` is the only reader
+    // alpha, table-only: `useEfficiencyRound.ts` is the only reader
     efficiencyEvGrading: advanced && efficiencyEvGrading,
   }
 }

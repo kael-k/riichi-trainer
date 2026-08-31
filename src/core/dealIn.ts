@@ -272,7 +272,8 @@ for (const hypothesis of HYPOTHESES) {
  *
  * These numbers were checked against `HOUOU_PRIOR` for **ordering only** (risk rises from the
  * terminals to the middle of a suit, honours sit far below either), never fitted to it — that
- * would be the borrowing ADR-0037 forbids. The residual disagreement is known and one-directional:
+ * would be borrowing, which the two models may not do. The residual disagreement is known and
+ * one-directional:
  * this prior prices an honour at about 1.7% against the measured 1.2%, so `statistical` is the
  * model that folds honours slightly too readily.
  */

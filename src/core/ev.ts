@@ -128,14 +128,14 @@ export type EvObjective = 'points' | 'placement'
 
 /** How a seat prices: which model supplies the costs, and what it is trying to maximise. Two
  *  orthogonal switches, which is exactly why they are a per-seat record rather than more members
- *  of `SeatAlgorithm` — the union would be their cross product (ADR-0037). */
+ *  of `SeatAlgorithm` — the union would be their cross product. */
 export interface EvSeat {
   model: EvModelName
   objective: EvObjective
 }
 
 /** What a seat runs on unless something says otherwise: the model that can explain itself from
- *  first principles (ADR-0018), playing for placement — the currency the trainer is actually
+ *  first principles, playing for placement — the currency the trainer is actually
  *  about. `EvOptions.objective`'s own fallback stays `'points'` (see its doc comment below) — a
  *  bare call with no seat behind it, like a test or the lab's manual price check, still means
  *  points unless asked otherwise; only the seat's live default moved. */
@@ -519,7 +519,7 @@ export function winWorthIt(view: SeatView, candidate: WinCandidate, opts: EvOpti
  * reach a leaf, so what a kyuushu hand is worth is a real figure and the decision turns on it.
  * The remaining ceiling is unchanged: a dealer that aborts gives up a dealership the points
  * objective cannot price at all, because nothing in this engine sequences to a next round
- * (ADR-0023).
+ *.
  */
 export function abortWorthIt(view: SeatView, opts: EvOptions = {}): boolean {
   return keepEv(view, opts) < 0

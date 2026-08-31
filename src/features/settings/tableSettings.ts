@@ -2,12 +2,12 @@ import { DEFAULT_EV_SEAT, type EvSeat } from '../../core/ev'
 import type { SeatAlgorithm } from '../../core/policy'
 import { useSettings } from './settingsStore'
 
-/** Who plays which seat. Board state, not a preference (ADR-0015): it is never persisted, living
+/** Who plays which seat. Board state, not a preference: it is never persisted, living
  *  instead as page state with the same lifetime as `viewSeat` — seeded from the link, reset on
  *  every new hand — and `null` until the reader opens the panel: the shipped behaviour is exactly
  *  "you sit where the trainer seats you, every other seat is the efficiency AI", which
  *  `resolveSeatConfig` below reproduces from `null`. Unlike `modes`, `claims` answers a question
- *  about the *reader* rather than the board (ADR-0015), so it stays match-wide and persisted —
+ *  about the *reader* rather than the board, so it stays match-wide and persisted —
  *  `TableSettings.claims` below, not a field here.
  *
  *  Perspective (which seat the board is drawn from) is not part of this either: it is its own
@@ -96,7 +96,7 @@ export function withSeatEv(
 }
 
 /** The settings every board-rendering trainer shares. One schema instead of each app growing its
- *  own copy of the same questions (ADR-0015, ADR-0015). */
+ *  own copy of the same questions. */
 export interface TableSettings {
   /** Let the threats ron and tsumo. Off makes the drill a rehearsal — the same ranking and the
    *  same grading, but the hand plays to the wall instead of ending on a deal-in. Off by
@@ -172,7 +172,7 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
 }
 
 /** Resolves one app's table settings: app default, then the global override layer, then that
- *  app's own override layer (ADR-0015). Both override layers are `Partial` — absent-key-means-inherit
+ *  app's own override layer. Both override layers are `Partial` — absent-key-means-inherit
  *  is exactly plain object-spread semantics, which is what makes a three-state inherit/on/off
  *  control unnecessary: a key a reader never touched simply isn't in the object. */
 export function resolveTableSettings(
@@ -198,7 +198,7 @@ export function useTableSettings(app: TableApp): TableSettings & { seatsEnabled:
   return {
     ...resolveTableSettings(app, table),
     /** Whether the seat panel is offered at all — the per-seat algorithms themselves are page
-     *  state now (ADR-0015), not a settings value, so there is nothing here left to force off when the
+     *  state now, not a settings value, so there is nothing here left to force off when the
      *  panel is hidden. */
     seatsEnabled,
   }

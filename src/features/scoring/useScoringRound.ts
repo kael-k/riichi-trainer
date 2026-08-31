@@ -55,7 +55,7 @@ interface State {
   round: RoundState | null
   /** Seat that won; the table seats the player there. */
   seat: number
-  /** Wall that reproduces this exact round, for the share link (ADR-0005) — replaces the old
+  /** Wall that reproduces this exact round, for the share link — replaces the old
    *  seed-based record, which searched seed suffixes rather than random walls. */
   roundWall: ParsedTile[] | null
   actual: ScoreResult
@@ -78,7 +78,7 @@ function scoreSituation(situation: ScoringSituation, options: ScoringOptions): S
 }
 
 /** The board's own draw-order content, standing in for the seed a wall-based round no longer
- *  carries (ADR-0005) — the same wall always hashes to the same key, which is what lets `roundOptions`
+ *  carries — the same wall always hashes to the same key, which is what lets `roundOptions`
  *  and `situationFromWin` reproduce the same round wind and honba roll from the wall alone. */
 function wallKey(wall: ParsedTile[]): string {
   return serializeTenhouOrdered(wall)
@@ -243,7 +243,7 @@ export function scoreDetail(actual: ScoreResult): LogDetail[] {
   return detail
 }
 
-/** Deals a fresh random wall (ADR-0005: generation via random walls, not seed suffixes) and plays it
+/** Deals a fresh random wall — generation goes through random walls, not seed suffixes — and plays it
  *  out, until `accept` takes one — `findRoundAsync`'s shape (capped attempts, yielding between
  *  them), but each attempt is an independently random wall rather than a seed suffix, since walls
  *  are no longer named by a seed. */
@@ -313,7 +313,7 @@ export function useScoringRound(urlData: ScoringUrl, options: ScoringOptions) {
     }
   }
 
-  // scoring never re-touches its round after generation (ADR-0012): it plays a wall out with
+  // scoring never re-touches its round after generation: it plays a wall out with
   // `playWall`, keeps the win, and never steps that round again — so it is the one board-rendering
   // trainer that does not drive `useRound` at all, and `<Table>` here is purely presentational.
   // This is its single entry point; nothing else in this hook reads `outcome.state.win` directly.

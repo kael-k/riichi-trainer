@@ -31,7 +31,8 @@ import { TILES_PER_KIND } from './wall'
  * nonetheless the right ordering signal for a discard choice, because both corrections depend
  * almost entirely on the turn and the board rather than on which tile you throw.
  *
- * Purity: same inputs, same output, no Monte Carlo — which ADR-0009 makes a hard rule and which is
+ * Purity: same inputs, same output, no Monte Carlo — a hard rule of the decision seam, and one
+ * that is
  * also what makes the model explainable.
  */
 

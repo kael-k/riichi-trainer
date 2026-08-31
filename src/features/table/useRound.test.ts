@@ -11,7 +11,7 @@ import { parseTenhou, SOU, type ParsedTile } from '../../core/tiles'
 import { completeWall, wallWithHand, wallWithHands } from '../../core/wall'
 import { useRound, type RoundCommand, type RoundEventContext } from './useRound'
 
-// wraps the real implementations in vi.fn so laziness (ADR-0012) can be proved by call count, not
+// wraps the real implementations in vi.fn so laziness can be proved by call count, not
 // inspection — every other test in this file still gets the real analysis, since these pass through
 vi.mock('../../core/efficiency', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../core/efficiency')>()
@@ -214,7 +214,7 @@ describe('useRound', () => {
   })
 })
 
-describe('live option changes (ADR-0008)', () => {
+describe('live option changes', () => {
   it('flipping an opponent between two AI algorithms never touches the running match', () => {
     const wall = tenpaiWall('match-live-general')
     const options: RoundOptions = {
@@ -239,7 +239,7 @@ describe('live option changes (ADR-0008)', () => {
   })
 
   it('toggling claims mid-hand leaves the hand exactly as it stands', () => {
-    // `claims` is a reader preference (ADR-0015), so ADR-0008 binds it: it must never redeal
+    // `claims` is a reader preference, so the live-algorithm rule binds it: it must never redeal
     // through `wallWithHands`, not by concatenation: a seat's thirteen are dealt four at a time
     const wall = wallWithHands(
       [parseTenhou('2468m2468p9s2345z'), parseTenhou('1133557799m11p9s')],
@@ -276,7 +276,7 @@ describe('live option changes (ADR-0008)', () => {
   })
 })
 
-describe('pacing (ADR-0042)', () => {
+describe('pacing', () => {
   /** Mounts a board at `pace` and records every distinct snapshot it commits — one entry per frame
    *  the reader would actually see. Recorded in the render body rather than an effect, since that
    *  is where a commit becomes visible and an effect would coalesce two of them. */

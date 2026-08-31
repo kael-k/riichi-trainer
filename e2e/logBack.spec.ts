@@ -47,7 +47,7 @@ test('undo is disabled until a decision has been made', async ({ page }) => {
 
   await expect(undoButton(page)).toBeDisabled()
   await openPanel(page)
-  // the board-as-dealt row (ADR-0026) is already on the log — it's not a decision, so it must not
+  // the board-as-dealt row is already on the log — it's not a decision, so it must not
   // enable undo, but it does count toward the header's total
   await expect(page.getByText('Log (1)')).toBeVisible()
 })
@@ -69,7 +69,7 @@ test('undo re-poses the previous hand, and works more than once', async ({ page 
 
   await expect(undoButton(page)).toBeEnabled()
   await openPanel(page)
-  // each hand's own "dealt" row (ADR-0026) sits alongside its graded result: hand1 dealt, hand1
+  // each hand's own "dealt" row sits alongside its graded result: hand1 dealt, hand1
   // graded, hand2 dealt, hand2 graded, hand3 dealt
   await expect(page.getByText('Log (5)')).toBeVisible()
   await closePanel(page)

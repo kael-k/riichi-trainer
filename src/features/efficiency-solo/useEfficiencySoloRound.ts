@@ -19,7 +19,7 @@ export interface SoloOptions {
  *  (`useEfficiencyRound`) sits on the same drill; this hook differs only in its `RoundOptions`
  *  (one seat, no calls, no riichi) and its own `nuki` (this seat's pile, not every seat's).
  *  Grading and log-row shaping are imported from `features/efficiency/grade`, never re-implemented
- *  here, so a solitaire mistake and a table mistake score identically (ADR-0013, ADR-0032). */
+ *  here, so a solitaire mistake and a table mistake score identically. */
 export function useEfficiencySoloRound(situation: Situation, options: SoloOptions) {
   const players = 1
   const seatIndex = 0

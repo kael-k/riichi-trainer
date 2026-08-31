@@ -11,7 +11,7 @@ import { SettingsButton } from '../features/settings/SettingsDialog'
 
 const REPO_URL = 'https://github.com/kael-k/riichi-trainer'
 
-/** The route is the only thing that decides which drill a card opens (ADR-0013) — order here is
+/** The route is the only thing that decides which drill a card opens — order here is
  *  purely a home-page display choice, not a hidden setting. */
 const MODES = [
   {

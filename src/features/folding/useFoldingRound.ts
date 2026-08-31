@@ -39,7 +39,7 @@ import { evBandDetail, gradeEv, type EvBands } from '../table/evGrade'
 
 /** The folding settings section plus the ruleset the round runs under (which a link can pin, so
  *  it is not a plain setting) and the two table settings (`threats`, `opponentWins`) that moved
- *  out of `Settings['folding']` into the shared `table` section (`tableSettings.ts`, ADR-0015) but
+ *  out of `Settings['folding']` into the shared `table` section (`tableSettings.ts`) but
  *  are still resolved per-round here, same as before the move. */
 export type FoldingOptions = Settings['folding'] & {
   sanma: boolean
@@ -56,9 +56,9 @@ export type FoldingOptions = Settings['folding'] & {
   showSeatWaits: boolean
   /** Per-seat algorithm from the board's seat panel. Every seat can be set to `'manual'`, same as
    *  efficiency/lab — the drill's own generated seat (`RoundCore.seatIndex`) is just the one the
-   *  handover always includes, not the only one that may be manual. Page state (ADR-0015), not
+   *  handover always includes, not the only one that may be manual. Page state, not
    *  settings — see `FoldingPage`. Read at generation time to seed the handover, and live
-   *  thereafter (ADR-0008): a change here never rebuilds the round. */
+   *  thereafter: a change here never rebuilds the round. */
   seats: SeatConfig | null
   /** How long a seat nobody plays holds before its action is committed (`useRound`'s `pace`).
    *  Deliberately absent from the search effect's deps below, like `seats`: the board search is a
@@ -68,7 +68,7 @@ export type FoldingOptions = Settings['folding'] & {
   /**
    * Seeds the wall search, for a caller that needs the same drill twice. Absent in the app — a new
    * hand is a fresh random search, and the way a reader reproduces one board is the link the wall
-   * itself is (ADR-0005).
+   * itself is.
    *
    * It exists because a *pinned* wall is only a board if `worthwhile` accepts it, and a wall that
    * fails falls through to this search — so a test handing in a fixed wall is not, on its own,
@@ -81,9 +81,9 @@ export type FoldingOptions = Settings['folding'] & {
 
 export interface FoldingUrl {
   /** Explicit wall in draw order, same format as the situation codec's — the board a link shares
-   *  (ADR-0005). Empty means "deal something fresh" rather than "replay this exact board". */
+   *. Empty means "deal something fresh" rather than "replay this exact board". */
   wall: ParsedTile[]
-  /** Set when `wall` failed `validateWall` (ADR-0005) — `wall` is then empty and must never reach
+  /** Set when `wall` failed `validateWall` — `wall` is then empty and must never reach
    *  `createRound`. */
   wallError?: WallError
   sanma?: boolean
@@ -199,7 +199,7 @@ export interface RoundEnd {
  *  match itself is rebuilt by `useRound` from exactly these four things — the wall it was dealt
  *  from, the algorithms each seat ended up on, the seat the drill grades, and generation's own log
  *  — which is what lets folding share the one React match layer instead of stepping turns itself
- *  (ADR-0012). `replayLog` consults no algorithm, so replaying that log reproduces the handed-over
+ *. `replayLog` consults no algorithm, so replaying that log reproduces the handed-over
  *  board exactly rather than re-deciding it. */
 interface RoundBoard {
   wall: ParsedTile[]
@@ -272,7 +272,7 @@ export interface BoardOptions {
 }
 
 /** The wall itself, as a string key for seeding everything else this board needs to be
- *  reproducible from the wall alone (ADR-0005): the round wind, the handover offset. */
+ *  reproducible from the wall alone: the round wind, the handover offset. */
 function wallKey(wall: ParsedTile[]): string {
   return serializeTenhouOrdered(wall)
 }
@@ -472,7 +472,7 @@ export function decodeFoldingUrl(params: URLSearchParams): FoldingUrl {
   const wall = parseTenhou(params.get('wall') ?? '')
 
   // untrusted input: reject a malformed/over-counted wall by name rather than let it reach
-  // createRound — the same ADR-0005 gate `urlCodec.ts#decodeSituation` runs for the other wall-based
+  // createRound — the same gate `urlCodec.ts#decodeSituation` runs for the other wall-based
   // trainers. A partial wall with no explicit sanma flag validates against yonma; a full wall's
   // own length already settles the ruleset either way.
   const sanma = resolveSanma(wall, sanmaFlag, false)
@@ -556,7 +556,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
 
   // `options.seats` is read below only as the *initial* algorithm seed for a freshly generated
   // hand (`playToRiichi`'s own handover logic) — deliberately absent from this effect's deps: a
-  // later change to it must never re-search for a new hand (ADR-0008, ADR-0015). `useRound`'s own
+  // later change to it must never re-search for a new hand. `useRound`'s own
   // live-sync effect carries later changes onto the running match.
   useEffect(() => {
     const id = ++request.current
@@ -703,7 +703,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
 
   // the panel's own per-seat choices, laid over the algorithms generation settled on. Only the
   // seats it actually names are overridden: a generic default would stomp the blanket fold
-  // `playToRiichi` applied to every seat nobody touched (ADR-0008's "one algorithm changes"
+  // `playToRiichi` applied to every seat nobody touched (changing one algorithm
   // means nobody else's does). `useRound`'s live-sync effect is what carries a later change onto
   // the running match — this never rebuilds the round.
   const liveOptions: RoundOptions | undefined = round

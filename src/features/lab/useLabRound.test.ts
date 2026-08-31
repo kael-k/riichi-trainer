@@ -73,7 +73,7 @@ describe('useLabRound', () => {
 
     act(() => result.current.discard(result.current.hand.length)) // tsumogiri
 
-    // claims are always on now (ADR-0034): a stray opponent discard may offer the graded seat a
+    // claims are always on now: a stray opponent discard may offer the graded seat a
     // ron/pon/chi along the way, which is not this test's concern, so decline it and move on
     while (result.current.claim) {
       act(() => result.current.answer({ kind: 'pass' }))
@@ -130,7 +130,7 @@ describe('useLabRound', () => {
     const situation: Situation = { ...emptySituation(), wall }
     const { result } = renderHook(() => useLabRound(situation, { ...BARE, opponentWins: true }))
 
-    // the lab asks a manual seat before taking its own tsumo (ADR-0045), so the hand is not over
+    // the lab asks a manual seat before taking its own tsumo, so the hand is not over
     // until the offer is answered — the reveal is what happens *after* that, not instead of it
     expect(result.current.claim?.kind).toBe('win')
     expect(result.current.finished).toBe(false)

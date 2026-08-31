@@ -45,7 +45,7 @@ function kansOf({ hand, drawn, melds }: Pick<KitaKanControlsProps, 'hand' | 'dra
 
 /** Whether `KitaKanControls` would render anything for these props — same contract as
  *  `manualControlsVisible`: a caller floating this in a positioned card must be able to tell an
- *  empty turn from a busy one before rendering the card at all (ADR-0035). */
+ *  empty turn from a busy one before rendering the card at all. */
 // eslint-disable-next-line react-refresh/only-export-components
 export function kitaKanVisible(
   props: Pick<KitaKanControlsProps, 'sanma' | 'hand' | 'drawn' | 'melds' | 'canAct'>,

@@ -112,7 +112,7 @@ export interface SeatView {
  * What a seat does with its own turn. One type rather than three booleans and a tile, because the
  * actions **compete**: "is pulling this north worth more than kanning" is a question three
  * independent methods cannot ask, and leaving it to the engine's loop order made loop order into
- * policy (ADR-0043).
+ * policy.
  *
  * `'kita'` carries no tile — north is the only one there is (`round.ts#NORTH`).
  */
@@ -121,7 +121,7 @@ export type TurnAction =
 
 /** A win offered to `win()`: the tile, the discarder on a ron (absent on a tsumo), and how much
  *  it scores. `tryWin` (`round.ts`) has already computed all three by the time it asks — an
- *  algorithm that can't see what it declines can't price it (ADR-0009). */
+ *  algorithm that can't see what it declines can't price it. */
 export interface WinCandidate {
   tile: ParsedTile
   /** Discarder's seat on a ron; absent on a tsumo. */
@@ -220,7 +220,7 @@ const defense: Algorithm = {
 
 /** Lowest-id tile currently held — dependency-free, deterministic fallback for `tsumogiri` on the
  *  one turn it has nothing to tsumogiri: no `drawn` at all. Reachable only by flipping a seat to
- *  `tsumogiri` mid-hand right after it called (ADR-0008 — algorithms are live, so the flip can land
+ *  `tsumogiri` mid-hand right after it called (algorithms are live, so the flip can land
  *  between a pon and this seat's own next draw). */
 function lowestHeld(hand: Hand): TileId {
   for (let id = 0; id < hand.counts.length; id++) if (hand.counts[id] > 0) return id
@@ -256,7 +256,7 @@ function evOptions(view: SeatView): EvOptions {
  *
  * One algorithm, not four: which model prices it and which currency it prices in are the seat's
  * own `EvSeat`, read fresh on every decision, so both are live in exactly the way the algorithm
- * itself is (ADR-0008).
+ * itself is.
  *
  * **Every decision point is priced through the identity**
  * (`docs/model/push-fold.md#every-decision-is-priced`). Each one is one line

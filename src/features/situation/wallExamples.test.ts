@@ -8,7 +8,7 @@ import { dealtSeat } from '../../core/wall'
  * The two `wall=` examples worth quoting anywhere, checked against the engine that reads them.
  *
  * Not pedantry: the "deals a kokushi start to seat 0" line was true right up until tiles started
- * going out four at a time (ADR-0024), and nothing failed when it stopped being true. A wall is
+ * going out four at a time, and nothing failed when it stopped being true. A wall is
  * positionally meaningful, so an example of one is a claim about the deal — this is the test that
  * makes it one the suite can check. Quote a wall in prose anywhere and it belongs here first.
  */

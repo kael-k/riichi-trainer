@@ -320,7 +320,7 @@ export function RulesetSettings() {
 }
 
 /** The one row this phase has: whether Advanced features (jargon-gated rows across every other
- *  section) are surfaced at all (ADR-0018). Its own section rather than living at the bottom of
+ *  section) are surfaced at all. Its own section rather than living at the bottom of
  *  UI — flipping it changes what other sections show, so it reads oddly nested inside one of them. */
 export function MiscSettings() {
   const { t } = useTranslation()
@@ -347,7 +347,7 @@ export function MiscSettings() {
 /** The board-rendering settings shared by every trainer that draws a `Table` (efficiency, scoring,
  *  folding, the lab): whether opponent hands, seat waits and tsumogiri/tedashi marks are shown.
  *  Its own section, separate from Ruleset/UI — these are about what the board shows, not the app
- *  as a whole. Edits the *global* layer of `table` (`tableSettings.ts`, ADR-0015); the per-app
+ *  as a whole. Edits the *global* layer of `table` (`tableSettings.ts`); the per-app
  *  override layer has no UI this phase (absent key means inherit — a three-state control is not
  *  needed). Resolved against the caller's own `app` id, so a per-app override (folding's
  *  `opponentWins`, say) is never misattributed to a trainer that never set it. Omitted entirely by

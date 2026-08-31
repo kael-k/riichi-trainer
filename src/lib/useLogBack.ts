@@ -8,7 +8,7 @@ import { useLog } from '../store/log'
  *  this session, and re-navigating to one on every "back" click (`logReplay`'s dedup key is the
  *  decoded situation's identity, which a URL change always mints fresh) would grow this list on
  *  every press and break the cursor below. The board-as-dealt rows (`log.dealt`/`log.dealtHand`,
- *  ADR-0026) are the same kind of row for the same reason — a board coming into existence is not
+ *  are the same kind of row for the same reason — a board coming into existence is not
  *  a decision the reader made, and letting it count as one made "undo" enabled with nothing yet to
  *  undo. */
 const META_KEYS = new Set(['log.replay', 'log.dealt', 'log.dealtHand'])

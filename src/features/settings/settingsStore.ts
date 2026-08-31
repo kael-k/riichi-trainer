@@ -55,7 +55,7 @@ export interface Settings {
      *  `evBands` is. */
     evBands: Record<EvModelName, EvBands>
   }
-  /** The five table settings shared by every board-rendering app (ADR-0015, ADR-0015): a global default
+  /** The five table settings shared by every board-rendering app: a global default
    *  layer plus a per-app override layer, both `Partial` since an absent key means inherit —
    *  resolved by `resolveTableSettings`/`useTableSettings` (`tableSettings.ts`), never read
    *  straight off this section. */

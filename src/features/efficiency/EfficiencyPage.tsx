@@ -40,7 +40,7 @@ export function EfficiencyPage() {
   const update = useSettings((s) => s.update)
   const { showOpponentHands, showSeatWaits, seatsEnabled } = useTableSettings('efficiency')
 
-  // per-seat algorithms are board state, not a preference (ADR-0015): page state with the same
+  // per-seat algorithms are board state, not a preference: page state with the same
   // lifetime as `viewSeat` below — seeded from the link, reset on every new hand — never
   // persisted.
   const [seatConfig, setSeatConfig] = useState<SeatConfig | null>(null)
@@ -193,7 +193,7 @@ export function EfficiencyPage() {
   const bottomConcealed = !viewingManual && !showOpponentHands
   // `actingPlayable`, not `!round.finished`: `finished` is anchored to the graded seat and stays
   // true for the whole window a second manual seat plays its own turn in — the freeze
-  // `NOTE-efficiency-multi-manual-freeze.md` found (ADR-0034)
+  // `NOTE-efficiency-multi-manual-freeze.md` found
   const canAct = perspective === round.acting && round.actingPlayable
   const showKitaKan = kitaKanVisible({
     sanma: options.sanma,

@@ -17,7 +17,7 @@ export interface EfficiencyOptions {
   /** Three-player rules: 108-tile wall (no 2m-8m), 3 seats. */
   sanma: boolean
   /** Who plays which seat, from the board's seat panel; `null` is the shipped default (you at
-   *  the link's own seat, every other seat on the efficiency AI). Page state (ADR-0015), not settings
+   *  the link's own seat, every other seat on the efficiency AI). Page state, not settings
    *  — see `EfficiencyPage`. */
   seats: SeatConfig | null
   /** The seat panel's "show tenpai/waits" setting — threaded to `useRound`, which is where the
@@ -43,13 +43,13 @@ export interface EfficiencyOptions {
  *  `useEfficiencyDrill` has no opinion about, such as every seat's hands/melds and the claim
  *  prompt. Which seat is graded is decided here and nowhere else: `useRound` reports every seat's
  *  events and the drill ignores the ones that are not `seatIndex`'s, which is what lets a second
- *  manual seat be *played* without being *scored* (ADR-0013, ADR-0032). */
+ *  manual seat be *played* without being *scored*. */
 export function useEfficiencyRound(situation: Situation, options: EfficiencyOptions) {
   const players = options.sanma ? 3 : 4
   // a shared ?seat=N link built under yonma can name a seat sanma doesn't have (North)
   const linkSeat = Math.min(Math.max(0, WINDS.indexOf(situation.seat)), players - 1)
   // the graded seat is decided by the link alone, never by the seat panel: flipping your own
-  // seat's algorithm live must freeze grading in place (ADR-0008), not move it to whichever other seat
+  // seat's algorithm live must freeze grading in place, not move it to whichever other seat
   // the panel happens to have marked manual — so this never goes through `options.seats`
   const seatIndex = linkSeat
   const seats = resolveSeatConfig(options.seats, players, seatIndex)
@@ -73,7 +73,7 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
     ev: seats.ev,
     // left unset (off): the drill grades exactly three actions — discard, kita, closed kan — and
     // a pon/chi is none of them, so a manual seat is never asked about another seat's discard
-    // here (ADR-0035, amending ADR-0034's "efficiency and lab hardcode claims: true"). Ron was
+    // here — efficiency asks for no calls at all. Ron was
     // already unreachable (`wins: false`) and daiminkan is never modelled by the engine at all.
   }
 

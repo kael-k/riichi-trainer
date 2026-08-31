@@ -4,7 +4,7 @@ import { HONOR, type TileId } from './tiles'
 /**
  * The game a round sits inside: points, honba, dealer repeat, riichi sticks, which round it is.
  * A round (`core/round.ts`) plays out entirely within one `MatchState`; `settleRound` below is
- * what steps between rounds (ADR-0040, amending ADR-0023's "sequencing is a later wave") — dealer
+ * what steps between rounds — dealer
  * rotation, honba/repeat, payouts, end-of-match. Nothing in `round.ts` calls it: a round must not
  * know what follows it, so the caller (`useMatchRound`) reads the ended round's result and feeds
  * it back in for the next deal.
@@ -122,7 +122,7 @@ export function settleRound(
     }
     repeats = tenpaiSeats.includes(match.dealer)
   } else {
-    repeats = true // abort — nobody is noten and nobody pays (ADR-0038), the dealer just repeats
+    repeats = true // abort — nobody is noten and nobody pays, the dealer just repeats
   }
 
   let { dealer, dealerRepeat, honba, round, prevalentWind } = match

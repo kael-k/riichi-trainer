@@ -52,7 +52,7 @@ test('a pinned hand is posed, graded, and then the stream moves on', async ({ pa
 
   await page.getByRole('button', { name: String(PINNED_SHANTEN), exact: true }).click()
 
-  // the graded hand's own log row is the full record now (ADR-0027); the score line is the HUD's
+  // the graded hand's own log row is the full record now; the score line is the HUD's
   await openPanel(page)
   await expect(panel(page).getByText(/Hand 1: guessed 0, actual 0.*correct/)).toBeVisible()
   await expect(scoreLine(page, 'Correct: 1 / 1')).toHaveCount(1)

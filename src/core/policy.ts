@@ -16,7 +16,8 @@ import { HONOR, isDragon, isTerminalOrHonor, suitOf, type RiverTile, type TileId
  *  `'ev'` pushes or folds by expected value (`core/ev.ts`), and **how** it prices is not part of
  *  this union: an EV seat carries an `EvSeat` beside its algorithm (`PlayerState.ev`) naming the
  *  model and the objective. That was two keys, `'ev-statistical'` and `'ev-houou'`, while the model
- *  was the only thing an EV seat could differ by — ADR-0037 wrote down the trigger for moving it
+ *  was the only thing an EV seat could differ by — the objective made it a cross product, which is
+ *  the trigger for moving it
  *  off the union, and the placement objective is that trigger: two models times two objectives is a
  *  cross product, and a cross product is a record, not four names. */
 export type SeatAlgorithm = 'efficiency' | 'defense' | 'tsumogiri' | 'manual' | 'ev'

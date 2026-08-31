@@ -76,7 +76,7 @@ export function seenBy(core: TableCore, seat: number): Uint8Array {
  *
  *  With no manual seat at all this now plays the hand out rather than stopping after one circuit.
  *  That is the point rather than an oversight — it is what lets a reader put every seat on an
- *  algorithm and watch a hand play itself (ADR-0011) — and `stepRound`'s own 400-turn backstop is
+ *  algorithm and watch a hand play itself — and `stepRound`'s own 400-turn backstop is
  *  what catches a rule bug that would otherwise spin forever. Events are dropped here because a
  *  caller that wants them consumes `stepRound` directly. */
 export function goRound(core: TableCore): void {
@@ -198,7 +198,7 @@ export function snapshotTable(core: TableCore, showReads = false): TableSnapshot
   }
 }
 
-/** Per-turn analysis for one seat, computed lazily and cached per object (ADR-0012): the
+/** Per-turn analysis for one seat, computed lazily and cached per object: the
  *  solitaire trainer never reads `danger`, the folding trainer never reads `ranked`, and
  *  `evaluateDiscards` costs roughly 476 shanten probes per turn — nobody should pay for analysis
  *  they never read. An analysis object is a snapshot of one moment in the strong sense: it holds
@@ -283,7 +283,7 @@ export interface SeatEv {
  * wants to play on. Whoever renders it asks for it.
  *
  * `null` when the seat is not mid-turn — `rankDiscards` needs the fourteen-tile hand and refuses
- * anything else, for the reason ADR-0037 records.
+ * anything else, for the same reason the two models may not borrow from each other.
  */
 export function evOf(core: TableCore, seat: number): SeatEv | null {
   const player = core.round.players[seat]

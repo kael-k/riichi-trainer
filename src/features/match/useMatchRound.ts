@@ -27,7 +27,7 @@ import { useRound, type RoundEventContext } from '../table/useRound'
 
 /**
  * Sequences rounds into a match on top of `useRound` — the same layer every board trainer sits
- * on, plus `core/match.ts#settleRound` between deals (ADR-0040). No grading, like the lab: the
+ * on, plus `core/match.ts#settleRound` between deals. No grading, like the lab: the
  * points ARE the score. A new round is a fresh wall/match pair, and that new *wall array
  * identity* is what makes `useRound` redeal — see `nextRound` below.
  */
@@ -38,7 +38,7 @@ export interface MatchOptions {
   aka: boolean
   kiriageMangan: boolean
   /** Who plays which seat, live — same schema and same "flip mid-hand, no redeal" rule as every
-   *  other trainer's seat panel (ADR-0008). The setup screen only seeds `MatchBoard`'s own
+   *  other trainer's seat panel. The setup screen only seeds `MatchBoard`'s own
    *  `useState` with this; it is not re-read here after the match starts. */
   seats: SeatConfig | null
   showOpponentHands: boolean
@@ -48,7 +48,7 @@ export interface MatchOptions {
   /**
    * Seeds every wall this match deals, for a caller that needs the same match twice. Absent in the
    * app — a real match deals at random, and the way a reader reproduces one round is the `?wall=`
-   * link, not a seed (ADR-0005).
+   * link, not a seed.
    *
    * It exists because a test that plays a whole hand cannot be written against a random wall.
    * `completeWall` falls back to `String(Math.random())` with no seed, so `useMatchRound.test.ts`
@@ -154,10 +154,10 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
     wins: true,
     algorithms,
     ev: seats.ev,
-    // free play against bots, same as the lab (ADR-0034) — a manual seat is asked about every
+    // free play against bots, same as the lab — a manual seat is asked about every
     // other seat's discard rather than silently skipped
     claims: true,
-    // daiminkan/kakan — match-only (ADR-0010's amendment); `chooseCall` never sees the flag, so
+    // daiminkan/kakan — match-only ruleset, not a permission; `chooseCall` never sees the flag, so
     // no bot anywhere else ever takes a minkan regardless of this being on
     calledKan: true,
   }

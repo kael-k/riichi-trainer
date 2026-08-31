@@ -9,7 +9,7 @@ import { HONOR } from './tiles'
  * weights of its own. Each EV model supplies the **moments** — how much a seat's score still has
  * left to move — and this module integrates the seats against each other for rank probabilities
  * and prices the result under the ruleset. That split is what keeps the no-borrowing rule
- * (ADR-0037) intact while both models share one integral: an integral is not a number either
+ * intact while both models share one integral: an integral is not a number either
  * model measured.
  *
  * **The value function is fixed by the ruleset, not a parameter.** Tenhou dan-level scoring: start
@@ -31,7 +31,7 @@ export interface Swing {
  *  the hanchan length regardless of the running match's real format. The one real ceiling that
  *  leaves: an `'ev'` seat on the placement objective in a **tonpuu** `/match` game prices its
  *  swing over the eight rounds of a hanchan it isn't playing, rather than the four it is —
- *  plumbing the format through `swing`/`evOptions` is a separate wave (ADR-0040). */
+ *  plumbing the format through `swing`/`evOptions` is a separate wave. */
 export function totalRounds(sanma: boolean): number {
   return sanma ? 6 : 8
 }

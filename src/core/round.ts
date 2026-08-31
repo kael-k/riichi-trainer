@@ -89,7 +89,7 @@ export interface RoundOptions {
   claims?: boolean
   /** Called kan — daiminkan (kan on a discard, via `claimOptions`/`answerClaim`) and kakan (a
    *  seat's own added kan on a pon it already holds, via `callKakan`). **Ruleset, not permission**
-   *  (ADR-0038's own distinction): defaults `false`, set `true` only by the match trainer's own
+   *  (a ruleset switch, not a permission): defaults `false`, set `true` only by the match trainer's own
    *  `RoundOptions`, so every graded drill's golden hash is untouched. `chooseCall` never sees the
    *  flag at all, so an AI seat never takes a minkan regardless of its value. Chankan (ron on a
    *  kakan's added tile) is **not** modelled — `callKakan`'s own doc comment names the gap. */
@@ -110,7 +110,7 @@ export interface PlayerState {
   concealed: ParsedTile[]
   /** The 14th tile that brought the hand to 14, if one is currently held — always
    *  `concealed.at(-1)` when set. Cleared the moment the tile leaves (a discard, kita, ankan),
-   *  before any algorithm decision reads it. Replaces the old `Hand.drawn` (ADR-0003's own
+   *  before any algorithm decision reads it. Replaces the old `Hand.drawn` (whose
    *  exception): the reason it lived beside `Hand` — that redness of the draw specifically isn't
    *  reconstructable from a kinds-only red set — is moot now that `concealed` tracks instances. */
   drawn?: ParsedTile
@@ -152,7 +152,7 @@ export interface WinRecord {
 /** One thing a seat may do with the tile someone else just discarded. `from` names the caller's
  *  own tiles that would join it — empty for a ron, two tiles for a pon or chi, three for a
  *  minkan. Daiminkan only ever appears here under `RoundOptions.calledKan` (match-only,
- *  ADR-0010): `chooseCall` never offers one to an AI seat regardless of the flag, so offering it
+ *  `chooseCall` never offers one to an AI seat regardless of the flag, so offering it
  *  to a manual seat alone would be the one call the AI seats cannot answer everywhere else. */
 export interface ClaimOption {
   kind: 'ron' | 'pon' | 'chi' | 'minkan'
@@ -208,7 +208,7 @@ export interface PendingAbort {
 }
 
 /**
- * The acting seat's own completed hand, priced and offered rather than taken (ADR-0045). One seat,
+ * The acting seat's own completed hand, priced and offered rather than taken. One seat,
  * one question, like `PendingAbort`: nobody else reacts to a tile you drew yourself.
  *
  * Raised only for a **manual** seat under `RoundOptions.claims` — an AI seat has already answered
@@ -398,7 +398,7 @@ export function createRound(
     discards: [],
     log: [],
     // the dealer leads, in this round and every round after it. The *deal* is index-order
-    // (`dealtSeat`, ADR-0024) and stays that way — this is play order, which is the dealer's, and
+    // (`dealtSeat`) and stays that way — this is play order, which is the dealer's, and
     // it is what `state.turn`'s own increment already assumes (`resolveReactions` steps the
     // counter when the turn comes back round to `match.dealer`). Every trainer but `/match` runs
     // `createMatch`'s `dealer: 0` default, so nothing else moves.
@@ -580,7 +580,7 @@ function buildContext(
     // rinshan kaihou: passed in rather than derived, because "this tile came off the dead wall"
     // is known only at the call site — `replacementWin` and the daiminkan's own replacement check
     // are the two, and every other caller is an ordinary draw or a ron. It was hardcoded `false`
-    // while no replacement was ever win-checked at all; since ADR-0043 and ADR-0045 they all are,
+    // while no replacement was ever win-checked at all; they all are now,
     // so leaving it false would quietly score every rinshan tsumo one han short.
     // **Chankan is still a real gap**: kakan exists (`callKakan`) but nothing offers other seats a
     // ron on the tile it adds — see that function's own doc comment.
@@ -653,7 +653,7 @@ function tryWin(
   // a human's own win is never an explicit choice here — riichi.wiki agrees a legal tsumo always
   // ends the hand, and a manual seat's own ron only ever reaches this function because the reader
   // already asked for it (`answerClaim`). Every other seat's algorithm gets to see the priced
-  // candidate and decline it — an algorithm that can't see what it declines can't price it (ADR-0009).
+  // candidate and decline it — an algorithm that can't see what it declines can't price it.
   if (player.algorithm !== 'manual') {
     const candidate: WinCandidate = { tile, from, score }
     if (!ALGORITHMS[player.algorithm].win(seatView(state, options, seat), candidate)) return null
@@ -681,7 +681,7 @@ function endWith(state: RoundState, win: WinRecord): RoundEvent[] {
 
 /**
  * Ends the hand on `win`, or — for a manual seat the board is allowed to ask (`RoundOptions.claims`)
- * — suspends and offers it (ADR-0045, amending ADR-0009). Every **self-drawn** win goes through
+ * — suspends and offers it. Every **self-drawn** win goes through
  * here: the turn's own draw, and the replacement off a kan or a kita.
  *
  * A ron does not, and must not: `claimOptions` already put the question to the reader and
@@ -737,7 +737,7 @@ export function beginTurn(
   events.push({ kind: 'draw', seat: state.seat, tile })
 
   // the tsumo is priced on the tile just drawn, and nothing runs before it: a seat's own kita and
-  // kans are `finishTurn`'s (ADR-0043), which is what stops a kita from spending a tile that had
+  // kans are `finishTurn`'s, which is what stops a kita from spending a tile that had
   // already completed the hand. This used to be the other way round — the kita loop ran here and
   // `tryWin` saw only the last replacement.
   const win = tryWin(state, state.seat, options, tile, true)
@@ -814,7 +814,7 @@ export function drawReplacement(state: RoundState, player: PlayerState): ParsedT
  * The win a replacement draw completes — rinshan kaihou's own moment. Every kan and every kita
  * ends here, so the three `call*` functions below each price the tile they just drew rather than
  * leaving it to whoever called them: the turn loop used to do it for an AI seat and nobody did it
- * at all for a manual one, which is why a reader's rinshan tsumo simply vanished (ADR-0045).
+ * at all for a manual one, which is why a reader's rinshan tsumo simply vanished.
  *
  * Returns `[]` when the replacement completes nothing, which is the overwhelmingly common case.
  */
@@ -895,9 +895,7 @@ export function callAnkan(
     { kind: 'ankan', seat, tile: id, replacement },
     ...(replacement ? [{ kind: 'draw', seat, tile: replacement } as const] : []),
   ]
-  return replacement
-    ? [...events, ...replacementWin(state, options, seat, replacement)]
-    : events
+  return replacement ? [...events, ...replacementWin(state, options, seat, replacement)] : events
 }
 
 /**
@@ -945,9 +943,7 @@ export function callKakan(
     { kind: 'kakan', seat, tile: id, replacement },
     ...(replacement ? [{ kind: 'draw', seat, tile: replacement } as const] : []),
   ]
-  return replacement
-    ? [...events, ...replacementWin(state, options, seat, replacement)]
-    : events
+  return replacement ? [...events, ...replacementWin(state, options, seat, replacement)] : events
 }
 
 /** How many tiles have left `liveWallSnapshot` from the front — real draws, as opposed to the
@@ -984,13 +980,13 @@ const MAX_TURN_ACTIONS = 8
 /**
  * Asks the seat's algorithm what to do with its own turn, over and over, until it answers with a
  * discard — the kita and the kans of one turn, ranked by the algorithm rather than by this
- * function's loop order (ADR-0043). Returns the tile kind to throw, or `undefined` when the hand
+ * function's loop order. Returns the tile kind to throw, or `undefined` when the hand
  * ended here on a replacement draw.
  *
  * Three rules it keeps, each one an existing one:
  *
  * - **A manual seat never reaches it.** A manual seat is drawn for but never decided for
- *   (ADR-0007/ADR-0011): its kita and kans come in through `callKita`/`callAnkan`/`callKakan`
+ *: its kita and kans come in through `callKita`/`callAnkan`/`callKakan`
  *   from the UI, and `finishTurn` calls this only for a seat an algorithm really owns.
  * - **A seat in riichi may pull a north and nothing else.** Nukidora is legal under a declared
  *   hand and the engine has always allowed it — the pull replaces the tile the seat is locked to
@@ -1070,7 +1066,7 @@ export function finishTurn(
   const events: RoundEvent[] = []
 
   // A seat an algorithm owns takes the whole of its own turn here — its kita and its kans ranked
-  // against its discard in one place (ADR-0043), *before* the locked-tile read below, since a
+  // against its discard in one place, *before* the locked-tile read below, since a
   // nukidora pull replaces the tile a declared seat is locked to.
   const decided =
     !discard && player.algorithm !== 'manual'
@@ -1101,7 +1097,7 @@ export function finishTurn(
     // at the top of its loop instead). A 'manual' seat caught here anyway still needs *some*
     // discard to keep the simulation moving, so it borrows 'efficiency''s — and only its
     // discard: the turn loop is not run for it, since a manual seat is never auto-kita'd or
-    // auto-kanned (ADR-0007/ADR-0011).
+    // auto-kanned.
     const picked =
       decided ?? chooseDiscard(player.hand, seenBy(state, player), options.sanma).discard
     tile = pickTile(player, picked)
@@ -1313,7 +1309,7 @@ function resolveReactions(
         const replacement = drawReplacement(state, caller)
         if (replacement) {
           events.push({ kind: 'draw', seat: other, tile: replacement })
-          // and the same win check every other replacement gets (ADR-0043). `drawReplacement`
+          // and the same win check every other replacement gets. `drawReplacement`
           // never runs one itself, and this is the one kan path no caller was covering: the turn
           // loop checks the replacements it draws, `replayLog` checks a replayed pull, and a
           // daiminkan's landed in neither — so a hand completed here vanished instead of ending
@@ -1440,7 +1436,7 @@ export function reconsiderClaim(state: RoundState, options: RoundOptions): Round
  * `'manual'` for the duration, which is what makes `finishTurn`'s `discard`/`declareRiichi`
  * arguments, `answerClaim` and `beginTurn`'s `declineTsumo` the *only* things any decision can come
  * from. Restored to each seat's real algorithm before returning, live-flip style (same
- * override-then-restore shape `useTableRound.ts`'s ADR-0008 sync effect already uses).
+ * override-then-restore shape `useTableRound.ts`'s own algorithm-sync effect already uses).
  *
  * Stops quietly rather than throwing whenever the
  * hand ends, the log runs out, or the next entry doesn't describe what the hand is actually doing
@@ -1482,7 +1478,7 @@ export function replayLog(
   /** Forwards whatever a replayed step really emitted. Restored turns produce the *same* events a
    *  live turn does — that is the point of replaying through the engine rather than patching state
    *  — so a consumer can rebuild from one event stream instead of needing a second path for links
-   *  (ADR-0012). Synthesizing these from `LogEntry` was impossible anyway: a logged call carries a
+   *. Synthesizing these from `LogEntry` was impossible anyway: a logged call carries a
    *  `Call`, not the `Meld` it becomes, and a logged win carries no `WinRecord` at all. */
   const emit = (events: RoundEvent[]): RoundEvent[] => {
     if (onEvent) for (const event of events) onEvent(event)
@@ -1495,7 +1491,7 @@ export function replayLog(
 
   // drains every claim `state` is currently suspended on, feeding each seat's answer from the log
   // when present and synthesizing a pass when the log has more to say but not about this claim
-  // (ADR-0021) — but never past the log's own end, per the doc comment above.
+  // — but never past the log's own end, per the doc comment above.
   const resolveClaims = (): boolean => {
     // once a real, log-matched ron or call has settled *this* discard, every seat still to be
     // asked is provably irrelevant to the outcome — seat-order priority means the confirmed ron
@@ -1570,7 +1566,7 @@ export function replayLog(
     const acceptsTsumo = next?.kind === 'win' && next.seat === seat && next.from === undefined
     emit(beginTurn(state, replayOptions, !acceptsTsumo))
     // every replayed seat is forced manual and `claims` is forced on, so a tsumo the log *does*
-    // record comes back as an offer rather than an ending (ADR-0045). `declineTsumo` above already
+    // record comes back as an offer rather than an ending. `declineTsumo` above already
     // suppressed the ones it does not record, so anything pending here is a yes
     if (state.claim?.kind === 'win') emit(answerClaim(state, replayOptions, { kind: 'tsumo' }))
     if (state.ended) {
@@ -1766,7 +1762,7 @@ export function playRound(
 }
 
 /** Plays a whole hand out from an explicit wall — the scoring trainer's random-wall search
- *  (ADR-0005): unlike `playRound`'s seed suffixing, a fresh wall is dealt per attempt by handing in a
+ *: unlike `playRound`'s seed suffixing, a fresh wall is dealt per attempt by handing in a
  *  short/empty wall each time, and the wall actually dealt (`outcome.state.wall`) is what gets
  *  shared, not a seed. */
 export function playWall(

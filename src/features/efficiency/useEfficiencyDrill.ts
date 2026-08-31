@@ -24,7 +24,7 @@ import {
  * The grading/session core shared by both efficiency routes (table and solitaire) — everything
  * that does not depend on how many seats are dealt or who else is at the table. Each app's own
  * hook builds its own `RoundOptions` (calls/riichi/claims/algorithms differ) and adds the
- * board-only fields its page needs on top of what this returns (ADR-0013, ADR-0032).
+ * board-only fields its page needs on top of what this returns.
  */
 
 export interface EfficiencyDrillInput {
@@ -194,14 +194,14 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
    *  page's `canAct` reads instead of `!finished`. Distinct from `finished`, which stays anchored
    *  to `seatIndex` (the graded seat) and is what freezes that seat's own hand between its own
    *  turns; the two differ only when a second seat is manual, which is exactly the freeze
-   *  `NOTE-efficiency-multi-manual-freeze.md` found (ADR-0034): `finished` stays true for the
+   *  `NOTE-efficiency-multi-manual-freeze.md` found: `finished` stays true for the
    *  whole window between the graded seat's discard and its next draw, which is almost the entire
    *  time a second manual seat is playing its own turn. */
   const actingPlayable = hand.length + (drawn ? 1 : 0) + actingMelds.length * 3 === 14
 
   /** Writes one log row per *your own* discard the round was fast-forwarded through, so a shared
    *  link (or a rewind) arrives with the turns behind it on the record instead of a blank log —
-   *  `table.replayed` is every seat's replayed decision now (ADR-0021), filtered down to this
+   *  `table.replayed` is every seat's replayed decision now, filtered down to this
    *  seat's own discards for the row itself, but each row's rewind link is the *full* log
    *  truncated to that discard's actual position, not just "your discards so far": a mid-hand
    *  rewind has to reproduce the opponents' own melds and discards exactly as they were, not

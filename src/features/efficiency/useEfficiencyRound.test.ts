@@ -63,7 +63,7 @@ describe('useEfficiencyRound', () => {
     situation.wall = completeWall([], false, false, 'probe-231')
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
-    // claims are always on now (ADR-0034): a stray opponent discard may offer the graded seat a
+    // claims are always on now: a stray opponent discard may offer the graded seat a
     // ron/pon/chi along the way, which is not this test's concern, so decline it and move on.
     // Looping on `drillOver` rather than `finished`: a pending claim also holds the seat at 13
     // tiles, which `finished` cannot tell apart from the real tenpai-stop this test is after.
@@ -226,7 +226,7 @@ describe('useEfficiencyRound', () => {
   it('situationQuery round-trips the exact round state', () => {
     const situation = emptySituation()
     // seeded rather than left to `completeWall`'s own unseeded fallback: claims are always on now
-    // (ADR-0034), and a passed claim leaves no record in `log` (only calls/wins do) — the graded
+    //, and a passed claim leaves no record in `log` (only calls/wins do) — the graded
     // seat's own "no thanks" on a stray ron/pon/chi does not survive a round-trip through
     // `situationQuery`, so a wall this test happens to draw such an offer on would compare two
     // rounds that never reached the same point. A fixed seed keeps this test about the round-trip
@@ -300,7 +300,7 @@ describe('useEfficiencyRound', () => {
 
   it('logs one rewindable entry per discard a shared river was replayed through', () => {
     const situation = emptySituation()
-    // seeded, not left unseeded: claims are always on now (ADR-0034), and an opponent's stray
+    // seeded, not left unseeded: claims are always on now, and an opponent's stray
     // claim opportunity between the two discards below would silently no-op the second one
     // (`discard` is a no-op while a claim is pending) — this test is about the log/replay shape,
     // not the claims flow, so a wall known not to raise one keeps it deterministic
@@ -555,8 +555,8 @@ describe('efficiency never offers a call, and the second manual seat', () => {
   /** A wall where an opponent's discard is chi/pon-eligible for the graded seat: seat 0 holds
    *  the 5m pair, seat 1 (also manual) holds the 5m it is made to discard, and seats 2/3 are
    *  pinned so their only efficiency-best discard is a tile seat 0 cannot take (triplets plus a
-   *  pair, drawing the second of the other stray). Before ADR-0035 this put the graded seat's
-   *  claim prompt up (ADR-0034's "always ask"); `useEfficiencyRound` now leaves `claims` off, so
+   *  pair, drawing the second of the other stray). This used to put the graded seat's
+   *  claim prompt up, back when efficiency always asked; `useEfficiencyRound` now leaves `claims` off, so
    *  the discard is never offered at all. */
   function claimableWall() {
     const wall = wallWithHands(
@@ -602,7 +602,7 @@ describe('efficiency never offers a call, and the second manual seat', () => {
   it('leaves the second manual seat playable while the graded seat is frozen between turns', () => {
     // the freeze `NOTE-efficiency-multi-manual-freeze.md` found: `finished` is anchored to the
     // graded seat (0) and stays true for the whole window seat 1 (also manual) is acting in —
-    // `actingPlayable` is what the page's `canAct` reads instead (ADR-0034). Unrelated to claims,
+    // `actingPlayable` is what the page's `canAct` reads instead. Unrelated to claims,
     // which share this fixture only because it already seeds a second manual seat.
     const situation = emptySituation()
     situation.wall = claimableWall()
@@ -627,7 +627,7 @@ describe('efficiency never offers a call, and the second manual seat', () => {
     ]
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
-    // claims are always on now (ADR-0034): before the graded seat's own next draw, an opponent
+    // claims are always on now: before the graded seat's own next draw, an opponent
     // may discard into its shanpon wait and offer a ron — decline it, since this test is about
     // the replay/drillOver timing, not the claims flow
     while (result.current.claim) {

@@ -20,7 +20,7 @@ import {
 } from './table'
 
 // wraps the real implementations in vi.fn so laziness can be proved by call count, not inspection
-// (ADR-0012) — every other test in this file still gets the real analysis, since these pass through
+// — every other test in this file still gets the real analysis, since these pass through
 vi.mock('./efficiency', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./efficiency')>()
   return { ...actual, evaluateDiscards: vi.fn(actual.evaluateDiscards) }
@@ -110,7 +110,7 @@ describe('goRound', () => {
 
   it('plays the hand out when no seat is manual, and still terminates', () => {
     // nothing here can stop the loop by being manual, so this is both the autoplay case
-    // (ADR-0011: every seat on an algorithm, watch it play) and the check that `stepRound`'s own
+    // (every seat on an algorithm, watching a hand play itself) and the check that `stepRound`'s own
     // 400-turn backstop catches a rule bug that never hands the turn back
     const options: RoundOptions = { ...YONMA }
     const round = createRound([], 4, options, 'table-goround-guard')

@@ -54,7 +54,7 @@ describe('ManualControls', () => {
   })
 
   it('renders nothing for a riichi offer while watching a seat that does not owe it', () => {
-    // riichi is an offer, not a question the engine is blocked on, so it keeps the ADR-0034 rule
+    // riichi is an offer, not a question the engine is blocked on, so it keeps the rule
     // the claim prompt above no longer follows: rotate away from the seat and the button goes too
     const { container } = render(controls({ acting: 2, viewSeat: 0, riichiTiles: [7] }))
     expect(container.querySelectorAll('button')).toHaveLength(0)

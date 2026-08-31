@@ -181,7 +181,7 @@ function RowActions({ entry, number }: { entry: LogEntry; number: number }) {
 
 /** A formatted sentence with the tiles it names drawn where their codes were: "discarded 0p" and
  *  "drew 4z" are expert shorthand, and this is the one surface a beginner reads their mistakes off
- *  (ADR-0018, ADR-0027).
+ *.
  *
  *  Sized in `em`, not off the log's own `--tile-w-base`: these ride inside a line of prose rather
  *  than standing in a row of their own, so they scale with the sentence. `align-middle` puts them

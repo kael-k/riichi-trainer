@@ -389,7 +389,7 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
   const bottomConcealed = !(round.finished || showOpponentHands || viewingManual)
   // `!round.claim` as well: a pending claim suspends `finishTurn`, so a live-looking tile that
   // silently does nothing is worse than an inert one — and the seat being asked is the acting
-  // seat, so without this a reader offered a pon (or, since ADR-0045, their own tsumo) still
+  // seat, so without this a reader offered a pon (or their own tsumo) still
   // has a clickable hand that the engine refuses
   const canAct = perspective === round.acting && !round.finished && !round.claim
 
@@ -544,7 +544,7 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
 }
 
 /** `/match`: a whole east-only or hanchan match against the bots, nothing graded — the points
- *  are the score (ADR-0040). Two steps, one component each: `MatchSetup` until Start is pressed,
+ *  are the score. Two steps, one component each: `MatchSetup` until Start is pressed,
  *  `MatchBoard` for the length of the match — different component types in the same slot, so a
  *  fresh match after "New match" starts from a clean board rather than one that has to notice its
  *  config changed.
