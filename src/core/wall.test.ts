@@ -98,6 +98,21 @@ describe('wallWithHand', () => {
     expect(dealtIndices(1, 4).map((i) => wall[i])).toEqual(hand)
     expect(validateWall(wall, 4, false)).toBeNull()
   })
+
+  it('still seeds a red five when the pinned hand holds a plain one (#1)', () => {
+    // a plain 5m in the pinned hand must not strip the padding's own red 5m — the padding's
+    // survivors are marked red *after* the hand's copies are filtered out, mirroring
+    // `completeWall`'s own prefix handling
+    const hand = parseTenhou('123456789m1122p')
+    const wall = wallWithHand(0, hand, false, true, 'red-five-seed')
+    expect(wall.filter((t) => t.id === 4 && t.red)).toHaveLength(1) // 4 === MAN + 4
+  })
+
+  it('never doubles a red five when the pinned hand already names one', () => {
+    const hand = parseTenhou('012346789m1122p') // explicit red 5m, no plain 5m
+    const wall = wallWithHand(0, hand, false, true, 'red-five-seed-2')
+    expect(wall.filter((t) => t.id === 4 && t.red)).toHaveLength(1)
+  })
 })
 
 describe('validateWall', () => {

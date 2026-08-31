@@ -191,13 +191,12 @@ export function wallWithHands(
   seed?: string,
   players = sanma ? 3 : 4,
 ): ParsedTile[] {
-  const used = new Uint8Array(NUM_TILE_TYPES)
-  for (const hand of hands) for (const t of hand ?? []) used[t.id]++
-  const padding = completeWall([], sanma, aka, seed).filter((t) => {
-    if (used[t.id] === 0) return true
-    used[t.id]--
-    return false
-  })
+  // routed through `completeWall` itself rather than filtering padding by id: it already strips
+  // a prefix's own copies before marking red among the survivors and already skips a suit whose
+  // red sits inside the prefix (`prefixReds`) — filtering by id alone let a plain five in a pinned
+  // hand strip the padding's *red* copy instead of a plain one
+  const pinnedTiles = hands.flatMap((hand) => hand ?? [])
+  const padding = completeWall(pinnedTiles, sanma, aka, seed).slice(pinnedTiles.length)
   const pinned = new Map<number, ParsedTile>()
   hands.forEach((hand, seat) => {
     const slots = dealtIndices(seat, players)
