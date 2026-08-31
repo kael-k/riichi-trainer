@@ -18,9 +18,8 @@ export default defineConfig({
   // behaviour, which is not the same on every host this could move to.
   cleanUrls: false,
 
-  // Files still in `docs/` that are not pages. Each entry is removed by the commit that deletes
-  // its file, which is what keeps every commit in between buildable.
-  srcExclude: ['adr/**', 'README.md', 'STATUS.md', 'STRUCTURE.md'],
+  // The last file in `docs/` that is not a page; it goes with the next commit.
+  srcExclude: ['STATUS.md'],
 
   themeConfig: {
     nav: [

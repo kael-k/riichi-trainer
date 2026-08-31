@@ -56,7 +56,7 @@ export interface MatchConfig {
   fromLink?: boolean
 }
 
-/** Step 1: format, ruleset, who plays which seat — the setup screen `docs/adr/0040` describes.
+/** Step 1: format, ruleset, who plays which seat — the setup screen a match opens on.
  *  No board exists yet, so this reuses the same shared `RulesetSettings` every trainer's settings
  *  dialog already draws, and the same seat-choice dropdown `SeatPanel.tsx`'s per-seat dialog
  *  offers, laid flat instead of behind a corner button since there is no felt to hang one off yet.
