@@ -65,6 +65,18 @@ export type FoldingOptions = Settings['folding'] & {
    *  plain async loop that never runs through `useRound` at all, so pacing cannot slow it and
    *  changing it must never re-search for a new hand. */
   pace: number
+  /**
+   * Seeds the wall search, for a caller that needs the same drill twice. Absent in the app — a new
+   * hand is a fresh random search, and the way a reader reproduces one board is the link the wall
+   * itself is (ADR-0005).
+   *
+   * It exists because a *pinned* wall is only a board if `worthwhile` accepts it, and a wall that
+   * fails falls through to this search — so a test handing in a fixed wall is not, on its own,
+   * testing a fixed board. `useFoldingRound.test.ts` was doing exactly that: its pinned wall is
+   * rejected, every run searched fresh walls, and a board that happened to end after one discard
+   * failed a test about links rather than about endings.
+   */
+  seed?: string
 }
 
 export interface FoldingUrl {
@@ -399,10 +411,18 @@ function buildRound(
 async function findRound(
   options: BoardOptions,
   seats: SeatConfig | null = null,
+  seed?: string,
 ): Promise<RoundBoard | null> {
   const { threats } = options
   for (let i = 0; i < 40 * threats; i++) {
-    const wall = completeWall([], options.sanma, RULES.aka)
+    // keyed on the attempt and the threat count so the search still walks different walls; with no
+    // seed this is `completeWall`'s own random fallback, which is what the app wants
+    const wall = completeWall(
+      [],
+      options.sanma,
+      RULES.aka,
+      seed === undefined ? undefined : `${seed}-${threats}-${i}`,
+    )
     const built = buildRound(wall, options, seats)
     // the search stays a plain loop rather than being driven through `useRound`'s `{ restart }`
     // command: rejection here is `worthwhile` failing at the handover point, not a hand ending,
@@ -410,7 +430,7 @@ async function findRound(
     if (built) return { ...built, board: { ...options, threats } }
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
-  return threats > 1 ? findRound({ ...options, threats: threats - 1 }, seats) : null
+  return threats > 1 ? findRound({ ...options, threats: threats - 1 }, seats, seed) : null
 }
 
 /** The reveal: what each threat was really holding, and which of your discards were in its wait.
@@ -559,7 +579,15 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     // fresh "new situation" request) falls through to a search
     const pinned =
       urlData.wall.length > 0 && fromLink ? buildRound(urlData.wall, board, options.seats) : null
-    const found = pinned ? Promise.resolve(pinned) : findRound(board, options.seats)
+    // keyed on `handIndex` so "new hand" really is a new one: a constant seed would search the
+    // same walls in the same order every time and deal the same drill forever
+    const found = pinned
+      ? Promise.resolve(pinned)
+      : findRound(
+          board,
+          options.seats,
+          options.seed === undefined ? undefined : `${options.seed}-${handIndex}`,
+        )
 
     void found.then((result) => {
       if (id !== request.current) return

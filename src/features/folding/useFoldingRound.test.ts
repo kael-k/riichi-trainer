@@ -31,6 +31,10 @@ const OPTIONS: FoldingOptions = {
   pace: 0,
   showSeatWaits: false,
   seats: null,
+  // a pinned wall is only a board if `worthwhile` accepts it, and these walls mostly are not — so
+  // without this every run searched fresh random walls and the tests below were reading a
+  // different drill each time
+  seed: 'folding-test',
 }
 
 /** The wall from the report that named both bugs — a called riichi declaration tile. */
@@ -126,9 +130,19 @@ describe('useFoldingRound', () => {
 
   it('a mid-hand link replays the discards behind it, and logs them', async () => {
     const first = await deal({ wall: wall('midhand-seed') })
-    for (let i = 0; i < 2 && !first.current.finished; i++) {
-      const safe = first.current.ranked()[0]
-      act(() => first.current.discard(indexOf(first.current.hand, first.current.drawn, safe.tile)))
+    // two discards, and it does not matter which tiles: this test is about the link carrying them,
+    // not about grading. It used to pick `ranked()[0]` and look it up with `indexOf`, which returns
+    // -1 for a tile the reader is not holding — and `discard(-1)` is a silent no-op, so the loop
+    // could run twice and land one discard, failing three lines down on a replay count of 1 with
+    // nothing to say why. Throwing from the same index the hand is drawn from cannot miss, and the
+    // river length is asserted rather than assumed.
+    const riverLength = () => first.current.rivers[first.current.seatIndex].length
+    // the board is handed over a few turns in, so the river is already several tiles long
+    const before = riverLength()
+    for (let i = 0; i < 2; i++) {
+      expect(first.current.finished).toBe(false)
+      act(() => first.current.discard(0))
+      expect(riverLength()).toBe(before + i + 1)
     }
     const query = first.current.situationQuery()
     expect(new URLSearchParams(query).get('log')).toBeTruthy()

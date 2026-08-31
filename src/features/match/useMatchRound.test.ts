@@ -17,6 +17,10 @@ const BARE: MatchOptions = {
   // unpaced, so the whole board settles inside a synchronous `act()`
   pace: 0,
   showSeatWaits: false,
+  // `/match` deals unseeded, which is right for a real match and impossible to test against: the
+  // loop below has a fixed iteration cap and a bail-out, so a fresh wall per run made this file
+  // fail roughly one full-suite run in two and pass in isolation
+  seed: 'match-test',
 }
 
 /** Plays the manual seat (seat 0, `resolveSeatConfig`'s default) tsumogiri, declining every claim
@@ -24,12 +28,23 @@ const BARE: MatchOptions = {
  *  on a bot's ron/tsumo, an exhaustive draw, or (rarely) the seat's own tsumo just as well as a
  *  full go-round. The cap is generous: a hand is ~18 turns, this is every seat's. */
 function playToSettlement(result: { current: ReturnType<typeof useMatchRound> }) {
-  for (let i = 0; i < 120 && !result.current.settlement; i++) {
+  for (let i = 0; i < 200; i++) {
+    if (result.current.settlement) return
     if (result.current.claim) act(() => result.current.answer({ kind: 'pass' }))
     else if (result.current.acting === result.current.seatIndex && !result.current.finished) {
       act(() => result.current.discard(result.current.hand.length))
-    } else break // an AI seat is mid-turn; `useRound` plays it out inside the pending act()
+    } else {
+      // `useRound` is unpaced here, so every AI turn has already run to completion inside the
+      // `act()` that released it: reaching this with no settlement means the board is stuck, not
+      // busy. Say so here rather than falling out of the loop and failing on `settlement` being
+      // null two lines later, which reads as "the round did not finish" and is not the same bug.
+      throw new Error(
+        `stuck after ${i} steps: acting=${result.current.acting} seat=${result.current.seatIndex} ` +
+          `finished=${result.current.finished} claim=${result.current.claim !== undefined}`,
+      )
+    }
   }
+  throw new Error('did not settle in 200 steps')
 }
 
 describe('linkedSeats', () => {

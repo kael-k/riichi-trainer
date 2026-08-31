@@ -45,6 +45,18 @@ export interface MatchOptions {
   showSeatWaits: boolean
   /** How long a seat nobody plays holds before its action is committed (`useRound`'s `pace`). */
   pace: number
+  /**
+   * Seeds every wall this match deals, for a caller that needs the same match twice. Absent in the
+   * app — a real match deals at random, and the way a reader reproduces one round is the `?wall=`
+   * link, not a seed (ADR-0005).
+   *
+   * It exists because a test that plays a whole hand cannot be written against a random wall.
+   * `completeWall` falls back to `String(Math.random())` with no seed, so `useMatchRound.test.ts`
+   * was dealing a different match on every run and its own play loop — a fixed iteration cap and a
+   * bail-out when it cannot act — met a different board each time. That is a suite that fails
+   * about one run in two and passes in isolation, which is worse than a suite that fails.
+   */
+  seed?: string
 }
 
 /** One settled round: what it decided, what it paid, and the match state on both sides of it —
@@ -94,9 +106,18 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
   const [match, setMatch] = useState<MatchState>(() =>
     createMatch(options.sanma, linked ? matchOverrides(situation) : undefined),
   )
-  const [wall, setWall] = useState<ParsedTile[]>(() =>
-    linked ? situation.wall : completeWall([], options.sanma, options.aka),
-  )
+  /** A fresh deal for `next`. Unseeded in the app, so every match is its own; with
+   *  `MatchOptions.seed` set, keyed on which round it is so consecutive rounds still differ while
+   *  the whole match stays reproducible. */
+  function dealWall(next: MatchState): ParsedTile[] {
+    const seed =
+      options.seed === undefined
+        ? undefined
+        : `${options.seed}-${next.prevalentWind}-${next.round}-${next.honba}`
+    return completeWall([], options.sanma, options.aka, seed)
+  }
+
+  const [wall, setWall] = useState<ParsedTile[]>(() => (linked ? situation.wall : dealWall(match)))
   const [settlement, setSettlement] = useState<RoundSettlement | null>(null)
 
   // a link names one round of the match, not every round from here on — same rule every other
@@ -273,7 +294,7 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
   function nextRound() {
     if (!settlement) return
     setMatch(settlement.settlement.match)
-    setWall(completeWall([], options.sanma, options.aka))
+    setWall(dealWall(settlement.settlement.match))
     setSettlement(null)
   }
 
