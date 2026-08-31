@@ -32,3 +32,6 @@ dist-ssr
 # Local agent tooling
 .claude/
 .gsd/
+
+# VitePress
+docs/.vitepress/cache

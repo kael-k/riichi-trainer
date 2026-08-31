@@ -19,6 +19,14 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon-square.svg', 'apple-touch-icon.png'],
+      workbox: {
+        // The docs are a second static site under `/docs/`, outside this app entirely. Workbox
+        // defaults `navigateFallback` to `index.html` for every navigation in scope, so without
+        // this a returning visitor — anyone whose service worker is already installed — gets the
+        // app shell for a docs URL, and react-router (basename `/`) matches no route and crashes.
+        // A first visit works, which is exactly why it would ship unnoticed.
+        navigateFallbackDenylist: [/^\/docs\//],
+      },
       manifest: {
         name: 'Riichi Trainer',
         short_name: 'Riichi Trainer',
