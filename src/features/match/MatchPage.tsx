@@ -417,7 +417,7 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
     <BoardStage
       title={t('trainer.match.title')}
       app="match"
-      // alpha: not every match rule is modelled yet (docs/STATUS.md item 22) — said once here
+      // alpha: not every match rule is modelled yet — said once here
       // rather than baked into four locales' worth of `trainer.match.intro` strings
       intro={{
         text: `${t('trainer.match.intro')}\n\n${t('common.alphaNote')}`,

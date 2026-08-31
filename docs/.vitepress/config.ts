@@ -18,9 +18,6 @@ export default defineConfig({
   // behaviour, which is not the same on every host this could move to.
   cleanUrls: false,
 
-  // The last file in `docs/` that is not a page; it goes with the next commit.
-  srcExclude: ['STATUS.md'],
-
   themeConfig: {
     nav: [
       { text: 'Model', link: '/model/danger' },

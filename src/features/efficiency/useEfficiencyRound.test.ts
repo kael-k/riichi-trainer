@@ -231,7 +231,7 @@ describe('useEfficiencyRound', () => {
     // `situationQuery`, so a wall this test happens to draw such an offer on would compare two
     // rounds that never reached the same point. A fixed seed keeps this test about the round-trip
     // itself, not about that separate (and pre-existing, since the lab already ran claims on)
-    // engine gap — recorded in `docs/STATUS.md`.
+    // engine gap.
     situation.wall = completeWall([], false, true, 'round-trip-seed-a')
     const opts: EfficiencyOptions = {
       aka: true,

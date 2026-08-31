@@ -441,8 +441,7 @@ export function useRound(input: UseRoundInput) {
   /**
    * Deals and replays the recorded log. Called from the render that first needs a board and then
    * skipped by the mount effect, rather than run in both — the old hook did exactly that and dealt
-   * two independently-filled walls per mount when the wall was unpinned (the double-build defect
-   * in `docs/STATUS.md`).
+   * two independently-filled walls per mount when the wall was unpinned.
    *
    * Replayed events are queued rather than reported: a build has to be able to happen during
    * render (a page needs rivers and a hand on its very first paint), and calling a consumer's

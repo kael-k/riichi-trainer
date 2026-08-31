@@ -55,8 +55,8 @@ const MODES = [
     descKey: 'trainer.match.desc',
     introKey: 'trainer.match.intro',
     wikiUrl: TRAINER_WIKI.match,
-    // alpha: the newest trainer, still missing dealer agari-yame/tenpai-yame and nagashi mangan
-    // (docs/STATUS.md item 22) — a full hanchan can be played, but not every rule of one yet
+    // alpha: the newest trainer, still missing dealer agari-yame/tenpai-yame and nagashi
+    // mangan — a full hanchan can be played, but not every rule of one yet
     alpha: true,
   },
   // Lab is under development, disabled for now — see README.

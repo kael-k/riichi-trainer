@@ -907,7 +907,7 @@ export function callAnkan(
  *
  * **Chankan is not modelled.** A real kakan briefly exposes the added tile to every other seat's
  * ron before the kan completes; this engine skips straight to completing it. The gap is narrow
- * (chankan is rare) but real — flagged in `docs/STATUS.md` rather than built here, since wiring a
+ * (chankan is rare) but real — see `docs/model/limits.md#not-modelled`. Wiring a
  * third `PendingClaim` shape through `answerClaim`/`reconsiderClaim`/`replayLog` for one rare yaku
  * is a second, much larger change (`buildContext`'s own comment names the other half). The meld
  * is replaced, never mutated in place, because `core/table.ts#snapshotTable` shallow-copies
