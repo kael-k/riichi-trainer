@@ -79,6 +79,14 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
   // the card flash back up for the hand that just replaced this one.
   const drillOverKey = useRef<{ situation: Situation; restartCount: number } | undefined>(undefined)
   const drillOverLatched = useRef(false)
+  // counts each replayed *decision* (every event `situation.log` actually records — never `draw`,
+  // which is not a `LogEntry` kind) as it is dispatched, so a replayed own discard that reaches
+  // tenpai can be told apart from `table.replayed()`'s own final entry: only the latter is what a
+  // live turn would truly have stopped on (#3) — an interior one just passes through tenpai on its
+  // way to a later seat's turn already queued behind it (`twoFuritenBoard`'s own first move, a
+  // kokushi tsumogiri back into its dealt wait, immediately followed by seat 1's own logged
+  // discard).
+  const replayEntriesSeen = useRef(0)
   // graded choices made in *this* round, for the round-complete panel's own average — distinct
   // from `stats.averageTime`, which keeps running across every round until the log is cleared
   const roundActionCount = useRef(0)
@@ -131,6 +139,20 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
     analysis,
     logLength,
   }: RoundEventContext): RoundCommand {
+    // see `replayEntriesSeen` — only the discard landing on `table.replayed()`'s own last entry
+    // stands in for a stop the replay itself couldn't honour
+    if (replaying && event.kind !== 'draw') {
+      replayEntriesSeen.current++
+      if (
+        replayEntriesSeen.current === table.replayed().length &&
+        event.kind === 'discard' &&
+        event.seat === seatIndex &&
+        shanten(core.round.players[seatIndex].hand) <= 0
+      ) {
+        drillOverLatched.current = true
+      }
+    }
+
     // a kita/kan is graded when it happens but logged only once its replacement draw is known
     if (event.kind === 'draw') {
       if (replaying || event.seat !== seatIndex || !pending.current) return
@@ -172,7 +194,10 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
 
     // a per-turn drill ends at the discard that reaches tenpai, leaving 13 tiles so it reads as
     // finished. Only this seat's own tenpai: an AI seat reaching tenpai plays on
-    if (shanten(core.round.players[seatIndex].hand) <= 0) return { stop: true }
+    if (shanten(core.round.players[seatIndex].hand) <= 0) {
+      drillOverLatched.current = true
+      return { stop: true }
+    }
   }
 
   const table = useRound({
@@ -264,20 +289,22 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
    *  discard and its next draw, and a pending claim holds that window open — the end card would
    *  show over a board still waiting on an answer.
    *
-   *  Latched, not derived: a link replayed straight into that window opens with `tenpai` true, but
-   *  live play carries straight on behind it (`useRound` never stops mid-replay), so the very next
-   *  draw would make `tenpai` false again and take the end card back down (#3). Latching means
-   *  once either condition has fired for this board it stays fired — reset only when the board
-   *  itself changes (`situation`/`table.restartCount`), and reset in render rather than an effect,
-   *  which runs one render too late and lets the card flash back up for the hand that replaced it. */
+   *  Latched on the stop event itself (`onEvent`, both the live `{ stop: true }` return and
+   *  `replayEntriesSeen`'s last-entry check), never on `tenpai` read fresh off the snapshot — a
+   *  hand can be tenpai-shaped for reasons that are not this seat's own discard just having stopped
+   *  the drill (dealt tenpai from the very first render, most of all), and deriving straight from it
+   *  latched those too. Reset only when the board itself changes (`situation`/`table.restartCount`),
+   *  and reset in render rather than an effect, which runs one render too late and lets the card
+   *  flash back up for the hand that replaced it. */
   if (
     drillOverKey.current?.situation !== situation ||
     drillOverKey.current?.restartCount !== table.restartCount
   ) {
     drillOverKey.current = { situation, restartCount: table.restartCount }
     drillOverLatched.current = false
+    replayEntriesSeen.current = 0
   }
-  if (tenpai || snapshot?.ended !== undefined) drillOverLatched.current = true
+  if (snapshot?.ended !== undefined) drillOverLatched.current = true
   const drillOver = drillOverLatched.current
 
   return {

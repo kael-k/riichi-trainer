@@ -663,4 +663,30 @@ describe('efficiency never offers a call, and the second manual seat', () => {
     // put the hand back at 14 tiles and let `tenpai` (and so the old derived `drillOver`) flip off
     expect(result.current.drillOver).toBe(true)
   })
+
+  it('does not show the end card for a replayed own discard that reaches tenpai but is not the link’s last turn', () => {
+    // the same dealt-tenpai hand and forced tsumogiri as #3's own fixture, but with a second
+    // logged turn (seat 1's) right behind it — the graded seat's tenpai here is not what the link
+    // was shared at, so play behind it is genuine continuation, not a swallowed stop
+    const situation = emptySituation()
+    situation.wall = wallWithHand(0, parseTenhou('123456789m1122z'), false, false, 'replay-notlast')
+    situation.wall[4 * INITIAL_HAND_SIZE] = parseTenhou('9m')[0]
+    situation.log = [
+      { kind: 'discard', seat: 0, tile: parseTenhou('9m')[0], fromDrawn: true, riichi: false },
+      {
+        kind: 'discard',
+        seat: 1,
+        tile: situation.wall[4 * INITIAL_HAND_SIZE + 1],
+        fromDrawn: true,
+        riichi: false,
+      },
+    ]
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
+
+    while (result.current.claim) {
+      act(() => result.current.answer({ kind: 'pass' }))
+    }
+
+    expect(result.current.drillOver).toBe(false)
+  })
 })
