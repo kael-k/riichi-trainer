@@ -505,7 +505,8 @@
       "riichi": "{{wind}}立直",
       "call": "{{wind}}：{{kind}} {{from}}的牌",
       "kita": "{{wind}}拔北",
-      "kan": "{{wind}}杠{{tile}}"
+      "kan": "{{wind}}杠{{tile}}",
+      "exportFailed": "导出失败——无法重建这场对局"
     },
     "folding": {
       "safe": "第 {{turn}} 巡: 打出 {{tile}}——{{tier}}，当前最安全",

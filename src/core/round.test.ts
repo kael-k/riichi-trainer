@@ -1891,3 +1891,46 @@ describe('kyuushu kyuuhai', () => {
     expect(carriedOn.players[0].river.length).toBe(1)
   })
 })
+
+describe('replayLog claim windowing', () => {
+  // `resolveReactions` asks every manual seat before resolving anything ("ask every manual seat,
+  // then rons, then calls" — the doc comment above it), so with a single live-manual seat that
+  // sits *behind* the actual caller in `seatsFrom(discarder)` order, live logs that seat's `pass`
+  // before the caller's own `call`. `replayLog` forces every seat manual, so it asks the caller
+  // first (its own order position, not the log's) — a cursor that only ever peeks `log[i]` reads
+  // the mismatched `pass` and infers one for the caller too, silently dropping its real call.
+  it('finds a caller behind an earlier-logged manual pass on the same discard', () => {
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(3) }
+    // seat 0 discards 5p; seat 1 (efficiency, shimocha) holds 4p/6p and is one tile from tenpai —
+    // chi-ing strictly lowers its shanten and stays tanyao (nothing terminal or honour anywhere in
+    // its hand), so `chooseCall` takes it. Seat 3 (manual) holds a 5p pair and is asked first,
+    // since it is the only live-manual seat — its pass is logged *ahead* of seat 1's call.
+    const wall = handsWall(
+      'replay-window-chi',
+      '19m159p19s123456z',
+      '23478m346p23466s',
+      '19m19p19s1234567z',
+      '19m1559p19s12377z',
+    )
+    const played = createRound(wall, 4, options)
+    beginTurn(played, options)
+    finishTurn(played, options, { tile: { id: PIN + 4, red: false }, fromDrawn: false })
+
+    expect(played.claim?.seat).toBe(3)
+    answerClaim(played, options, { kind: 'pass' })
+
+    expect(played.claim).toBeUndefined()
+    expect(played.players[1].melds.map((m) => m.kind)).toEqual(['chi'])
+    expect(played.seat).toBe(1)
+    expect(played.log.map((e) => e.kind)).toEqual(['discard', 'pass', 'call'])
+
+    finishTurn(played, options) // seat 1 owes its discard; let its own algorithm throw
+
+    const fresh = createRound(wall, 4, options)
+    replayLog(fresh, options, played.log)
+    expect(fresh.players[1].melds.map((m) => m.kind)).toEqual(['chi'])
+    expect(fresh.log).toEqual(played.log)
+    expect(fresh.seat).toBe(played.seat)
+    expect(fresh.ended).toBe(played.ended)
+  })
+})

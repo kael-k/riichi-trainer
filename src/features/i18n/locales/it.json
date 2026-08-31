@@ -601,7 +601,8 @@
       "riichi": "{{wind}} dichiara riichi",
       "call": "{{wind}}: {{kind}} sulla tessera di {{from}}",
       "kita": "{{wind}} pesca nord (kita)",
-      "kan": "{{wind}} chiama kan {{tile}}"
+      "kan": "{{wind}} chiama kan {{tile}}",
+      "exportFailed": "Esportazione non riuscita — impossibile ricostruire la partita giocata"
     },
     "folding": {
       "safe": "Turno {{turn}}: scartato {{tile}} — {{tier}}, il più sicuro disponibile",

@@ -23,6 +23,7 @@ import { HONOR } from '../../core/tiles'
 import { copyText } from '../../lib/clipboard'
 import { downloadText } from '../../lib/download'
 import { useLogBack } from '../../lib/useLogBack'
+import { useLog } from '../../store/log'
 import { splitConcealedDrawn } from '../folding/useFoldingRound'
 import { formatMatchResult } from '../i18n/formatLogEntry'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
@@ -298,14 +299,17 @@ function RoundCard({
 /** Download / copy a tenhou.net/6 export — `buildLog` is called lazily, only on click, since
  *  building it replays every settled round through the real engine (`tenhouMatchLog`) and there is
  *  no reason to pay that on every render of a board that changes turn to turn. */
-function ExportButtons({ buildLog }: { buildLog: () => string }) {
+function ExportButtons({ buildLog }: { buildLog: () => string | null }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   return (
     <div className="flex flex-wrap gap-2">
       <button
         type="button"
-        onClick={() => downloadText(exportFilename(), buildLog())}
+        onClick={() => {
+          const text = buildLog()
+          if (text) downloadText(exportFilename(), text)
+        }}
         className="min-h-11 rounded-lg bg-neutral-200 px-4 text-sm font-medium text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
       >
         {t('match.export.download')}
@@ -313,7 +317,8 @@ function ExportButtons({ buildLog }: { buildLog: () => string }) {
       <button
         type="button"
         onClick={async () => {
-          if (await copyText(buildLog())) {
+          const text = buildLog()
+          if (text && (await copyText(text))) {
             setCopied(true)
             setTimeout(() => setCopied(false), 1200)
           }
@@ -348,7 +353,7 @@ function FinalCard({
   win: WinRecord | undefined
   sanma: boolean
   onNewMatch: () => void
-  buildLog: () => string
+  buildLog: () => string | null
 }) {
   const { t } = useTranslation()
   const rank = ranks(match.points)
@@ -394,6 +399,7 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
   const { t } = useTranslation()
   const { showOpponentHands, showSeatWaits, seatsEnabled } = useTableSettings('match')
   const pace = useBotDelay()
+  const log = useLog((s) => s.log)
 
   // seats are match state, not per-hand page state: they must NOT reset between rounds the way
   // every graded trainer resets its seat panel on a new hand, since a match's cast doesn't change
@@ -483,8 +489,11 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
   const myRank = ranks(round.match.points)[round.seatIndex]
 
   // lazy: `tenhouMatchLog` replays every settled round through the real engine, so this only runs
-  // when the reader actually asks for the file rather than on every turn's re-render
-  function buildLog(): string {
+  // when the reader actually asks for the file rather than on every turn's re-render. `null` on
+  // failure — a mismatch between a round's own log and what `replayLog` reconstructs from it
+  // (`round.ts`'s own bug class) is a wrong export file, worse than a failed one, so `buildKyoku`
+  // throws rather than emit a half-played round mislabelled as its own ending.
+  function buildLog(): string | null {
     const rules: TenhouRules = {
       sanma: config.sanma,
       aka: config.aka,
@@ -495,7 +504,12 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
     // the settled match's own points once the match is over (`FinalCard`'s own source), the live
     // in-progress ones otherwise — `round.match` never steps past its own round's carry-in
     const finalPoints = round.settlement?.settlement.match.points ?? round.match.points
-    return JSON.stringify(tenhouMatchLog(round.tenhouRounds, finalPoints, rules, names))
+    try {
+      return JSON.stringify(tenhouMatchLog(round.tenhouRounds, finalPoints, rules, names))
+    } catch {
+      log({ key: 'log.match.exportFailed', severity: 'error' })
+      return null
+    }
   }
 
   return (
@@ -516,7 +530,10 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
               for "nothing to act on yet" rather than shifting the row's layout as rounds finish */}
           <button
             type="button"
-            onClick={() => downloadText(exportFilename(), buildLog())}
+            onClick={() => {
+              const text = buildLog()
+              if (text) downloadText(exportFilename(), text)
+            }}
             disabled={round.tenhouRounds.length === 0}
             aria-label={t('match.export.download')}
             className={`${CHROME_BUTTON} disabled:opacity-30`}

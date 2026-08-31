@@ -228,7 +228,11 @@ function buildResult(state: RoundState, deltas: number[]): unknown[] {
     ]
   }
   if (state.ended === 'exhaustive') return ['流局', pad4(deltas, 0)]
-  return ['九種九牌'] // the only abort this engine models
+  if (state.ended === 'abort') return ['九種九牌'] // the only abort this engine models
+  // `buildKyoku` already asserts the replay consumed the whole log before calling this — reaching
+  // here regardless would silently mislabel an unfinished round as a payment-free abort, which is
+  // exactly the shape that got a real export rejected by a downstream tool (see `tenhouLog.test.ts`)
+  throw new Error(`tenhouLog: round did not finish replaying (ended=${String(state.ended)})`)
 }
 
 /** One round of the exported log. `players` is read off `rules.sanma`, not off `input.match.points`
@@ -257,7 +261,7 @@ export function buildKyoku(input: TenhouRoundInput, rules: TenhouRules): unknown
   const ponRecord = new Map<string, { naki: string; tiles: ParsedTile[] }>()
   const riichiCount = new Array(players).fill(0)
 
-  replayLog(state, options, input.log, (event) => {
+  const consumed = replayLog(state, options, input.log, (event) => {
     switch (event.kind) {
       case 'draw':
         accum[event.seat].takes.push(tenhouTile(event.tile))
@@ -308,6 +312,14 @@ export function buildKyoku(input: TenhouRoundInput, rules: TenhouRules): unknown
       }
     }
   })
+
+  // a replay that stopped short of the recorded log (a mismatch between `replayLog`'s own
+  // seat-matching and what was actually logged, `round.ts`'s own bug class) must not export a
+  // half-played round mislabelled as its own ending — `buildResult` throws on anything but a real
+  // `state.ended`, but a hand that both ended *and* dropped a trailing entry needs its own check.
+  if (consumed < input.log.length) {
+    throw new Error(`tenhouLog: replay only consumed ${consumed}/${input.log.length} log entries`)
+  }
 
   const doraIndicators = state.doraIndicators.map(tenhouTile)
   const riichiWin = state.win !== undefined && (state.win.ctx.riichi || state.win.ctx.doubleRiichi)

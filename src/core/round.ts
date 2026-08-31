@@ -1533,33 +1533,74 @@ export function replayLog(
     // wall. Only when `options.claims` was really on can the log legitimately end exactly here
     // because nobody had answered yet.
     let resolved = false
+    // Consumed out of order, relative to `i`: `resolveReactions` asks every manual seat before
+    // resolving anything (`round.ts`'s own "ask every manual seat, then rons, then calls" rule),
+    // but replay forces *every* seat manual, so it asks seats live never asked at all. A seat
+    // asked early in `seatsFrom(discarder)` order can have its own log entry sitting *behind* a
+    // seat asked later — e.g. live's one manual seat passes, is logged, and only then does an AI
+    // seat two-hops-later reach the call it actually made — so a straight `log[i]` peek would read
+    // that pass as "not for me" and quietly drop the later seat's real, recorded call.
+    const used = new Set<number>()
+    const advance = (at: number) => {
+      used.add(at)
+      while (used.has(i)) {
+        used.delete(i)
+        i++
+      }
+    }
     // an abort offer is nobody's reaction to a discard, so it is not this loop's to answer: it is
     // raised by `beginTurn` and answered in the turn body below, which is also where a resumed
     // replay picks one up
     while (state.claim?.kind === 'discard') {
       const claim = state.claim
-      if (i >= log.length) {
-        if (!resolved && options.claims && state.liveWall.length > 0) return false
-        // nothing in the log named this seat's answer — an inferred pass, not a recorded one
+      // the run of entries that could possibly answer *any* seat's reaction to this one discard:
+      // zero or more passes, then at most one terminal ron/call — bounded by the first entry that
+      // isn't one of those, which can only be the next turn's own discard/kita/ankan/kakan/abort.
+      let end = i
+      while (
+        end < log.length &&
+        (log[end].kind === 'pass' || log[end].kind === 'call' || log[end].kind === 'win')
+      ) {
+        end++
+      }
+      let at = -1
+      for (let k = i; k < end; k++) {
+        if (used.has(k)) continue
+        const entry = log[k]
+        if (
+          (entry.kind === 'pass' && entry.seat === claim.seat) ||
+          ((entry.kind === 'win' || entry.kind === 'call') &&
+            entry.seat === claim.seat &&
+            entry.from === claim.from)
+        ) {
+          at = k
+          break
+        }
+      }
+      if (at === -1) {
+        // truncation is about the *whole* log having nothing left, never about this one window:
+        // a seat asked earlier than the actual ron/call (e.g. seat 0 in `seatsFrom` order when the
+        // real reaction was seat 1's, logged after seat 0's own unlogged silent decline) still has
+        // that later entry sitting unconsumed past this window's own match search — `i` (not
+        // `end`) is what proves nothing else is coming.
+        if (i >= log.length) {
+          if (!resolved && options.claims && state.liveWall.length > 0) return false
+        }
+        // nothing in the window named this seat's answer — an inferred pass, not a recorded one
         emit(answerClaim(state, replayOptions, { kind: 'pass' }, false))
         continue
       }
-      const entry = log[i]
-      if (entry.kind === 'win' && entry.seat === claim.seat && entry.from === claim.from) {
-        i++
+      const entry = log[at]
+      advance(at)
+      if (entry.kind === 'win') {
         resolved = true
         emit(answerClaim(state, replayOptions, { kind: 'ron' }))
-      } else if (entry.kind === 'call' && entry.seat === claim.seat && entry.from === claim.from) {
-        i++
+      } else if (entry.kind === 'call') {
         resolved = true
         emit(answerClaim(state, replayOptions, { kind: entry.call.kind, from: entry.call.from }))
-      } else if (entry.kind === 'pass' && entry.seat === claim.seat) {
-        // a logged decline (#2) — consumed and re-recorded, same as any other replayed entry
-        i++
-        emit(answerClaim(state, replayOptions, { kind: 'pass' }))
       } else {
-        // the log has more to say, but not about this claim — an inferred pass
-        emit(answerClaim(state, replayOptions, { kind: 'pass' }, false))
+        // a logged decline (#2) — consumed and re-recorded, same as any other replayed entry
+        emit(answerClaim(state, replayOptions, { kind: 'pass' }))
       }
     }
     return true

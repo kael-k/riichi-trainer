@@ -143,6 +143,13 @@ unchanged) makes a manual seat get _asked_ about another seat's discard.
   is idempotent (`tryWin`/`couldHaveWon` restore the hand they probe, `missedWin` only goes true).
 - **Three phases, in this order, and the order is the point: ask every manual seat, then rons in
   seat order, then calls.** That is what stops a pon answered early from outranking an earlier ron.
+- **`replayLog` forces every seat manual, so it asks seats live play never asked at all** — live
+  only suspends for the seats that were genuinely manual, so a log's `pass` entries are a strict
+  subset of what replay's own ask-phase visits, in the same relative order but not the same
+  positions. `resolveClaims` therefore matches a log entry **by seat within the discard's whole
+  answer window** (every consecutive `pass`/`call`/`win`, capped by the next real turn entry),
+  never by taking whatever sits at the log's own read cursor — a manual seat's recorded `pass` can
+  sit ahead of an AI seat's recorded `call` on the very same discard.
 - **Daiminkan and kakan are match-only** (`RoundOptions.calledKan`); `chooseCall` never receives a
   `'minkan'`. Kakan upgrades a `'pon'` meld **by replacing the meld object, never mutating it** —
   `snapshotTable` shallow-copies `melds` but keeps the same `Meld` references. **Chankan is not

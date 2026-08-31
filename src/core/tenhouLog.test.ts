@@ -235,6 +235,78 @@ describe('buildKyoku', () => {
       }
     }
   })
+
+  // `round.ts`'s own "ask every manual seat, then rons, then calls" order means a lone live-manual
+  // seat that sits *behind* the actual caller in `seatsFrom(discarder)` order gets its `pass`
+  // logged ahead of the caller's own `call` on the same discard. `replayLog` forces every seat
+  // manual, asking the caller first (its own order position, not the log's) — a cursor that only
+  // peeked the log's own read position used to read the mismatched `pass` and drop the call,
+  // stalling the replay so `buildResult` fell through its bare `九種九牌` default (see this
+  // module's own history/CLAUDE.md). Exact wall/answers as `round.test.ts`'s own regression.
+  const windowWall = () =>
+    handsWall(
+      'tenhou-log-window-chi',
+      '19m159p19s123456z',
+      '23478m346p23466s',
+      '19m19p19s1234567z',
+      '19m1559p19s12377z',
+    )
+
+  it('exports a chi that a same-discard manual pass logged ahead of, never as an abort', () => {
+    const match = createMatch(false)
+    const options: RoundOptions = { ...YONMA, match, algorithms: manual(3) }
+    const state = createRound(windowWall(), 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: PIN + 4, red: false }, fromDrawn: false })
+    answerClaim(state, options, { kind: 'pass' })
+    expect(state.players[1].melds.map((m) => m.kind)).toEqual(['chi']) // sanity: live really called
+
+    state.players.forEach((p) => (p.algorithm = 'tsumogiri'))
+    for (const _ of stepRound(state, options)) void _
+    expect(state.ended).toBeDefined()
+
+    const input: TenhouRoundInput = {
+      match,
+      wall: state.wall,
+      log: state.log,
+      deltas: settledDeltas(state),
+    }
+    const entry = buildKyoku(input, YONMA_RULES) as unknown[]
+    expect((entry.at(-1) as unknown[])[0]).not.toBe('九種九牌')
+
+    // seat 1's p tiles are 3p/4p/6p — both (3p,4p) and (4p,6p) chi the discarded 5p, and
+    // `chooseCall`'s tie-break lands on (3p,4p); this only pins whichever it actually is, since
+    // this test is about the replay surviving at all, not about `chooseCall`'s own preference
+    const takes1 = entry[8] as unknown[]
+    expect(takes1[0]).toBe(
+      chiNaki({ id: PIN + 4, red: false }, [
+        { id: PIN + 2, red: false },
+        { id: PIN + 3, red: false },
+      ]),
+    )
+  })
+
+  it('throws rather than export a replay that never reached the log’s own end as an abort', () => {
+    const match = createMatch(false)
+    const options: RoundOptions = { ...YONMA, match, algorithms: manual(3) }
+    const state = createRound(windowWall(), 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: PIN + 4, red: false }, fromDrawn: false })
+    answerClaim(state, options, { kind: 'pass' })
+    state.players.forEach((p) => (p.algorithm = 'tsumogiri'))
+    for (const _ of stepRound(state, options)) void _
+    expect(state.ended).toBeDefined()
+
+    // dropping everything past the call — the shape a stalled replay used to produce on its own
+    const truncated = state.log.slice(0, 3)
+    const input: TenhouRoundInput = {
+      match,
+      wall: state.wall,
+      log: truncated,
+      deltas: settledDeltas(state),
+    }
+    expect(() => buildKyoku(input, YONMA_RULES)).toThrow()
+  })
 })
 
 describe('tenhouMatchLog', () => {

@@ -601,7 +601,8 @@
       "riichi": "{{wind}} declares riichi",
       "call": "{{wind}}: {{kind}} on {{from}}’s tile",
       "kita": "{{wind}} pulls north (kita)",
-      "kan": "{{wind}} kans {{tile}}"
+      "kan": "{{wind}} kans {{tile}}",
+      "exportFailed": "Export failed — the played match couldn't be rebuilt"
     },
     "folding": {
       "safe": "Turn {{turn}}: threw {{tile}} — {{tier}}, the safest available",

@@ -505,7 +505,8 @@
       "riichi": "{{wind}}がリーチ",
       "call": "{{wind}}：{{from}}の牌に{{kind}}",
       "kita": "{{wind}}が北を抜いた",
-      "kan": "{{wind}}が{{tile}}をカン"
+      "kan": "{{wind}}が{{tile}}をカン",
+      "exportFailed": "エクスポート失敗——対局を再構築できませんでした"
     },
     "folding": {
       "safe": "{{turn}}巡目: {{tile}}を切った——{{tier}}、この局面で最も安全",
