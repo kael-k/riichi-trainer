@@ -30,9 +30,9 @@ test.describe('the lab', () => {
     await price.click()
 
     // the header says which seat, which model and which currency, because none of the numbers
-    // below it means anything without all three — "Placement" is `DEFAULT_EV_SEAT`'s own default
-    // (`core/ev.ts`)
-    await expect(page.getByText(/Formula model, playing for Placement/i)).toBeVisible()
+    // below it means anything without all three — both halves are `DEFAULT_EV_SEAT`'s own defaults
+    // (`core/ev.ts`), rendered through `seats.evModel.*` / `seats.evObjective.*`
+    await expect(page.getByText(/Statistic model, playing for Placement/i)).toBeVisible()
     // both branches of the identity, and at least one term decomposed
     await expect(page.getByText(/push/i).first()).toBeVisible()
     await expect(page.getByText(/no win/i).first()).toBeVisible()
