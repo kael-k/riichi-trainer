@@ -605,10 +605,23 @@ bucket it never breaks down.
 by what it **holds** rather than what it waits on so each hypothesis is produced once, and weights
 each by `prior × availability`. Points worth not re-deriving wrong:
 
-- **Availability enters as a ratio to its neutral value** under a measured prior, never as an
-  absolute. The counts were measured over real boards and already integrate typical availability;
-  multiplying by an absolute count of ways-to-hold counts it twice, hardest for the shapes with the
-  most tiles. `UNIFORM_PRIOR` takes the raw count instead — it has no measured level to preserve.
+- **Availability enters as a ratio to its neutral value under _both_ priors**, never as an absolute.
+  For the measured one because the counts already integrate typical availability, so multiplying by
+  an absolute count of ways-to-hold counts it twice. For `UNIFORM_PRIOR` because raw `ways` scales
+  as `copies ** (tiles in the shape)`: shanpon holds four tiles across 561 hypotheses and took ~86%
+  of the whole distribution, which flattened the board to 1m 6.36% / 5m 6.40% / honour 5.20% — a
+  prior over tile multisets, not over tenpai hands, and the direct cause of folding's EV grading
+  calling a live honour and a genbutsu two points apart.
+- **`UNIFORM_PRIOR`'s class weights are stated, not derived** (`CLASS_MASS`, ryanmen 4 : shanpon 2 :
+  kanchan 1 : tanki 1 : penchan 0.5 : sanmenchan 0.5), on `TYPICAL_CLOSED_YAKU_HAN`'s argument
+  applied to the defensive half: which wait a hand ends on is a **decision**, not a sample, and
+  combinatorics cannot see one. Checked against `HOUOU_PRIOR` for **ordering only**, never fitted to
+  it. `dealIn.test.ts` pins the shape by _ratios_ (honour/5p < 0.4, terminal/5p < 0.8) rather than
+  by orderings — a flat distribution satisfies every ordering, which is how the old one survived
+  the whole suite.
+- **Stated ceiling: the seven honours are one bucket in both models.** East and a dragon price
+  identically and differ only by visible copies. `WaitDistribution.csv` aggregates them, so a
+  yakuhai/guest-wind split needs a new extraction, not a new constant.
 - **Shanpon is a wait-pair matrix and stays one.** It waits on two kinds, so one-wait hypotheses
   carrying the same mass reproduce the source's wait width as 1.61 kinds against its true 1.78.
 - **One furiten rule produces both tiers people learn separately**: every wait in their discards is
@@ -641,7 +654,10 @@ each by `prior × availability`. Points worth not re-deriving wrong:
 - Above `maxShanten` (default **2**) a collapsed chain runs and `exact` is `false`; it prices no
   win, so `score`/`winAtLeast` come back undefined rather than zero. It walks an
   availability-weighted average of where each improving draw lands, not the best one — the best
-  overstates a 2-shanten win probability by 190%, the average by 9-31%, and it is exact at tenpai.
+  overstates a 2-shanten win probability by 190%. The average is **unbiased at the boundary it
+  actually runs at and scattered rather than skewed**: measured against the exact DP, median
+  `collapsed/exact` is 1.00 at 3-shanten (quartiles 0.83-1.08) and falls to 0.88 at 4-shanten and
+  0.63 at 5, so a deep hand's number is a floor. It is exact at tenpai.
 
 **The prices are the EV model, and the two of them may not borrow from each other** (`evModel.ts`).
 `EV_MODELS` holds `statistical` (every price derived from combinatorics) and `houou` (every price
@@ -734,7 +750,22 @@ one integral.
   round and then the heap.
 - The cheap path is the **candidate union** alone (fastest by ukeire ∪ safest against the board):
   an `'ev'` seat plays a ~460ms hand against `efficiency`'s ~40ms with the DP exact to 2-shanten.
-  Capping the look-ahead and collapsing 2-shanten as well was measured, and removed.
+  Capping the look-ahead and collapsing 2-shanten as well was measured, and removed. **The safe
+  half is skipped entirely with no threats declared** — every `combined` entry is zero there, so the
+  sort fell through to its `a - b` tie-break and the "safest" tiles were just the two lowest ids in
+  the hand (measured: 216 of 216 quiet boards), spending two of five slots at the manzu end where
+  a dora is as likely to sit as anywhere.
+- **Ties are broken on the dora, then the id** (`ev.ts#byValue`, shared by `rankDiscards` and
+  `foldRanking`). At the end of a hand that cannot reach tenpai every term is identical across
+  candidates — no win, no tenpai, a constant give-up cost, and no deal-in at all with nobody
+  declared — so **1.7% of priced turns tie exactly**, and `a.tile - b.tile` then threw whatever sat
+  nearest 1m. That is how an `'ev'` seat handed a dora to a tenpai opponent on its last discard.
+  Keeping the dora on a tie costs nothing when the model has run out of things to say. Measured:
+  the `'ev'` dora-throw rate fell from 3.83% of turns to 1.39%, against `efficiency`'s 2.09%.
+- **A deal-in term's per-threat probabilities are scaled to the union** (`ev.ts#dealInShares`),
+  not summed raw: a discard deals into one seat, and the raw sum double-counts the boards where two
+  seats wait on the same tile (measured: up to 0.88pp on one tile against two threats, and the honba
+  rides on it). With one threat the scale is exactly 1, so no single-threat golden hash moves.
 - **`abortWorthIt` is `EV(keep) < 0`** — `EV(abort)` is zero under the pinned ruleset. One ceiling
   now: a dealer's forfeited dealership needs round sequencing. The other went with the win-value
   hole — a 4+ shanten kyuushu hand used to be dominated by the give-up term because the collapsed

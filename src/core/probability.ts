@@ -386,9 +386,29 @@ function priceWin(
  * width it reports for the last step is the width of the widest tenpai the hand could reach rather
  * than the one it will typically reach.
  *
- * What it still gets wrong: it is one representative path rather than a distribution over them, so
- * it cannot see that a hand which misses its best draws early ends up on a materially worse chain.
- * And no leaf is ever reached, so it cannot price a win.
+ * **How wrong the average is, measured against the exact DP** on random 13-tile hands over 12
+ * draws (`collapsed / exact` win probability, min/p25/median/p75/max):
+ *
+ * ```
+ * 2-shanten  n=8   0.79 / 0.92 / 1.00 / 1.15 / 1.32
+ * 3-shanten  n=32  0.59 / 0.83 / 1.00 / 1.08 / 1.35
+ * 4-shanten  n=30  0.36 / 0.64 / 0.88 / 1.00 / 1.35
+ * 5-shanten  n=10  0.40 / 0.47 / 0.63 / 0.78 / 1.00
+ * ```
+ *
+ * So it is **unbiased at the boundary it actually runs at and scattered rather than skewed** — the
+ * default `maxShanten` is 2, so the first collapsed level is 3-shanten, where the median is 1.00
+ * and the quartiles are 0.83-1.08. Below that it turns into a systematic *under*statement, ~12% at
+ * 4-shanten and ~37% at 5, because one representative path cannot see that a hand missing its best
+ * draws early lands on a materially worse chain. Read a deep hand's number as a floor.
+ *
+ * (An earlier note here read "the average by 9-31%" alongside the best-draw walk's 190%, which
+ * reads as a systematic overstatement. The measurement above does not support that; what it
+ * supports is scatter of that order at the boundary, and understatement below it.)
+ *
+ * The other thing it still gets wrong: no leaf is ever reached, so it cannot price a win at all —
+ * `Outlook.score` comes back undefined and `ev.ts#conditionalWin` falls through to
+ * `EvModel.winValue` for it.
  */
 function collapsed(hand: Hand, seen: Uint8Array, sanma: boolean, draws: number): Outlook {
   const start = shanten(hand)
