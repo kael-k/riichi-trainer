@@ -250,12 +250,19 @@ export type RoundEvent =
 /** One seat's decision, logged the instant it's made — discard (with `fromDrawn`/`riichi`, the
  *  ground truth Phase 1 put on `Hand.drawn`), pon/chi/minkan (`Call` reused verbatim from
  *  `policy.ts`, since it's already the exact shape a replayed claim answer needs), kita, closed
- *  kan, kakan, and a win (tsumo when `from` is absent). No `pass`/decline — a claim nobody
- *  answered is already derivable by comparing who *could* have claimed against who's in the log
- *  (`resolveReactions` already does exactly this for `missedWin`), so logging silence would only
- *  be logging what `replayLog` (below) can already recompute. An `abort` entry is the one
- *  decision that ends the hand without anyone winning, and it is logged for the same reason a win
- *  is: nothing else in the log says the hand stopped there rather than being truncated. */
+ *  kan, kakan, and a win (tsumo when `from` is absent). An `abort` entry is the one decision that
+ *  ends the hand without anyone winning, and it is logged for the same reason a win is: nothing
+ *  else in the log says the hand stopped there rather than being truncated.
+ *
+ *  `pass` is a manual seat's own declined ron/pon/chi/minkan, and it is the one entry kind that is
+ *  never *required* to reproduce a hand — a claim nobody answered is otherwise derivable by
+ *  comparing who *could* have claimed against who's in the log (`resolveReactions` already does
+ *  exactly this for `missedWin`). It exists so a link cut exactly at a decline lands *past* the
+ *  decision instead of re-offering it: without it, replay's own forced `claims: true` has no way
+ *  to tell "genuinely not yet answered" (stop and wait) from "answered no" (move on), and asked
+ *  the same question twice (#2). `answerClaim` writes one only for a `'pass'` it was actually
+ *  asked to record; `resolveReactions`' own auto-pass for a seat with nothing legal to offer never
+ *  reaches `answerClaim` at all, so it stays unlogged — nobody was asked. */
 export type LogEntry =
   | { kind: 'discard'; seat: number; tile: ParsedTile; fromDrawn: boolean; riichi: boolean }
   | { kind: 'call'; seat: number; from: number; call: Call }
@@ -264,6 +271,7 @@ export type LogEntry =
   | { kind: 'kakan'; seat: number; tile: TileId }
   | { kind: 'win'; seat: number; from?: number }
   | { kind: 'abort'; seat: number }
+  | { kind: 'pass'; seat: number }
 
 export interface RoundState {
   /** A copy of `RoundOptions.match`, taken once by `createRound` — the caller's own object is
@@ -1368,11 +1376,18 @@ export function claimOptions(
  * Answers the claim the board is waiting on and carries the turn forward — into another seat's
  * claim, into a win, into a call, or simply on to the next seat's draw. A no-op when nothing is
  * pending, so a double-tap on the pass button cannot skip the next seat's question.
+ *
+ * `record` (default `true`) is `replayLog`'s own knob: a `'pass'` it read off a real logged entry
+ * is written back (a no-op the second time through, since replay never revisits a resolved
+ * discard), while a pass it merely *infers* — nothing in the log named this seat's answer — must
+ * not be, or replaying an old link would invent `LogEntry`s live play never produced. Live callers
+ * (`useRound.ts`) always take the default: every answer a person actually gives is real.
  */
 export function answerClaim(
   state: RoundState,
   options: RoundOptions,
   answer: ClaimAnswer,
+  record = true,
 ): RoundEvent[] {
   const claim = state.claim
   if (!claim) return []
@@ -1391,6 +1406,9 @@ export function answerClaim(
     // abortive draw nobody took leaves no furiten behind
     return answer.kind === 'abort' ? abortRound(state, claim.seat) : []
   }
+  // logged *before* `resolveReactions` runs, so a declining seat's pass sits ahead of whatever
+  // entry a later seat's ron/call appends on the same discard
+  if (record && answer.kind === 'pass') state.log.push({ kind: 'pass', seat: claim.seat })
   claim.answers[claim.seat] = answer
   state.claim = undefined
   return resolveReactions(state, options, claim.from, claim.tile, claim.answers)
@@ -1522,21 +1540,27 @@ export function replayLog(
       const claim = state.claim
       if (i >= log.length) {
         if (!resolved && options.claims && state.liveWall.length > 0) return false
-        emit(answerClaim(state, replayOptions, { kind: 'pass' }))
+        // nothing in the log named this seat's answer — an inferred pass, not a recorded one
+        emit(answerClaim(state, replayOptions, { kind: 'pass' }, false))
         continue
       }
       const entry = log[i]
-      let answer: ClaimAnswer = { kind: 'pass' }
       if (entry.kind === 'win' && entry.seat === claim.seat && entry.from === claim.from) {
-        answer = { kind: 'ron' }
         i++
         resolved = true
+        emit(answerClaim(state, replayOptions, { kind: 'ron' }))
       } else if (entry.kind === 'call' && entry.seat === claim.seat && entry.from === claim.from) {
-        answer = { kind: entry.call.kind, from: entry.call.from }
         i++
         resolved = true
+        emit(answerClaim(state, replayOptions, { kind: entry.call.kind, from: entry.call.from }))
+      } else if (entry.kind === 'pass' && entry.seat === claim.seat) {
+        // a logged decline (#2) — consumed and re-recorded, same as any other replayed entry
+        i++
+        emit(answerClaim(state, replayOptions, { kind: 'pass' }))
+      } else {
+        // the log has more to say, but not about this claim — an inferred pass
+        emit(answerClaim(state, replayOptions, { kind: 'pass' }, false))
       }
-      emit(answerClaim(state, replayOptions, answer))
     }
     return true
   }

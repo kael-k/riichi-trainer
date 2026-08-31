@@ -227,6 +227,39 @@ describe('replayLog', () => {
     expect(project(fresh)).toEqual(project(state))
   })
 
+  it('logs a declined claim, so a link cut just past it does not re-offer the same claim (#2)', () => {
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    // seat 0 discards 9s; only seat 1 can pon it (two held copies) — seats 2 and 3 hold none and
+    // have no ron, so they are silently auto-passed without ever being asked
+    const wall = wallWithHands(
+      [
+        parseTenhou('2468m2468p9s2345z'),
+        parseTenhou('13579m13579p99s1z'),
+        parseTenhou('123456m123456p7z'),
+        parseTenhou('123456m123456s7z'),
+      ],
+      false,
+      true,
+      'replay-declined-pon',
+    )
+    const state = createRound(wall, 4, options, 'replay-declined-pon')
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    expect(state.claim?.seat).toBe(1)
+    answerClaim(state, options, { kind: 'pass' }) // seat 1 declines the pon
+    expect(state.claim).toBeUndefined() // nobody else had anything to claim
+    expect(state.log.at(-1)).toEqual({ kind: 'pass', seat: 1 })
+
+    // a link generated exactly here: the decline is on the record, nothing has happened since
+    const truncatedLog: LogEntry[] = [...state.log]
+    const fresh = createRound(wall, 4, options, 'replay-declined-pon')
+    const consumed = replayLog(fresh, options, truncatedLog)
+
+    // before #2's fix this landed right back on seat 1's same pon offer, asking it twice
+    expect(fresh.claim).toBeUndefined()
+    expect(consumed).toBe(truncatedLog.length)
+  })
+
   it('stops with the claim still pending when the log ends exactly there, and never invents a pass', () => {
     const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
     const wall = wallWithHands(

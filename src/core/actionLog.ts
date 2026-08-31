@@ -23,6 +23,8 @@ import { parseTenhou, tileCode, type TileId } from './tiles'
  *   (`RoundOptions.calledKan`).
  * - `win`: `W` seat (from | `T` for tsumo).
  * - `abort`: `Q` seat — kyuushu kyuuhai, the only abortive draw modelled.
+ * - `pass`: `P` seat — a manual seat's own declined ron/pon/chi/minkan (#2). Never a decline
+ *   nobody was asked about; see `LogEntry`'s own doc comment in `round.ts`.
  */
 
 const CALL_KIND_CHARS: Record<Call['kind'], string> = { pon: 'P', chi: 'H', minkan: 'M' }
@@ -50,6 +52,8 @@ function encodeEntry(entry: LogEntry): string {
       return `W${entry.seat}${entry.from ?? 'T'}`
     case 'abort':
       return `Q${entry.seat}`
+    case 'pass':
+      return `P${entry.seat}`
   }
 }
 
@@ -146,6 +150,11 @@ export function decodeLog(s: string): LogEntry[] {
       const seat = digitAt(s, i + 1)
       if (seat === undefined) break
       log.push({ kind: 'abort', seat })
+      i += 2
+    } else if (kind === 'P') {
+      const seat = digitAt(s, i + 1)
+      if (seat === undefined) break
+      log.push({ kind: 'pass', seat })
       i += 2
     } else {
       break

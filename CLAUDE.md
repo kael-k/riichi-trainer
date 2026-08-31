@@ -174,6 +174,12 @@ bit-for-bit unchanged) makes a manual seat get _asked_ about another seat's disc
 - `reconsiderClaim` re-enters `resolveReactions` from scratch when a seat stops being manual
   mid-claim. It **never invents a pass**: a pass sets `missedWin` and would poison the hand with
   furiten over a decision nobody made.
+- **A manual seat's declined ron/pon/chi/minkan is logged (`LogEntry.pass`); an inferred one never
+  is.** `answerClaim`'s own `record` flag is what tells the two apart — `replayLog` passes `false`
+  for a pass it merely infers (nothing in the log named this seat's answer), so replaying an old
+  link never invents entries live play didn't write. Without a recorded pass, a link cut exactly
+  past a decline was indistinguishable from one cut before it was ever asked, and re-offered the
+  same claim.
 - **A manual seat's own tsumo is a call too.** `PendingWin` is the third `PendingClaim` shape and
   **one function raises it** — `offerOrEnd`. Every **self-drawn** win goes through it; a **ron never
   does**, and **neither does an AI seat**. Anything but `'tsumo'` hands the turn straight back with
@@ -407,7 +413,9 @@ Tenhou strings (`123m406p11z`, `0` = red five) are the interchange format everyw
   `wallError` and empties `wall`, since a silent repair hands back a different board than the link
   claimed. (Contrast `parseTenhou`, which drops a malformed digit.)
 - **`log` is every seat's decisions**, replayed by `replayLog`, which puts every seat on `'manual'`
-  and so **consults no algorithm at all**. Nothing in it is an extra tile.
+  and so **consults no algorithm at all**. Nothing in it is an extra tile. A manual seat's declined
+  claim is one of those decisions (`LogEntry.pass`, `actionLog.ts`'s `P` token) — without it a link
+  cut just past a decline could not be told apart from one cut before the claim was ever answered.
 - **`seed`/`hand` are the shanten trainer's alone.**
 - The match context is carried **key-by-key and omitted at its default**. **`matchOverrides` builds
   `Partial<MatchState>` one key at a time rather than by spreading** — a present-but-`undefined` key
