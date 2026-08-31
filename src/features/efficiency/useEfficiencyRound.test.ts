@@ -617,28 +617,50 @@ describe('efficiency never offers a call, and the second manual seat', () => {
     expect(result.current.claim).toBeUndefined()
   })
 
-  it('still reaches the card from a shared link replayed into the drill’s last turn', () => {
+  it('does not show the end card when a replayed link lands short of tenpai', () => {
     const situation = emptySituation()
-    // dealt tenpai (three runs + a shanpon): the recorded turn is the tsumogiri that keeps it
-    situation.wall = wallWithHand(0, parseTenhou('123456789m1122z'), false, false, 'replay-stop')
+    // scattered and several shanten away from tenpai — a tsumogiri of whatever the wall gives
+    // can't stumble into it, so the replayed turn genuinely hands the decision back
+    const hand = parseTenhou('13579m13579p124z')
+    const wall = wallWithHand(0, hand, false, false, 'replay-not-over')
+    situation.wall = wall
+    situation.log = [
+      {
+        kind: 'discard',
+        seat: 0,
+        tile: wall[4 * INITIAL_HAND_SIZE],
+        fromDrawn: true,
+        riichi: false,
+      },
+    ]
+    const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
+
+    // claims are always on now: an opponent's own discard may offer a stray call along the way —
+    // decline it, since this test is about the replay/drillOver timing, not the claims flow
+    while (result.current.claim) {
+      act(() => result.current.answer({ kind: 'pass' }))
+    }
+    expect(result.current.drillOver).toBe(false)
+  })
+
+  it('latches the end card once a replayed link reaches tenpai, even as play continues behind it (#3)', () => {
+    const situation = emptySituation()
+    // dealt tenpai (three runs + a shanpon): the one replayed turn is a tsumogiri that keeps it
+    // there, so the link is shared exactly at the graded stop — but replay doesn't honour a stop
+    // command (`useRound.ts`), so the seat draws again right behind it
+    situation.wall = wallWithHand(0, parseTenhou('123456789m1122z'), false, false, 'replay-latch')
     situation.wall[4 * INITIAL_HAND_SIZE] = parseTenhou('9m')[0]
     situation.log = [
       { kind: 'discard', seat: 0, tile: parseTenhou('9m')[0], fromDrawn: true, riichi: false },
     ]
     const { result } = renderHook(() => useEfficiencyRound(situation, BARE))
 
-    // claims are always on now: before the graded seat's own next draw, an opponent
-    // may discard into its shanpon wait and offer a ron — decline it, since this test is about
-    // the replay/drillOver timing, not the claims flow
     while (result.current.claim) {
       act(() => result.current.answer({ kind: 'pass' }))
     }
 
-    // the replay hands the decision back rather than grading it: one more tenpai-preserving
-    // discard is the link's last turn, and the card follows it exactly as in live play
-    expect(result.current.drillOver).toBe(false)
-    act(() => result.current.discard(13))
+    // before #3's fix this read false: play had already continued to the seat's next draw, which
+    // put the hand back at 14 tiles and let `tenpai` (and so the old derived `drillOver`) flip off
     expect(result.current.drillOver).toBe(true)
-    expect(result.current.tenpai).toBe(true)
   })
 })

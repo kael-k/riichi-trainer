@@ -74,6 +74,11 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
   >(undefined)
   // the round whose deal (and replayed river) is already on the log; see `logReplay`
   const loggedReplay = useRef<{ situation: Situation; restartCount: number }>(undefined)
+  // the board `drillOver` last latched for, and whether it has latched true on it — see `drillOver`
+  // itself. Reset in render rather than in an effect, which would run one render too late and let
+  // the card flash back up for the hand that just replaced this one.
+  const drillOverKey = useRef<{ situation: Situation; restartCount: number } | undefined>(undefined)
+  const drillOverLatched = useRef(false)
   // graded choices made in *this* round, for the round-complete panel's own average — distinct
   // from `stats.averageTime`, which keeps running across every round until the log is cleared
   const roundActionCount = useRef(0)
@@ -257,12 +262,23 @@ export function useEfficiencyDrill(input: EfficiencyDrillInput) {
   /** The drill is *over* — the tenpai stop fired, or the round genuinely ended. Distinct from
    *  `finished`, which is a tile count: it is true for the whole window between the seat's own
    *  discard and its next draw, and a pending claim holds that window open — the end card would
-   *  show over a board still waiting on an answer. The two conditions here are exact, not a
-   *  latch: the stop fires in the same turn the seat's 13 tiles read tenpai (and no claim can
-   *  pend on a seat whose discard just stopped the drill), and `snapshot.ended` is set only once
-   *  every claim has been answered. A replayed link lands on the same derivation, so a board
-   *  shared at its last turn opens with the card already up. */
-  const drillOver = tenpai || snapshot?.ended !== undefined
+   *  show over a board still waiting on an answer.
+   *
+   *  Latched, not derived: a link replayed straight into that window opens with `tenpai` true, but
+   *  live play carries straight on behind it (`useRound` never stops mid-replay), so the very next
+   *  draw would make `tenpai` false again and take the end card back down (#3). Latching means
+   *  once either condition has fired for this board it stays fired — reset only when the board
+   *  itself changes (`situation`/`table.restartCount`), and reset in render rather than an effect,
+   *  which runs one render too late and lets the card flash back up for the hand that replaced it. */
+  if (
+    drillOverKey.current?.situation !== situation ||
+    drillOverKey.current?.restartCount !== table.restartCount
+  ) {
+    drillOverKey.current = { situation, restartCount: table.restartCount }
+    drillOverLatched.current = false
+  }
+  if (tenpai || snapshot?.ended !== undefined) drillOverLatched.current = true
+  const drillOver = drillOverLatched.current
 
   return {
     table,
