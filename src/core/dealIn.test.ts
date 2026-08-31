@@ -177,18 +177,57 @@ describe('dealInRisk', () => {
   })
 
   describe('the uniform prior', () => {
-    it('is availability alone, and still ranks a middle tile above a terminal', () => {
+    /**
+     * The check this prior did not have, and the whole of what went wrong without it.
+     *
+     * It used to weight each hypothesis by the raw number of ways to hold it, which scales as
+     * `copies ** (tiles in the shape)`. Shanpon holds four tiles across 561 hypotheses, so it took
+     * ~86% of the distribution and every tile on the board came out within a few tenths of a
+     * percent of every other: 1m 6.36%, 5m 6.40%, an honour 5.20%. Every assertion this block used
+     * to make survived that — `5p > 1p` held by 0.04pp — and so did the whole suite, while the
+     * folding trainer's EV grading was quietly telling a reader that a live honour and a genbutsu
+     * were two points apart.
+     *
+     * So the shape of the curve is pinned by *ratios*, not by orderings: an ordering is exactly
+     * what a flat distribution can satisfy.
+     */
+    it('prices the middle of a suit well above the ends, and an honour well below both', () => {
       const risks = dealInRisk(FRESH_RIICHI, NOTHING_SEEN, false, UNIFORM_PRIOR)
-      expect(probabilityOf(risks, '5p')).toBeGreaterThan(probabilityOf(risks, '1p'))
-      expect(impliedWaitWidth(risks)).toBeGreaterThan(1)
+      const middle = probabilityOf(risks, '5p')
+      const terminal = probabilityOf(risks, '1p')
+      const honour = probabilityOf(risks, '1z')
+
+      // a terminal is waited on by strictly fewer shapes than a 5 — no ryanmen reaches it from
+      // below, and the penchan that does is the rarest shape there is
+      expect(terminal / middle).toBeLessThan(0.8)
+      // and an honour is only ever a tanki, a shanpon or the kokushi, which is a different order
+      // of magnitude rather than a discount. The old prior put this at 0.81
+      expect(honour / middle).toBeLessThan(0.4)
+      // rising monotonically from the end of the suit toward its middle
+      expect(probabilityOf(risks, '2p')).toBeGreaterThan(terminal)
+      expect(probabilityOf(risks, '3p')).toBeGreaterThan(probabilityOf(risks, '2p'))
+      expect(probabilityOf(risks, '4p')).toBeGreaterThan(probabilityOf(risks, '3p'))
+      // and symmetric about it, since nothing here distinguishes the two ends of a suit
+      expect(probabilityOf(risks, '9p')).toBeCloseTo(terminal, 12)
+      expect(probabilityOf(risks, '6p')).toBeCloseTo(middle, 12)
+    })
+
+    it('implies a plausible number of waits, the same check the measured prior gets', () => {
+      const risks = dealInRisk(FRESH_RIICHI, NOTHING_SEEN, false, UNIFORM_PRIOR)
+      // a tenpai hand waits on one or two kinds; the old raw-availability weighting implied 2.09,
+      // which is more distinct waits than a real riichi hand has
+      expect(impliedWaitWidth(risks)).toBeGreaterThan(1.4)
+      expect(impliedWaitWidth(risks)).toBeLessThan(2)
     })
 
     it('disagrees with the measured prior, which is the point of shipping both', () => {
       const measured = dealInRisk(FRESH_RIICHI, NOTHING_SEEN, false)
       const uniform = dealInRisk(FRESH_RIICHI, NOTHING_SEEN, false, UNIFORM_PRIOR)
-      // with every shape class equally likely, shanpon and tanki carry far more mass than they do
-      // in real hands, so an honour reads as much more dangerous than it measures
+      // `CLASS_MASS` is stated from riichi reasoning rather than measured, and it states more
+      // shanpon and tanki than real hands hold — so an honour still reads as more dangerous than
+      // it measures, just no longer as more dangerous than a 5
       expect(probabilityOf(uniform, '1z')).toBeGreaterThan(probabilityOf(measured, '1z'))
+      expect(probabilityOf(uniform, '1z')).toBeLessThan(probabilityOf(measured, '5p'))
     })
 
     it('still gives genbutsu exactly zero', () => {

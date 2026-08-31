@@ -49,17 +49,23 @@ export type WaitShape =
  * matrix, `shanpon[low][high]`, because a shanpon waits on two kinds at once and collapsing it to
  * a per-rank column loses the width.
  *
- * `kind` says how the numbers are read, and the two modes are not interchangeable:
+ * **Availability enters as a ratio to its own neutral value under either kind, never as an
+ * absolute** (`NEUTRAL_WAYS`). For the measured prior that is because the counts were taken over
+ * real boards and so already integrate typical availability, and multiplying by an absolute count
+ * of ways-to-hold counts it twice. For the uniform one it is because `ways` scales as
+ * `copies ** (tiles in the shape)`: a shanpon holds four tiles across 561 hypotheses and a ryanmen
+ * two across 21, so raw availability hands shanpon ~86% of the whole distribution and flattens the
+ * board into "every tile is about as dangerous as every other". That is a prior over tile
+ * multisets, not over tenpai hands, and it is what this used to be.
  *
- * - `'measured'` — counts aggregated over the kinds sharing a bucket (three suits, or seven
- *   honours), so a bucket is divided by the number of hypotheses in it. Availability then enters
- *   as a **ratio to its own neutral value**, never as an absolute: the counts were measured over
- *   real boards and so already integrate typical availability, and multiplying by an absolute
- *   count of ways-to-hold counts it twice — hardest for the shapes with the most tiles in them.
- *   With nothing visible the ratio is 1 and the model reproduces the measured marginals exactly.
- * - `'uniform'` — one weight per hypothesis and availability enters raw. There is no measured
- *   level for it to preserve, and its whole point is to show what pure combinatorics says on its
- *   own, derivable from first principles by a reader with no data at all.
+ * `kind` now says only how a weight is spread across the kinds sharing a bucket:
+ *
+ * - `'measured'` — counts aggregated over the kinds in a bucket (three suits, or seven honours),
+ *   so the bucket is divided by the number of hypotheses in it. With nothing visible the ratio is
+ *   1 and the model reproduces the measured marginals exactly.
+ * - `'uniform'` — the weight is already per hypothesis and no division happens. Its whole point is
+ *   to show what a reader with no data at all can say, so what it states is the weakest thing
+ *   there is to state: every shape class is equally likely (`UNIFORM_PRIOR`).
  */
 export interface ShapePrior {
   name: string
@@ -115,26 +121,8 @@ export interface DealInRisk {
  */
 export const KOKUSHI_SHARE = 0.001
 
-/** Every shape class weight 1, so the number is availability alone. */
-export const UNIFORM_PRIOR: ShapePrior = {
-  name: 'uniform',
-  kind: 'uniform',
-  weights: {
-    sanmenchan: ones(),
-    ryanmen: ones(),
-    penchan: ones(),
-    kanchan: ones(),
-    tanki: ones(),
-  },
-  shanpon: ones().map(() => ones()),
-}
-
-function ones(): number[] {
-  return Array.from({ length: 10 }, () => 1)
-}
-
 /** Ways to hold a shape when nothing at all is visible, by shape. Availability is read as a ratio
- *  to these under a measured prior — see `ShapePrior.kind`. */
+ *  to these under either prior — see `ShapePrior`. */
 const NEUTRAL_WAYS: Record<WaitShape, number> = {
   ryanmen: TILES_PER_KIND ** 2,
   penchan: TILES_PER_KIND ** 2,
@@ -156,9 +144,23 @@ function bucketOf(id: TileId): number {
   return isHonor(id) ? 0 : (id % 9) + 1
 }
 
-/** How many hypotheses share one bucket of a measured prior — three suits for a numbered rank,
- *  seven kinds for the honour bucket. Dividing by it turns an aggregated count into the weight of
- *  one hypothesis. */
+/**
+ * How many hypotheses share one bucket of a measured prior — three suits for a numbered rank,
+ * seven kinds for the honour bucket. Dividing by it turns an aggregated count into the weight of
+ * one hypothesis.
+ *
+ * **Stated ceiling: the seven honours are one bucket, so nothing here can tell a yakuhai from a
+ * guest wind.** East, South, West, North and the three dragons come out at exactly the same
+ * probability under *either* prior, and they differ only by how many copies are already visible —
+ * which is real and does work (three East seen prices East at a tenth of an unseen North), but it
+ * is not the distinction a player makes. A dragon shanpon is a hand somebody built; a guest wind
+ * shanpon is a hand that ran out of options, and the two are not the same risk.
+ *
+ * It is a limit of the source rather than of this function: `WaitDistribution.csv` aggregates all
+ * seven, so splitting them cannot be measured and would have to be stated in `UNIFORM_PRIOR` alone
+ * — which would leave the two models disagreeing about a distinction only one of them can see.
+ * Splitting the bucket needs a new extraction, not a new constant.
+ */
 function bucketSize(bucket: number): number {
   return bucket === 0 ? 7 : 3
 }
@@ -240,19 +242,100 @@ const KOKUSHI: Hypothesis = (() => {
  *  two threats' term lists in step against this. */
 const ALL_HYPOTHESES: Hypothesis[] = [...HYPOTHESES, KOKUSHI]
 
+/** How many hypotheses each shape class contributes, counted off `enumerate()` rather than typed
+ *  in — the six numbers are 6/18/21/9/34/561 today, and a typed-in copy is one edit to that
+ *  function away from being silently wrong. */
+const CLASS_SIZE: Partial<Record<WaitShape, number>> = {}
+for (const hypothesis of HYPOTHESES) {
+  CLASS_SIZE[hypothesis.shape] = (CLASS_SIZE[hypothesis.shape] ?? 0) + 1
+}
+
+/**
+ * How much of the distribution each shape class carries — **stated, not derived**, and the one
+ * place this prior cannot be pure.
+ *
+ * It is `evModel.ts#TYPICAL_CLOSED_YAKU_HAN`'s argument applied to the defensive half, and the
+ * argument is the same word for word: *which wait a hand ends on is a decision, not a sample.* A
+ * player breaks the penchan and keeps the ryanmen; they do not hold thirteen tiles drawn at random
+ * and read off what shape is left. Combinatorics cannot see a choice that was already taken, so
+ * every attempt to let it decide gets a distribution nobody plays:
+ *
+ * - Weight each *hypothesis* equally and shanpon's 561 members swamp ryanmen's 18.
+ * - Weight each *class* equally and penchan's 6 members are each worth three ryanmen, which spikes
+ *   3 and 7 above 4/5/6.
+ *
+ * So the split is stated, on ordinary riichi reasoning: a ryanmen is the wait a hand is steered
+ * toward and is much the commonest; a shanpon is where a hand with two spare pairs ends up; kanchan
+ * and tanki are the baseline; a penchan is broken the moment anything better arrives and a
+ * sanmenchan needs four connected tiles to survive to tenpai. One visible table, tuned here and
+ * never scattered — the `TIER_SCORE` precedent in `danger.ts`.
+ *
+ * These numbers were checked against `HOUOU_PRIOR` for **ordering only** (risk rises from the
+ * terminals to the middle of a suit, honours sit far below either), never fitted to it — that
+ * would be the borrowing ADR-0037 forbids. The residual disagreement is known and one-directional:
+ * this prior prices an honour at about 1.7% against the measured 1.2%, so `statistical` is the
+ * model that folds honours slightly too readily.
+ */
+const CLASS_MASS: Record<WaitShape, number> = {
+  ryanmen: 4,
+  shanpon: 2,
+  kanchan: 1,
+  tanki: 1,
+  penchan: 0.5,
+  sanmenchan: 0.5,
+  // never read: kokushi's weight is `KOKUSHI_SHARE` of everything else, not a class of its own
+  kokushi: 0,
+}
+
+/**
+ * What a reader with no measurements can say about which tile a threat is waiting on.
+ *
+ * Each hypothesis carries its class's stated mass spread evenly over the class, so a shanpon's 561
+ * members share exactly `CLASS_MASS.shanpon` between them. Availability then enters as a ratio, the
+ * same as under the measured prior — see `ShapePrior`.
+ *
+ * What it is not any more: one weight per hypothesis with availability multiplied in raw. That
+ * weighted a shape by `copies ** (tiles it holds)`, handed shanpon ~86% of the whole distribution
+ * and priced an honour at 81% of a 5m — a board on which nothing was more dangerous than anything
+ * else, which is what the folding trainer's EV grading was reading when it called a live honour
+ * and a genbutsu two points apart.
+ */
+export const UNIFORM_PRIOR: ShapePrior = {
+  name: 'uniform',
+  kind: 'uniform',
+  weights: {
+    sanmenchan: flat('sanmenchan'),
+    ryanmen: flat('ryanmen'),
+    penchan: flat('penchan'),
+    kanchan: flat('kanchan'),
+    tanki: flat('tanki'),
+  },
+  shanpon: flat('shanpon').map(() => flat('shanpon')),
+}
+
+/** One class's share, in every bucket: a uniform prior draws no distinction between ranks either,
+ *  so the array is constant and `bucketOf` picks whichever entry of it. */
+function flat(shape: WaitShape): number[] {
+  const share = CLASS_MASS[shape] / (CLASS_SIZE[shape] ?? 1)
+  return Array.from({ length: 10 }, () => share)
+}
+
 /** Prior weight of one hypothesis, before availability. Kokushi never arrives here: its weight is
  *  a share of every other hypothesis rather than a bucket of its own, so it is passed in. */
 function priorWeight(hypothesis: Hypothesis, prior: ShapePrior): number {
-  if (prior.kind === 'uniform' || hypothesis.shape === 'kokushi') return 1
+  if (hypothesis.shape === 'kokushi') return 1
+  // a measured weight is a count aggregated over the kinds sharing its bucket, so it is divided
+  // down to one hypothesis; a uniform one is already per hypothesis (`UNIFORM_PRIOR`)
+  const share = prior.kind === 'measured'
   if (hypothesis.shape === 'shanpon') {
     const [low, high] = [bucketOf(hypothesis.waits[0]), bucketOf(hypothesis.waits[1])].sort(
       (a, b) => a - b,
     )
-    return prior.shanpon[low][high] / shanponBucketSize(low, high)
+    return prior.shanpon[low][high] / (share ? shanponBucketSize(low, high) : 1)
   }
   // indexed by the lowest tile the shape waits on, which is `waits[0]` by construction
   const bucket = bucketOf(hypothesis.waits[0])
-  return prior.weights[hypothesis.shape][bucket] / bucketSize(bucket)
+  return prior.weights[hypothesis.shape][bucket] / (share ? bucketSize(bucket) : 1)
 }
 
 /**
@@ -372,8 +455,9 @@ function build(
     return term
   }
   const base = weightOverride ?? priorWeight(hypothesis, prior)
-  term.weight =
-    prior.kind === 'uniform' ? base * ways : base * (ways / NEUTRAL_WAYS[hypothesis.shape])
+  // a ratio under either prior, never an absolute count — `ShapePrior`'s own note says why raw
+  // `ways` is not "pure combinatorics" but a weighting by `copies ** (tiles in the shape)`
+  term.weight = base * (ways / NEUTRAL_WAYS[hypothesis.shape])
   return term
 }
 

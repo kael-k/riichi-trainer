@@ -23,15 +23,25 @@ export interface EvBands {
  * table, the `TIER_SCORE` precedent — tune here, never scatter". Sized off
  * `evGrade.bench.test.ts`'s measured spread of `foldRanking`'s own `best.ev - worst.ev` over real
  * seeded fold turns (30 seeds, ~300 turns each): `statistical` at p25/median/p75/p90 =
- * 323/410/586/1036, `houou` at 646/855/1275/2168 — roughly double, which the derived deal-in cost
- * landing at about half the measured one already predicts
- * (`evModel.ts#TYPICAL_CLOSED_YAKU_HAN`'s own note). `near` sits under the first quartile so most
+ * 412/538/749/1179, `houou` at 646/855/1262/1993. `near` sits under the first quartile so most
  * turns have room to be wrong in; `wrong` sits near the median so a genuinely bad throw — not just
  * a second-best one — is what crosses it. **An imperfect start is accepted; adjustability is the
  * requirement** (`plans/EV-5` §2.5) — re-fix these after the backtest that section's §2.13 owes.
+ *
+ * **`statistical`'s pair moved when its prior did.** It used to read 323/410/586/1036, banded
+ * 100/400, and that spread was the flat distribution `dealIn.ts#UNIFORM_PRIOR` used to produce —
+ * a hand whose safest and most dangerous tile were a few hundred points apart because every tile
+ * on the board priced about the same. With a real shape prior the fold branch separates properly
+ * and the whole spread widened by about a third. `houou` did not move: its own prior never
+ * changed. The two are no longer a clean factor of two apart, but the derived deal-in cost still
+ * lands at about half the measured one (`evModel.ts#TYPICAL_CLOSED_YAKU_HAN`'s own note), which is
+ * what keeps `houou`'s pair the wider of the two.
+ *
+ * A reader who already has these persisted keeps their stored pair — that is what the per-model
+ * record is for, and the settings row is where they change it.
  */
 export const FOLD_EV_BANDS: Record<EvModelName, EvBands> = {
-  statistical: { near: 100, wrong: 400 },
+  statistical: { near: 150, wrong: 550 },
   houou: { near: 200, wrong: 800 },
 }
 
