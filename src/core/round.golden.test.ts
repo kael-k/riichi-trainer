@@ -217,12 +217,14 @@ describe('match golden determinism', () => {
    * and points cannot see — 44000 with three seats behind is a first place worth more than any
    * hand on the table, and the seat starts declining risk it would otherwise take.
    *
-   * The two seeds are a **re-scan, not a constant**: which walls happen to divide the two
-   * currencies is a property of the arithmetic, so a deliberate change to the identity moves them.
+   * The seeds are a **re-scan, not a constant**: which walls happen to divide the two currencies
+   * is a property of the arithmetic, so a deliberate change to the identity moves them.
    * `golden-12`/`golden-19` were the pair before the win term stopped counting `P(win)` twice;
-   * `golden-2`/`golden-6` after that; `golden-2`/`golden-8` after every decision point was priced.
-   * Each is the whole twenty-seed sweep re-run. What the test pins is the claim — the objective is
-   * a switch, not a label — never these particular walls.
+   * `golden-2`/`golden-6` after that; `golden-2`/`golden-8` after every decision point was priced;
+   * `golden-2`/`golden-6`/`golden-16` since the candidate union stopped padding a quiet board with
+   * its two lowest tile ids and a tie stopped resolving toward 1m. Each is the whole twenty-seed
+   * sweep re-run. What the test pins is the claim — the objective is a switch, not a label — never
+   * these particular walls.
    */
   it('an ev seat playing for placement does not play the same hand as one playing for points', () => {
     const allLast = createMatch(false, {
@@ -236,11 +238,11 @@ describe('match golden determinism', () => {
       algorithms: ['ev'],
       ev: [{ model: 'houou', objective }],
     })
-    const diverged = ['golden-2', 'golden-8'].filter(
+    const diverged = ['golden-2', 'golden-6', 'golden-16'].filter(
       (seed) =>
         hash(serialize(playRound(seed, 4, evSeat('placement')).events)) !==
         hash(serialize(playRound(seed, 4, evSeat('points')).events)),
     )
-    expect(diverged).toEqual(['golden-2', 'golden-8'])
+    expect(diverged).toEqual(['golden-2', 'golden-6', 'golden-16'])
   })
 })

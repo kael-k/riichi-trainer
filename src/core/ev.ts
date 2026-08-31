@@ -70,6 +70,33 @@ import { TILES_PER_KIND } from './wall'
  * and nearly ten to a last-place seat in South 4, which is the whole reason the switch exists.
  */
 
+/**
+ * This tile's deal-in risk split across the threats it could land on, **scaled so the shares sum
+ * to the union rather than past it**.
+ *
+ * The terms are kept per seat because the placement objective needs to know who the points go to —
+ * dealing into the seat above you and the seat below you are not the same decision. But summing
+ * the raw per-threat probabilities double-counts the boards where more than one seat is waiting on
+ * the same tile, and a discard can only deal into one of them. Measured against two threats on an
+ * open pool: up to **0.88pp** of over-charge on a single tile (5m at 18.72% summed against the
+ * union's 17.85%), and it rides on the honba too, since each term adds the repeat counter itself.
+ *
+ * With one threat `combineThreats` returns that threat's own array, so the scale is exactly 1 and
+ * nothing moves — which is what keeps every single-threat golden hash where it was.
+ */
+function dealInShares(
+  tile: TileId,
+  threats: readonly ThreatCost[],
+  risks: readonly DealInRisk[][],
+  combined: DealInRisk[],
+): number[] {
+  const raw = threats.map((_, j) => risks[j][tile].probability)
+  const sum = raw.reduce((total, p) => total + p, 0)
+  if (sum === 0) return raw
+  const scale = combined[tile].probability / sum
+  return raw.map((p) => p * scale)
+}
+
 /** One line of the arithmetic, in the shape a reader can check: how often, times how much. */
 export interface EvTerm {
   kind: 'win' | 'dealIn' | 'danger' | 'notWinning' | 'tenpai'
@@ -189,8 +216,8 @@ export function rankDiscards(view: SeatView, opts: EvOptions = {}): DiscardEv[] 
       notWinning,
     ),
   )
-  // total order: expected points, then the safer tile, then the lower id — never sort stability
-  priced.sort((a, b) => b.ev - a.ev || a.dealIn - b.dealIn || a.tile - b.tile)
+  // a total order, never sort stability — see `byValue`
+  priced.sort(byValue(board.dora))
   return priced
 }
 
@@ -538,15 +565,27 @@ function handShape(view: SeatView): HandShape {
   }
 }
 
-/** The tiles worth pricing: the fastest few, plus the safest few. Duplicates collapse, so a tile
- *  that is both is counted once and the union is usually smaller than the sum. */
+/**
+ * The tiles worth pricing: the fastest few, plus the safest few. Duplicates collapse, so a tile
+ * that is both is counted once and the union is usually smaller than the sum.
+ *
+ * **With nobody declared there is no safe half at all**, and that is not an optimisation. Every
+ * entry of `combined` is zero on a quiet board, so the sort falls straight through to its `a - b`
+ * tie-break and the "safest" tiles are simply the two lowest ids in the hand — measured at 216 of
+ * 216 quiet boards. That spends two of five slots on nothing, and it spends them at the manzu end
+ * of the hand, which is where a dora is as likely to be as anywhere. A board with no threats on it
+ * is one where the fastest tiles are the only candidates there are.
+ */
 function candidateUnion(view: SeatView, combined: DealInRisk[]): TileId[] {
   const held = heldTiles(view)
   const ranked = evaluateDiscards(view.hand, view.seen, view.sanma)
   const fast = ranked.slice(0, EV_FAST_CANDIDATES).map((option) => option.discard)
-  const safe = [...held]
-    .sort((a, b) => combined[a].probability - combined[b].probability || a - b)
-    .slice(0, EV_SAFE_CANDIDATES)
+  const safe =
+    view.threats.length === 0
+      ? []
+      : [...held]
+          .sort((a, b) => combined[a].probability - combined[b].probability || a - b)
+          .slice(0, EV_SAFE_CANDIDATES)
   const union = new Set([...fast, ...safe])
   // `evaluateDiscards` ranks by kind, so everything it names is held; the safe list came from the
   // hand itself. A hand with fewer distinct kinds than the union asks for just returns fewer.
@@ -557,6 +596,34 @@ function heldTiles(view: SeatView): TileId[] {
   const held: TileId[] = []
   for (let id = 0; id < NUM_TILE_TYPES; id++) if (view.hand.counts[id] > 0) held.push(id)
   return held
+}
+
+/**
+ * The total order both rankings sort by: expected points, then the safer tile, **then the tile
+ * that is not a dora**, then the lowest id.
+ *
+ * The dora step is not a preference the identity failed to price — it is what to do when the
+ * identity has priced nothing at all. At the end of a hand that cannot reach tenpai, every term is
+ * the same for every candidate: `soloWin` and `soloTenpai` are zero, `notWinning` is a constant,
+ * and with nobody declared every deal-in term is zero too. Measured over 287 priced turns, **1.7%
+ * end in an exact tie across every candidate** — and `a.tile - b.tile` then throws whatever sits
+ * furthest toward 1m, which is how an `'ev'` seat came to hand a dora to a tenpai opponent on the
+ * last discard of a hand it had already given up on.
+ *
+ * A dora is the right thing to keep on that tie for the reason the tie exists: the model has run
+ * out of things to say, and holding the tile that is worth a han if the hand is somehow still
+ * alive costs nothing when it isn't. It reads redness nowhere — the ranking is per kind, and
+ * `round.ts#pickTile` already throws the plain copy of a pair first.
+ *
+ * `board.dora` is the indicators already resolved, so this is a set membership and not a scan.
+ */
+function byValue(dora: readonly TileId[]): (a: DiscardEv, b: DiscardEv) => number {
+  const isDora = new Set(dora)
+  return (a, b) =>
+    b.ev - a.ev ||
+    a.dealIn - b.dealIn ||
+    Number(isDora.has(a.tile)) - Number(isDora.has(b.tile)) ||
+    a.tile - b.tile
 }
 
 /**
@@ -607,8 +674,9 @@ function evTerms(
   }
 
   // this turn's throw, per threat, so an explanation can name which seat each cost belongs to
+  const shares = tile === null ? [] : dealInShares(tile, threats, risks, combined)
   for (let j = 0; tile !== null && j < threats.length; j++) {
-    const probability = risks[j][tile].probability
+    const probability = shares[j]
     if (probability === 0) continue
     // the points go *to* that seat, which is worth naming under the placement objective: dealing
     // into the seat above you and dealing into the seat below you are the same points and are not
@@ -869,6 +937,18 @@ function dealInPrice(
  * exactly what `giveUpCost` already prices — so no DP runs and this is milliseconds, not the DP's
  * cost per candidate `rankDiscards` pays.
  *
+ * **Stated ceiling: the later-turn walk is the same for every candidate.** `turnRisks` is handed
+ * `view` unchanged, so the sequence it produces is the profile of the *whole* hand rather than of
+ * the hand minus the tile about to leave it; the candidates differ only through `alive`, which is
+ * this tile's own survival. That makes "will I still have a safe tile in three turns" — the
+ * question this module's own header says the turn-by-turn integration exists to answer —
+ * invisible to a grader reading these numbers. Spending the hand's last genbutsu now and spending
+ * its most dangerous tile now leave the same priced future.
+ *
+ * Fixing it means re-running `turnRisks` per candidate against the thirteen tiles left, which is
+ * cheap (no DP) but moves every fold grade, so it wants its own change and its own re-measured
+ * `FOLD_EV_BANDS`. Until then this understates the cost of throwing a scarce safe tile early.
+ *
  * This is the number the folding trainer grades against (`plans/EV-5` §2.5/§2.8): the drill's own
  * context is full fold, so the fold branch is the whole answer, and reading it from here rather
  * than writing a second formula is what keeps a model change move the trainer's grades with it —
@@ -884,8 +964,9 @@ export function foldRanking(view: SeatView, opts: EvOptions = {}): DiscardEv[] {
 
   const priced = heldTiles(view).map((tile) => {
     const terms: EvTerm[] = []
+    const shares = dealInShares(tile, threats, risks, combined)
     for (let j = 0; j < threats.length; j++) {
-      const probability = risks[j][tile].probability
+      const probability = shares[j]
       if (probability === 0) continue
       const seat = view.threats[j].seat
       const cost = value(-(model.dealInCost(threats[j], board) + honba), seat)
@@ -919,7 +1000,7 @@ export function foldRanking(view: SeatView, opts: EvOptions = {}): DiscardEv[] {
   })
 
   // same total order `rankDiscards` sorts by — never sort stability
-  priced.sort((a, b) => b.ev - a.ev || a.dealIn - b.dealIn || a.tile - b.tile)
+  priced.sort(byValue(board.dora))
   return priced
 }
 

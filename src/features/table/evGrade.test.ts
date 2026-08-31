@@ -42,11 +42,12 @@ describe('gradeEv', () => {
     expect(grade.quality).toBe(0)
   })
 
-  it("falls back to the best entry if the tile isn't in the ranking", () => {
+  // it used to fall back to `ranking[0]`, which grades an unpriced tile `delta: 0` — full marks.
+  // Both callers price every held tile, so the only way to reach this is a ranking that stopped
+  // being exhaustive, and the symptom of that would be a trainer marking every discard correct
+  it('refuses to grade a tile the ranking never priced', () => {
     const ranked = ranking([100, 0])
-    const grade = gradeEv(ranked, 99 as never, bands)
-    expect(grade.yours).toBe(grade.best)
-    expect(grade.correct).toBe(true)
+    expect(() => gradeEv(ranked, 99 as never, bands)).toThrow(/not in the ranking/)
   })
 })
 

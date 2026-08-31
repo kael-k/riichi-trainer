@@ -84,7 +84,16 @@ export interface EvGrade {
  */
 export function gradeEv(ranking: readonly DiscardEv[], tile: TileId, bands: EvBands): EvGrade {
   const best = ranking[0]!
-  const yours = ranking.find((entry) => entry.tile === tile) ?? best
+  const yours = ranking.find((entry) => entry.tile === tile)
+  // A tile the ranking never priced has no grade, and falling back to `best` would hand it
+  // `delta: 0` — full marks for every discard the ranking happened not to cover. Both callers pass
+  // an exhaustive ranking (`table.ts#pushRankingOf` forces `exhaustive: true`, `core/ev.ts#
+  // foldRanking` walks `heldTiles`), so this cannot fire today; it throws rather than returning a
+  // silent pass because the failure mode of the cheap candidate union is "everything is correct",
+  // which no reader would ever notice.
+  if (!yours) {
+    throw new Error(`gradeEv: tile ${tile} is not in the ranking — it must price every held tile`)
+  }
   const delta = best.ev - yours.ev
   const correct = delta <= bands.near
   const span = bands.wrong - bands.near
