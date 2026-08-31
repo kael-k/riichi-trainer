@@ -22,6 +22,9 @@
     "dealtMarker": "配牌",
     "liveWallMarker": "山",
     "deadWallMarker": "王牌",
+    "aboutTrainer": "概要",
+    "aboutTrainerTitle": "{{title}}について",
+    "learnMoreWiki": "riichi.wikiで詳しく見る",
     "rewind": "この操作の前まで巻き戻す",
     "undoAction": "直前の操作を取り消す",
     "iosInstallHint": "ホーム画面に追加するとSafariのバーが消えます。共有ボタンから「ホーム画面に追加」を選んでください。",
@@ -163,6 +166,9 @@
     "logDrawer": "ログを表示",
     "roundLine": "{{wind}}{{number}}局",
     "roundLineRepeat": "{{wind}}{{number}}局・{{repeat}}本場"
+  },
+  "glossary": {
+    "ariaLabel": "説明: {{term}}"
   },
   "home": {
     "title": "リーチトレーナー",

@@ -695,5 +695,7 @@ Glossary rules (`features/i18n/glossary.ts`, marked inline with `<GlossaryTerm i
 - `src/features/i18n/trainerLinks.ts` — `TRAINER_WIKI`
 - `src/features/i18n/locales/{en,ja,zh,it}.json` — `trainer.<name>.*`
 
-`ja`/`zh` carry fewer keys than `en`/`it`, so a new shared key can land in two locales with nothing
-failing. Add all four.
+`ja`/`zh` carry fewer keys than `en`/`it` by design (glossary terms, yaku tables, trainer intros,
+`_one` plurals — `src/features/i18n/localeSpecificKeys.ts`), so add all four anyway:
+`locales.test.ts` fails if a new shared key lands in only two locales, but it can't tell a genuine
+gap from one that belongs on that allowlist.

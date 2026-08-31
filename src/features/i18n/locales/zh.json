@@ -22,6 +22,9 @@
     "dealtMarker": "配牌",
     "liveWallMarker": "牌山",
     "deadWallMarker": "死墙",
+    "aboutTrainer": "关于",
+    "aboutTrainerTitle": "关于{{title}}",
+    "learnMoreWiki": "在riichi.wiki上了解更多",
     "rewind": "撤回到此操作之前",
     "undoAction": "撤销上一步操作",
     "iosInstallHint": "将本应用添加到主屏幕即可去掉Safari的工具栏——点击“分享”,然后选择“添加到主屏幕”。",
@@ -163,6 +166,9 @@
     "logDrawer": "显示记录",
     "roundLine": "{{wind}}{{number}}局",
     "roundLineRepeat": "{{wind}}{{number}}局・{{repeat}}本场"
+  },
+  "glossary": {
+    "ariaLabel": "说明：{{term}}"
   },
   "home": {
     "title": "立直训练器",
