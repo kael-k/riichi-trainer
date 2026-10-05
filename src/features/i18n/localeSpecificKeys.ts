@@ -5,12 +5,16 @@
 export const LOCALE_SPECIFIC_KEYS: readonly string[] = [
   // Glossary term/desc pairs: jargon a Japanese or Chinese player already reads as its own
   // word (ukeire, tedashi, furiten, ...) — see the glossary rule in CLAUDE.md.
+  'glossary.chinitsu.desc',
+  'glossary.chinitsu.term',
   'glossary.dora.desc',
   'glossary.dora.term',
   'glossary.furiten.desc',
   'glossary.furiten.term',
   'glossary.genbutsu.desc',
   'glossary.genbutsu.term',
+  'glossary.honitsu.desc',
+  'glossary.honitsu.term',
   'glossary.shanten.desc',
   'glossary.shanten.term',
   'glossary.suji.desc',
@@ -69,6 +73,7 @@ export const LOCALE_SPECIFIC_KEYS: readonly string[] = [
   'scoring.yakumanTranslated.tsuuiisou',
 
   // In-app trainer intros: long-form prose, not yet translated.
+  'trainer.chinitsu.intro',
   'trainer.efficiency.intro',
   'trainer.efficiencySolo.intro',
   'trainer.folding.intro',

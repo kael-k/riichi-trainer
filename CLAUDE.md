@@ -397,6 +397,23 @@ URL names must gate on `fromLink`**, or "new hand" re-poses the link's hand fore
 forward, so the next hand is dealt already revealed with the previous feedback in `lastResult` —
 which holds **its own tiles**, since the on-screen hand has moved on.
 
+**Chinitsu (`/chinitsu`) is the same stream, answered with a set of tiles** — right only when it is
+exactly the waits. It has its own codec (`chinitsuUrl.ts`), so `Situation`'s `seed`/`hand` stay
+shanten's.
+
+- `core/waits.ts#readWaits` is the one notion of a wait and of its readings. It **drops a tile the
+  hand already holds all four of** (karaten), the rule `improvingTiles` applies, and
+  `waits.test.ts` holds the two to the same set. `core/flush.ts#dealFlushHand` rejects any hand
+  with a karaten wait, so only a link can ever pose one.
+- **The answer row is derived from the hand** (all nine of each suit it holds, plus its honours),
+  never from the suit setting — a linked hand can be any suit, or several.
+- **Manzu reads as pinzu under sanma** (`resolveFlushSuit`): the stored choice is untouched, the
+  button disabled, and the dealt suit is the resolved one.
+- **A not-tenpai hand's answer is the empty set** (`submitNotTenpai`, or confirming nothing). The
+  `noten` option deals them 1-shanten only, and draws from the RNG **only when on**, so a seed deals
+  the same stream it always did with it off (`flush.test.ts` pins three). Its "Not tenpai" button
+  shows on every hand while the option is on — on the noten ones alone it would be the answer.
+
 **The two efficiency trainers are two routes, not a checkbox.** Both run `wins: false` (a hand
 ending on someone else's tsumo would cut a per-turn drill short on a result the player did not
 cause) and `riichi: false`; solo also runs `calls: false`. Both stop at their own seat's discard

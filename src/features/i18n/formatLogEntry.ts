@@ -14,6 +14,15 @@ interface ShantenResultParams {
   elapsedMs: number
 }
 
+interface ChinitsuResultParams {
+  hand: number
+  /** Tenhou codes, ascending — the sentence draws them as tiles (`splitTileCodes`). */
+  waits: string[]
+  picked: string[]
+  correct: boolean
+  elapsedMs: number
+}
+
 interface ScoringResultParams {
   hand: number
   han: number
@@ -109,6 +118,22 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
       via,
       result: t(correct ? 'shanten.correct' : 'shanten.wrong'),
       time,
+    })
+  }
+  // the waits and (when wrong) the picks travel as raw codes and are joined here, so the sentence
+  // draws them as tiles in every language and "none" is translated at render like the rest
+  if (entry.key === 'log.chinitsu.result') {
+    const { hand, waits, picked, correct, elapsedMs } =
+      entry.params as unknown as ChinitsuResultParams
+    const none = t('chinitsu.none')
+    return t('log.chinitsu.result', {
+      hand,
+      waits: waits.length > 0 ? waits.join(' ') : t('chinitsu.noWaits'),
+      picked: correct
+        ? ''
+        : t('chinitsu.youPicked', { tiles: picked.length > 0 ? picked.join(' ') : none }),
+      result: t(correct ? 'chinitsu.correct' : 'chinitsu.wrong'),
+      time: ` ${t('chinitsu.inTime', { time: formatElapsedMs(elapsedMs) })}`,
     })
   }
   if (entry.key === 'log.scoring.result') {

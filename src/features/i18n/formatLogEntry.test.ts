@@ -73,6 +73,48 @@ describe('splitTileCodes', () => {
   })
 })
 
+describe('the chinitsu result row', () => {
+  const row = (correct: boolean, picked: string[]) =>
+    entry('log.chinitsu.result', {
+      hand: 2,
+      waits: ['1p', '4p', '7p'],
+      picked,
+      correct,
+      elapsedMs: 2345,
+    })
+
+  it('draws the waits as tiles, and the picks too when they were wrong, in every language', () => {
+    const waits = [PIN, PIN + 3, PIN + 6].map((id) => ({ id, red: false }))
+    for (const lng of ['en', 'ja', 'zh', 'it']) {
+      const t = i18n.getFixedT(lng)
+      expect(tiles(formatLogEntry(row(true, ['1p', '4p', '7p']), t)), lng).toEqual(waits)
+      expect(tiles(formatLogEntry(row(false, ['4p']), t)), lng).toEqual([
+        ...waits,
+        { id: PIN + 3, red: false },
+      ])
+    }
+  })
+
+  it('says a hand with no waits is not tenpai', () => {
+    const t = i18n.getFixedT('en')
+    const noten = entry('log.chinitsu.result', {
+      hand: 3,
+      waits: [],
+      picked: [],
+      correct: true,
+      elapsedMs: 1000,
+    })
+    expect(formatLogEntry(noten, t)).toBe('Hand 3: waits none (not tenpai) — correct in 0:01.000')
+  })
+
+  it('names an empty pick rather than leaving a gap', () => {
+    const t = i18n.getFixedT('en')
+    expect(formatLogEntry(row(false, []), t)).toBe(
+      'Hand 2: waits 1p 4p 7p, you picked none — wrong in 0:02.345',
+    )
+  })
+})
+
 describe('the locales the tokenizer runs over', () => {
   /** Every string in a translation file, with the path that reaches it. */
   function* strings(node: unknown, path: string): Generator<[string, string]> {

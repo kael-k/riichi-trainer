@@ -205,6 +205,14 @@
     "uraDora": {
       "term": "Ura dora",
       "desc": "A second, hidden dora indicator revealed only for hands that win by riichi. It rewards riichi specifically, on top of whatever yaku and dora the hand already has."
+    },
+    "chinitsu": {
+      "term": "Chinitsu",
+      "desc": "Full flush: every tile in the hand from one suit, with no honours. Worth 6 han closed and 5 open, and the hand whose waits are hardest to read."
+    },
+    "honitsu": {
+      "term": "Honitsu",
+      "desc": "Half flush: one suit plus honours, and nothing from the other two suits. Worth 3 han closed and 2 open."
     }
   },
   "home": {
@@ -228,6 +236,11 @@
       "title": "Shanten trainer",
       "desc": "Guess how far a hand is from tenpai.",
       "intro": "What it is: a hand appears and you say its shanten — how many tile exchanges it still needs to reach tenpai. 0 means it is already tenpai and waiting to win, 1 means one useful swap away, and so on.\n\nWhy it matters: shanten is the number every discard is measured against, since \"which tile is better\" almost always means \"which one keeps shanten lower\". Reading it at a glance is what makes the rest of the game fast.\n\nHow to play: the hand is up and the clock is already running, so answer with the buttons (or type the number) and the next hand is dealt straight away, the previous answer kept beside it. Pause stops the clock; reset hides the hand and deals a fresh one, since a hand you have already studied cannot be timed again."
+    },
+    "chinitsu": {
+      "title": "Flush waits trainer",
+      "desc": "Find every wait of a hand built from one suit.",
+      "intro": "What it is: a hand that is already tenpai and built from one suit — a full flush (chinitsu), every tile from that suit, or a half flush (honitsu), the suit plus honours. You name every tile that would complete it.\n\nWhy it matters: a flush packs so many overlapping shapes into nine ranks that its waits are notoriously hard to see, and a wait you miss is a win you pass up — or a furiten you never noticed. Reading them at a glance is a skill of its own, and it only comes from practice.\n\nHow to play: tap every tile the hand is waiting on, then confirm (on a keyboard, 1–9 toggles a tile and Enter confirms). Only the exact set is correct. Each answer's log row lists every wait and, for each one, how the thirteen tiles split into complete sets (mentsu), the pair (toitsu) and the shape still waiting (taatsu). Settings choose the suit, whether hands are full flushes, half flushes or both, and whether some hands that are not tenpai are mixed in — answer those with Not tenpai (or 0)."
     },
     "scoring": {
       "title": "Scoring trainer",
@@ -294,6 +307,45 @@
       "standard": "standard",
       "chiitoitsu": "chiitoitsu",
       "kokushi": "kokushi"
+    }
+  },
+  "chinitsu": {
+    "correctScore": "Correct: {{correct}} / {{total}}",
+    "avgTime": "avg {{time}}",
+    "hint": "Tap every tile that completes the hand, then confirm",
+    "hintNoten": "Tap every tile that completes the hand and confirm — or answer Not tenpai",
+    "confirm": "Confirm waits",
+    "notTenpai": "Not tenpai",
+    "correctLabel": "Correct",
+    "wrongLabel": "Wrong",
+    "correct": "correct",
+    "wrong": "wrong",
+    "inTime": "in {{time}}",
+    "revealHand": "Reveal hand",
+    "none": "none",
+    "noWaits": "none (not tenpai)",
+    "youPicked": ", you picked {{tiles}}",
+    "verdictWaits": "{{label}} — waits:",
+    "verdictNoWaits": "{{label}} — not tenpai",
+    "shape": {
+      "ryanmen": "Ryanmen",
+      "kanchan": "Kanchan",
+      "penchan": "Penchan",
+      "shanpon": "Shanpon",
+      "tanki": "Tanki",
+      "chiitoitsu": "Chiitoitsu tanki",
+      "kokushi": "Kokushi musou"
+    },
+    "suit": {
+      "m": "Manzu",
+      "p": "Pinzu",
+      "s": "Souzu"
+    },
+    "settings": {
+      "suit": "Suit",
+      "hands": "Hands",
+      "handsBoth": "Both",
+      "noten": "Include hands that are not tenpai"
     }
   },
   "scoring": {
@@ -633,13 +685,25 @@
     "shanten": {
       "result": "Hand {{hand}}: guessed {{guess}}, actual {{actual}}{{via}} — {{result}}{{time}}"
     },
+    "chinitsu": {
+      "result": "Hand {{hand}}: waits {{waits}}{{picked}} — {{result}}{{time}}",
+      "missed": "Missed",
+      "notWaits": "Not waits",
+      "readings": "How each wait completes the hand",
+      "noten": "Not tenpai: {{shanten}}-shanten"
+    },
     "scoring": {
       "result": "Hand {{hand}}: {{han}} han — {{result}}{{time}}",
       "field": "{{label}}: {{expected}}",
       "fieldWrong": "{{label}}: {{expected}} — you answered {{answer}}",
       "detailLine": "{{label}} — {{value}}"
     },
-    "evBand": "Graded on EV ({{model}}): {{delta}} points off best (correct ≤{{near}}, wrong beyond {{wrong}})"
+    "evBand": "Graded on EV ({{model}}): {{delta}} points off best (correct ≤{{near}}, wrong beyond {{wrong}})",
+    "block": {
+      "mentsu": "Mentsu (complete set)",
+      "toitsu": "Toitsu (pair)",
+      "wait": "Waiting shape"
+    }
   },
   "evGrading": {
     "model": "EV model",

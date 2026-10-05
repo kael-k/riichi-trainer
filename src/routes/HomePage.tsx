@@ -50,6 +50,13 @@ const MODES = [
     wikiUrl: TRAINER_WIKI.scoring,
   },
   {
+    to: '/chinitsu',
+    titleKey: 'trainer.chinitsu.title',
+    descKey: 'trainer.chinitsu.desc',
+    introKey: 'trainer.chinitsu.intro',
+    wikiUrl: TRAINER_WIKI.chinitsu,
+  },
+  {
     to: '/match',
     titleKey: 'trainer.match.title',
     descKey: 'trainer.match.desc',

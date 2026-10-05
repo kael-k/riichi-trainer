@@ -4,6 +4,9 @@ export const TRAINER_WIKI = {
   efficiency: 'https://riichi.wiki/Tile_efficiency',
   efficiencySolo: 'https://riichi.wiki/Tile_efficiency',
   shanten: 'https://riichi.wiki/Shanten',
+  // the yaku's own page — riichi.wiki spells it Chiniisou, not the Chinitsu the app uses. Honitsu,
+  // the trainer's other hand, has its own glossary entry beside the setting that chooses it
+  chinitsu: 'https://riichi.wiki/Chiniisou',
   scoring: 'https://riichi.wiki/Japanese_mahjong_scoring_rules',
   folding: 'https://riichi.wiki/Defense',
   // hand-picked, not derived from the key name: the lab's headline surface is the ukeire ranking

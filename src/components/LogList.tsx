@@ -5,7 +5,14 @@ import { useSearchParams } from 'react-router'
 import { formatLogDetail, formatLogEntry, splitTileCodes } from '../features/i18n/formatLogEntry'
 import { useTermName } from '../features/i18n/useTermName'
 import { copyText } from '../lib/clipboard'
-import { useLog, type LogBar, type LogDetail, type LogEntry, type LogSeverity } from '../store/log'
+import {
+  useLog,
+  type LogBar,
+  type LogBlock,
+  type LogDetail,
+  type LogEntry,
+  type LogSeverity,
+} from '../store/log'
 import { Tile, UkeireTiles } from './tiles/Tile'
 
 /** The verdict spine down the log's left edge, one segment per row: read top to bottom it *is* the
@@ -256,9 +263,44 @@ export function DetailLine({ detail }: { detail: LogDetail }) {
           )}
         </span>
       )}
+      {detail.blocks && detail.blocks.length > 0 && (
+        <Blocks blocks={detail.blocks} seam={tiles.length > 0} />
+      )}
       {detail.ukeire && detail.ukeire.length > 0 && <UkeireTiles tiles={detail.ukeire} />}
       {detail.bars && detail.bars.length > 0 && <EvBars bars={detail.bars} />}
     </div>
+  )
+}
+
+/** A hand split into its blocks, one cluster each, the waiting part outlined — the line's own
+ *  tiles (the wait it is about) lead, so with `seam` this starts past the same hairline a subject
+ *  and its evidence are split by. Wraps *between* blocks, never inside one, the way `UkeireTiles`
+ *  breaks between suits. Each cluster is a named group, so the role is not carried by the outline
+ *  alone. */
+function Blocks({ blocks, seam }: { blocks: LogBlock[]; seam: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <span
+      className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 ${
+        seam ? 'border-l border-neutral-200 pl-1.5 dark:border-neutral-700' : ''
+      }`}
+    >
+      {blocks.map((block, i) => (
+        <span
+          key={i}
+          role="group"
+          aria-label={t(`log.block.${block.role}`)}
+          title={t(`log.block.${block.role}`)}
+          className={`flex ${
+            block.role === 'wait'
+              ? 'rounded-sm outline-1 outline-offset-1 outline-amber-500 outline-dashed'
+              : ''
+          }`}
+        >
+          <Tiles tiles={block.tiles} />
+        </span>
+      ))}
+    </span>
   )
 }
 
