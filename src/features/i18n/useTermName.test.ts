@@ -6,8 +6,11 @@ import { useTermName } from './useTermName'
 
 describe('useTermName', () => {
   afterEach(async () => {
-    await act(() => i18n.changeLanguage('en'))
-    useSettings.getState().setTranslatedTerms(true)
+    // both inside `act`: the hook is still mounted here, so either one re-renders it
+    await act(async () => {
+      await i18n.changeLanguage('en')
+      useSettings.getState().setTranslatedTerms(true)
+    })
   })
 
   it('names a yaku in the reader’s language, or in Japanese with translated terms off', () => {
