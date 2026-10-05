@@ -240,7 +240,7 @@
     "chinitsu": {
       "title": "Flush waits trainer",
       "desc": "Find every wait of a hand built from one suit.",
-      "intro": "What it is: a hand that is already tenpai and built from one suit — a full flush (chinitsu), every tile from that suit, or a half flush (honitsu), the suit plus honours. You name every tile that would complete it.\n\nWhy it matters: a flush packs so many overlapping shapes into nine ranks that its waits are notoriously hard to see, and a wait you miss is a win you pass up — or a furiten you never noticed. Reading them at a glance is a skill of its own, and it only comes from practice.\n\nHow to play: tap every tile the hand is waiting on, then confirm (on a keyboard, 1–9 toggles a tile and Enter confirms). Only the exact set is correct. Each answer's log row lists every wait and, for each one, how the thirteen tiles split into complete sets (mentsu), the pair (toitsu) and the shape still waiting (taatsu). Settings choose the suit, and whether hands are full flushes, half flushes or both."
+      "intro": "What it is: a hand that is already tenpai and built from one suit — a full flush (chinitsu), every tile from that suit, or a half flush (honitsu), the suit plus honours. You name every tile that would complete it.\n\nWhy it matters: a flush packs so many overlapping shapes into nine ranks that its waits are notoriously hard to see, and a wait you miss is a win you pass up — or a furiten you never noticed. Reading them at a glance is a skill of its own, and it only comes from practice.\n\nHow to play: tap every tile the hand is waiting on, then confirm (on a keyboard, 1–9 toggles a tile and Enter confirms). Only the exact set is correct. Each answer's log row lists every wait and, for each one, how the thirteen tiles split into complete sets (mentsu), the pair (toitsu) and the shape still waiting (taatsu). Settings choose the suit, whether hands are full flushes, half flushes or both, and whether some hands that are not tenpai are mixed in — answer those with Not tenpai (or 0)."
     },
     "scoring": {
       "title": "Scoring trainer",
@@ -313,7 +313,9 @@
     "correctScore": "Correct: {{correct}} / {{total}}",
     "avgTime": "avg {{time}}",
     "hint": "Tap every tile that completes the hand, then confirm",
+    "hintNoten": "Tap every tile that completes the hand and confirm — or answer Not tenpai",
     "confirm": "Confirm waits",
+    "notTenpai": "Not tenpai",
     "correctLabel": "Correct",
     "wrongLabel": "Wrong",
     "correct": "correct",
@@ -321,6 +323,7 @@
     "inTime": "in {{time}}",
     "revealHand": "Reveal hand",
     "none": "none",
+    "noWaits": "none (not tenpai)",
     "youPicked": ", you picked {{tiles}}",
     "verdictWaits": "{{label}} — waits:",
     "verdictNoWaits": "{{label}} — not tenpai",
@@ -341,7 +344,8 @@
     "settings": {
       "suit": "Suit",
       "hands": "Hands",
-      "handsBoth": "Both"
+      "handsBoth": "Both",
+      "noten": "Include hands that are not tenpai"
     }
   },
   "scoring": {
@@ -685,7 +689,8 @@
       "result": "Hand {{hand}}: waits {{waits}}{{picked}} — {{result}}{{time}}",
       "missed": "Missed",
       "notWaits": "Not waits",
-      "readings": "How each wait completes the hand"
+      "readings": "How each wait completes the hand",
+      "noten": "Not tenpai: {{shanten}}-shanten"
     },
     "scoring": {
       "result": "Hand {{hand}}: {{han}} han — {{result}}{{time}}",

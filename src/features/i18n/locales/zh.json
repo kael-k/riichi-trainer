@@ -259,7 +259,9 @@
     "correctScore": "正确: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
     "hint": "选出所有能和牌的牌，然后确认",
+    "hintNoten": "选出所有能和牌的牌并确认，或回答「未听牌」",
     "confirm": "确认听牌",
+    "notTenpai": "未听牌",
     "correctLabel": "正确",
     "wrongLabel": "错误",
     "correct": "正确",
@@ -267,6 +269,7 @@
     "inTime": "{{time}}",
     "revealHand": "显示手牌",
     "none": "无",
+    "noWaits": "无（未听牌）",
     "youPicked": "，你选了 {{tiles}}",
     "verdictWaits": "{{label}} — 听牌:",
     "verdictNoWaits": "{{label}} — 未听牌",
@@ -287,7 +290,8 @@
     "settings": {
       "suit": "花色",
       "hands": "牌型",
-      "handsBoth": "两者"
+      "handsBoth": "两者",
+      "noten": "也出未听牌的手牌"
     }
   },
   "scoring": {
@@ -578,7 +582,8 @@
       "result": "第{{hand}}题: 听 {{waits}}{{picked}} — {{result}}{{time}}",
       "missed": "漏选",
       "notWaits": "不是听牌",
-      "readings": "每种听牌的拆解"
+      "readings": "每种听牌的拆解",
+      "noten": "未听牌（上听数 {{shanten}}）"
     },
     "scoring": {
       "result": "第{{hand}}题: {{han}}番 — {{result}}{{time}}",

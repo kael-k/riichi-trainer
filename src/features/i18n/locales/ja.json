@@ -259,7 +259,9 @@
     "correctScore": "正解数: {{correct}} / {{total}}",
     "avgTime": "平均 {{time}}",
     "hint": "和了牌になる牌をすべて選んで、確定してください",
+    "hintNoten": "和了牌をすべて選んで確定するか、「ノーテン」で回答してください",
     "confirm": "待ちを確定",
+    "notTenpai": "ノーテン",
     "correctLabel": "正解",
     "wrongLabel": "不正解",
     "correct": "正解",
@@ -267,6 +269,7 @@
     "inTime": "{{time}}",
     "revealHand": "手牌を表示",
     "none": "なし",
+    "noWaits": "なし（ノーテン）",
     "youPicked": "、回答 {{tiles}}",
     "verdictWaits": "{{label}} — 待ち:",
     "verdictNoWaits": "{{label}} — ノーテン",
@@ -287,7 +290,8 @@
     "settings": {
       "suit": "色",
       "hands": "手役",
-      "handsBoth": "両方"
+      "handsBoth": "両方",
+      "noten": "ノーテンの手牌も出題する"
     }
   },
   "scoring": {
@@ -578,7 +582,8 @@
       "result": "{{hand}}問目: 待ち {{waits}}{{picked}} — {{result}}{{time}}",
       "missed": "見逃した待ち",
       "notWaits": "待ちではない牌",
-      "readings": "各待ちの和了形"
+      "readings": "各待ちの和了形",
+      "noten": "ノーテン（{{shanten}}シャンテン）"
     },
     "scoring": {
       "result": "{{hand}}問目: {{han}}翻 — {{result}}{{time}}",

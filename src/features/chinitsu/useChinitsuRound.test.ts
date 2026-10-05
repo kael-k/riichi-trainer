@@ -10,7 +10,7 @@ import {
   type ChinitsuOptions,
 } from './useChinitsuRound'
 
-const OPTIONS: ChinitsuOptions = { suit: 'p', hands: 'both' }
+const OPTIONS: ChinitsuOptions = { suit: 'p', hands: 'both', noten: false }
 
 /** 1112345678999p — chuuren's shape, waiting on every pin. */
 const CHUUREN = (): ChinitsuLink => ({ hand: parseTenhou('1112345678999p') })
@@ -30,7 +30,7 @@ describe('useChinitsuRound', () => {
     // links are hoisted out of the render callback throughout: a fresh object per render is a
     // fresh navigation to `useLinkedHand`, which resets the stream on every one of them
     const link = { seed: 'deal' }
-    const options: ChinitsuOptions = { suit: 's', hands: 'chinitsu' }
+    const options: ChinitsuOptions = { suit: 's', hands: 'chinitsu', noten: false }
     const { result } = renderHook(() => useChinitsuRound(link, options))
     expect(result.current.hand).toHaveLength(13)
     expect(result.current.hand.every((t) => suitOf(t.id) === 's')).toBe(true)
@@ -131,11 +131,11 @@ describe('useChinitsuRound', () => {
   })
 
   it('re-deals under a new setting, and logs the new deal', () => {
-    let options: ChinitsuOptions = { suit: 'p', hands: 'chinitsu' }
+    let options: ChinitsuOptions = { suit: 'p', hands: 'chinitsu', noten: false }
     const link = { seed: 'settings' }
     const { result, rerender } = renderHook(() => useChinitsuRound(link, options))
     expect(suitOf(result.current.hand[0].id)).toBe('p')
-    options = { suit: 'm', hands: 'chinitsu' }
+    options = { suit: 'm', hands: 'chinitsu', noten: false }
     rerender()
     expect(result.current.hand.every((t) => suitOf(t.id) === 'm')).toBe(true)
     const dealt = useLog.getState().entries.filter((e) => e.key === 'log.dealtHand')
@@ -143,6 +143,53 @@ describe('useChinitsuRound', () => {
       expect.stringMatching(/^\d+p$/),
       expect.stringMatching(/^\d+m$/),
     ])
+  })
+})
+
+describe('useChinitsuRound with not-tenpai hands', () => {
+  beforeEach(() => useLog.getState().clear())
+
+  /** 11 22 345 678 999 — tenpai on a shanpon (1p/2p), so "Not tenpai" is the wrong answer. */
+  const SHANPON = (): ChinitsuLink => ({ hand: parseTenhou('1122345678999p') })
+
+  it('grades "Not tenpai" right on a hand with no waits, and says how far off it is', () => {
+    // three runs and four lone honours: two tiles short — a pair, then a fourth set
+    const link = { hand: parseTenhou('123456789p1234z') }
+    const { result } = renderHook(() => useChinitsuRound(link, OPTIONS))
+    act(() => result.current.toggle(PIN)) // picked, then overridden by the answer
+    act(() => result.current.submitNotTenpai())
+
+    expect(result.current.lastResult).toMatchObject({ correct: true, waits: [], picked: [] })
+    const [row] = graded()
+    expect(row.severity).toBe('ok')
+    expect(row.params).toMatchObject({ waits: [], picked: [], correct: true })
+    expect(row.detail).toEqual([{ key: 'log.chinitsu.noten', params: { shanten: 2 } }])
+  })
+
+  it('grades "Not tenpai" wrong on a hand that has waits', () => {
+    const link = SHANPON()
+    const { result } = renderHook(() => useChinitsuRound(link, OPTIONS))
+    act(() => result.current.submitNotTenpai())
+    expect(result.current.lastResult?.correct).toBe(false)
+    expect(graded()[0].detail?.[0]).toMatchObject({ key: 'log.chinitsu.missed', tone: 'error' })
+  })
+
+  it('deals some hands with no waits once the option is on, and re-deals when it flips', () => {
+    let options: ChinitsuOptions = { suit: 'p', hands: 'both', noten: false }
+    const link = { seed: 'noten-stream' }
+    const { result, rerender } = renderHook(() => useChinitsuRound(link, options))
+    const tenpaiOnly = result.current.hand
+    options = { ...options, noten: true }
+    rerender()
+    expect(result.current.hand).toHaveLength(13)
+    expect(result.current.hand).not.toEqual(tenpaiOnly)
+    let withoutWaits = 0
+    for (let i = 0; i < 40; i++) {
+      act(() => result.current.submitNotTenpai())
+      if (result.current.lastResult?.correct) withoutWaits++
+    }
+    expect(withoutWaits).toBeGreaterThan(0)
+    expect(withoutWaits).toBeLessThan(40)
   })
 })
 

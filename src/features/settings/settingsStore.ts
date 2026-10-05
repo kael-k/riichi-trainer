@@ -62,6 +62,9 @@ export interface Settings {
     suit: FlushSuit
     /** Which one-suit hands to pose: chinitsu, honitsu, or either, picked per hand. */
     hands: FlushHands
+    /** Mix in some hands of that kind that are not tenpai, answered "Not tenpai". Off by default:
+     *  "find the waits" is the drill, and "there may be none" is a second question layered on it. */
+    noten: boolean
   }
   /** The five table settings shared by every board-rendering app: a global default
    *  layer plus a per-app override layer, both `Partial` since an absent key means inherit —
@@ -197,6 +200,7 @@ export const useSettings = create<SettingsState>()(
       chinitsu: {
         suit: 'p',
         hands: 'both',
+        noten: false,
       },
       table: { global: {}, apps: {} },
       theme: 'system',

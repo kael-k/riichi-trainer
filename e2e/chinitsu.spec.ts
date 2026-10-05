@@ -97,3 +97,24 @@ test('the suit and hand settings decide what is dealt next', async ({ page }) =>
     .toBe(true)
   await expect(page.getByTestId('chinitsu-picker').getByRole('button')).toHaveCount(9)
 })
+
+test('with not-tenpai hands on, "Not tenpai" answers a hand that has no waits', async ({
+  page,
+}) => {
+  // three runs and four lone honours: no tile completes it
+  await page.goto('/chinitsu?hand=123456789p1234z')
+  await expect(page.getByRole('button', { name: 'Not tenpai' })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Settings' })
+  await dialog.getByRole('checkbox', { name: 'Include hands that are not tenpai' }).check()
+  await dialog.getByRole('button', { name: 'Close' }).click()
+
+  // the setting re-deals, and the link's hand is still the one posed
+  await expect(page.getByTestId('chinitsu-hand').getByRole('img')).toHaveCount(13)
+  await page.getByRole('button', { name: 'Not tenpai' }).click()
+
+  await openPanel(page)
+  await expect(panel(page).getByText(/Hand 1: waits none \(not tenpai\).*correct/)).toBeVisible()
+  await expect(scoreLine(page, 'Correct: 1 / 1')).toHaveCount(1)
+})

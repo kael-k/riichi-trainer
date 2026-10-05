@@ -240,7 +240,7 @@
     "chinitsu": {
       "title": "Allenamento attese di colore",
       "desc": "Trova tutte le attese di una mano costruita con un solo seme.",
-      "intro": "Che cos'è: una mano già in tenpai e costruita con un solo seme — un colore pieno (chinitsu), ogni tessera di quel seme, oppure un mezzo colore (honitsu), il seme più gli onori. Devi nominare ogni tessera che la completerebbe.\n\nPerché conta: un colore concentra così tante forme sovrapposte in nove valori che le sue attese sono notoriamente difficili da vedere, e un'attesa che ti sfugge è una vittoria a cui rinunci — o un furiten di cui non ti sei accorto. Leggerle a colpo d'occhio è un'abilità a sé, e si acquisisce solo con la pratica.\n\nCome si gioca: tocca ogni tessera che la mano sta aspettando, poi conferma (da tastiera, 1–9 seleziona una tessera e Invio conferma). È corretto solo l'insieme esatto. La riga del registro di ogni risposta elenca tutte le attese e, per ciascuna, come le tredici tessere si dividono in gruppi completi (mentsu), la coppia (toitsu) e la forma ancora in attesa (taatsu). Le impostazioni scelgono il seme, e se le mani sono colori pieni, mezzi colori o entrambi."
+      "intro": "Che cos'è: una mano già in tenpai e costruita con un solo seme — un colore pieno (chinitsu), ogni tessera di quel seme, oppure un mezzo colore (honitsu), il seme più gli onori. Devi nominare ogni tessera che la completerebbe.\n\nPerché conta: un colore concentra così tante forme sovrapposte in nove valori che le sue attese sono notoriamente difficili da vedere, e un'attesa che ti sfugge è una vittoria a cui rinunci — o un furiten di cui non ti sei accorto. Leggerle a colpo d'occhio è un'abilità a sé, e si acquisisce solo con la pratica.\n\nCome si gioca: tocca ogni tessera che la mano sta aspettando, poi conferma (da tastiera, 1–9 seleziona una tessera e Invio conferma). È corretto solo l'insieme esatto. La riga del registro di ogni risposta elenca tutte le attese e, per ciascuna, come le tredici tessere si dividono in gruppi completi (mentsu), la coppia (toitsu) e la forma ancora in attesa (taatsu). Le impostazioni scelgono il seme, se le mani sono colori pieni, mezzi colori o entrambi, e se mescolare qualche mano che non è tenpai — a quelle si risponde con Non è tenpai (o 0)."
     },
     "scoring": {
       "title": "Allenamento punteggio",
@@ -313,7 +313,9 @@
     "correctScore": "Corrette: {{correct}} / {{total}}",
     "avgTime": "media {{time}}",
     "hint": "Tocca ogni tessera che completa la mano, poi conferma",
+    "hintNoten": "Tocca ogni tessera che completa la mano e conferma — oppure rispondi Non è tenpai",
     "confirm": "Conferma attese",
+    "notTenpai": "Non è tenpai",
     "correctLabel": "Corretto",
     "wrongLabel": "Sbagliato",
     "correct": "corretto",
@@ -321,6 +323,7 @@
     "inTime": "in {{time}}",
     "revealHand": "Rivela la mano",
     "none": "nessuna",
+    "noWaits": "nessuna (non è tenpai)",
     "youPicked": ", hai scelto {{tiles}}",
     "verdictWaits": "{{label}} — attese:",
     "verdictNoWaits": "{{label}} — non è tenpai",
@@ -341,7 +344,8 @@
     "settings": {
       "suit": "Seme",
       "hands": "Mani",
-      "handsBoth": "Entrambe"
+      "handsBoth": "Entrambe",
+      "noten": "Includi mani che non sono tenpai"
     }
   },
   "scoring": {
@@ -685,7 +689,8 @@
       "result": "Mano {{hand}}: attese {{waits}}{{picked}} — {{result}}{{time}}",
       "missed": "Mancate",
       "notWaits": "Non sono attese",
-      "readings": "Come ogni attesa completa la mano"
+      "readings": "Come ogni attesa completa la mano",
+      "noten": "Non è tenpai: {{shanten}}-shanten"
     },
     "scoring": {
       "result": "Mano {{hand}}: {{han}} han — {{result}}{{time}}",

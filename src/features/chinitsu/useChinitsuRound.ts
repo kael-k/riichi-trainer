@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { dealFlushHand, type FlushHands, type FlushSuit } from '../../core/flush'
+import { dealFlushHand, type FlushOptions } from '../../core/flush'
+import { createHand } from '../../core/hand'
+import { shanten } from '../../core/shanten'
 import {
   HONOR,
   NUM_TILE_TYPES,
@@ -15,9 +17,8 @@ import { useLog, type LogDetail } from '../../store/log'
 import { useLinkedHand } from '../situation/useLinkedHand'
 import { encodeChinitsuLink, type ChinitsuLink } from './chinitsuUrl'
 
-export interface ChinitsuOptions {
-  suit: FlushSuit
-  hands: FlushHands
+export interface ChinitsuOptions extends FlushOptions {
+  noten: boolean
 }
 
 export interface RoundResult {
@@ -66,8 +67,9 @@ export function candidateTiles(hand: ParsedTile[]): TileId[] {
 }
 
 /** The expanded log row: what was missed, what was wrong, then every reading of every wait — the
- *  mentsu, toitsu and waiting part each one splits the thirteen into. */
-export function waitDetail(waits: HandWait[], picked: TileId[]): LogDetail[] {
+ *  mentsu, toitsu and waiting part each one splits the thirteen into. A hand with no waits says how
+ *  far off tenpai it is instead, `shantenCount` (passed as 0 for a tenpai hand, and never read). */
+export function waitDetail(waits: HandWait[], picked: TileId[], shantenCount: number): LogDetail[] {
   const waitIds = waits.map((w) => w.tile)
   const missed = waitIds.filter((id) => !picked.includes(id))
   const wrong = picked.filter((id) => !waitIds.includes(id))
@@ -77,7 +79,10 @@ export function waitDetail(waits: HandWait[], picked: TileId[]): LogDetail[] {
   if (wrong.length > 0) {
     lines.push({ key: 'log.chinitsu.notWaits', tiles: plain(wrong), tone: 'error' })
   }
-  if (waits.length === 0) return lines
+  if (waits.length === 0) {
+    lines.push({ key: 'log.chinitsu.noten', params: { shanten: shantenCount } })
+    return lines
+  }
   lines.push({ key: 'log.chinitsu.readings', header: true })
   for (const wait of waits) {
     for (const reading of wait.readings) {
@@ -91,10 +96,11 @@ export function waitDetail(waits: HandWait[], picked: TileId[]): LogDetail[] {
   return lines
 }
 
-/** Drives a continuous stream of one-suit tenpai hands, the shanten trainer's shape: reveal once,
- *  then answer after answer, the feedback for the last one alongside the hand already dealt. An
- *  answer is a set of tiles toggled on, confirmed as one — right only when it is exactly the
- *  hand's waits. */
+/** Drives a continuous stream of one-suit hands, the shanten trainer's shape: reveal once, then
+ *  answer after answer, the feedback for the last one alongside the hand already dealt. An answer
+ *  is a set of tiles toggled on, confirmed as one — right only when it is exactly the hand's
+ *  waits. A hand that is not tenpai (`options.noten`, or any link) has none, so its answer is the
+ *  empty set: `submitNotTenpai`, or confirming with nothing picked. */
 export function useChinitsuRound(link: ChinitsuLink, options: ChinitsuOptions) {
   const { handIndex, fromLink, next: advance } = useLinkedHand(link)
   // keyed on the link object as well as the index, for the reason `useShantenRound` gives: the
@@ -138,7 +144,7 @@ export function useChinitsuRound(link: ChinitsuLink, options: ChinitsuOptions) {
       return { hand: [...link.hand].sort((a, b) => a.id - b.id), ...carry }
     }
     const seed = `${link.seed || stats.randomSeed}:${handIndex}`
-    return { hand: dealFlushHand(seed, options.suit, options.hands), ...carry }
+    return { hand: dealFlushHand(seed, options), ...carry }
   }
 
   useEffect(() => {
@@ -146,7 +152,41 @@ export function useChinitsuRound(link: ChinitsuLink, options: ChinitsuOptions) {
     setState(next)
     logDealt(next.hand)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [link, handIndex, options.suit, options.hands])
+  }, [link, handIndex, options.suit, options.hands, options.noten])
+
+  function submit(picked: TileId[]) {
+    if (!state.revealed) return
+    const counts = countsOf(state.hand)
+    const waits = readWaits(counts)
+    const waitIds = waits.map((w) => w.tile)
+    const correct = waitIds.length === picked.length && waitIds.every((id, i) => id === picked[i])
+    const hand = createHand()
+    hand.counts.set(counts)
+    const elapsed = stats.elapsedNow()
+    // logged here, from the action itself rather than an effect watching state, so rows stay in
+    // play order. Codes, not text, so a language switch re-reads the line (`formatLogEntry`)
+    log({
+      key: 'log.chinitsu.result',
+      params: {
+        hand: stats.totalCount + 1,
+        waits: waitIds.map((id) => tileCode(id)),
+        picked: picked.map((id) => tileCode(id)),
+        correct,
+        elapsedMs: elapsed,
+      },
+      tiles: state.hand,
+      copyText: serializeTenhou(state.hand),
+      severity: correct ? 'ok' : 'error',
+      situation: encodeChinitsuLink({ seed: link.seed, hand: state.hand }),
+      detail: waitDetail(waits, picked, waits.length > 0 ? 0 : shanten(hand)),
+    })
+    stats.record(correct, elapsed)
+    setState((s) => ({
+      ...s,
+      lastResult: { waits: waitIds, picked, correct, hand: s.hand },
+    }))
+    advance()
+  }
 
   return {
     ...state,
@@ -180,37 +220,10 @@ export function useChinitsuRound(link: ChinitsuLink, options: ChinitsuOptions) {
           : [...s.selected, tile].sort((a, b) => a - b)
         return { ...s, selected }
       }),
-    submit: () => {
-      if (!state.revealed) return
-      const waits = readWaits(countsOf(state.hand))
-      const waitIds = waits.map((w) => w.tile)
-      const picked = state.selected
-      const correct = waitIds.length === picked.length && waitIds.every((id, i) => id === picked[i])
-      const elapsed = stats.elapsedNow()
-      // logged here, from the action itself rather than an effect watching state, so rows stay in
-      // play order. Codes, not text, so a language switch re-reads the line (`formatLogEntry`)
-      log({
-        key: 'log.chinitsu.result',
-        params: {
-          hand: stats.totalCount + 1,
-          waits: waitIds.map((id) => tileCode(id)),
-          picked: picked.map((id) => tileCode(id)),
-          correct,
-          elapsedMs: elapsed,
-        },
-        tiles: state.hand,
-        copyText: serializeTenhou(state.hand),
-        severity: correct ? 'ok' : 'error',
-        situation: encodeChinitsuLink({ seed: link.seed, hand: state.hand }),
-        detail: waitDetail(waits, picked),
-      })
-      stats.record(correct, elapsed)
-      setState((s) => ({
-        ...s,
-        lastResult: { waits: waitIds, picked, correct, hand: s.hand },
-      }))
-      advance()
-    },
+    /** Confirms the tiles toggled on as the answer. */
+    submit: () => submit(state.selected),
+    /** Answers "this hand has no waits", whatever is toggled on. */
+    submitNotTenpai: () => submit([]),
   }
 }
 

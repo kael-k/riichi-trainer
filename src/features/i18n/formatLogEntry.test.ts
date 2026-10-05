@@ -95,6 +95,18 @@ describe('the chinitsu result row', () => {
     }
   })
 
+  it('says a hand with no waits is not tenpai', () => {
+    const t = i18n.getFixedT('en')
+    const noten = entry('log.chinitsu.result', {
+      hand: 3,
+      waits: [],
+      picked: [],
+      correct: true,
+      elapsedMs: 1000,
+    })
+    expect(formatLogEntry(noten, t)).toBe('Hand 3: waits none (not tenpai) — correct in 0:01.000')
+  })
+
   it('names an empty pick rather than leaving a gap', () => {
     const t = i18n.getFixedT('en')
     expect(formatLogEntry(row(false, []), t)).toBe(

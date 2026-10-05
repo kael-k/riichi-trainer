@@ -128,7 +128,7 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
     const none = t('chinitsu.none')
     return t('log.chinitsu.result', {
       hand,
-      waits: waits.length > 0 ? waits.join(' ') : none,
+      waits: waits.length > 0 ? waits.join(' ') : t('chinitsu.noWaits'),
       picked: correct
         ? ''
         : t('chinitsu.youPicked', { tiles: picked.length > 0 ? picked.join(' ') : none }),

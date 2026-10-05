@@ -101,7 +101,7 @@ export function ChinitsuPage() {
   const update = useSettings((s) => s.update)
   const suit = resolveFlushSuit(settings.suit, sanma)
 
-  const round = useChinitsuRound(link, { suit, hands: settings.hands })
+  const round = useChinitsuRound(link, { suit, hands: settings.hands, noten: settings.noten })
   const { canBack, back } = useLogBack()
   const keySuit = singleSuit(round.candidates)
 
@@ -110,7 +110,8 @@ export function ChinitsuPage() {
   // button keeps Space for itself — pressing it is what Space means there — and Enter too, except
   // on an answer tile: a tile tapped with the mouse keeps focus, and Enter there toggling it back
   // off would silently undo the last pick of an answer the reader meant to confirm. Space still
-  // toggles a focused tile, so the row stays fully usable from the keyboard
+  // toggles a focused tile, so the row stays fully usable from the keyboard. With not-tenpai hands
+  // on, 0 answers "Not tenpai" — the digit row's own "no tile"
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       // Ctrl/⌘+digit switches browser tabs; that is never an answer
@@ -131,6 +132,11 @@ export function ChinitsuPage() {
         round.submit()
         return
       }
+      if (e.key === '0' && settings.noten) {
+        e.preventDefault()
+        round.submitNotTenpai()
+        return
+      }
       const rank = Number(e.key)
       if (keySuit && Number.isInteger(rank) && rank >= 1 && rank <= 9) {
         e.preventDefault()
@@ -139,7 +145,7 @@ export function ChinitsuPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [round, keySuit])
+  }, [round, keySuit, settings.noten])
 
   const toggles = {
     paused: !round.revealed || round.paused,
@@ -198,6 +204,14 @@ export function ChinitsuPage() {
           <option value="honitsu">{termName('yaku', 'honitsu')}</option>
         </select>
       </SettingRow>
+      <SettingRow label={t('chinitsu.settings.noten')}>
+        <input
+          type="checkbox"
+          checked={settings.noten}
+          onChange={(e) => update('chinitsu', { noten: e.target.checked })}
+          className="size-5"
+        />
+      </SettingRow>
     </>
   )
 
@@ -228,20 +242,34 @@ export function ChinitsuPage() {
           {!round.concealed && (
             <div className="flex flex-col items-center gap-3 short:gap-2">
               <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
-                {t('chinitsu.hint')}
+                {t(settings.noten ? 'chinitsu.hintNoten' : 'chinitsu.hint')}
               </p>
               <WaitPicker
                 candidates={round.candidates}
                 selected={round.selected}
                 onToggle={round.toggle}
               />
-              <button
-                type="button"
-                onClick={round.submit}
-                className="min-h-11 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-              >
-                {t('chinitsu.confirm')}
-              </button>
+              {/* "Not tenpai" stands beside Confirm only when the drill can deal such a hand, and then
+                  on every hand, tenpai or not — a button that appeared for the noten ones alone
+                  would be the answer. Outlined, so Confirm stays the primary action */}
+              <div className="flex flex-wrap justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={round.submit}
+                  className="min-h-11 rounded-lg bg-neutral-900 px-5 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  {t('chinitsu.confirm')}
+                </button>
+                {settings.noten && (
+                  <button
+                    type="button"
+                    onClick={round.submitNotTenpai}
+                    className="min-h-11 rounded-lg border border-neutral-300 px-5 font-medium dark:border-neutral-700"
+                  >
+                    {t('chinitsu.notTenpai')}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

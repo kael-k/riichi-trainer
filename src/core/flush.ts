@@ -13,6 +13,14 @@ export type FlushHands = 'chinitsu' | 'honitsu' | 'both'
 
 export const FLUSH_SUIT_BASE: Record<FlushSuit, TileId> = { m: MAN, p: PIN, s: SOU }
 
+export interface FlushOptions {
+  suit: FlushSuit
+  hands: FlushHands
+  /** Mix in hands that are not tenpai (`NOTEN_SHARE` of them), whose answer is "no waits". Off,
+   *  every hand is tenpai — and the stream deals exactly what it dealt before this existed. */
+  noten?: boolean
+}
+
 /** The honour part of a honitsu, as the size of each distinct honour's group. Drawn uniformly from
  *  this list, so a repeat is a weight: triplets and pairs are what honours mostly sit in, a lone
  *  honour (a tanki on it) is rarer, and two honour groups rarer still — they leave the suit too few
@@ -36,6 +44,11 @@ const HONOR_PATTERNS: readonly (readonly number[])[] = [
  *  hands have one wait — fine to read once, but the drill exists for the many-sided shapes, so half
  *  of those are thrown back. Stated, like the patterns above. */
 const SINGLE_WAIT_KEEP = 0.5
+
+/** How often a hand is dealt not tenpai when `noten` is on. Rare enough that "find the waits"
+ *  stays the drill, common enough that "there are none" is an answer a reader has to consider on
+ *  every hand rather than one they can rule out. Stated. */
+const NOTEN_SHARE = 0.25
 
 /** Bounded, never `while (true)`: a random chinitsu thirteen is tenpai often enough that this is
  *  never close, but a seed must always return. */
@@ -66,6 +79,13 @@ function poseableWaits(counts: Uint8Array): number {
   return readWaits(counts).length
 }
 
+/** Whether these thirteen are a fair not-tenpai question: exactly one tile short. Further out
+ *  is a hand nobody would mistake for tenpai, and so not a question at all. A karaten "wait" can
+ *  never pass for one here — it already reads as tenpai to `shanten`. */
+function poseableNoten(counts: Uint8Array): boolean {
+  return shanten(handOf(counts)) === 1
+}
+
 /** A known-tenpai hand for when every attempt came up empty — chuuren's nine-sided shape for a
  *  chinitsu, `12345678` plus a honour triplet and pair (a three-sided 3-6-9) for a honitsu.
  *  Exported only so a test can hold it to the same standard as a dealt hand. */
@@ -83,15 +103,21 @@ export function flushFallback(suit: FlushSuit, honitsu: boolean): ParsedTile[] {
 }
 
 /**
- * A seeded tenpai hand in one suit — the chinitsu trainer's whole round, as `deal` is the shanten
+ * A seeded hand in one suit — the chinitsu trainer's whole round, as `deal` is the shanten
  * trainer's. Rejection-sampled: thirteen tiles off a shuffled copy of the suit's 36 (after the
- * honour part, for a honitsu), kept the first time they are worth posing — a single wait only
- * some of the time. Same seed and options, same hand. Sorted, plain tiles: a red five changes
- * nothing about a wait.
+ * honour part, for a honitsu), kept the first time they are worth posing — tenpai, a single wait
+ * only some of the time; or, for the share `noten` asks for, one tile short of it. Same seed and
+ * options, same hand. Sorted, plain tiles: a red five changes nothing about a wait.
+ *
+ * Both fall back to the same tenpai hand, which a not-tenpai attempt never needs in practice; the
+ * trainer grades whatever it is handed on what it really is, so the fallback is never a wrong
+ * answer, only a less likely question.
  */
-export function dealFlushHand(seed: string, suit: FlushSuit, hands: FlushHands): ParsedTile[] {
+export function dealFlushHand(seed: string, { suit, hands, noten }: FlushOptions): ParsedTile[] {
   const rng = mulberry32(seed)
   const base = FLUSH_SUIT_BASE[suit]
+  // drawn only when the option is on, so turning it off leaves every seed's stream as it was
+  const wantNoten = noten === true && rng() < NOTEN_SHARE
   let honitsu = hands === 'honitsu'
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     honitsu = hands === 'honitsu' || (hands === 'both' && rng() < 0.5)
@@ -110,6 +136,10 @@ export function dealFlushHand(seed: string, suit: FlushSuit, hands: FlushHands):
       rng,
     )
     for (let i = 0; size < INITIAL_HAND_SIZE; i++, size++) counts[suitTiles[i]]++
+    if (wantNoten) {
+      if (poseableNoten(counts)) return tilesOf(counts)
+      continue
+    }
     const waits = poseableWaits(counts)
     if (waits === 0 || (waits === 1 && rng() >= SINGLE_WAIT_KEEP)) continue
     return tilesOf(counts)

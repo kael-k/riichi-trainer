@@ -409,6 +409,10 @@ shanten's.
   never from the suit setting — a linked hand can be any suit, or several.
 - **Manzu reads as pinzu under sanma** (`resolveFlushSuit`): the stored choice is untouched, the
   button disabled, and the dealt suit is the resolved one.
+- **A not-tenpai hand's answer is the empty set** (`submitNotTenpai`, or confirming nothing). The
+  `noten` option deals them 1-shanten only, and draws from the RNG **only when on**, so a seed deals
+  the same stream it always did with it off (`flush.test.ts` pins three). Its "Not tenpai" button
+  shows on every hand while the option is on — on the noten ones alone it would be the answer.
 
 **The two efficiency trainers are two routes, not a checkbox.** Both run `wins: false` (a hand
 ending on someone else's tsumo would cut a per-turn drill short on a result the player did not
