@@ -189,6 +189,10 @@
       "title": "上听数训练",
       "desc": "猜出手牌距离听牌还差几步。"
     },
+    "chinitsu": {
+      "title": "清一色/混一色听牌训练",
+      "desc": "找出一色手的全部听牌——清一色或混一色。"
+    },
     "scoring": {
       "title": "算番训练",
       "desc": "猜出和了手的番数、符数与点数。"
@@ -249,6 +253,41 @@
       "standard": "标准型",
       "chiitoitsu": "七对子",
       "kokushi": "国士无双"
+    }
+  },
+  "chinitsu": {
+    "correctScore": "正确: {{correct}} / {{total}}",
+    "avgTime": "平均 {{time}}",
+    "hint": "选出所有能和牌的牌，然后确认",
+    "confirm": "确认听牌",
+    "correctLabel": "正确",
+    "wrongLabel": "错误",
+    "correct": "正确",
+    "wrong": "错误",
+    "inTime": "{{time}}",
+    "revealHand": "显示手牌",
+    "none": "无",
+    "youPicked": "，你选了 {{tiles}}",
+    "verdictWaits": "{{label}} — 听牌:",
+    "verdictNoWaits": "{{label}} — 未听牌",
+    "shape": {
+      "ryanmen": "两面",
+      "kanchan": "嵌张",
+      "penchan": "边张",
+      "shanpon": "双碰",
+      "tanki": "单骑",
+      "chiitoitsu": "七对子单骑",
+      "kokushi": "国士无双"
+    },
+    "suit": {
+      "m": "万子",
+      "p": "筒子",
+      "s": "索子"
+    },
+    "settings": {
+      "suit": "花色",
+      "hands": "牌型",
+      "handsBoth": "两者"
     }
   },
   "scoring": {
@@ -535,13 +574,24 @@
     "shanten": {
       "result": "第{{hand}}题: 回答{{guess}},正确{{actual}}{{via}} — {{result}}{{time}}"
     },
+    "chinitsu": {
+      "result": "第{{hand}}题: 听 {{waits}}{{picked}} — {{result}}{{time}}",
+      "missed": "漏选",
+      "notWaits": "不是听牌",
+      "readings": "每种听牌的拆解"
+    },
     "scoring": {
       "result": "第{{hand}}题: {{han}}番 — {{result}}{{time}}",
       "field": "{{label}}: {{expected}}",
       "fieldWrong": "{{label}}: {{expected}} — 你的答案是{{answer}}",
       "detailLine": "{{label}} — {{value}}"
     },
-    "evBand": "按EV评分({{model}}): 与最佳差{{delta}}分(≤{{near}}为正确,超过{{wrong}}为错误)"
+    "evBand": "按EV评分({{model}}): 与最佳差{{delta}}分(≤{{near}}为正确,超过{{wrong}}为错误)",
+    "block": {
+      "mentsu": "面子",
+      "toitsu": "对子",
+      "wait": "听牌形"
+    }
   },
   "evGrading": {
     "model": "EV模型",

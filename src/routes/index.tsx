@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router'
 import { AppShell } from '../components/AppShell'
 import { CrashPage } from '../components/CrashPage'
+import { ChinitsuPage } from '../features/chinitsu/ChinitsuPage'
 import { EfficiencyPage } from '../features/efficiency/EfficiencyPage'
 import { EfficiencySoloPage } from '../features/efficiency-solo/EfficiencySoloPage'
 import { FoldingPage } from '../features/folding/FoldingPage'
@@ -21,6 +22,7 @@ export const router = createBrowserRouter(
         { path: 'efficiency', element: <EfficiencyPage /> },
         { path: 'efficiency-solo', element: <EfficiencySoloPage /> },
         { path: 'shanten', element: <ShantenPage /> },
+        { path: 'chinitsu', element: <ChinitsuPage /> },
         { path: 'scoring', element: <ScoringPage /> },
         { path: 'folding', element: <FoldingPage /> },
         { path: 'lab', element: <LabPage /> },

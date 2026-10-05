@@ -48,6 +48,8 @@ algorithm is `'manual'`.
 | `match.ts`        | The game a round sits inside: `MatchState`, `createMatch`, `settleRound`                                        |
 | `table.ts`        | The pure table layer: `actingSeat`, `goRound`, `seenBy`, `snapshotTable`, `seatRead`                            |
 | `generateHand.ts` | Winning-hand generation for the scoring trainer                                                                 |
+| `waits.ts`        | `readWaits` — every wait of a 13-tile hand, each split into mentsu, toitsu and the waiting shape                |
+| `flush.ts`        | `dealFlushHand` — seeded chinitsu/honitsu tenpai generation for the chinitsu trainer                            |
 
 A `*.test.ts` file sits beside every source in `core/`.
 
@@ -128,6 +130,7 @@ setting.
 | Directory          | Route              | Hook                     | Notes                                     |
 | ------------------ | ------------------ | ------------------------ | ----------------------------------------- |
 | `shanten/`         | `/shanten`         | `useShantenRound`        | Boardless, continuous hand stream         |
+| `chinitsu/`        | `/chinitsu`        | `useChinitsuRound`       | Shanten's stream, answered with waits     |
 | `efficiency-solo/` | `/efficiency-solo` | `useEfficiencySoloRound` | Boardless, one seat                       |
 | `efficiency/`      | `/efficiency`      | `useEfficiencyRound`     | Board, opponents, graded per discard      |
 | `folding/`         | `/folding`         | `useFoldingRound`        | Grading plus a pure board search          |

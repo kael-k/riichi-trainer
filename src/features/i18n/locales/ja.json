@@ -189,6 +189,10 @@
       "title": "シャンテン数トレーナー",
       "desc": "手牌のシャンテン数を当てよう。"
     },
+    "chinitsu": {
+      "title": "染め手の待ちトレーナー",
+      "desc": "清一色・混一色の手牌の待ちをすべて当てよう。"
+    },
     "scoring": {
       "title": "点数計算トレーナー",
       "desc": "和了手の翻・符・点数を当てよう。"
@@ -249,6 +253,41 @@
       "standard": "通常形",
       "chiitoitsu": "七対子",
       "kokushi": "国士無双"
+    }
+  },
+  "chinitsu": {
+    "correctScore": "正解数: {{correct}} / {{total}}",
+    "avgTime": "平均 {{time}}",
+    "hint": "和了牌になる牌をすべて選んで、確定してください",
+    "confirm": "待ちを確定",
+    "correctLabel": "正解",
+    "wrongLabel": "不正解",
+    "correct": "正解",
+    "wrong": "不正解",
+    "inTime": "{{time}}",
+    "revealHand": "手牌を表示",
+    "none": "なし",
+    "youPicked": "、回答 {{tiles}}",
+    "verdictWaits": "{{label}} — 待ち:",
+    "verdictNoWaits": "{{label}} — ノーテン",
+    "shape": {
+      "ryanmen": "両面",
+      "kanchan": "嵌張",
+      "penchan": "辺張",
+      "shanpon": "双碰",
+      "tanki": "単騎",
+      "chiitoitsu": "七対子の単騎",
+      "kokushi": "国士無双"
+    },
+    "suit": {
+      "m": "萬子",
+      "p": "筒子",
+      "s": "索子"
+    },
+    "settings": {
+      "suit": "色",
+      "hands": "手役",
+      "handsBoth": "両方"
     }
   },
   "scoring": {
@@ -535,13 +574,24 @@
     "shanten": {
       "result": "{{hand}}問目: 回答{{guess}}、正解{{actual}}{{via}} — {{result}}{{time}}"
     },
+    "chinitsu": {
+      "result": "{{hand}}問目: 待ち {{waits}}{{picked}} — {{result}}{{time}}",
+      "missed": "見逃した待ち",
+      "notWaits": "待ちではない牌",
+      "readings": "各待ちの和了形"
+    },
     "scoring": {
       "result": "{{hand}}問目: {{han}}翻 — {{result}}{{time}}",
       "field": "{{label}}: {{expected}}",
       "fieldWrong": "{{label}}: {{expected}} — 回答は{{answer}}",
       "detailLine": "{{label}} — {{value}}"
     },
-    "evBand": "EV採点({{model}}): 最善から{{delta}}点差(正解は{{near}}点以内、不正解は{{wrong}}点超)"
+    "evBand": "EV採点({{model}}): 最善から{{delta}}点差(正解は{{near}}点以内、不正解は{{wrong}}点超)",
+    "block": {
+      "mentsu": "面子",
+      "toitsu": "対子",
+      "wait": "待ちの形"
+    }
   },
   "evGrading": {
     "model": "EVモデル",

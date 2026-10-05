@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { EvModelName } from '../../core/evModel'
+import type { FlushHands, FlushSuit } from '../../core/flush'
 import { FOLD_EV_BANDS, PUSH_EV_BANDS, type EvBands } from '../table/evGrade'
 import type { TableApp, TableSettings } from './tableSettings'
 
@@ -54,6 +55,13 @@ export interface Settings {
     /** ε₁/ε₂ per model — kept per-model for the same reason folding's own
      *  `evBands` is. */
     evBands: Record<EvModelName, EvBands>
+  }
+  chinitsu: {
+    /** The suit every hand is dealt in. Pinzu by default; manzu reads as pinzu under sanma, which
+     *  has no 2m-8m to build one from (`ChinitsuPage`'s `resolveFlushSuit`). */
+    suit: FlushSuit
+    /** Which one-suit hands to pose: chinitsu, honitsu, or either, picked per hand. */
+    hands: FlushHands
   }
   /** The five table settings shared by every board-rendering app: a global default
    *  layer plus a per-app override layer, both `Partial` since an absent key means inherit —
@@ -186,6 +194,10 @@ export const useSettings = create<SettingsState>()(
         evModel: 'statistical',
         evBands: PUSH_EV_BANDS,
       },
+      chinitsu: {
+        suit: 'p',
+        hands: 'both',
+      },
       table: { global: {}, apps: {} },
       theme: 'system',
       setTheme: (theme) => set({ theme }),
@@ -243,6 +255,7 @@ export const useSettings = create<SettingsState>()(
           scoring: { ...current.scoring, ...p.scoring },
           folding: { ...current.folding, ...p.folding },
           efficiency: { ...current.efficiency, ...p.efficiency },
+          chinitsu: { ...current.chinitsu, ...p.chinitsu },
           table: { ...current.table, ...p.table },
         }
       },

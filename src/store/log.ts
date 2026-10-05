@@ -21,6 +21,14 @@ export interface LogBar {
 
 export type LogSeverity = 'ok' | 'warning' | 'error'
 
+/** One block of a hand read as waiting on a tile (`core/waits.ts`'s `WaitBlock`, tiles resolved):
+ *  a complete set, the pair, or the part the winning tile completes. The role is what the renderer
+ *  draws differently — the waiting part is marked, the rest are plain clusters. */
+export interface LogBlock {
+  role: 'mentsu' | 'toitsu' | 'wait'
+  tiles: ParsedTile[]
+}
+
 /** One indented line under an expanded row — what the deleted feedback panels drew. Stored as an
  *  i18n key plus params, never as text, for the same reason the entry itself is: a language switch
  *  must re-translate it (see `formatLogEntry`). */
@@ -33,6 +41,9 @@ export interface LogDetail {
   /** Per-discard EV scores, drawn as bars normalized on the best one — the folding trainer's EV
    *  grading mode (alpha). */
   bars?: LogBar[]
+  /** A hand split into blocks, drawn as separate clusters after the line's own `tiles` — the
+   *  chinitsu trainer's reading of the hand behind one wait. */
+  blocks?: LogBlock[]
   /** Index in `tiles` where the *evidence* for the line begins — the subject tile leads, what
    *  explains it follows past a hairline seam; absent means the line's tiles are all one
    *  thing. */

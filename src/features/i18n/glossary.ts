@@ -48,6 +48,17 @@ export const GLOSSARY = {
     descKey: 'glossary.uraDora.desc',
     wikiUrl: 'https://riichi.wiki/Dora#Ura_dora',
   },
+  // riichi.wiki's own spellings, not the app's: both slugs were supplied by hand
+  chinitsu: {
+    labelKey: 'glossary.chinitsu.term',
+    descKey: 'glossary.chinitsu.desc',
+    wikiUrl: 'https://riichi.wiki/Chiniisou',
+  },
+  honitsu: {
+    labelKey: 'glossary.honitsu.term',
+    descKey: 'glossary.honitsu.desc',
+    wikiUrl: 'https://riichi.wiki/Honiisou',
+  },
 } satisfies Record<string, { labelKey: string; descKey: string; wikiUrl: string }>
 
 export type GlossaryTermId = keyof typeof GLOSSARY

@@ -54,6 +54,26 @@ describe('settingsStore table section', () => {
     expect(state.table).toEqual({ global: {}, apps: {} })
   })
 
+  it('fills the chinitsu section in for a v3 blob written before it existed', async () => {
+    localStorage.setItem(
+      'riichi-trainer-settings',
+      JSON.stringify({ state: { theme: 'dark', scoring: { exactFu: true } }, version: 3 }),
+    )
+    const { useSettings } = await import('./settingsStore')
+    const state = useSettings.getState()
+    expect(state.theme).toBe('dark')
+    expect(state.chinitsu).toEqual({ suit: 'p', hands: 'both' })
+  })
+
+  it('merges a partial chinitsu section field by field', async () => {
+    localStorage.setItem(
+      'riichi-trainer-settings',
+      JSON.stringify({ state: { chinitsu: { suit: 's' } }, version: 3 }),
+    )
+    const { useSettings } = await import('./settingsStore')
+    expect(useSettings.getState().chinitsu).toEqual({ suit: 's', hands: 'both' })
+  })
+
   it('keeps the rest of a v3 blob that still carries the removed efficiency/shanten sections', async () => {
     localStorage.setItem(
       'riichi-trainer-settings',
