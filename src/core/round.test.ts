@@ -557,9 +557,11 @@ describe('createRound', () => {
 
   it('honours a short wall prefix as the deal itself, four tiles at a time', () => {
     // 1112m to seat 0, 3456m to seat 1, 7899m to seat 2, the last 9m to seat 3 — a prefix is the
-    // start of a deal, not one seat's hand (that is what `wallWithHand` is for)
+    // start of a deal, not one seat's hand (that is what `wallWithHand` is for). The completion is
+    // seeded: left to `Math.random` it deals the fourth 1m to seat 0 about once in 500 runs, and
+    // the exact count below is about the prefix, not the fill
     const prefix = parseTenhou('1112345678999m')
-    const state = createRound(prefix, 4, YONMA)
+    const state = createRound(prefix, 4, YONMA, 'short-prefix')
     for (let i = 0; i < prefix.length; i++) {
       expect(state.players[dealtSeat(i, 4)].concealed).toContainEqual(prefix[i])
     }
