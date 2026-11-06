@@ -433,10 +433,14 @@ async function findRound(
   return threats > 1 ? findRound({ ...options, threats: threats - 1 }, seats, seed) : null
 }
 
-/** The reveal: what each threat was really holding, and which of your discards were in its wait.
+/** The reveal: what each threat was really holding, and which of your discards dealt in to it.
  *  Only ever built once the hand is over — showing it mid-fold would hand over every later turn. */
-function revealOf(match: RoundState, seatIndex: number, sanma: boolean): ThreatReveal[] {
-  const river = match.players[seatIndex].river
+function revealOf(
+  match: RoundState,
+  seatIndex: number,
+  sanma: boolean,
+  wins: boolean,
+): ThreatReveal[] {
   return riichiSeats(match).map((seat) => {
     const player = match.players[seat]
     const waitTiles = waits(player.hand, sanma)
@@ -444,13 +448,53 @@ function revealOf(match: RoundState, seatIndex: number, sanma: boolean): ThreatR
       seat,
       hand: concealedTiles(player),
       waits: waitTiles,
-      hits: [...new Set(river.filter((t) => waitTiles.includes(t.id)).map((t) => t.id))],
+      hits: dealInsOf(match, seatIndex, seat, waitTiles, wins),
     }
   })
 }
 
-function endOf(match: RoundState, seatIndex: number, sanma: boolean): RoundEnd | null {
-  const threats = revealOf(match, seatIndex, sanma)
+/** The discard of yours that dealt in to `seat` — or, with wins off, the one that *would* have:
+ *  at most one tile, since that ron ends the hand. Never "every tile of yours in the wait": a tile
+ *  thrown before the declaration, or into a wait the threat was already furiten on, dealt in to
+ *  nobody, and naming it reads as a deal-in that never happened.
+ *
+ *  With wins on the engine already decided, so its own `match.win` is the answer — `tryWin`
+ *  carries the furiten and yaku rules, and a hand that ended any other way had no ron of yours in
+ *  it. With wins off nobody could ron, so the ron is replayed from `match.discards` (never
+ *  `river`, which drops a called tile): the first tile of yours in the wait, thrown after the
+ *  declaration, while the threat was not yet furiten — own-river furiten from their own discards,
+ *  riichi furiten from any wait tile anyone threw after declaring. Exported for its tests. */
+export function dealInsOf(
+  match: RoundState,
+  seatIndex: number,
+  seat: number,
+  waitTiles: TileId[],
+  wins: boolean,
+): TileId[] {
+  if (wins) {
+    const win = match.win
+    return win && win.seat === seat && win.from === seatIndex ? [win.ctx.winTile] : []
+  }
+  const declaredAt = match.discards.findIndex((d) => d.seat === seat && d.tile.riichi)
+  if (declaredAt < 0) return []
+  let furiten = match.discards
+    .slice(0, declaredAt + 1)
+    .some((d) => d.seat === seat && waitTiles.includes(d.tile.id))
+  for (const { seat: from, tile } of match.discards.slice(declaredAt + 1)) {
+    if (!waitTiles.includes(tile.id)) continue
+    if (from === seatIndex && !furiten) return [tile.id]
+    furiten = true
+  }
+  return []
+}
+
+function endOf(
+  match: RoundState,
+  seatIndex: number,
+  sanma: boolean,
+  wins: boolean,
+): RoundEnd | null {
+  const threats = revealOf(match, seatIndex, sanma, wins)
   if (match.win) {
     const { seat, from, score } = match.win
     const kind = seat === seatIndex ? 'won' : from === seatIndex ? 'dealIn' : 'lost'
@@ -687,7 +731,7 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
     roundActionCount.current++
     roundTotalMs.current += elapsed
 
-    const end = endOf(core.round, seatIndex, options.sanma)
+    const end = endOf(core.round, seatIndex, options.sanma, core.options.wins)
     if (end?.kind === 'dealIn') {
       writeLog({
         key: 'log.folding.dealIn',
@@ -728,8 +772,9 @@ export function useFoldingRound(urlData: FoldingUrl, options: FoldingOptions) {
   })
 
   const snapshot = round ? table.snapshot : undefined
-  const match = round ? table.core?.round : undefined
-  const end = match ? endOf(match, seatIndex, options.sanma) : null
+  const live = round ? table.core : undefined
+  const match = live?.round
+  const end = live ? endOf(live.round, seatIndex, options.sanma, live.options.wins) : null
   const finished = end !== null
   const loading = !failed && (searching || !round || !snapshot)
 

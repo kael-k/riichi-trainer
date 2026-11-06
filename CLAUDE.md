@@ -91,7 +91,7 @@ players)`, "am I dealer" is `seat === state.match.dealer`, and the turn counter 
 - **The tenhou.net/6 export (`core/tenhouLog.ts`, `/match` only) replays, it never records live.**
   `TenhouRoundInput.match` is the round's **starting** `MatchState` — `useMatchRound`'s own `match`
   state, never `RoundState.match` (already riichi-mutated) or `settleRound`'s stepped output (the
-  *next* round's carry-in). `buildKyoku` feeds it back through `createRound`/`replayLog` to
+  _next_ round's carry-in). `buildKyoku` feeds it back through `createRound`/`replayLog` to
   reconstruct every draw/discard/call, and folds each riichi's −1000 back into the round's own
   deltas itself — `settleRound`'s own deltas never carry it, since the deduction already landed on
   `match.points` mid-round, before settlement ever ran.
@@ -310,6 +310,11 @@ generation keys only on what shapes the hand, **never on the per-seat algorithms
 
 Because perspective moves, **the felt hand `FoldingPage` omits is the seat the board is _drawn
 from_, never the drill's graded seat**.
+
+**The reveal's "you threw this at them" names a deal-in, never "a tile of yours in the wait"**
+(`dealInsOf`): with wins on it is `match.win`'s own ron off you; with wins off it is the first of
+your post-declaration discards into the wait while the threat was not yet furiten. A pre-riichi
+discard in the wait dealt in to nobody.
 
 Three reveal rules the UI must keep:
 
