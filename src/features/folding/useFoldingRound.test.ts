@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { assessDiscards } from '../../core/danger'
 import { handFromTenhou } from '../../core/hand'
-import type { LogEntry } from '../../core/round'
+import type { LogEntry, RoundState, WinRecord } from '../../core/round'
 import type { SeatAlgorithm } from '../../core/policy'
 import { parseTenhou, type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
@@ -10,6 +10,7 @@ import { useLog } from '../../store/log'
 import { FOLD_EV_BANDS } from '../table/evGrade'
 import {
   BACK_TILE,
+  dealInsOf,
   decodeFoldingUrl,
   encodeFoldingUrl,
   splitConcealedDrawn,
@@ -319,6 +320,30 @@ describe('useFoldingRound', () => {
     expect(end.threats[0].waits.length).toBeGreaterThan(0)
   })
 
+  it('names only a discard that dealt in, never one of yours from before the declaration', async () => {
+    // the reported hand: the reader's own first discard (1s, before the riichi) is in the threat's
+    // wait, and folding 7m then 4p plays the hand out to an exhaustive draw. The reveal used to
+    // list every tile of yours in the wait, so it said "you threw this at them" about a 1s nobody
+    // could ron
+    const query =
+      'wall=1s4m3p2m0s7p736z08m6s8p7m68s2p2z9m38p14m4s1m0p1m77s64p36z6p23m6z5p1z2m915s9m5z44s4z' +
+      '129s2p8m1z7p3s11473z1p5z4255s2z17m32p6m9p3s9m4p5m8s2z6m85p5m7z6p2s8p25z1p43m6s9p9s56z79' +
+      '11p3z9s4p7z6s8m4z3p81s8m5p73m4z6m49p7m733s27p87s32546m2s6p9m&sanma=0&threats=1&wins=1' +
+      '&log=D29pTD36pD05zTD19pD23pD39pTD01pTD11pTD23zTD38pD04pTD18pD27pD38mTD04zTD13pTD27pD38pD08mTD17p'
+    const result = await deal(decodeFoldingUrl(new URLSearchParams(query)))
+    const ownRiver = () => result.current.rivers[result.current.seatIndex]
+    const firstDiscard = ownRiver()[0].id
+    for (const code of ['7m', '4p']) {
+      const tile = parseTenhou(code)[0].id
+      act(() => result.current.discard(indexOf(result.current.hand, result.current.drawn, tile)))
+    }
+    expect(result.current.end?.kind).toBe('exhaustive')
+    const [threat] = result.current.end!.threats
+    // the premise: a tile of yours really is in the wait, it just came before the declaration
+    expect(threat.waits).toContain(firstDiscard)
+    expect(threat.hits).toEqual([])
+  })
+
   it('keeps the rotated tile on a threat’s river, and never calls the tile it is folding against', async () => {
     // the board this was reported on: seat 0 declared riichi on a 4s and seat 1 — a seat the
     // drill flips to `'defense'` the instant that declaration lands — chi'd it, which both took
@@ -530,6 +555,73 @@ describe('boardHands (the reveal gate)', () => {
     for (const threat of result.current.end!.threats) {
       expect(result.current.boardHands[threat.seat]).toEqual(threat.hand)
     }
+  })
+})
+
+describe('dealInsOf (the reveal’s “you threw this at them”)', () => {
+  const id = (code: string) => parseTenhou(code)[0].id
+  const YOU = 0
+  const THREAT = 1
+  /** Just the two fields `dealInsOf` reads: the discard log in play order, and the win. */
+  function board(discards: [seat: number, code: string, riichi?: boolean][], win?: WinRecord) {
+    return {
+      discards: discards.map(([seat, code, riichi]) => ({
+        seat,
+        tile: { id: id(code), ...(riichi ? { riichi } : {}) },
+      })),
+      win,
+    } as unknown as RoundState
+  }
+  const WAITS = [id('1s'), id('4s')]
+
+  it('with wins off, never names a tile of yours thrown before the declaration', () => {
+    const match = board([
+      [YOU, '1s'],
+      [THREAT, '9m', true],
+      [YOU, '7m'],
+    ])
+    expect(dealInsOf(match, YOU, THREAT, WAITS, false)).toEqual([])
+  })
+
+  it('with wins off, names the first tile of yours into the wait after the declaration, and only that one', () => {
+    const match = board([
+      [THREAT, '9m', true],
+      [YOU, '4s'],
+      [YOU, '1s'],
+    ])
+    expect(dealInsOf(match, YOU, THREAT, WAITS, false)).toEqual([id('4s')])
+  })
+
+  it('with wins off, a threat furiten on its own discards could not have ronned you', () => {
+    const match = board([
+      [THREAT, '1s'],
+      [THREAT, '9m', true],
+      [YOU, '4s'],
+    ])
+    expect(dealInsOf(match, YOU, THREAT, WAITS, false)).toEqual([])
+  })
+
+  it('with wins off, a wait tile someone else threw after the declaration leaves the threat furiten', () => {
+    const match = board([
+      [THREAT, '9m', true],
+      [2, '1s'],
+      [YOU, '4s'],
+    ])
+    expect(dealInsOf(match, YOU, THREAT, WAITS, false)).toEqual([])
+  })
+
+  it('with wins on, the engine’s own ron is the answer: the winning tile when it came off you', () => {
+    const discards: [number, string, boolean?][] = [
+      [YOU, '1s'],
+      [THREAT, '9m', true],
+      [YOU, '4s'],
+    ]
+    const ron = { seat: THREAT, from: YOU, ctx: { winTile: id('4s') } } as unknown as WinRecord
+    expect(dealInsOf(board(discards, ron), YOU, THREAT, WAITS, true)).toEqual([id('4s')])
+    // somebody else's ron, or no win at all, means nothing of yours dealt in
+    const other = { seat: THREAT, from: 2, ctx: { winTile: id('4s') } } as unknown as WinRecord
+    expect(dealInsOf(board(discards, other), YOU, THREAT, WAITS, true)).toEqual([])
+    expect(dealInsOf(board(discards), YOU, THREAT, WAITS, true)).toEqual([])
   })
 })
 
