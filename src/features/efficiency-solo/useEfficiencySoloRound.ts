@@ -1,7 +1,6 @@
 import { createMatch } from '../../core/match'
 import { NORTH, type RoundOptions } from '../../core/round'
-import { HONOR } from '../../core/tiles'
-import { matchOverrides, WINDS, type Situation } from '../situation/urlCodec'
+import { matchOverrides, type Situation } from '../situation/urlCodec'
 import { useEfficiencyDrill } from '../efficiency/useEfficiencyDrill'
 
 export { NORTH }
@@ -23,11 +22,10 @@ export interface SoloOptions {
 export function useEfficiencySoloRound(situation: Situation, options: SoloOptions) {
   const players = 1
   const seatIndex = 0
-  const prevalentWind = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    match: createMatch(options.sanma, { prevalentWind, ...matchOverrides(situation) }),
+    match: createMatch(options.sanma, matchOverrides(situation)),
     // nobody else is dealt in, so there is nobody to call or declare from
     calls: false,
     riichi: false,

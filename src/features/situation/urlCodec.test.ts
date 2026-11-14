@@ -93,6 +93,16 @@ describe('urlCodec', () => {
     )
   })
 
+  // `/match` builds its whole carry-in from this alone, so a wind left out here rebuilt a South
+  // link (or a rewind into South) in East
+  it('carries the prevalent wind off East, and only off East', () => {
+    const s = emptySituation()
+    s.round = 'S'
+    const decoded = decodeSituation(new URLSearchParams(encodeSituation(s)))
+    expect(matchOverrides(decoded)).toEqual({ prevalentWind: HONOR + 1 })
+    expect(matchOverrides(emptySituation())).not.toHaveProperty('prevalentWind')
+  })
+
   it('decodes empty params to the empty situation', () => {
     expect(decodeSituation(new URLSearchParams(''))).toEqual(emptySituation())
     expect(encodeSituation(emptySituation())).toBe('')

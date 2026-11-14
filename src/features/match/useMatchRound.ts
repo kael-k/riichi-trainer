@@ -205,14 +205,16 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
         loser: rr.win?.from === undefined ? undefined : winds[rr.win.from],
       }
       setSettlement({ result, deltas: stepped.deltas, settlement: stepped, winds })
-      // `match`/`wall` (this render's closure, not `core.round.match`) are this round's own
-      // *starting* state — see `TenhouRoundInput.match`'s own doc comment on why it must never be
-      // the live, riichi-mutated one
+      // `match` (this render's closure, not `core.round.match`) is this round's own *starting*
+      // state — see `TenhouRoundInput.match`'s own doc comment on why it must never be the live,
+      // riichi-mutated one. The wall is the opposite: `core.round.wall`, the one actually dealt,
+      // never the `wall` state, which a link can leave a short prefix `createRound` completed at
+      // random — exporting that would replay a different board, or throw
       setTenhouRounds((rounds) => {
         const key = roundKey(match)
         const entry: TenhouRoundInput = {
           match,
-          wall,
+          wall: core.round.wall,
           log: [...core.round.log],
           deltas: stepped.deltas,
         }

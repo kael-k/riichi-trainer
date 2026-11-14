@@ -1,7 +1,6 @@
 import type { EvModelName } from '../../core/evModel'
 import { createMatch } from '../../core/match'
 import { NORTH, type RoundOptions } from '../../core/round'
-import { HONOR } from '../../core/tiles'
 import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import type { EvBands } from '../table/evGrade'
 import { matchOverrides, WINDS, type Situation } from '../situation/urlCodec'
@@ -55,11 +54,10 @@ export function useEfficiencyRound(situation: Situation, options: EfficiencyOpti
   const seats = resolveSeatConfig(options.seats, players, seatIndex)
   const algorithms = seats.modes
   const manualSeats = algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
-  const prevalentWind = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    match: createMatch(options.sanma, { prevalentWind, ...matchOverrides(situation) }),
+    match: createMatch(options.sanma, matchOverrides(situation)),
     // opponents may open their hands and call, but nobody wins: a hand that ended on someone
     // else's tsumo would cut this per-turn drill short on a result the player did not cause
     calls: true,

@@ -1,6 +1,8 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { emptySituation } from '../situation/urlCodec'
+import { HONOR, PIN, parseTenhou } from '../../core/tiles'
+import { dealtIndices, wallWithHand } from '../../core/wall'
+import { emptySituation, type Situation } from '../situation/urlCodec'
 import { linkedSeats, useMatchRound, type MatchOptions } from './useMatchRound'
 
 // no `?wall=` link behind these tests — every round comes from ordinary local play, never a
@@ -92,4 +94,27 @@ describe('useMatchRound', () => {
     expect(result.current.finished).toBe(false)
     expect(result.current.match.points).toEqual(nextPoints)
   }, 120_000)
+
+  // a link carries its round in `?round=`, and a short `?wall=` is a prefix `createRound` completes
+  // at random — so both the wind the board rebuilds in and the wall the export records have to come
+  // from what was actually dealt, not from what the link literally spelled out
+  it('a South link with a short wall mounts in South and exports the wall it dealt', () => {
+    // the dealer (seat 0) is dealt a complete hand less its 5p, and draws that 5p first: one
+    // answer settles the round, so nothing the random completion put past the prefix is ever played
+    const full = wallWithHand(0, parseTenhou('123456789m123p5p'), false, false, 'south-link')
+    const own = new Set(dealtIndices(0, 4))
+    const copy = full.findIndex((t, i) => t.id === PIN + 4 && !own.has(i))
+    ;[full[52], full[copy]] = [full[copy], full[52]]
+    const link: Situation = { ...emptySituation(), round: 'S', wall: full.slice(0, 53) }
+
+    const { result } = renderHook(() => useMatchRound(BARE, link))
+    expect(result.current.match.prevalentWind).toBe(HONOR + 1)
+    expect(result.current.claim?.kind).toBe('win')
+
+    act(() => result.current.answer({ kind: 'tsumo' }))
+    expect(result.current.settlement?.result.roundWind).toBe('S')
+    const [exported] = result.current.tenhouRounds
+    expect(exported.wall).toHaveLength(136)
+    expect(exported.wall.slice(0, 53)).toEqual(link.wall)
+  })
 })

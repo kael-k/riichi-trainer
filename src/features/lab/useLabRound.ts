@@ -3,7 +3,7 @@ import type { TileDanger } from '../../core/danger'
 import type { DiscardOption } from '../../core/efficiency'
 import { createMatch } from '../../core/match'
 import type { RoundOptions } from '../../core/round'
-import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
+import { tileCode, type ParsedTile } from '../../core/tiles'
 import { resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
 import { BACK_TILE } from '../folding/useFoldingRound'
@@ -64,11 +64,10 @@ export function useLabRound(situation: Situation, options: LabOptions) {
   const seats = resolveSeatConfig(options.seats, players, seatIndex)
   const algorithms = seats.modes
   const manualSeats = algorithms.flatMap((a, seat) => (a === 'manual' ? [seat] : []))
-  const prevalentWind = HONOR + Math.max(0, WINDS.indexOf(situation.round))
   const roundOptions: RoundOptions = {
     sanma: options.sanma,
     aka: options.aka,
-    match: createMatch(options.sanma, { prevalentWind, ...matchOverrides(situation) }),
+    match: createMatch(options.sanma, matchOverrides(situation)),
     calls: true,
     riichi: true,
     wins: options.opponentWins,

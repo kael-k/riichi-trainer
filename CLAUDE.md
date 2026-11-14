@@ -91,7 +91,8 @@ players)`, "am I dealer" is `seat === state.match.dealer`, and the turn counter 
 - **The tenhou.net/6 export (`core/tenhouLog.ts`, `/match` only) replays, it never records live.**
   `TenhouRoundInput.match` is the round's **starting** `MatchState` — `useMatchRound`'s own `match`
   state, never `RoundState.match` (already riichi-mutated) or `settleRound`'s stepped output (the
-  _next_ round's carry-in). `buildKyoku` feeds it back through `createRound`/`replayLog` to
+  _next_ round's carry-in). Its `wall` is `RoundState.wall`, never the hook's `wall` state, which a
+  link can leave a short prefix. `buildKyoku` feeds it back through `createRound`/`replayLog` to
   reconstruct every draw/discard/call, and folds each riichi's −1000 back into the round's own
   deltas itself — `settleRound`'s own deltas never carry it, since the deduction already landed on
   `match.points` mid-round, before settlement ever ran.
@@ -385,7 +386,9 @@ What the models compute and why is the docs site. What breaks quietly:
 - The match context is carried **key-by-key and omitted at its default**: **`matchOverrides` builds
   `Partial<MatchState>` one key at a time rather than by spreading**, since a
   present-but-`undefined` key would clobber `createMatch`'s own default through a shallow merge.
-- `Situation.round` is the prevalent-wind letter; `kyoku` is the number within it.
+- `Situation.round` is the prevalent-wind letter; `kyoku` is the number within it. **`matchOverrides`
+  carries the wind too** (as `prevalentWind`, off East only), so a caller passes it whole and never
+  derives the wind beside it — `/match` builds its carry-in from `matchOverrides` alone.
 - What travels is the round's **starting** match, never the live `RoundState.match`: a riichi's 1000
   is re-applied when the link's `log` replays that discard.
 

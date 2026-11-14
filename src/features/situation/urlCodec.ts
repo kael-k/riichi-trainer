@@ -1,7 +1,7 @@
 import { decodeLog, encodeLog } from '../../core/actionLog'
 import { STARTING_POINTS_SANMA, STARTING_POINTS_YONMA, type MatchState } from '../../core/match'
 import type { LogEntry } from '../../core/round'
-import { parseTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
+import { HONOR, parseTenhou, serializeTenhouOrdered, type ParsedTile } from '../../core/tiles'
 import { validateWall, type WallError } from '../../core/wall'
 
 export type Wind = 'E' | 'S' | 'W' | 'N'
@@ -144,16 +144,22 @@ function pointsAtDefault(points: number[], sanma: boolean): boolean {
 }
 
 /** The `MatchState` overrides a decoded `Situation` carries, for a caller building
- *  `createMatch(sanma, { prevalentWind, ...matchOverrides(situation) })`. Only the fields the
- *  situation actually named — `createMatch`'s own defaults fill the rest, so a key present here
- *  with value `undefined` would wrongly overwrite one of those (`{ ...overrides }` is a shallow
- *  merge), which is why this builds the object key-by-key instead of a blanket spread. */
+ *  `createMatch(sanma, matchOverrides(situation))`. Only the fields the situation actually named —
+ *  `createMatch`'s own defaults fill the rest, so a key present here with value `undefined` would
+ *  wrongly overwrite one of those (`{ ...overrides }` is a shallow merge), which is why this builds
+ *  the object key-by-key instead of a blanket spread. The prevalent wind is one of them, set only
+ *  off East: a South-round link (or `/match`'s own rewind into one) otherwise rebuilt in East. */
 export function matchOverrides(
   s: Situation,
 ): Partial<
-  Pick<MatchState, 'round' | 'honba' | 'dealerRepeat' | 'dealer' | 'riichiSticks' | 'points'>
+  Pick<
+    MatchState,
+    'prevalentWind' | 'round' | 'honba' | 'dealerRepeat' | 'dealer' | 'riichiSticks' | 'points'
+  >
 > {
   const out: ReturnType<typeof matchOverrides> = {}
+  const wind = WINDS.indexOf(s.round)
+  if (wind > 0) out.prevalentWind = HONOR + wind
   if (s.kyoku !== undefined) out.round = s.kyoku
   if (s.honba !== undefined) out.honba = s.honba
   if (s.dealerRepeat !== undefined) out.dealerRepeat = s.dealerRepeat
