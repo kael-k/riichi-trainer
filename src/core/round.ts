@@ -1631,9 +1631,13 @@ export function replayLog(
     const acceptsTsumo = next?.kind === 'win' && next.seat === seat && next.from === undefined
     emit(beginTurn(state, replayOptions, !acceptsTsumo))
     // every replayed seat is forced manual and `claims` is forced on, so a tsumo the log *does*
-    // record comes back as an offer rather than an ending. `declineTsumo` above already
-    // suppressed the ones it does not record, so anything pending here is a yes
-    if (state.claim?.kind === 'win') emit(answerClaim(state, replayOptions, { kind: 'tsumo' }))
+    // record comes back as an offer rather than an ending. `declineTsumo` above suppresses the
+    // draw's own offer when the log does not record it, but it is not the only offer that can be
+    // pending here: a daiminkan's rinshan offer is raised inside `resolveClaims`, before this turn
+    // began (`beginTurn` no-ops on it), and only the log can say whether it was taken
+    if (state.claim?.kind === 'win') {
+      emit(answerClaim(state, replayOptions, { kind: acceptsTsumo ? 'tsumo' : 'pass' }))
+    }
     if (state.ended) {
       if (acceptsTsumo) i++
       break

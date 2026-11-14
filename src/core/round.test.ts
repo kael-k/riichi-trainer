@@ -1936,3 +1936,30 @@ describe('replayLog claim windowing', () => {
     expect(fresh.ended).toBe(played.ended)
   })
 })
+
+describe('replayLog tsumo offers', () => {
+  // a daiminkan's rinshan offer is raised inside the claim resolution, before the caller's turn
+  // body starts — so `declineTsumo` never sees it, and replay used to take it on sight
+  it("declines a daiminkan's rinshan tsumo the log shows passed up", () => {
+    const options: RoundOptions = { ...YONMA, claims: true, calledKan: true, algorithms: manual(1) }
+    // seat 1 holds 999s and a haku triplet, tenpai on a 7m tanki: kanning seat 0's 9s draws the 7m
+    // that completes it (haku is the yaku an open hand needs)
+    const wall = handsWall('replay-rinshan-decline', '2468m2468p9s2345z', '123456m7m999s555z')
+    pinReplacement(wall, MAN + 6, 4)
+    const played = createRound(wall, 4, options)
+    beginTurn(played, options)
+    finishTurn(played, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    const minkan = discardClaim(played).options.find((o) => o.kind === 'minkan')
+    answerClaim(played, options, { kind: 'minkan', from: minkan!.from })
+    expect(played.claim?.kind).toBe('win')
+    answerClaim(played, options, { kind: 'pass' })
+    finishTurn(played, options, { tile: played.players[1].drawn!, fromDrawn: true })
+    expect(played.ended).toBeUndefined()
+
+    const fresh = createRound(wall, 4, options)
+    expect(replayLog(fresh, options, played.log)).toBe(played.log.length)
+    expect(fresh.ended).toBeUndefined()
+    expect(fresh.log).toEqual(played.log)
+    expect(fresh.players.map((p) => p.concealed)).toEqual(played.players.map((p) => p.concealed))
+  })
+})

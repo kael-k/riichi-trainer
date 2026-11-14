@@ -161,7 +161,9 @@ unchanged) makes a manual seat get _asked_ about another seat's discard.
 - **A manual seat's own tsumo is a call too**, and **one function raises it** — `offerOrEnd`, over
   the third `PendingClaim` shape, `PendingWin`. Every **self-drawn** win goes through it; a **ron
   never does**, and **neither does an AI seat**. Anything but `'tsumo'` hands the turn back with the
-  fourteenth tile still in hand and **leaves no furiten**.
+  fourteenth tile still in hand and **leaves no furiten**. **`replayLog` answers every pending
+  offer from the log, never `'tsumo'` on sight**: a daiminkan's rinshan offer is raised inside claim
+  resolution, where `beginTurn`'s `declineTsumo` never reaches it.
 - **The rinshan check lives in the three `call*` functions** (`replacementWin`), not their callers,
   which is why `callAnkan` takes `RoundOptions`. Rinshan kaihou the yaku is unmodelled.
 
