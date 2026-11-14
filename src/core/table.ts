@@ -1,9 +1,10 @@
 import type { Meld } from './agari'
-import { assessDiscards, type TileDanger } from './danger'
+import { assessDiscards, type SafetyTier, type TileDanger } from './danger'
 import { evaluateDiscards, type DiscardOption } from './efficiency'
 import {
   foldEv,
   foldRanking,
+  rankCalls,
   rankDiscards,
   type DiscardEv,
   type EvObjective,
@@ -12,21 +13,25 @@ import {
 import { EV_MODELS, type EvModelName } from './evModel'
 import { tileCount, type Hand } from './hand'
 import {
+  beginTurn,
   concealedTiles,
+  createRound,
   isManual,
+  replayLog,
   seatView,
   seatWaits,
   seenBy as seenByMatch,
   stepRound,
   threatViews,
   wallDrawnCount,
+  type LogEntry,
   type RoundOptions,
   type RoundState,
   type PendingClaim,
   type WinRecord,
 } from './round'
 import type { MatchState } from './match'
-import { isFuriten, type SeatAlgorithm } from './policy'
+import { isFuriten, type Call, type SeatAlgorithm } from './policy'
 import type { ParsedTile, RiverTile, TileId } from './tiles'
 import { INITIAL_HAND_SIZE, TILES_PER_KIND } from './wall'
 
@@ -359,4 +364,188 @@ export function analysisOf(core: TableCore, seat: number): TableAnalysis {
       return (dangerCache ??= assessDiscards(hand, threats, seen, core.options.sanma))
     },
   }
+}
+
+/** The rules a recorded round was played under — `TenhouRules` without the match format, which
+ *  nothing inside one round reads. */
+export interface ReplayRules {
+  sanma: boolean
+  aka: boolean
+  kiriageMangan: boolean
+}
+
+/** One recorded round, as `replayTo` reads it — `ImportedRound`'s and `TenhouRoundInput`'s own
+ *  three fields. `match` is the round's **starting** match, never one a riichi already moved. */
+export interface RecordedRound {
+  match: MatchState
+  wall: ParsedTile[]
+  log: readonly LogEntry[]
+}
+
+/**
+ * The board just before `log[at]` was decided — **the one way to rebuild a recorded position**,
+ * for the replay viewer and the stats worker alike. `at === log.length` is the round's end.
+ *
+ * Every seat is `'manual'`, so nothing is decided for anybody past the log. What "just before"
+ * means depends on whose decision `log[at]` is:
+ *
+ * - **A reaction to a discard** (a call, a pass, a ron) runs with `claims` on, so `replayLog`
+ *   stops with that discard's claim still open — the caller holds thirteen and nobody has drawn.
+ *   The seat it is open *for* may be an earlier one in claim order that replay asks and live
+ *   never did; the discard and the hands are the same either way.
+ * - **Anything else** is the acting seat's own, and it decides holding fourteen: `claims` off,
+ *   so replay passes every claim the log leaves unanswered, then the turn is begun with the same
+ *   `drawn` guard `stepRound` uses and the tsumo declined, exactly as replay declines one the log
+ *   does not take. After a pon the caller already holds fourteen and `beginTurn` draws nothing.
+ *
+ * Accepted edges: a ron on the last discard (houtei) is not suspended — replay never stops on a
+ * dry wall — so the step before one shows as the exhaustive draw; and a manual seat's own offer
+ * (kyuushu, a rinshan tsumo) is still open at the discard that declined it, since `beginTurn`
+ * asks whatever `claims` says. Nothing but a prompt reads either, and a replay draws none.
+ */
+export function replayTo(round: RecordedRound, rules: ReplayRules, at: number): TableCore {
+  const players = rules.sanma ? 3 : 4
+  const next = round.log[at]
+  const options: RoundOptions = {
+    sanma: rules.sanma,
+    aka: rules.aka,
+    kiriageMangan: rules.kiriageMangan,
+    match: round.match,
+    calls: true,
+    riichi: true,
+    wins: true,
+    calledKan: true,
+    claims:
+      next?.kind === 'call' ||
+      next?.kind === 'pass' ||
+      (next?.kind === 'win' && next.from !== undefined),
+    algorithms: Array<SeatAlgorithm>(players).fill('manual'),
+  }
+  const state = createRound(round.wall, players, options)
+  replayLog(state, options, round.log.slice(0, at))
+  // a no-op on an ended round or an open claim — `beginTurn` guards both itself
+  if (state.players[state.seat].drawn === undefined) beginTurn(state, options, true)
+  return { round: state, options }
+}
+
+/** A row's stats request: the round as recorded through the action, and which entry it is — the
+ *  kind, the seat and the tile are read off `round.log[at]`. Plain data: it crosses a Worker
+ *  boundary by structured clone. */
+export interface StatsJob {
+  round: RecordedRound
+  rules: ReplayRules
+  at: number
+}
+
+/** One discard as a model priced it. `dealIn` is this turn's union across threats; `ev` is
+ *  expected points over the rest of the hand. */
+export interface PricedDiscard {
+  tile: TileId
+  ev: number
+  dealIn: number
+}
+
+interface ModelHead {
+  model: EvModelName
+  /** Always `'points'` here, and named anyway: points and placement name different discards. */
+  objective: EvObjective
+}
+
+/** The model may not speak about this ruleset (`EvModel.unsupported` — houou in sanma): no
+ *  numbers at all, never the other model's in their place. */
+export interface UnsupportedPrice extends ModelHead {
+  unsupported: true
+}
+
+export interface DiscardPrice extends ModelHead {
+  unsupported: false
+  /** The tile thrown, and the model's best — the same entry when they agree. */
+  chosen: PricedDiscard
+  best: PricedDiscard
+}
+
+export interface CallPrice extends ModelHead {
+  unsupported: false
+  /** The call actually made — `null` when `rankCalls`' screen pruned it (it raises shanten, or
+   *  leaves no yaku route): not priced, which is not the same as worth nothing. */
+  call: number | null
+  pass: number
+  /** `call: null` is the pass. */
+  best: { call: Call | null; ev: number }
+}
+
+/** What one discard or call row says under each model — plain data, structured-clone safe. */
+export type ActionStats =
+  | {
+      kind: 'discard'
+      models: (DiscardPrice | UnsupportedPrice)[]
+      /** The heuristic's tier for the tile thrown and the safest tier held (`core/danger.ts`).
+       *  Absent with nobody in riichi: with no threat there is nothing to be safe from. */
+      danger?: { tier: SafetyTier; safest: SafetyTier }
+    }
+  | { kind: 'call'; models: (CallPrice | UnsupportedPrice)[] }
+
+const STATS_MODELS: readonly EvModelName[] = ['statistical', 'houou']
+
+/**
+ * Prices `log[at]` under both EV models, on demand — `evOf`'s rule, and heavier: an exhaustive
+ * ranking per model, so it belongs off the main thread and never in a getter.
+ *
+ * `null` for anything that is not a decision with a price: a kita, a kan, a win, an abort, a pass,
+ * and the discard of a seat already in riichi, which is tsumogiri by rule rather than by choice.
+ */
+export function actionStats(job: StatsJob): ActionStats | null {
+  const entry = job.round.log[job.at]
+  if (entry?.kind !== 'discard' && entry?.kind !== 'call') return null
+  const core = replayTo(job.round, job.rules, job.at)
+  const seat = entry.seat
+  if (core.round.players[seat].riichiAt !== undefined) return null
+
+  const price = <T>(rank: (opts: EvOptions) => T) =>
+    STATS_MODELS.map((model): (T & ModelHead & { unsupported: false }) | UnsupportedPrice => {
+      const head = { model, objective: 'points' as const }
+      if (EV_MODELS[model].unsupported(job.rules.sanma) !== null) {
+        return { ...head, unsupported: true }
+      }
+      return {
+        ...head,
+        unsupported: false,
+        ...rank({ model: EV_MODELS[model], objective: 'points' }),
+      }
+    })
+
+  if (entry.kind === 'discard') {
+    const priced = ({ tile, ev, dealIn }: DiscardEv): PricedDiscard => ({ tile, ev, dealIn })
+    const models = price((opts) => {
+      // mid-turn by construction: `replayTo` hands a discarding seat its fourteen
+      const ranked = pushRankingOf(core, seat, opts)!
+      return {
+        chosen: priced(ranked.find((d) => d.tile === entry.tile.id)!),
+        best: priced(ranked[0]),
+      }
+    })
+    if (threatViews(core.round).length === 0) return { kind: 'discard', models }
+    const danger = analysisOf(core, seat).danger
+    const tier = danger.find((d) => d.tile === entry.tile.id)!.tier
+    return { kind: 'discard', models, danger: { tier, safest: danger[0].tier } }
+  }
+
+  const { call, from } = entry
+  // the claim is still open, so the discard it hangs on is the last one made
+  const tile = core.round.discards.at(-1)!.tile.id
+  const view = seatView(core.round, core.options, seat)
+  const fromKamicha = seat === (from + 1) % core.round.players.length
+  const models = price((opts) => {
+    const ranked = rankCalls(view, tile, fromKamicha, opts)
+    const made = ranked.find(
+      (row) => row.call?.kind === call.kind && row.call.from.join() === call.from.join(),
+    )
+    return {
+      call: made?.ev ?? null,
+      // a call the log made was legal, so there was something to weigh and the pass is a row
+      pass: ranked.find((row) => row.call === null)!.ev,
+      best: { call: ranked[0].call, ev: ranked[0].ev },
+    }
+  })
+  return { kind: 'call', models }
 }

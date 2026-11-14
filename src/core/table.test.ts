@@ -1,21 +1,34 @@
 import { describe, expect, it, vi } from 'vitest'
 import { assessDiscards } from './danger'
 import { evaluateDiscards } from './efficiency'
+import { tileCount } from './hand'
 import { createMatch } from './match'
-import { beginTurn, createRound, finishTurn, type RoundOptions } from './round'
+import {
+  beginTurn,
+  createRound,
+  findRound,
+  finishTurn,
+  playRound,
+  type RoundOptions,
+} from './round'
 import type { SeatAlgorithm } from './policy'
+import { importTenhou } from './tenhouImport'
+import convlog from './testdata/convlog.json'
 import { NUM_TILE_TYPES, parseTenhou, PIN, SOU } from './tiles'
 import { DEAD_WALL_SIZE, INITIAL_HAND_SIZE, wallWithHands } from './wall'
 import {
   actingSeat,
+  actionStats,
   analysisOf,
   foldRankingOf,
   goRound,
   pushRankingOf,
+  replayTo,
   seatRead,
   seenBy,
   snapshotTable,
   splitDrawn,
+  type ReplayRules,
   type TableCore,
 } from './table'
 
@@ -377,5 +390,147 @@ describe('seatRead', () => {
     // and a real one still reads
     round.players[1].river.push({ id: PIN, red: false })
     expect(seatRead(round, 1, false).furiten).toBe(true)
+  })
+})
+
+const SANMA: RoundOptions & ReplayRules = {
+  sanma: true,
+  aka: true,
+  kiriageMangan: false,
+  match: createMatch(true),
+  calls: true,
+  riichi: true,
+  wins: true,
+}
+
+/** The convlog fixture's real hanchan (`tenhouImport.test.ts` holds it to the record). Round 0:
+ *  seat 0 pons at 14, seat 2 declares at 37 and tsumos. Round 1: seat 3 daiminkans at 26, and
+ *  seat 1's chi at 34 is one `rankCalls` prunes. Round 7: seat 2 ankans at 13. */
+const fixture = (() => {
+  const result = importTenhou(convlog)
+  if ('error' in result) throw new Error(`fixture failed to import: ${result.error}`)
+  return result.game
+})()
+
+describe('replayTo', () => {
+  const { rules, rounds } = fixture
+  const counts = (core: TableCore) => core.round.players.map((p) => tileCount(p.hand))
+
+  it('hands the dealer its fourteenth at position 0', () => {
+    const core = replayTo(rounds[0], rules, 0)
+    expect(actingSeat(core)).toBe(rounds[0].match.dealer)
+    expect(counts(core)).toEqual([14, 13, 13, 13])
+    expect(core.round.players[0].drawn).toBeDefined()
+  })
+
+  it('leaves a ponning seat its fourteen-equivalent, drawing nothing', () => {
+    expect(rounds[0].log[14]).toMatchObject({ kind: 'call', seat: 0, call: { kind: 'pon' } })
+    const core = replayTo(rounds[0], rules, 15)
+    expect(actingSeat(core)).toBe(0)
+    // `tileCount` counts a meld as three: fourteen-equivalent, eleven of them in hand
+    expect(counts(core)).toEqual([14, 13, 13, 13])
+    expect(core.round.players[0].concealed).toHaveLength(11)
+    expect(core.round.players[0].drawn).toBeUndefined()
+  })
+
+  it('holds the replacement after an ankan, in the same turn', () => {
+    expect(rounds[7].log[13]).toMatchObject({ kind: 'ankan', seat: 2 })
+    const core = replayTo(rounds[7], rules, 14)
+    expect(actingSeat(core)).toBe(2)
+    expect(tileCount(core.round.players[2].hand)).toBe(14)
+    expect(core.round.players[2].melds).toHaveLength(1)
+    expect(core.round.players[2].drawn).toBeDefined()
+  })
+
+  it('holds the replacement after a kita, in the same turn', () => {
+    const found = findRound('replay-to-kita', 3, SANMA, ({ state }) => {
+      const k = state.log.findIndex(
+        (e, i) => e.kind === 'kita' && state.log[i + 1]?.kind === 'discard',
+      )
+      return k < 0 ? null : { state, k }
+    })
+    expect(found).not.toBeNull()
+    const { state, k } = found!.result
+    const seat = state.log[k].seat
+    const core = replayTo({ match: SANMA.match, wall: state.wall, log: state.log }, SANMA, k + 1)
+    expect(actingSeat(core)).toBe(seat)
+    expect(core.round.players[seat].nuki).toHaveLength(1)
+    expect(tileCount(core.round.players[seat].hand)).toBe(14)
+    expect(core.round.players[seat].drawn).toBeDefined()
+  })
+
+  it('stops at a call with its claim still open and nobody drawn', () => {
+    expect(rounds[1].log[26]).toMatchObject({ kind: 'call', seat: 3, from: 1 })
+    const core = replayTo(rounds[1], rules, 26)
+    expect(core.round.claim).toMatchObject({ kind: 'discard', from: 1 })
+    expect(counts(core)).toEqual([13, 13, 13, 13])
+    expect(core.round.log).toHaveLength(26)
+  })
+
+  it('plays the round out at the end of the log', () => {
+    const core = replayTo(rounds[0], rules, rounds[0].log.length)
+    expect(core.round.ended).toBe('win')
+    expect(core.round.win?.seat).toBe(2)
+  })
+})
+
+describe('actionStats', () => {
+  const { rules, rounds } = fixture
+  const job = (round: number, at: number) => ({ round: rounds[round], rules, at })
+
+  it('prices a discard under both models, with no deal-in and no tier on a quiet board', () => {
+    const thrown = rounds[0].log[0]
+    const stats = actionStats(job(0, 0))
+    if (thrown.kind !== 'discard' || stats?.kind !== 'discard')
+      throw new Error('expected a discard')
+    expect(stats.danger).toBeUndefined()
+    expect(stats.models.map((m) => m.model)).toEqual(['statistical', 'houou'])
+    for (const m of stats.models) {
+      expect(m).toMatchObject({ objective: 'points', unsupported: false })
+      if (m.unsupported) continue
+      expect(m.chosen.tile).toBe(thrown.tile.id)
+      expect(m.chosen.dealIn).toBe(0)
+      expect(m.best.ev).toBeGreaterThanOrEqual(m.chosen.ev)
+    }
+  })
+
+  it('reads deal-in and a tier into a riichi', () => {
+    // seat 0's first throw into seat 2's riichi (declared at 37) that is not genbutsu
+    expect(rounds[0].log[43]).toMatchObject({ kind: 'discard', seat: 0 })
+    const stats = actionStats(job(0, 43))
+    if (stats?.kind !== 'discard') throw new Error('expected discard stats')
+    expect(stats.danger).toBeDefined()
+    expect(stats.danger!.tier).not.toBe('genbutsu')
+    for (const m of stats.models) if (!m.unsupported) expect(m.chosen.dealIn).toBeGreaterThan(0)
+  })
+
+  it("has nothing to say about a declared seat's tsumogiri", () => {
+    expect(rounds[0].log[41]).toMatchObject({ kind: 'discard', seat: 2 })
+    expect(actionStats(job(0, 41))).toBeNull()
+  })
+
+  it('prices a call against the pass, and a pruned call as not priced', () => {
+    const pon = actionStats(job(0, 14))
+    if (pon?.kind !== 'call') throw new Error('expected call stats')
+    for (const m of pon.models) {
+      if (m.unsupported) throw new Error('yonma is supported')
+      expect(m.call).toEqual(expect.any(Number))
+      expect(m.pass).toEqual(expect.any(Number))
+      expect(m.best.ev).toBeGreaterThanOrEqual(Math.max(m.call!, m.pass))
+    }
+
+    const chi = actionStats(job(1, 34))
+    if (chi?.kind !== 'call') throw new Error('expected call stats')
+    for (const m of chi.models) expect(m).toMatchObject({ unsupported: false, call: null })
+  })
+
+  it('marks houou unsupported in sanma instead of borrowing the statistical model', () => {
+    const { state } = playRound('action-stats-sanma', 3, SANMA)
+    const at = state.log.findIndex((e) => e.kind === 'discard')
+    const round = { match: SANMA.match, wall: state.wall, log: state.log }
+    expect(actionStats({ round, rules: SANMA, at })?.models).toEqual([
+      expect.objectContaining({ model: 'statistical', unsupported: false }),
+      { model: 'houou', objective: 'points', unsupported: true },
+    ])
   })
 })

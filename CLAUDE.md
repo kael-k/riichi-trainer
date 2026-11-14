@@ -282,6 +282,9 @@ Other rules of the seam:
 - `analysisOf` returns **lazy getters, not eager fields**; `evaluateDiscards` is not cheap.
 - `goRound(core)` plays every AI-decided seat and stops at the next manual turn, a pending claim, or
   the hand's end.
+- **`replayTo(round, rules, at)` is the one way to rebuild a recorded position** (every seat
+  `'manual'`). `claims` is on only when `log[at]` is a call, a pass or a ron, so replay stops with
+  that claim open; otherwise the acting seat is handed its fourteen, tsumo declined.
 
 **`useRound(input)` drives a round and reports what the engine did**; it has no opinion about what
 any of it means. One callback, `onEvent`, and a handler steers by what it **returns**: nothing to
@@ -353,8 +356,10 @@ The chain is one-way — `dealIn`/`probability` → `evModel` → `ev` → `algo
 `placement.ts` hanging off `ev.ts` — and `danger.ts` and `policy.ts` are untouched by all of it.
 What the models compute and why is the docs site. What breaks quietly:
 
-- **`core/table.ts#evOf` is the only surface, and it is on demand, never a getter beside
-  `ranked`/`danger`** — those are milliseconds and this is hundreds of them at 2-shanten.
+- **`core/table.ts#evOf` and `#actionStats` are the only surfaces, on demand, never a getter
+  beside `ranked`/`danger`** — those are milliseconds and this is hundreds of them at 2-shanten.
+  `actionStats` ranks exhaustively under both models per log row, so it runs in a worker, and its
+  answer is plain data; houou in sanma is `unsupported: true` with no numbers, never statistical's.
 - **`rankDiscards` needs the hand mid-turn and throws otherwise.** `Algorithm.riichi` is asked
   _after_ the discard, so its view holds thirteen tiles and ranking from it would leave a
   twelve-tile hand the DP can never complete.
