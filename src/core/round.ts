@@ -312,7 +312,8 @@ export interface RoundState {
   log: LogEntry[]
   seat: number
   turn: number
-  /** Cleared right after a call — the caller already holds 14 tiles and does not draw. */
+  /** Cleared right after a pon/chi — the caller already holds 14 tiles and does not draw — and
+   *  consumed by its `beginTurn`. Never by a minkan: its replacement was the caller's draw. */
   pendingDraw: boolean
   /** Replacement (rinshan) draws taken so far, counted in `drawReplacement`. Combined with the
    *  two snapshots above it lets a display reconstruct "already drawn/taken" without a fourth
@@ -1323,22 +1324,19 @@ function resolveReactions(
           // daiminkan's landed in neither — so a hand completed here vanished instead of ending
           // the round. Scored as an ordinary tsumo: rinshan kaihou the yaku is still unmodelled.
           const win = tryWin(state, other, options, replacement, true, undefined, true)
-          if (win) {
-            const resolved = offerOrEnd(state, options, win, replacement)
-            // a *declined* offer leaves the caller holding its replacement and owing a discard, so
-            // the turn has to be handed over before this returns — the fall-through below is
-            // unreachable once a claim is pending
-            if (state.claim) {
-              state.seat = other
-              state.pendingDraw = false
-            }
-            return [...events, ...resolved]
-          }
+          // an offer pending (or later declined) leaves the caller holding its replacement and
+          // owing a discard, which is the hand-over below; only a win taken outright ends here
+          const resolved = win ? offerOrEnd(state, options, win, replacement) : []
+          if (state.ended) return [...events, ...resolved]
         }
       }
 
       state.seat = other
-      state.pendingDraw = false
+      // a pon/chi caller holds its fourteenth already and draws nothing. A minkan caller has drawn,
+      // its replacement, so the flag stays a drawing seat's: cleared here too, it waited for a
+      // `beginTurn` the live drivers never run for a seat holding its draw, and the *next* seat's
+      // `beginTurn` consumed it instead and drew nothing
+      state.pendingDraw = call.kind === 'minkan'
       return events
     }
   }
@@ -1629,7 +1627,10 @@ export function replayLog(
     const seat = state.seat
     const next: LogEntry | undefined = log[i]
     const acceptsTsumo = next?.kind === 'win' && next.seat === seat && next.from === undefined
-    emit(beginTurn(state, replayOptions, !acceptsTsumo))
+    // the same `drawn` guard `stepRound` has: a minkan caller already holds its replacement
+    if (state.players[seat].drawn === undefined) {
+      emit(beginTurn(state, replayOptions, !acceptsTsumo))
+    }
     // every replayed seat is forced manual and `claims` is forced on, so a tsumo the log *does*
     // record comes back as an offer rather than an ending. `declineTsumo` above suppresses the
     // draw's own offer when the log does not record it, but it is not the only offer that can be

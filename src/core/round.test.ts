@@ -1372,7 +1372,31 @@ describe('called kan', () => {
     expect(state.players[0].river).toHaveLength(0)
     expect(state.doraIndicators.length).toBe(indicatorsBefore + 1)
     expect(state.seat).toBe(1)
-    expect(state.pendingDraw).toBe(false)
+    // unlike a pon's, still set: the replacement was the caller's draw, and the next one is the
+    // next seat's
+    expect(state.pendingDraw).toBe(true)
+  })
+
+  // a live driver never runs `beginTurn` for a seat already holding its draw (`stepRound`'s and
+  // `useRound`'s `drawn` guard), and a minkan caller holds one: its replacement. Replay used to be
+  // the only driver that drew for the next seat, so a live game with a daiminkan replayed into a
+  // different board from there on
+  it('the seat after a minkan caller draws, live and replayed alike', () => {
+    const options: RoundOptions = { ...YONMA, claims: true, calledKan: true, algorithms: manual(1) }
+    const wall = handsWall('minkan-next-draw', '2468m2468p9s2345z', CALLER_HAND)
+    const played = createRound(wall, 4, options)
+    beginTurn(played, options)
+    finishTurn(played, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+    const minkan = discardClaim(played).options.find((o) => o.kind === 'minkan')
+    answerClaim(played, options, { kind: 'minkan', from: minkan!.from })
+    finishTurn(played, options, { tile: played.players[1].drawn!, fromDrawn: true })
+    for (const event of stepRound(played, options, (s) => s.seat === 2)) void event
+    expect(played.players[2].river).toHaveLength(1)
+    expect(played.players[2].concealed).toHaveLength(13)
+
+    const fresh = createRound(wall, 4, options)
+    expect(replayLog(fresh, options, played.log)).toBe(played.log.length)
+    expect(fresh.players.map((p) => p.concealed)).toEqual(played.players.map((p) => p.concealed))
   })
 
   it('an efficiency seat never calls minkan even with calledKan on — it never sees the option', () => {

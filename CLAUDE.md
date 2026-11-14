@@ -154,7 +154,9 @@ unchanged) makes a manual seat get _asked_ about another seat's discard.
 - **Daiminkan and kakan are match-only** (`RoundOptions.calledKan`); `chooseCall` never receives a
   `'minkan'`. Kakan upgrades a `'pon'` meld **by replacing the meld object, never mutating it** —
   `snapshotTable` shallow-copies `melds` but keeps the same `Meld` references. **Chankan is not
-  modelled.**
+  modelled.** **A minkan's replacement is the caller's draw**: only pon/chi clear `pendingDraw`,
+  and every driver (`stepRound`, `useRound`, `replayLog`) skips `beginTurn` for a seat already
+  holding `drawn` — a cleared flag nobody consumed made the _next_ seat skip its draw.
 - `reconsiderClaim` re-enters `resolveReactions` from scratch when a seat stops being manual
   mid-claim, and **never invents a pass**: a pass sets `missedWin` and would poison the hand with
   furiten over a decision nobody made.
