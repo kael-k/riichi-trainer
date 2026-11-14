@@ -810,6 +810,26 @@ describe('manual claims', () => {
     expect(pon?.from).toEqual([SOU + 8, SOU + 8])
   })
 
+  // a tenhou.net/6 record can show a player ponning with two plain fives and keeping the red for
+  // later — spending the red anyway left `concealed` naming a plain five the hand no longer held,
+  // and the red's own discard then silently missed it
+  it('a pon with keepRed spends the plain copies and leaves the red five in hand', () => {
+    const options: RoundOptions = { ...YONMA, claims: true, algorithms: manual(1) }
+    const wall = handsWall('claim-keep-red', '5m2468p2468s1234z', '055m1379p1379s19z')
+    const state = createRound(wall, 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: MAN + 4, red: false }, fromDrawn: false })
+    const pon = discardClaim(state).options.find((o) => o.kind === 'pon')
+    answerClaim(state, options, { kind: 'pon', from: pon!.from, keepRed: true })
+
+    expect(state.players[1].melds[0].tiles).toEqual(Array(3).fill({ id: MAN + 4, red: false }))
+    expect(state.players[1].concealed).toContainEqual({ id: MAN + 4, red: true })
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: MAN + 4, red: true }, fromDrawn: false })
+    expect(state.players[1].river.at(-1)).toEqual({ id: MAN + 4, red: true })
+    for (const count of census(state)) expect(count).toBe(TILES_PER_KIND)
+  })
+
   it('passing clears the claim, hands the turn on as usual, and leaves the declined win furiten', () => {
     const options: RoundOptions = { ...YONMA, claims: true, calls: false, algorithms: manual(1) }
     // seat 1 is tanki tenpai on 2s (all simples, so tanyao carries the yaku on a ron); seats 2

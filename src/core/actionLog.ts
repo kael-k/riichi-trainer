@@ -16,7 +16,8 @@ import { parseTenhou, tileCode, type TileId } from './tiles'
  * - `call`: `C` seat from kind(`P`|`H`|`M` for pon/chi/minkan) then `call.from`'s tiles — two
  *   tokens for a pon (its own two matching copies) or a chi (two adjacent kinds), **one** for a
  *   minkan: its three held copies are always the same id, so one token says as much as three.
- *   `Call` (`policy.ts`) carries no redness, so neither does this.
+ *   `Call` (`policy.ts`) names kinds, not copies, and its one red flag, `keepRed`, is not carried:
+ *   only the tenhou.net/6 importer sets it, and replayed rows carry no links.
  * - `kita`: `K` seat.
  * - `ankan`: `A` seat tileCode.
  * - `kakan`: `G` seat tileCode — an added kan on a pon already on the table, match-only

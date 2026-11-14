@@ -63,6 +63,9 @@ imports no game logic. Both rules are load-bearing.
   (`round.test.ts`) is the guard against drift.
 - `pickTile` is a **policy, not an inference**: given a plain and a red copy, throw the plain one —
   an explicit prefer-`!red` find over `concealed`.
+- **A pon/chi/minkan spends the held red five**, unless `Call.keepRed` says it stayed in hand (then
+  plain copies, while any are left). Only the tenhou.net/6 importer sets it, and links never carry
+  it: the action-log codec drops it.
 - `ukeire(hand, visible)` prices against a **caller-supplied** visibility array. `evaluateDiscards`
   ranks shanten asc then ukeire desc; ties are compared with `isBestDiscard`, **never by tile id**.
 - `wall.ts#deal` (seeded, returns just the `Hand`) serves the shanten trainer; every other trainer

@@ -166,7 +166,7 @@ export interface ClaimOption {
 export type ClaimAnswer =
   | { kind: 'pass' }
   | { kind: 'ron' }
-  | { kind: 'pon' | 'chi' | 'minkan'; from: TileId[] }
+  | { kind: 'pon' | 'chi' | 'minkan'; from: TileId[]; keepRed?: true } // see `Call.keepRed`
   | { kind: 'abort' }
   | { kind: 'tsumo' }
 
@@ -1276,7 +1276,7 @@ function resolveReactions(
       const call: Call | null =
         caller.algorithm === 'manual'
           ? answer && (answer.kind === 'pon' || answer.kind === 'chi' || answer.kind === 'minkan')
-            ? { kind: answer.kind, from: answer.from }
+            ? { kind: answer.kind, from: answer.from, ...(answer.keepRed && { keepRed: true }) }
             : null
           : ALGORITHMS[caller.algorithm].call(
               seatView(state, options, other),
@@ -1287,7 +1287,13 @@ function resolveReactions(
 
       const meldTiles: ParsedTile[] = [{ id: tile.id, red: tile.red }]
       for (const id of call.from) {
-        const held: ParsedTile = { id, red: caller.concealed.some((t) => t.id === id && t.red) }
+        // the red copy joins the meld, unless the call kept it in hand (`Call.keepRed`) — and even
+        // then only while a plain copy is left to spend instead, so `concealed` never names a tile
+        // the hand no longer holds
+        const red = call.keepRed
+          ? !caller.concealed.some((t) => t.id === id && !t.red)
+          : caller.concealed.some((t) => t.id === id && t.red)
+        const held: ParsedTile = { id, red }
         meldTiles.push(held)
         removeTile(caller.hand, id)
         removeConcealed(caller, held)
@@ -1595,7 +1601,7 @@ export function replayLog(
         emit(answerClaim(state, replayOptions, { kind: 'ron' }))
       } else if (entry.kind === 'call') {
         resolved = true
-        emit(answerClaim(state, replayOptions, { kind: entry.call.kind, from: entry.call.from }))
+        emit(answerClaim(state, replayOptions, entry.call))
       } else {
         // a logged decline (#2) — consumed and re-recorded, same as any other replayed entry
         emit(answerClaim(state, replayOptions, { kind: 'pass' }))

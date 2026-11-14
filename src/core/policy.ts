@@ -176,6 +176,10 @@ export interface Call {
   /** The caller's own tiles that join the discard, in ascending order — three of the same kind
    *  for a `'minkan'`, same as `'pon'` doubled. */
   from: TileId[]
+  /** Spend plain copies and keep a held red five in hand. Only the tenhou.net/6 importer sets it,
+   *  where the record says which copy a player kept; absent — every AI and live claim — a call
+   *  spends the red. */
+  keepRed?: true
 }
 
 /** Every pon/chi (and, with `calledKan` on, minkan) this hand could legally make on `tile`; chi
