@@ -126,6 +126,15 @@ describe('importTenhou — a real record (convlog)', () => {
     })
   })
 
+  it('re-exports the deltas the record wrote, riichi deposits left out', () => {
+    // 0, 6, 8 and 9 each have a riichi, and their deltas match `settleRound`'s own
+    game.rounds.forEach((round, i) => {
+      if (round.notice) return
+      const result = (buildKyoku(round, game.rules) as unknown[])[16] as unknown[]
+      expect(result[1], `kyoku ${i}`).toEqual((record[i][16] as unknown[])[1])
+    })
+  })
+
   it('flags exactly the rounds the engine settles differently from the record', () => {
     // 3 and 5: a riichi declared on the tile that was ronned. The record never takes the deposit,
     // the engine already has (`finishTurn` deducts before anyone reacts). 4: an open hand of runs,

@@ -96,9 +96,10 @@ players)`, "am I dealer" is `seat === state.match.dealer`, and the turn counter 
   state, never `RoundState.match` (already riichi-mutated) or `settleRound`'s stepped output (the
   _next_ round's carry-in). Its `wall` is `RoundState.wall`, never the hook's `wall` state, which a
   link can leave a short prefix. `buildKyoku` feeds it back through `createRound`/`replayLog` to
-  reconstruct every draw/discard/call, and folds each riichi's −1000 back into the round's own
-  deltas itself — `settleRound`'s own deltas never carry it, since the deduction already landed on
-  `match.points` mid-round, before settlement ever ran.
+  reconstruct every draw/discard/call. **Its deltas are `settleRound`'s own, never net of riichi
+  deposits** — tenhou's records leave them out too, so folding the −1000 in has a downstream tool
+  charge each riichi twice — and **`r` is written off the `'riichi'` event, never the river's
+  mark**, which moves to the next discard when a call takes the declaration tile.
 - **The import (`core/tenhouImport.ts`) is the export's inverse, and what the engine refuses is
   cut, never repaired.** A record names actions, not wall slots, so each revealed tile is pinned
   where `createRound` deals it: haipai at `dealtIndices`, live draw k at `13P + k`, replacement r at
@@ -108,9 +109,9 @@ players)`, "am I dealer" is `seat === state.match.dealer`, and the turn counter 
   **truncated to what `replayLog` consumed**; an ending the engine does not model stops just
   before it (a chankan drops the kan too), and a modelled one that settles differently is kept —
   both with an `ImportNotice` code, never text. **`keepRed` is set only when the caller held the
-  red and the naki's own tiles leave it out.** Two quirks of this app's own exporter are read
-  back, not rejected: deltas net of riichi deposits (a real record's are `settleRound`'s own), and
-  a second `r` on the discard after a called declaration tile, which is a plain discard.
+  red and the naki's own tiles leave it out.** Recorded deltas are compared with `settleRound`'s
+  alone: an export from before the exporter left the deposits out replays whole but is flagged
+  `pays`, rather than a second reading masking a real 1000-per-riichi disagreement.
 
 ### The round engine (`core/round.ts` + `core/policy.ts`)
 

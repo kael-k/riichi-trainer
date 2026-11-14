@@ -126,9 +126,10 @@ export interface TenhouRoundInput {
   match: MatchState
   wall: ParsedTile[]
   log: LogEntry[]
-  /** This round's own point deltas, straight off `settleRound` — the win/draw payment swing only.
-   *  A riichi's −1000 already moved `match.points` before `settleRound` ever ran, so it is *not*
-   *  in here; `buildKyoku` adds it back in from the replayed discards themselves. */
+  /** This round's own point deltas, straight off `settleRound` — the win/draw payment swing only,
+   *  the winner's take including every stick on the table. A riichi's −1000 is *not* in here, and
+   *  it stays out of the export: tenhou records leave the deposits out of their deltas too (the
+   *  convlog fixture, tensoul), so a downstream tool would charge a riichi folded in here twice. */
   deltas: number[]
 }
 
@@ -259,17 +260,22 @@ export function buildKyoku(input: TenhouRoundInput, rules: TenhouRules): unknown
 
   let lastDiscard: ParsedTile | undefined
   const ponRecord = new Map<string, { naki: string; tiles: ParsedTile[] }>()
-  const riichiCount = new Array(players).fill(0)
+  // the `'riichi'` event, not the river's mark: the mark moves to the next discard when a call
+  // takes the declaration tile, and a second `r` would be read as a second declaration
+  let declaring = false
 
   const consumed = replayLog(state, options, input.log, (event) => {
     switch (event.kind) {
       case 'draw':
         accum[event.seat].takes.push(tenhouTile(event.tile))
         break
+      case 'riichi':
+        declaring = true
+        break
       case 'discard': {
         const value = event.tile.tsumogiri ? TSUMOGIRI : tenhouTile(event.tile)
-        accum[event.seat].discards.push(event.tile.riichi ? `r${value}` : value)
-        if (event.tile.riichi) riichiCount[event.seat]++
+        accum[event.seat].discards.push(declaring ? `r${value}` : value)
+        declaring = false
         lastDiscard = event.tile
         break
       }
@@ -327,7 +333,6 @@ export function buildKyoku(input: TenhouRoundInput, rules: TenhouRules): unknown
     ? state.uraStack.slice(0, state.doraIndicators.length).map(tenhouTile)
     : []
 
-  const trueDeltas = input.deltas.map((d, seat) => d - 1000 * riichiCount[seat])
   const entry: unknown[] = [
     [
       4 * (input.match.prevalentWind - HONOR) + (input.match.round - 1),
@@ -343,7 +348,7 @@ export function buildKyoku(input: TenhouRoundInput, rules: TenhouRules): unknown
     const a = accum[seat]
     entry.push(a ? a.haipai : ghostHaipai, a ? a.takes : [], a ? a.discards : [])
   }
-  entry.push(buildResult(state, trueDeltas))
+  entry.push(buildResult(state, input.deltas))
   return entry
 }
 

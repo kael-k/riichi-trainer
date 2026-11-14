@@ -153,9 +153,6 @@ interface Seat {
   reds: Set<TileId>
   /** The tile a `60` names: the last draw, until it is thrown. */
   drawn?: ParsedTile
-  /** `r` discards so far. Only the first declares: `buildKyoku` writes the river's riichi mark,
-   *  which moves to the next discard when the declaration tile is called away. */
-  marks: number
 }
 
 function asArray(value: unknown): unknown[] {
@@ -230,7 +227,6 @@ function importRound(
       ti: 0,
       di: 0,
       reds,
-      marks: 0,
     }
   })
 
@@ -313,9 +309,10 @@ function importRound(
       continue
     }
 
-    const marked = typeof d === 'string'
-    const code = marked ? Number((/^r(\d\d)$/.exec(d) ?? fail('notTenhou'))[1]) : d
-    const riichi = marked && seat.marks++ === 0
+    // an export from before `buildKyoku` read the declaration off its event also wrote `r` on the
+    // discard after a called declaration tile — harmless here, the seat has already declared
+    const riichi = typeof d === 'string'
+    const code = riichi ? Number((/^r(\d\d)$/.exec(d) ?? fail('notTenhou'))[1]) : d
     const tile = code === TSUMOGIRI ? (seat.drawn ?? fail('notTenhou')) : decodeTile(code)
     log.push({ kind: 'discard', seat: actor, tile, fromDrawn: code === TSUMOGIRI, riichi })
     seat.drawn = undefined
@@ -395,13 +392,12 @@ function importRound(
     }
   }
   if (!modelled || !rr) return { match, wall, log, deltas: recorded, ...(notice && { notice }) }
+  // a record's deltas leave the riichi deposits out, so they are `settleRound`'s own. An export
+  // from before `buildKyoku` wrote them that way took 1000 off per riichi: it still replays whole,
+  // flagged `pays` with the right deltas, which is not worth a second reading that would let a
+  // genuine 1000-per-riichi disagreement through
   const engine = settleRound(state.match, rr, { sanma, format: rules.format }).deltas
-  // a real record's deltas leave the riichi deposits out — they are `settleRound`'s own; this
-  // app's exporter takes 1000 off per `r` it wrote (`buildKyoku`'s `trueDeltas`). Either reading
-  // is the record agreeing, so a file exported here imports without a notice
-  const net = engine.map((d, s) => d - 1000 * seats[s].marks)
-  const agrees = (deltas: number[]) => deltas.every((d, s) => d === recorded[s])
-  const pays = !agrees(engine) && !agrees(net)
+  const pays = engine.some((d, s) => d !== recorded[s])
   return {
     match,
     wall,

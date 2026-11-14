@@ -37,8 +37,8 @@ function handsWall(seed: string, ...hands: string[]): ParsedTile[] {
 }
 
 /** The win/draw payment deltas a finished round's own `settleRound` would produce — exactly what
- *  `TenhouRoundInput.deltas` holds in production (`useMatchRound`'s own `stepped.deltas`), never
- *  the round's *true* per-seat swing (`buildKyoku` folds the riichi correction in on top). */
+ *  `TenhouRoundInput.deltas` holds in production (`useMatchRound`'s own `stepped.deltas`), and
+ *  exactly what the export writes: tenhou's deltas leave the riichi deposits out too. */
 function settledDeltas(state: RoundState): number[] {
   const rr = roundResult(state)
   if (!rr) throw new Error('round has not ended')
@@ -223,17 +223,37 @@ describe('buildKyoku', () => {
           expect(ok, `seed ${i} seat ${seat}: ${JSON.stringify(action)}`).toBe(true)
         }
       }
-      // a win closes the loop within its own round (the winner's payout already folds in every
-      // stick on the table, this round's own declarations included) — an exhaustive draw or an
-      // abort does not: a stick a seat put up this round carries to a *later* round's winner, so
-      // this round's own deltas are short by exactly 1000 per still-unresolved declaration, same
-      // as a real tenhou log's per-round deltas are.
+      // the deltas leave the deposits out, as tenhou's do, so a win's sum to exactly the sticks
+      // the winner took off the table — this round's own declarations included
       const result = entry.at(-1) as unknown[]
       if (result[0] === '和了') {
         const deltas = result[1] as number[]
-        expect(deltas.reduce((a, b) => a + b, 0)).toBe(0)
+        expect(deltas.reduce((a, b) => a + b, 0)).toBe(1000 * state.match.riichiSticks)
       }
     }
+  })
+
+  it('writes `r` on the declaration alone, even when a call takes the declaration tile', () => {
+    // `round.test.ts`'s re-rotation board: seat 0 declares on a 9s and seat 1 chis it, so the
+    // river's mark moves to seat 0's next discard — which is not a second declaration
+    const wall = handsWall('riichi-called', '123456789m1122p', '111222333m99p78s')
+    const first = 4 * 13
+    const nine = wall.findIndex((t, i) => i > first && t.id === SOU + 8)
+    ;[wall[first], wall[nine]] = [wall[nine], wall[first]]
+    const match = createMatch(false)
+    const options: RoundOptions = { ...YONMA, match, algorithms: manual(0, 1) }
+    const state = createRound(wall, 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: true }, true)
+    answerClaim(state, options, { kind: 'chi', from: [SOU + 6, SOU + 7] })
+    state.players.forEach((p) => (p.algorithm = 'tsumogiri'))
+    for (const _ of stepRound(state, options)) void _
+    expect(state.players[0].river[0]?.riichi).toBe(true) // sanity: the mark really moved
+
+    const input: TenhouRoundInput = { match, wall, log: state.log, deltas: settledDeltas(state) }
+    const discards0 = buildKyoku(input, YONMA_RULES)[6] as unknown[]
+    expect(discards0.filter((d) => typeof d === 'string' && d.startsWith('r'))).toEqual(['r60'])
+    expect(discards0[0]).toBe('r60')
   })
 
   // `round.ts`'s own "ask every manual seat, then rons, then calls" order means a lone live-manual
