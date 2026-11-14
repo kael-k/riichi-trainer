@@ -78,6 +78,34 @@ describe('scoreHand', () => {
     expect(result.fuExact).toBe(20)
   })
 
+  it('an open ron of all runs is 30 fu, floored rather than left at 20', () => {
+    // chi 234m, then 567m 456p 678p 33s ron on 8p: pinfu's shape, opened — no fu past the base,
+    // and the closed-ron 10 is gone with the menzen. Tanyao is the yaku (open tanyao is legal)
+    const input: ScoreInput = {
+      concealed: parseTenhou('567m456678p33s'),
+      melds: [{ kind: 'chi', tiles: parseTenhou('234m') }],
+      ctx: ctx({ seat: HONOR + 1 }),
+      doraIndicators: [],
+      uraIndicators: [],
+      kita: 0,
+      rules: NO_RULES,
+    }
+    const result = scoreHand(input)!
+    expect(result.yaku.map((y) => y.name)).toEqual(['tanyao'])
+    expect(result.fu).toBe(30)
+    expect(result.fuExact).toBe(30)
+    expect(result.fuItems).toEqual([
+      { reason: 'base', fu: 20 },
+      { reason: 'openPinfu', fu: 10 },
+    ])
+    expect(result.payments.total).toBe(1000) // 1 han 30 fu, not 1 han 20 fu's 700
+
+    // tsumo has its 2 fu, which round to 30 by themselves: no floor item
+    const tsumo = scoreHand({ ...input, ctx: ctx({ seat: HONOR + 1, tsumo: true }) })!
+    expect(tsumo.fuItems.map((i) => i.reason)).toEqual(['base', 'tsumo'])
+    expect(tsumo.fu).toBe(30)
+  })
+
   it('denies pinfu when a set is a triplet, even on a ryanmen wait', () => {
     // 111m 456s 678p 888p 33p ron on 8p: the wait is ryanmen and the pair is worthless, but
     // two triplets rule pinfu out — the hand has no yaku at all, so it isn't a legal win

@@ -110,7 +110,6 @@ These are the rules the engine plays its own way:
 - **Pao.** Liability payments are not modelled, so a pao win is paid the ordinary way.
 - **A riichi ronned on its declaration tile.** The engine takes the deposit with the declaration,
   before anyone reacts; the rules never take it.
-- **An open hand of runs.** The rules floor it at 30 fu; the engine scores it at 20.
 
 The tiles a record never reveals — unflipped dora, rinshan tiles nobody drew, the live wall past the
 last draw — are filled at random. Nothing in a replay reads them.

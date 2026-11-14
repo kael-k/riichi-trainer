@@ -137,14 +137,13 @@ describe('importTenhou — a real record (convlog)', () => {
 
   it('flags exactly the rounds the engine settles differently from the record', () => {
     // 3 and 5: a riichi declared on the tile that was ronned. The record never takes the deposit,
-    // the engine already has (`finishTurn` deducts before anyone reacts). 4: an open hand of runs,
-    // which the rules floor at 30 fu and `score.ts` scores at 20.
+    // the engine already has (`finishTurn` deducts before anyone reacts).
     expect(game.rounds.map((r) => r.notice?.code)).toEqual([
       undefined,
       undefined,
       undefined,
       'pays',
-      'pays',
+      undefined,
       'pays',
       undefined,
       undefined,

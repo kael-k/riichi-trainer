@@ -18,7 +18,7 @@ import {
   type YakumanName,
 } from './yaku'
 
-export type FuReason = 'base' | 'tsumo' | 'closedRon' | 'meld' | 'pair' | 'wait'
+export type FuReason = 'base' | 'tsumo' | 'closedRon' | 'openPinfu' | 'meld' | 'pair' | 'wait'
 
 export interface FuItem {
   reason: FuReason
@@ -140,6 +140,11 @@ function computeFu(
   if (shape === 'tanki' || shape === 'kanchan' || shape === 'penchan') {
     items.push({ reason: 'wait', fu: 2 })
   }
+  // an open ron with nothing past the base — all runs, a plain pair, a ryanmen wait — is floored at
+  // 30 (kuipinfu), not left at 20. An item rather than a bare floor, so the breakdown sums to the 30
+  // it explains and the exact-fu drill asks for the same number; tsumo never needs it (its 2 fu
+  // already round to 30), and a closed hand of this shape is pinfu, priced above
+  if (items.length === 1 && !ctx.tsumo) items.push({ reason: 'openPinfu', fu: 10 })
 
   const fuExact = items.reduce((sum, it) => sum + it.fu, 0)
   return { fu: Math.ceil(fuExact / 10) * 10, fuExact, items }
