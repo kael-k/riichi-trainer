@@ -99,6 +99,18 @@ players)`, "am I dealer" is `seat === state.match.dealer`, and the turn counter 
   reconstruct every draw/discard/call, and folds each riichi's −1000 back into the round's own
   deltas itself — `settleRound`'s own deltas never carry it, since the deduction already landed on
   `match.points` mid-round, before settlement ever ran.
+- **The import (`core/tenhouImport.ts`) is the export's inverse, and what the engine refuses is
+  cut, never repaired.** A record names actions, not wall slots, so each revealed tile is pinned
+  where `createRound` deals it: haipai at `dealtIndices`, live draw k at `13P + k`, replacement r at
+  the dead chunk's `13 − r`, then (r ≥ 4) the live tail's `L − 1 − (r − 4)` — `drawReplacement`'s
+  pop/backfill exactly, so **change either and the importer moves with it** — dora i at `8 − 2i`,
+  ura at `9 − 2i`; every other slot is fill nothing reads (`wallWithPinned`). Each round's log is
+  **truncated to what `replayLog` consumed**; an ending the engine does not model stops just
+  before it (a chankan drops the kan too), and a modelled one that settles differently is kept —
+  both with an `ImportNotice` code, never text. **`keepRed` is set only when the caller held the
+  red and the naki's own tiles leave it out.** Two quirks of this app's own exporter are read
+  back, not rejected: deltas net of riichi deposits (a real record's are `settleRound`'s own), and
+  a second `r` on the discard after a called declaration tile, which is a plain discard.
 
 ### The round engine (`core/round.ts` + `core/policy.ts`)
 

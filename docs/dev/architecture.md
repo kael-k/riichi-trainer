@@ -47,6 +47,7 @@ algorithm is `'manual'`.
 | `round.ts`        | The round engine (one deal): `createRound`, `beginTurn`, `finishTurn`, `stepRound`, claims, `isManual`          |
 | `match.ts`        | The game a round sits inside: `MatchState`, `createMatch`, `settleRound`                                        |
 | `table.ts`        | The pure table layer: `actingSeat`, `goRound`, `seenBy`, `snapshotTable`, `seatRead`                            |
+| `tenhouImport.ts` | `importTenhou` — a tenhou.net/6 record back into wall + log rounds, `tenhouLog.ts`'s export inverted            |
 | `generateHand.ts` | Winning-hand generation for the scoring trainer                                                                 |
 | `waits.ts`        | `readWaits` — every wait of a 13-tile hand, each split into mentsu, toitsu and the waiting shape                |
 | `flush.ts`        | `dealFlushHand` — seeded chinitsu/honitsu tenpai generation for the chinitsu trainer                            |

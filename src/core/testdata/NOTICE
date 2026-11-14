@@ -1,0 +1,9 @@
+convlog.json
+
+  A tenhou.net/6 JSON game record, used unmodified as a test fixture for
+  src/core/tenhouImport.ts.
+
+  Source:   https://github.com/paithiov909/convlog
+  File:     inst/testdata/output_log.example.json
+  Commit:   cf2b79a081d687ddb2be135ebc3ddbb10233198d
+  Licence:  Apache License 2.0 — https://www.apache.org/licenses/LICENSE-2.0

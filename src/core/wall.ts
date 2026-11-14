@@ -191,17 +191,30 @@ export function wallWithHands(
   seed?: string,
   players = sanma ? 3 : 4,
 ): ParsedTile[] {
-  // routed through `completeWall` itself rather than filtering padding by id: it already strips
-  // a prefix's own copies before marking red among the survivors and already skips a suit whose
-  // red sits inside the prefix (`prefixReds`) — filtering by id alone let a plain five in a pinned
-  // hand strip the padding's *red* copy instead of a plain one
-  const pinnedTiles = hands.flatMap((hand) => hand ?? [])
-  const padding = completeWall(pinnedTiles, sanma, aka, seed).slice(pinnedTiles.length)
   const pinned = new Map<number, ParsedTile>()
   hands.forEach((hand, seat) => {
     const slots = dealtIndices(seat, players)
     hand?.forEach((tile, i) => pinned.set(slots[i], tile))
   })
+  return wallWithPinned(pinned, sanma, aka, seed)
+}
+
+/** A full wall holding exactly `pinned`'s tiles at their indices, every other slot filled from a
+ *  random (or `seed`-built) wall with those copies removed — `wallWithHands`' own fill, and what
+ *  the tenhou.net/6 importer builds around the tiles a record reveals. `pinned` is trusted: a
+ *  caller holding untrusted tiles runs them through `validateWall` first. */
+export function wallWithPinned(
+  pinned: Map<number, ParsedTile>,
+  sanma: boolean,
+  aka: boolean,
+  seed?: string,
+): ParsedTile[] {
+  // routed through `completeWall` itself rather than filtering padding by id: it already strips
+  // a prefix's own copies before marking red among the survivors and already skips a suit whose
+  // red sits inside the prefix (`prefixReds`) — filtering by id alone let a plain five in a pinned
+  // hand strip the padding's *red* copy instead of a plain one
+  const pinnedTiles = [...pinned.values()]
+  const padding = completeWall(pinnedTiles, sanma, aka, seed).slice(pinnedTiles.length)
   let filler = 0
   return Array.from(
     { length: padding.length + pinned.size },

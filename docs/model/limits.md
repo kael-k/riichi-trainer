@@ -89,6 +89,37 @@ completes the kan directly instead.
 Advanced grading option that exists on the folding and efficiency trainers. It wants the models
 calibrated first.
 
+## Importing a tenhou.net/6 record
+
+A record is replayed through the same engine a match plays on, so whatever the engine does not
+model, an imported round cannot show. Nothing is repaired to make a record fit: the round is cut
+where the engine stops agreeing with it, and the replay says why.
+
+**Endings the engine does not model stop just before the ending.** Double (and triple) ron,
+chankan, nagashi mangan, and the four abortive draws other than kyuushu kyuuhai — four winds, four
+riichi, four kans, three ron. The actions up to that point replay exactly; the ending itself has no
+engine move to replay into. A chankan also loses the kan it interrupted, since the engine would
+complete it.
+
+**A modelled ending can still pay differently**, and then the round is kept whole and flagged.
+These are the rules the engine plays its own way:
+
+- **Kan dora timing.** The engine flips every kan's indicator at the kan; tenhou flips a called or
+  added kan's only with the discard that follows. A hand that ends in between is scored with a
+  different set of indicators.
+- **Pao.** Liability payments are not modelled, so a pao win is paid the ordinary way.
+- **A riichi ronned on its declaration tile.** The engine takes the deposit with the declaration,
+  before anyone reacts; the rules never take it.
+- **An open hand of runs.** The rules floor it at 30 fu; the engine scores it at 20.
+
+The tiles a record never reveals — unflipped dora, rinshan tiles nobody drew, the live wall past the
+last draw — are filled at random. Nothing in a replay reads them.
+
+**One record shape is guessed, not reconstructed.** A call is matched to the first discard of its
+tile from the seat it names. If that seat throws the same tile again before the caller's next turn
+and the call was on the second one, the import fails or cuts the round short rather than
+backtracking.
+
 ## The cheap path
 
 Pricing every discard exactly is affordable once, on demand. It is not affordable for three or four
