@@ -214,6 +214,11 @@ nobody having melded.
 after a call popped the declaration tile out of the river. **`state.discards` keeps the called
 copy.**
 
+**The riichi deposit is taken when the declaration tile survives the rons, never on declaring**
+(`resolveReactions`, after its ron phase): a ronned declaration was never established, so it pays
+nothing and its winner collects no stick. The declaration is the seat's **first** marked discard in
+`state.discards` — the mark a call moves onto a later discard never pays twice.
+
 `finishTurn`'s optional **`beforeReactions`** runs after the discard is on the river and any riichi
 declared, **before any seat reacts**.
 
@@ -270,7 +275,8 @@ Other rules of the seam:
   `finishTurn` re-derives the river's actual flag from the tile `pickTile` resolves.
 - What an algorithm may know is a curated **`SeatView`**, never raw `RoundState`; `seen` and
   `threats` are **lazy getters**. **`SeatView.match` is the same object `RoundState.match` holds**,
-  not a snapshot, so a mid-round riichi's deduction is visible to whoever reads it next.
+  not a snapshot, so a mid-round riichi's deduction is visible to whoever reads it next — from
+  the moment its tile passes, so a seat pricing a ron on the declaration tile sees no stick for it.
 - `win(view, candidate)` is the one method with a second argument, already priced by `tryWin`.
 
 ### The table layer (`core/table.ts` + `features/table/useRound.ts`)

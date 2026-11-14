@@ -1133,12 +1133,12 @@ export function finishTurn(
       ? declareRiichi
       : ALGORITHMS[player.algorithm].riichi(seatView(state, options, seat))
     : false
+  // the 1000 is not taken here: riichi is established only once the declaration tile survives
+  // every ron, so `resolveReactions` deposits it
   if (declaring) {
     player.riichiAt = player.river.length
     player.riichiTurn = state.turn
     player.ippatsu = true
-    state.match.points[seat] -= 1000
-    state.match.riichiSticks += 1
   } else if (player.riichiAt !== undefined) {
     // ippatsu survives only until this player's own next discard
     player.ippatsu = false
@@ -1265,6 +1265,15 @@ function resolveReactions(
     if (options.wins && asked && couldHaveWon(state, other, tile.id)) {
       state.players[other].missedWin = true
     }
+  }
+
+  // nobody ronned it, so a riichi declared on this tile is established and pays its stick now: a
+  // ronned declaration never did, and the winner must not collect it. Once per discard, since
+  // nothing past the ron phase restarts; the declaration is the seat's first marked discard, the
+  // same read `threatViews` makes, so the mark a call moves onto a later discard never pays twice
+  if (state.discards.find((d) => d.seat === discarder && d.tile.riichi)?.tile === entry) {
+    state.match.points[discarder] -= 1000
+    state.match.riichiSticks += 1
   }
 
   if (options.calls) {

@@ -3,7 +3,7 @@ import { assessDiscards } from './danger'
 import { rankCalls } from './ev'
 import { EV_MODELS } from './evModel'
 import { removeTile, tileCount } from './hand'
-import { createMatch } from './match'
+import { createMatch, settleRound } from './match'
 import {
   answerClaim,
   beginTurn,
@@ -20,6 +20,7 @@ import {
   playRound,
   reconsiderClaim,
   replayLog,
+  roundResult,
   seatView,
   stepRound,
   threatViews,
@@ -1138,13 +1139,63 @@ describe('manual riichi declaration', () => {
     expect(player.concealed.some((t) => t.id === held.id && t.red === held.red)).toBe(true)
   })
 
-  it('deducts 1000 points and adds a riichi stick on declaration (T4)', () => {
+  it('deducts 1000 points and adds a riichi stick once the declaration tile passes (T4)', () => {
     const { state, options } = tenpaiManualState('manual-riichi-3')
     const before = state.match.points[0]
     const sticksBefore = state.match.riichiSticks
     finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: true }, true)
     expect(state.match.points[0]).toBe(before - 1000)
     expect(state.match.riichiSticks).toBe(sticksBefore + 1)
+  })
+
+  /** Seat 0 holds `123456789m1122p` and draws a 9s, the tile it declares on. */
+  function declarationWall(seed: string, seat1: string): ParsedTile[] {
+    const wall = handsWall(seed, '123456789m1122p', seat1)
+    const first = 4 * INITIAL_HAND_SIZE
+    const nine = wall.findIndex((t, i) => i > first && t.id === SOU + 8)
+    ;[wall[first], wall[nine]] = [wall[nine], wall[first]]
+    return wall
+  }
+
+  it('takes no stick for a declaration ronned on its own tile', () => {
+    // seat 1 waits on a 9s tanki, haku for its yaku: the declaration tile is the win, so riichi
+    // was never established — nothing is deducted, and the winner collects only the stick that
+    // was already on the table
+    const match = createMatch(false, { riichiSticks: 1 })
+    const options: RoundOptions = { ...YONMA, match, algorithms: manual(0) }
+    const state = createRound(declarationWall('riichi-ronned', '555z234m456p678s9s'), 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: true }, true)
+
+    expect(state.win).toMatchObject({ seat: 1, from: 0 })
+    expect(state.match.points[0]).toBe(25000)
+    expect(state.match.riichiSticks).toBe(1)
+    const rules = { sanma: false, format: 'hanchan' } as const
+    const { deltas } = settleRound(state.match, roundResult(state)!, rules)
+    expect(deltas[1]).toBe(state.win!.score.payments.total + 1000)
+    expect(deltas[0]).toBe(-state.win!.score.payments.total)
+  })
+
+  it('pays once for a declaration tile called away, not again for the discard the mark moves to', () => {
+    // `re-rotates the next discard`'s board: seat 1 chis the declaration tile, which establishes
+    // the riichi — and the next discard, which takes the river's mark, is not a second declaration
+    const options: RoundOptions = { ...YONMA, algorithms: manual(0, 1), claims: true }
+    const state = createRound(declarationWall('riichi-called', '111222333m99p78s'), 4, options)
+    beginTurn(state, options)
+    finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: true }, true)
+    // the tile has not passed yet: seat 1 is still being asked
+    expect(state.match.points[0]).toBe(25000)
+    answerClaim(state, options, { kind: 'chi', from: [SOU + 6, SOU + 7] })
+    expect(state.match.points[0]).toBe(24000)
+
+    const quiet: RoundOptions = { ...options, claims: false }
+    while (!state.ended && state.players[0].river.length === 0) {
+      beginTurn(state, quiet)
+      finishTurn(state, quiet)
+    }
+    expect(state.players[0].river[0]?.riichi).toBe(true)
+    expect(state.match.points[0]).toBe(24000)
+    expect(state.match.riichiSticks).toBe(1)
   })
 })
 

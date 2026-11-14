@@ -46,7 +46,7 @@ export type ImportNotice =
   /** `'stopped'`: the engine refused an action the record took; the log stops before it. */
   | { code: Unmodelled | 'stopped' }
   /** The round replayed to its end, but the engine settles it differently — a rule it plays its
-   *  own way: kan-dora timing, pao, a riichi ronned on its own declaration tile, … */
+   *  own way: kan-dora timing, pao, … */
   | { code: 'pays'; record: number[]; engine: number[] }
 
 export interface ImportedRound {

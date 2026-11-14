@@ -108,8 +108,6 @@ These are the rules the engine plays its own way:
   added kan's only with the discard that follows. A hand that ends in between is scored with a
   different set of indicators.
 - **Pao.** Liability payments are not modelled, so a pao win is paid the ordinary way.
-- **A riichi ronned on its declaration tile.** The engine takes the deposit with the declaration,
-  before anyone reacts; the rules never take it.
 
 The tiles a record never reveals — unflipped dora, rinshan tiles nobody drew, the live wall past the
 last draw — are filled at random. Nothing in a replay reads them.
