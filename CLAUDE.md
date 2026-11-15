@@ -314,6 +314,10 @@ carry on, `{ stop: true }` to halt, `{ restart: wall }` to abandon the deal.
 - **`discard` and `answer` return `void`, never the promise** (bodies are
   `playDiscard`/`playAnswer`): a thenable returned from an `act(() => …)` callback switches React's
   `act` to its async path.
+- **A paced `drive` re-checks its generation after every beat, never only after a hold**:
+  `stepRound` is lazy, and even a hold-free `await show` parks the drive long enough for a second
+  one to start (StrictMode's doubled mount effect does) and move the turn on — the stale
+  generator's next event is then a `finishTurn` for a seat that never drew.
 - **The pre-reaction frame comes from the engine, not from a delay** (`beforeReactions`), or a
   ponned tile only ever appears inside the meld it ends up in.
 - **`callBanner` and `tedashi` are produced here** because only the driver knows _when_: `tedashi`

@@ -402,8 +402,12 @@ export function useRound(input: UseRoundInput) {
         }
         // the whole of what pacing costs an unpaced board: one comparison per event. The `await`
         // is inside `show`, so with `pace` at 0 nothing here ever yields to the event loop and the
-        // drive still settles inside its caller's synchronous `act()`
-        if (pace.current > 0 && !(await show(current, event, alive))) return
+        // drive still settles inside its caller's synchronous `act()`. `alive` is re-read after
+        // every beat, not only the ones `show` holds for: even a hold-free beat parks this drive
+        // for a microtask, long enough for a second one to start (StrictMode's doubled mount
+        // effect does exactly that) and move the turn on — and the next event pulled from this
+        // generator would then play `finishTurn` for a seat that never drew
+        if (pace.current > 0 && (!(await show(current, event, alive)) || !alive())) return
       }
 
       // `stepRound` stops *before* a manual seat acts, and a manual seat is one the engine draws

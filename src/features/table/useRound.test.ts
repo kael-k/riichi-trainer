@@ -320,6 +320,26 @@ describe('pacing', () => {
     expect(tsumogiri.result.current.tedashi).toBeUndefined()
   })
 
+  it('never resumes a drive another one has replaced, even across a hold-free beat', () => {
+    // StrictMode mounts the round effect twice in one commit, so a second drive starts while the
+    // first is parked on the dealer's draw — a beat with no hold, only `await`'s own microtask.
+    // Resumed, the first one's generator would play `finishTurn` for whoever the second had moved
+    // the turn on to, a seat that never drew: seat 1 would throw from thirteen tiles, leaving
+    // twelve (an `'ev'` seat there throws outright — `rankDiscards` refuses a thirteen-tile hand)
+    const wall = tenpaiWall('match-pace-strict')
+    const options: RoundOptions = { ...BARE, algorithms: ['efficiency', 'efficiency', 'manual'] }
+    const { result } = renderHook(() => useRound({ wall, players: 4, options, pace: 20 }), {
+      reactStrictMode: true,
+    })
+    return waitFor(() => {
+      const round = result.current.core!.round
+      expect(round.seat).toBe(2)
+      expect(round.players[2].drawn).toBeDefined()
+      expect(round.players.map((p) => p.river.length)).toEqual([1, 1, 0, 0])
+      expect(round.players.map((p) => p.concealed.length)).toEqual([13, 13, 14, 13])
+    })
+  })
+
   it('commits a paced go-around turn by turn, and lands on the same board', () => {
     const { result: plain } = paced(0, 'match-pace-same')
     tsumogiri(plain)
