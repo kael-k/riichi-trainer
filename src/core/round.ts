@@ -1010,8 +1010,7 @@ const MAX_TURN_ACTIONS = 8
  * A fresh `SeatView` every iteration, same discipline as `analysisOf`'s own doc comment: the hand
  * and `state.visible` just changed underneath it, so a reused view's cached `seen` would go stale.
  * And every replacement is win-checked here, because `callAnkan`/`callKakan`/`callKita` never do
- * it themselves — without this a rinshan tsumo would vanish silently (the yaku itself is still
- * unimplemented, so the win is taken without it, exactly as a kita's replacement has always been).
+ * it themselves — without this a rinshan tsumo would vanish silently.
  */
 function takeTurn(
   state: RoundState,
@@ -1337,7 +1336,7 @@ function resolveReactions(
           // never runs one itself, and this is the one kan path no caller was covering: the turn
           // loop checks the replacements it draws, `replayLog` checks a replayed pull, and a
           // daiminkan's landed in neither — so a hand completed here vanished instead of ending
-          // the round. Scored as an ordinary tsumo: rinshan kaihou the yaku is still unmodelled.
+          // the round. `rinshan` is passed, so the yaku scores like any other replacement's.
           const win = tryWin(state, other, options, replacement, true, undefined, true)
           // an offer pending (or later declined) leaves the caller holding its replacement and
           // owing a discard, which is the hand-over below; only a win taken outright ends here

@@ -183,7 +183,8 @@ unchanged) makes a manual seat get _asked_ about another seat's discard.
   offer from the log, never `'tsumo'` on sight**: a daiminkan's rinshan offer is raised inside claim
   resolution, where `beginTurn`'s `declineTsumo` never reaches it.
 - **The rinshan check lives in the three `call*` functions** (`replacementWin`), not their callers,
-  which is why `callAnkan` takes `RoundOptions`. Rinshan kaihou the yaku is unmodelled.
+  which is why `callAnkan` takes `RoundOptions`, and each passes `tryWin` its `rinshan` flag, so the
+  yaku scores.
 
 **Permissions live entirely in `RoundOptions`, never in `Table`.** Four flags, each shared by every
 seat:

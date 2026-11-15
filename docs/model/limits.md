@@ -83,8 +83,6 @@ hand.
 **Chankan.** A real added kan briefly exposes the tile to every other seat's ron. The engine
 completes the kan directly instead.
 
-**Rinshan kaihou, the yaku.** The win itself is taken and scored, as an ordinary tsumo.
-
 **A dedicated EV trainer** — a drill built around the push/fold identity itself, rather than the
 Advanced grading option that exists on the folding and efficiency trainers. It wants the models
 calibrated first.
