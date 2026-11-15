@@ -660,6 +660,23 @@
       "kan": "{{wind}} chiama kan {{tile}}",
       "exportFailed": "Esportazione non riuscita — impossibile ricostruire la partita giocata"
     },
+    "stats": {
+      "line": "{{label}}: {{facts}}",
+      "model": "{{model}} ({{objective}})",
+      "heuristic": "Euristica",
+      "ev": "EV {{ev}}",
+      "best": "migliore {{tile}} {{ev}}",
+      "dealIn": "rischio ron {{percent}}%",
+      "safest": "più sicura {{tier}}",
+      "call": "chiamata {{ev}}",
+      "notPriced": "chiamata non valutata",
+      "pass": "passa {{ev}}",
+      "bestCall": "meglio {{kind}} {{tiles}}",
+      "bestPass": "meglio passare",
+      "unsupported": "nessun dato a tre giocatori",
+      "pending": "Calcolo…",
+      "failed": "Impossibile valutare questa azione"
+    },
     "folding": {
       "safe": "Turno {{turn}}: scartato {{tile}} — {{tier}}, il più sicuro disponibile",
       "risky": "Turno {{turn}}: scartato {{tile}} ({{tier}}); {{best}} era più sicuro ({{bestTier}})",

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { StatsJob } from '../core/table'
 import type { TileId, ParsedTile } from '../core/tiles'
 import type { UkeireTile } from '../core/ukeire'
 
@@ -83,6 +84,10 @@ export interface LogEntry {
    *  (`LogList`'s `hero`). Absent on a row that belongs to nobody in particular (a deal, a
    *  result), which every seat filter shows. */
   seat?: number
+  /** The action as a pricing job — `/match`'s free discards and calls. Priced off the main thread
+   *  when the row is on screen and drawn under the sentence (`LogList`'s `StatsLines`); never
+   *  stored as text, so the numbers re-translate like everything else. */
+  stats?: StatsJob
 }
 
 interface LogState {

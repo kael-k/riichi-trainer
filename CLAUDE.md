@@ -622,6 +622,13 @@ perspective, not "the user's seat".
   with no `seat` always shows**: the deal and the result belong to every seat. `/match`'s rows are
   built by `features/match/matchRows.ts`, never inline in the hook, so a replay writes the same
   rows; a declared seat's later throws are `log.match.discardForced`, never a plain discard.
+- **A row's stats are a job, never stored text** (`LogEntry.stats: StatsJob`, on `/match`'s free
+  discards and calls). `StatsLines` asks `features/match/statsClient.ts#requestStats` once the row
+  is on screen; it prices in a **module worker** (an inline `setTimeout(0)` fallback where there is
+  no `Worker`, i.e. jsdom), cached on the **job object's identity** — so a job is built once, at
+  write time, never re-derived per render. The job's `match` is `core.options.match`, the round's
+  **starting** state, never `RoundState.match`. Deal-in and the heuristic tier appear only with a
+  riichi on the board.
 - **`log.dealt`/`log.dealtHand` carry no tiles** — a hand is drawn on exactly one row, the one that
   grades it.
 - **A tile is drawn once per row, and the sentence draws its own**: `splitTileCodes` tokenizes the

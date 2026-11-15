@@ -660,6 +660,23 @@
       "kan": "{{wind}} kans {{tile}}",
       "exportFailed": "Export failed — the played match couldn't be rebuilt"
     },
+    "stats": {
+      "line": "{{label}}: {{facts}}",
+      "model": "{{model}} ({{objective}})",
+      "heuristic": "Heuristic",
+      "ev": "EV {{ev}}",
+      "best": "best {{tile}} {{ev}}",
+      "dealIn": "deal-in {{percent}}%",
+      "safest": "safest {{tier}}",
+      "call": "call {{ev}}",
+      "notPriced": "call not priced",
+      "pass": "pass {{ev}}",
+      "bestCall": "best {{kind}} {{tiles}}",
+      "bestPass": "best pass",
+      "unsupported": "no three-player data",
+      "pending": "Pricing…",
+      "failed": "Couldn't price this action"
+    },
     "folding": {
       "safe": "Turn {{turn}}: threw {{tile}} — {{tier}}, the safest available",
       "risky": "Turn {{turn}}: threw {{tile}} ({{tier}}); {{best}} was safer ({{bestTier}})",

@@ -555,6 +555,23 @@
       "kan": "{{wind}}杠{{tile}}",
       "exportFailed": "导出失败——无法重建这场对局"
     },
+    "stats": {
+      "line": "{{label}}：{{facts}}",
+      "model": "{{model}}（{{objective}}）",
+      "heuristic": "启发式",
+      "ev": "EV {{ev}}",
+      "best": "最佳 {{tile}} {{ev}}",
+      "dealIn": "放铳率 {{percent}}%",
+      "safest": "最安全 {{tier}}",
+      "call": "鸣牌 {{ev}}",
+      "notPriced": "鸣牌未评估",
+      "pass": "过 {{ev}}",
+      "bestCall": "最佳 {{kind}} {{tiles}}",
+      "bestPass": "最佳为过",
+      "unsupported": "无三麻数据",
+      "pending": "计算中…",
+      "failed": "无法评估此操作"
+    },
     "folding": {
       "safe": "第 {{turn}} 巡: 打出 {{tile}}——{{tier}}，当前最安全",
       "risky": "第 {{turn}} 巡: 打出 {{tile}}（{{tier}}）; {{best}} 更安全（{{bestTier}}）",

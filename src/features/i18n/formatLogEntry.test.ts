@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { HONOR, PIN, SOU } from '../../core/tiles'
+import type { LogEntry as RoundLogEntry } from '../../core/round'
 import type { LogEntry } from '../../store/log'
-import { formatLogEntry, splitTileCodes } from './formatLogEntry'
+import { formatLogEntry, formatStatsLines, splitTileCodes } from './formatLogEntry'
 import en from './locales/en.json'
 import it_ from './locales/it.json'
 import ja from './locales/ja.json'
@@ -132,5 +133,111 @@ describe('the locales the tokenizer runs over', () => {
         expect(text, path).not.toMatch(/\b(0[mps]|[1-9][mps]|[1-7]z)\b/)
       }
     }
+  })
+})
+
+describe('formatStatsLines', () => {
+  const t = i18n.getFixedT('en')
+  const discard: RoundLogEntry = {
+    kind: 'discard',
+    seat: 0,
+    tile: { id: PIN + 6, red: false },
+    fromDrawn: false,
+    riichi: false,
+  }
+  const priced = (tile: number, ev: number, dealIn = 0) => ({ tile, ev, dealIn })
+
+  it('names the model and the objective, and "best" only when it is not what was thrown', () => {
+    const lines = formatStatsLines(
+      {
+        kind: 'discard',
+        models: [
+          {
+            model: 'statistical',
+            objective: 'points',
+            unsupported: false,
+            chosen: priced(PIN + 6, -120, 0.054),
+            best: priced(PIN + 5, 180, 0.02),
+          },
+          {
+            model: 'houou',
+            objective: 'points',
+            unsupported: false,
+            chosen: priced(PIN + 6, 90, 0.071),
+            best: priced(PIN + 6, 90, 0.071),
+          },
+        ],
+        danger: { tier: 'suji', safest: 'genbutsu' },
+      },
+      discard,
+      t,
+      'en',
+    )
+    expect(lines).toEqual([
+      'Statistic (Points): EV -120 · best 6p +180 · deal-in 5.4%',
+      'Houou (Points): EV +90 · deal-in 7.1%',
+      'Heuristic: Suji · safest Genbutsu',
+    ])
+  })
+
+  it('leaves out deal-in and the tier with nobody in riichi, and never borrows a model', () => {
+    const lines = formatStatsLines(
+      {
+        kind: 'discard',
+        models: [
+          {
+            model: 'statistical',
+            objective: 'points',
+            unsupported: false,
+            chosen: priced(PIN + 6, 40),
+            best: priced(PIN + 6, 40),
+          },
+          { model: 'houou', objective: 'points', unsupported: true },
+        ],
+      },
+      discard,
+      t,
+      'en',
+    )
+    expect(lines).toEqual(['Statistic (Points): EV +40', 'Houou (Points): no three-player data'])
+  })
+
+  it('prices a call against the pass, and says so when the call was not priced', () => {
+    const call: RoundLogEntry = {
+      kind: 'call',
+      seat: 1,
+      from: 0,
+      call: { kind: 'chi', from: [SOU + 2, SOU + 3] },
+    }
+    const lines = formatStatsLines(
+      {
+        kind: 'call',
+        models: [
+          {
+            model: 'statistical',
+            objective: 'points',
+            unsupported: false,
+            call: 350,
+            pass: 120,
+            best: { call: { kind: 'chi', from: [SOU + 2, SOU + 3] }, ev: 350 },
+          },
+          {
+            model: 'houou',
+            objective: 'points',
+            unsupported: false,
+            call: null,
+            pass: 120,
+            best: { call: { kind: 'chi', from: [SOU + 5, SOU + 6] }, ev: 200 },
+          },
+        ],
+      },
+      call,
+      t,
+      'en',
+    )
+    expect(lines).toEqual([
+      'Statistic (Points): call +350 · pass +120',
+      'Houou (Points): call not priced · pass +120 · best Chi 6s 7s',
+    ])
   })
 })

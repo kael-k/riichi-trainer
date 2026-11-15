@@ -233,7 +233,7 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
     // place on the last bot turn forever during manual testing. Every other trainer sidesteps
     // this by only ever logging its own manual seat's actions at all (`useLabRound.ts`); this one
     // wants bot rows visible too (a full transcript), just not as undo points.
-    const row = actionRow(event, core.round, (seat) =>
+    const row = actionRow(event, core, (seat) =>
       manualSeats.includes(seat)
         ? encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength)))
         : undefined,

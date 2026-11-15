@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { importTenhou } from '../core/tenhouImport'
+import convlog from '../core/testdata/convlog.json'
 import '../features/i18n'
 import { useLog, type LogDetail, type LogEntry } from '../store/log'
 import { LogList } from './LogList'
@@ -208,4 +210,30 @@ describe('LogList seat filter', () => {
     expect(screen.queryByText(/^E declares riichi/)).toBeNull()
     expect(screen.getByText(/^S declares riichi/)).toBeTruthy()
   })
+})
+
+describe('LogList stats lines', () => {
+  beforeEach(() => useLog.setState({ entries: [] }))
+
+  it('prices a row with a job and draws a line per model, plus the heuristic into a riichi', async () => {
+    const imported = importTenhou(convlog)
+    if ('error' in imported) throw new Error(imported.error)
+    const { rules, rounds } = imported.game
+    // round 0, entry 43: seat 0 throws into seat 2's riichi (`table.test.ts` holds it there)
+    renderEntry({
+      key: 'log.match.discard',
+      params: { turn: 12, wind: 'E', tile: '1m' },
+      seat: 0,
+      stats: { round: rounds[0], rules, at: 43 },
+    })
+
+    // no IntersectionObserver in jsdom, so the row asks on mount and says it is waiting
+    expect(screen.getByText('Pricing…')).toBeTruthy()
+    expect(
+      await screen.findByText(/^Statistic \(Points\): EV/, {}, { timeout: 15_000 }),
+    ).toBeTruthy()
+    expect(screen.getByText(/^Houou \(Points\): EV/)).toBeTruthy()
+    expect(screen.getAllByText(/deal-in \d/)).toHaveLength(2)
+    expect(screen.getByText(/^Heuristic: /)).toBeTruthy()
+  }, 20_000)
 })

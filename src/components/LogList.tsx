@@ -1,8 +1,15 @@
 import { Check, ChevronDown, Copy, RotateCcw, Share2 } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { formatLogDetail, formatLogEntry, splitTileCodes } from '../features/i18n/formatLogEntry'
+import type { ActionStats, StatsJob } from '../core/table'
+import {
+  formatLogDetail,
+  formatLogEntry,
+  formatStatsLines,
+  splitTileCodes,
+} from '../features/i18n/formatLogEntry'
+import { requestStats, settledStats } from '../features/match/statsClient'
 import { useTermName } from '../features/i18n/useTermName'
 import { copyText } from '../lib/clipboard'
 import {
@@ -242,6 +249,68 @@ function LogSentence({ text }: { text: string }) {
   )
 }
 
+/**
+ * A priced row's numbers, one line per model plus the heuristic's, under its sentence. Priced off
+ * the main thread (`statsClient.ts`) and only once the row is on screen — a match logs every
+ * seat's every discard, and each costs up to a couple of seconds — or on mount where there is no
+ * `IntersectionObserver`. A row already priced draws its lines on its first render.
+ */
+function StatsLines({ job }: { job: StatsJob }) {
+  const { t, i18n } = useTranslation()
+  const ref = useRef<HTMLDivElement>(null)
+  const [state, setState] = useState<{ stats: ActionStats | null } | 'pending' | 'failed'>(() => {
+    const settled = settledStats(job)
+    return settled === undefined ? 'pending' : { stats: settled }
+  })
+  const pending = state === 'pending'
+  useEffect(() => {
+    if (!pending) return
+    let live = true
+    const run = () =>
+      requestStats(job).then(
+        (stats) => {
+          if (live) setState({ stats })
+        },
+        () => {
+          if (live) setState('failed')
+        },
+      )
+    if (typeof IntersectionObserver === 'undefined') {
+      run()
+      return () => {
+        live = false
+      }
+    }
+    const observer = new IntersectionObserver((seen) => {
+      if (!seen.some((e) => e.isIntersecting)) return
+      observer.disconnect()
+      run()
+    })
+    if (ref.current) observer.observe(ref.current)
+    return () => {
+      live = false
+      observer.disconnect()
+    }
+  }, [job, pending])
+
+  if (typeof state === 'object' && state.stats === null) return null
+  return (
+    <div ref={ref} className="flex flex-col text-xs leading-[2] text-neutral-500 tabular-nums">
+      {state === 'pending' ? (
+        <span className="text-neutral-400">{t('log.stats.pending')}</span>
+      ) : state === 'failed' ? (
+        <span className="text-neutral-400">{t('log.stats.failed')}</span>
+      ) : (
+        formatStatsLines(state.stats!, job.round.log[job.at], t, i18n.language).map((text, i) => (
+          <p key={i}>
+            <LogSentence text={text} />
+          </p>
+        ))
+      )}
+    </div>
+  )
+}
+
 function Tiles({ tiles }: { tiles: NonNullable<LogEntry['tiles']> }) {
   return (
     <>
@@ -411,6 +480,7 @@ function LogRow({ entry, number }: { entry: LogEntry; number: number }) {
           )}
         </div>
       </div>
+      {entry.stats && <StatsLines job={entry.stats} />}
       {expanded && detail && (
         <div className="mt-1 flex flex-col gap-1">
           {detail.map((line, i) => (

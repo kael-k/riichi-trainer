@@ -1,6 +1,8 @@
 import type { TFunction } from 'i18next'
 import type { EvModelName } from '../../core/evModel'
-import { parseTenhou, type ParsedTile } from '../../core/tiles'
+import type { LogEntry as RoundLogEntry } from '../../core/round'
+import type { ActionStats } from '../../core/table'
+import { parseTenhou, tileCode, type ParsedTile } from '../../core/tiles'
 import { formatElapsedMs } from '../../lib/formatElapsed'
 import type { LogDetail, LogEntry } from '../../store/log'
 import { WINDS, type Wind } from '../situation/urlCodec'
@@ -270,6 +272,83 @@ export function formatLogDetail(
     return t('log.scoring.detailLine', { label, value })
   }
   return t(detail.key, detail.params)
+}
+
+/**
+ * A priced action's lines — one per EV model, then the heuristic's — each a label and its facts
+ * joined " · ". Tiles travel as codes and the caller draws the line through `splitTileCodes`, so
+ * every language names them the same way. `made` is the logged action itself (`log[at]`), which
+ * is how "best" is shown only when it is not what was done.
+ *
+ * Deal-in and the tier appear only with somebody in riichi (`danger` present): with no threat
+ * there is nothing to deal into. `soloWin` is never shown — it is not a win rate.
+ */
+export function formatStatsLines(
+  stats: ActionStats,
+  made: RoundLogEntry,
+  t: TFunction,
+  locale: string,
+): string[] {
+  const points = new Intl.NumberFormat(locale, {
+    signDisplay: 'exceptZero',
+    maximumFractionDigits: 0,
+  })
+  const percent = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+  const ev = (value: number) => points.format(Math.round(value))
+  const line = (label: string, facts: string[]) =>
+    t('log.stats.line', { label, facts: facts.join(' · ') })
+
+  const lines = stats.models.map((price) => {
+    const label = t('log.stats.model', {
+      model: t(`seats.evModel.${price.model}`),
+      objective: t(`seats.evObjective.${price.objective}`),
+    })
+    if (price.unsupported) return line(label, [t('log.stats.unsupported')])
+    if ('chosen' in price) {
+      const facts = [t('log.stats.ev', { ev: ev(price.chosen.ev) })]
+      if (price.best.tile !== price.chosen.tile) {
+        facts.push(t('log.stats.best', { tile: tileCode(price.best.tile), ev: ev(price.best.ev) }))
+      }
+      if (stats.kind === 'discard' && stats.danger) {
+        facts.push(t('log.stats.dealIn', { percent: percent.format(price.chosen.dealIn * 100) }))
+      }
+      return line(label, facts)
+    }
+    const facts = [
+      price.call === null ? t('log.stats.notPriced') : t('log.stats.call', { ev: ev(price.call) }),
+      t('log.stats.pass', { ev: ev(price.pass) }),
+    ]
+    const best = price.best.call
+    const same =
+      made.kind === 'call' &&
+      best !== null &&
+      best.kind === made.call.kind &&
+      best.from.join() === made.call.from.join()
+    if (!same) {
+      facts.push(
+        best === null
+          ? t('log.stats.bestPass')
+          : t('log.stats.bestCall', {
+              kind: t(`seats.claim.${best.kind}`),
+              // space-separated: `splitTileCodes` only finds a code standing on its own
+              tiles: best.from.map((id) => tileCode(id)).join(' '),
+            }),
+      )
+    }
+    return line(label, facts)
+  })
+  if (stats.kind === 'discard' && stats.danger) {
+    lines.push(
+      line(t('log.stats.heuristic'), [
+        t(`folding.tier.${stats.danger.tier}`),
+        t('log.stats.safest', { tier: t(`folding.tier.${stats.danger.safest}`) }),
+      ]),
+    )
+  }
+  return lines
 }
 
 /** A tile named inside an already-formatted sentence: a suited digit (`0m`/`0p`/`0s` being the red

@@ -555,6 +555,23 @@
       "kan": "{{wind}}が{{tile}}をカン",
       "exportFailed": "エクスポート失敗——対局を再構築できませんでした"
     },
+    "stats": {
+      "line": "{{label}}：{{facts}}",
+      "model": "{{model}}（{{objective}}）",
+      "heuristic": "ヒューリスティック",
+      "ev": "EV {{ev}}",
+      "best": "最善 {{tile}} {{ev}}",
+      "dealIn": "放銃率 {{percent}}%",
+      "safest": "最安全 {{tier}}",
+      "call": "鳴き {{ev}}",
+      "notPriced": "鳴きは未評価",
+      "pass": "パス {{ev}}",
+      "bestCall": "最善 {{kind}} {{tiles}}",
+      "bestPass": "最善はパス",
+      "unsupported": "三人麻雀のデータなし",
+      "pending": "計算中…",
+      "failed": "この行動を評価できませんでした"
+    },
     "folding": {
       "safe": "{{turn}}巡目: {{tile}}を切った——{{tier}}、この局面で最も安全",
       "risky": "{{turn}}巡目: {{tile}}を切った（{{tier}}）; {{best}}の方が安全（{{bestTier}}）",

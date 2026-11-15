@@ -1,5 +1,6 @@
 import type { RoundResult } from '../../core/match'
 import type { RoundEvent, RoundState } from '../../core/round'
+import type { TableCore } from '../../core/table'
 import { HONOR, tileCode } from '../../core/tiles'
 import type { LogEntry } from '../../store/log'
 import type { MatchResultParams } from '../i18n/formatLogEntry'
@@ -72,42 +73,62 @@ export function resultRow(
  * One seat's own action, bots included — `undefined` for an event that is not a row (a draw, the
  * round's end). Every row carries the actor as `seat`, which is what the log's seat filter reads.
  *
- * Read at report time: the whole turn is applied by then, reactions included, so the discard a
- * row describes is its seat's last one in `round.log`.
+ * Read at report time: the whole turn is applied by then, reactions included, so the discard (or
+ * call) a row describes is its seat's last one in `round.log`.
+ *
+ * A free discard and a call carry `stats`, a job priced off the main thread only once the row is
+ * on screen (`statsClient.ts`). Its `match` is `core.options.match`, the round's **starting**
+ * state — `createRound` copies it and never writes back, so it is the very `MatchState` the round
+ * was dealt from, never the riichi-mutated `round.match`; its wall is the one actually dealt.
  */
 export function actionRow(
   event: RoundEvent,
-  round: RoundState,
+  core: TableCore,
   situationAt: (seat: number) => string | undefined = () => undefined,
 ): MatchRow | undefined {
   if (!('seat' in event) || event.kind === 'draw' || event.kind === 'abort') return undefined
+  const { round, options } = core
   const seat = event.seat
   const wind = seatWind(seat, round.match.dealer, round.players.length)
-  const row = (key: string, params: Record<string, unknown>): MatchRow => ({
+  const row = (key: string, params: Record<string, unknown>, at?: number): MatchRow => ({
     key,
     params: { ...params, wind },
     seat,
     situation: situationAt(seat),
+    ...(at !== undefined && {
+      stats: {
+        round: { match: options.match, wall: round.wall, log: round.log.slice(0, at + 1) },
+        rules: {
+          sanma: options.sanma,
+          aka: options.aka,
+          kiriageMangan: options.kiriageMangan ?? false,
+        },
+        at,
+      },
+    }),
   })
   switch (event.kind) {
     case 'discard': {
-      const entry = round.log.findLast((e) => e.kind === 'discard' && e.seat === seat)
+      const at = round.log.findLastIndex((e) => e.kind === 'discard' && e.seat === seat)
+      const entry = round.log[at]
       // a seat already in riichi throws its draw by rule, not by choice — said so, and priced
       // nowhere. The declaration itself is the seat's last free discard, hence `!entry.riichi`
       const forced =
         entry?.kind === 'discard' && !entry.riichi && round.players[seat].riichiAt !== undefined
-      return row(forced ? 'log.match.discardForced' : 'log.match.discard', {
-        turn: round.turn,
-        tile: tileCode(event.tile.id, event.tile.red),
-      })
+      const params = { turn: round.turn, tile: tileCode(event.tile.id, event.tile.red) }
+      return forced ? row('log.match.discardForced', params) : row('log.match.discard', params, at)
     }
     case 'riichi':
       return row('log.match.riichi', {})
     case 'call':
-      return row('log.match.call', {
-        from: seatWind(event.from, round.match.dealer, round.players.length),
-        kind: event.meld.kind,
-      })
+      return row(
+        'log.match.call',
+        {
+          from: seatWind(event.from, round.match.dealer, round.players.length),
+          kind: event.meld.kind,
+        },
+        round.log.findLastIndex((e) => e.kind === 'call' && e.seat === seat),
+      )
     case 'kita':
       return row('log.match.kita', {})
     case 'ankan':
