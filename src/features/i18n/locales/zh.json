@@ -211,7 +211,7 @@
     "match": {
       "title": "完整对局",
       "desc": "与机器人打一整场东风战或半庄战——不计分，只是对局本身。",
-      "intro": "选择赛制和规则，选择每个座位由谁来打，然后一局一局地打完整场对局——包括庄家轮换、本场、立直棒。这里不计分——分数本身就是结果。"
+      "intro": "选择赛制和规则，选择每个座位由谁来打，然后一局一局地打完整场对局——包括庄家轮换、本场、立直棒。这里不计分——分数本身就是结果。也可以载入 tenhou.net/6 牌谱，所有手牌明牌，一步一步回放。"
     }
   },
   "efficiency": {
@@ -521,6 +521,22 @@
       "you": "你",
       "download": "下载牌谱",
       "copy": "复制牌谱"
+    },
+    "replay": {
+      "load": "载入牌谱",
+      "close": "关闭牌谱",
+      "error": {
+        "notTenhou": "这个文件不是 tenhou.net/6 牌谱。",
+        "tiles": "牌谱里的牌对不上，无法回放。",
+        "rules": "这个牌谱的规则无法在这里回放。",
+        "kyoku": "（牌谱第{{number}}局）"
+      },
+      "prevRound": "上一局",
+      "prevAction": "上一步",
+      "nextAction": "下一步",
+      "nextRound": "下一局",
+      "scrub": "局内位置",
+      "position": "{{round}} {{honba}}本场 · {{step}}/{{total}}"
     }
   },
   "log": {
@@ -553,7 +569,18 @@
       "call": "{{wind}}：{{kind}} {{from}}的牌",
       "kita": "{{wind}}拔北",
       "kan": "{{wind}}杠{{tile}}",
-      "exportFailed": "导出失败——无法重建这场对局"
+      "exportFailed": "导出失败——无法重建这场对局",
+      "notice": {
+        "doubleRon": "一炮双响尚未支持，本局停在它之前",
+        "chankan": "抢杠尚未支持，本局停在它之前",
+        "nagashiMangan": "流局满贯尚未支持，本局停在它之前",
+        "suufonRenda": "四风连打尚未支持，本局停在它之前",
+        "suuchaRiichi": "四家立直尚未支持，本局停在它之前",
+        "suukaikan": "四杠散了尚未支持，本局停在它之前",
+        "sanchahou": "三家和尚未支持，本局停在它之前",
+        "stopped": "引擎不接受牌谱的下一步，本局停在这里",
+        "pays": "引擎对本局的结算与牌谱不同（牌谱 → 引擎）"
+      }
     },
     "stats": {
       "line": "{{label}}：{{facts}}",

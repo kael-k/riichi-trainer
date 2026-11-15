@@ -38,6 +38,10 @@ interface SeatStripProps extends SeatButtonProps {
    *  (the turn glow is the whole reason to do it) that it earns its own one-tap icon on the plate,
    *  between the gear and the wind, rather than a button two taps deep in a dialog. */
   onWatch: (seat: number) => void
+  /** The player's name off a recorded game (`/match`'s replay). Set, the badge is this name in a
+   *  neutral colour rather than the seat's algorithm, and there is no gear: nobody is choosing
+   *  how a recorded seat plays. */
+  name?: string
 }
 
 /**
@@ -52,7 +56,14 @@ interface SeatStripProps extends SeatButtonProps {
  * over two lines at a size that says plainly they are not tiles in play. Sized off the board's own
  * `--tile-w` like everything else out here.
  */
-export function SeatStrip({ read, showWaits, wind, onWatch, ...seatButtonProps }: SeatStripProps) {
+export function SeatStrip({
+  read,
+  showWaits,
+  wind,
+  onWatch,
+  name,
+  ...seatButtonProps
+}: SeatStripProps) {
   const { t } = useTranslation()
   const { seat, players, defaultOrientation, config, fallbackModes, viewSeat, requireManual } =
     seatButtonProps
@@ -67,9 +78,10 @@ export function SeatStrip({ read, showWaits, wind, onWatch, ...seatButtonProps }
   // an EV seat's badge names its model: the two EV seats share one badge colour precisely because
   // the text is what distinguishes them, and until now it did not
   const label =
-    mode === 'ev'
+    name ??
+    (mode === 'ev'
       ? t('seats.modeBadge.ev', { model: t(`seats.evModel.${resolved.ev[seat].model}`) })
-      : t(`seats.mode.${mode}`)
+      : t(`seats.mode.${mode}`))
   const yours = seat === viewSeat
 
   return (
@@ -106,11 +118,17 @@ export function SeatStrip({ read, showWaits, wind, onWatch, ...seatButtonProps }
           child rightmost), the furiten chip inboard of it — its own line now, so it never has to
           wrap onto the waits above it the way sharing a line with the eye/gear/wind would */}
       <div className="flex flex-row-reverse items-center gap-[0.6cqw]">
-        <span
-          className={`shrink-0 rounded px-[0.6cqw] py-[0.1cqw] text-[2cqw] ${ALGO_COLOR[mode]}`}
-        >
-          {label}
-        </span>
+        {label && (
+          <span
+            className={`shrink-0 rounded px-[0.6cqw] py-[0.1cqw] text-[2cqw] ${
+              name === undefined
+                ? ALGO_COLOR[mode]
+                : 'max-w-[24cqw] truncate bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+            }`}
+          >
+            {label}
+          </span>
+        )}
         {read?.furiten && (
           /* `InfoPopover` directly rather than `GlossaryTerm`: the popover is portalled to
              <body>, and the plate it would otherwise sit in is rotated with its seat — a
@@ -144,7 +162,7 @@ export function SeatStrip({ read, showWaits, wind, onWatch, ...seatButtonProps }
           things first from where the reader's thumb would land. */}
       <div className="flex flex-row-reverse items-center gap-[2cqw]">
         {wind}
-        <SeatButton {...seatButtonProps} />
+        {name === undefined && <SeatButton {...seatButtonProps} />}
         {!yours && (
           // omitted on the seat already watched — nothing to switch to from where you already are
           <button

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { createMatch } from '../../core/match'
 import { createRound, stepRound, type RoundOptions } from '../../core/round'
+import { importTenhou } from '../../core/tenhouImport'
+import convlog from '../../core/testdata/convlog.json'
 import { tileCode } from '../../core/tiles'
-import { actionRow, type MatchRow } from './matchRows'
+import { actionRow, replayRows, rowsBefore, type MatchRow } from './matchRows'
 
 const OPTIONS: RoundOptions = {
   sanma: false,
@@ -72,5 +74,77 @@ describe('actionRow stats jobs', () => {
         expect(tileCode(entry.tile.id, entry.tile.red)).toBe(row.params?.tile)
       } else throw new Error(`expected a discard, got ${entry.kind}`)
     }
+  })
+})
+
+describe('replayRows', () => {
+  const imported = importTenhou(convlog)
+  if (!('game' in imported)) throw new Error('the fixture imports')
+  const { game } = imported
+  const rules = { sanma: false, aka: game.rules.aka, kiriageMangan: false }
+  const rows = replayRows(game, rules)
+
+  it('tags every action with its seat and its own log index, and prices the free ones', () => {
+    const actions = rows.filter((r) => r.seat !== undefined)
+    expect(actions.length).toBeGreaterThan(100)
+    for (const row of actions) {
+      const log = game.rounds[row.round].log
+      expect(log[row.at].seat).toBe(row.seat)
+      if (row.stats) expect(row.stats.at).toBe(row.at)
+    }
+    const free = actions.filter((r) => r.key === 'log.match.discard')
+    expect(free.length).toBeGreaterThan(0)
+    expect(free.every((r) => r.stats !== undefined)).toBe(true)
+    expect(rows.some((r) => r.key === 'log.match.call' && r.params?.kind === 'minkan')).toBe(true)
+    expect(rows.some((r) => r.key === 'log.match.riichi')).toBe(true)
+    // ids are stable and unique: the log keys its rows on them
+    expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length)
+  })
+
+  it('ends every round with the engine’s own result, and seat-less boundary rows', () => {
+    game.rounds.forEach((round, i) => {
+      const own = rows.filter((r) => r.round === i)
+      expect(own[0]).toMatchObject({ key: 'log.dealt', at: -1 })
+      expect(own.at(-1)).toMatchObject({ key: 'log.match.result', at: round.log.length - 1 })
+      expect(own[0].seat).toBeUndefined()
+      expect(own.at(-1)!.seat).toBeUndefined()
+    })
+    // the fixture imports clean, so no notice rows
+    expect(rows.some((r) => r.key.startsWith('log.match.notice'))).toBe(false)
+  })
+
+  it("closes a round with the import's notice, a settlement disagreement naming both sides", () => {
+    const record = [8000, -8000, 0, 0]
+    const engine = game.rounds[0].deltas
+    const noted = replayRows(
+      {
+        ...game,
+        rounds: [{ ...game.rounds[0], notice: { code: 'pays', record, engine } }],
+      },
+      rules,
+    )
+    const notice = noted.at(-1)!
+    expect(notice).toMatchObject({ key: 'log.match.notice.pays', round: 0 })
+    expect(notice.at).toBe(game.rounds[0].log.length - 1)
+    expect(notice.seat).toBeUndefined()
+    expect(notice.detail).toHaveLength(4)
+    expect(notice.detail![0].params!.amount).toBe(
+      `+8,000 → ${engine[0] >= 0 ? '+' : ''}${engine[0].toLocaleString()}`,
+    )
+  })
+
+  it('shows only the deal at step 0, and the result only once the round is over', () => {
+    const start = rowsBefore(rows, { round: 0, step: 0 })
+    expect(start.map((r) => r.key)).toEqual(['log.dealt'])
+    const length = game.rounds[0].log.length
+    const before = rowsBefore(rows, { round: 0, step: length - 1 })
+    expect(before.some((r) => r.key === 'log.match.result')).toBe(false)
+    const end = rowsBefore(rows, { round: 0, step: length })
+    expect(end.at(-1)!.key).toBe('log.match.result')
+    // the next round's step 0 adds exactly its deal
+    expect(rowsBefore(rows, { round: 1, step: 0 })).toEqual([
+      ...end,
+      rows.find((r) => r.round === 1)!,
+    ])
   })
 })

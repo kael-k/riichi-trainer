@@ -262,7 +262,7 @@
     "match": {
       "title": "Partita completa",
       "desc": "Gioca una partita completa, solo Est o hanchan, contro i bot — niente viene valutato, solo la partita.",
-      "intro": "Scegli un formato e un regolamento, scegli chi gioca ogni posto, poi gioca la partita turno dopo turno — rotazione del mazziere, honba, bastoncini riichi e tutto il resto. Niente viene valutato qui: il punteggio è il punteggio."
+      "intro": "Scegli un formato e un regolamento, scegli chi gioca ogni posto, poi gioca la partita turno dopo turno — rotazione del mazziere, honba, bastoncini riichi e tutto il resto. Niente viene valutato qui: il punteggio è il punteggio. Oppure carica un log di partita tenhou.net/6 e scorrilo azione per azione, con tutte le mani scoperte."
     }
   },
   "efficiency": {
@@ -626,6 +626,22 @@
       "you": "Tu",
       "download": "Scarica log",
       "copy": "Copia log"
+    },
+    "replay": {
+      "load": "Carica una partita",
+      "close": "Chiudi partita",
+      "error": {
+        "notTenhou": "Questo file non è un log di partita tenhou.net/6.",
+        "tiles": "Le tessere del log non tornano, quindi non si può rigiocare.",
+        "rules": "Il regolamento del log non si può rigiocare qui.",
+        "kyoku": "(Mano {{number}} del log.)"
+      },
+      "prevRound": "Mano precedente",
+      "prevAction": "Azione precedente",
+      "nextAction": "Azione successiva",
+      "nextRound": "Mano successiva",
+      "scrub": "Posizione nella mano",
+      "position": "{{round}} · {{honba}} honba · {{step}}/{{total}}"
     }
   },
   "log": {
@@ -658,7 +674,18 @@
       "call": "{{wind}}: {{kind}} sulla tessera di {{from}}",
       "kita": "{{wind}} pesca nord (kita)",
       "kan": "{{wind}} chiama kan {{tile}}",
-      "exportFailed": "Esportazione non riuscita — impossibile ricostruire la partita giocata"
+      "exportFailed": "Esportazione non riuscita — impossibile ricostruire la partita giocata",
+      "notice": {
+        "doubleRon": "Doppio ron: non modellato, la mano si ferma prima",
+        "chankan": "Chankan: non modellato, la mano si ferma prima",
+        "nagashiMangan": "Nagashi mangan: non modellato, la mano si ferma prima",
+        "suufonRenda": "Annullamento per quattro venti: non modellato, la mano si ferma prima",
+        "suuchaRiichi": "Annullamento per quattro riichi: non modellato, la mano si ferma prima",
+        "suukaikan": "Annullamento per quattro kan: non modellato, la mano si ferma prima",
+        "sanchahou": "Triplo ron: non modellato, la mano si ferma prima",
+        "stopped": "Il motore rifiuta la prossima azione del log, quindi la mano si ferma qui",
+        "pays": "Il motore liquida questa mano diversamente dal log (log → motore)"
+      }
     },
     "stats": {
       "line": "{{label}}: {{facts}}",

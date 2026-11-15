@@ -1,6 +1,14 @@
-import type { RoundResult } from '../../core/match'
-import type { RoundEvent, RoundState } from '../../core/round'
-import type { TableCore } from '../../core/table'
+import { settleRound, type RoundResult } from '../../core/match'
+import {
+  createRound,
+  replayLog,
+  roundResult,
+  type RoundEvent,
+  type RoundOptions,
+  type RoundState,
+} from '../../core/round'
+import type { ReplayRules, TableCore } from '../../core/table'
+import type { ImportedGame, ImportNotice } from '../../core/tenhouImport'
 import { HONOR, tileCode } from '../../core/tiles'
 import type { LogEntry } from '../../store/log'
 import type { MatchResultParams } from '../i18n/formatLogEntry'
@@ -135,4 +143,85 @@ export function actionRow(
     case 'kakan':
       return row('log.match.kan', { tile: tileCode(event.tile) })
   }
+}
+
+/** A recorded game's row, tagged with where it sits in the recording: `round` indexes
+ *  `game.rounds`, `at` is the log index of the action it describes — `-1` for the deal and
+ *  `log.length - 1` for the round's end (result, notice), so "the rows before a cursor" is the
+ *  one comparison `at < step` (`rowsBefore`). */
+export interface ReplayRow extends LogEntry {
+  round: number
+  at: number
+}
+
+/** Why an imported round is not the record verbatim. A settlement disagreement names both
+ *  sides per seat, record first, under the same `log.match.delta` line a result row uses. */
+function noticeRow(notice: ImportNotice, round: RoundState): MatchRow {
+  if (notice.code !== 'pays') return { key: `log.match.notice.${notice.code}` }
+  const winds = roundWinds(round)
+  const signed = (n: number) => (n >= 0 ? '+' : '') + n.toLocaleString()
+  return {
+    key: 'log.match.notice.pays',
+    detail: notice.record.map((record, seat) => ({
+      key: 'log.match.delta',
+      params: { wind: winds[seat], amount: `${signed(record)} → ${signed(notice.engine[seat])}` },
+    })),
+  }
+}
+
+/**
+ * Every row a recorded game's log shows, built once per game: each round replayed through the
+ * engine at pace 0, its events turned into the very rows live play writes (`actionRow`), then the
+ * engine's own result — only where the round really ended in the engine — and the import's
+ * notice. Built once because each row's `stats` job is the price cache's key (`statsClient.ts`):
+ * rebuilt per cursor move, every row would be priced again.
+ *
+ * `at` is read off `state.log` as each event lands: an imported log carries no `pass` and replay
+ * records none it infers, so the engine's log is the record's, index for index.
+ */
+export function replayRows(game: ImportedGame, rules: ReplayRules): ReplayRow[] {
+  const players = rules.sanma ? 3 : 4
+  const rows: ReplayRow[] = []
+  const push = (row: MatchRow, round: number, at: number) =>
+    rows.push({ ...row, id: rows.length + 1, round, at })
+  game.rounds.forEach((recorded, round) => {
+    const options: RoundOptions = {
+      ...rules,
+      match: recorded.match,
+      calls: true,
+      riichi: true,
+      wins: true,
+      claims: true,
+      calledKan: true,
+    }
+    const state = createRound(recorded.wall, players, options)
+    const core: TableCore = { round: state, options }
+    push({ key: 'log.dealt' }, round, -1)
+    replayLog(state, options, recorded.log, (event) => {
+      const row = actionRow(event, core)
+      if (row) push(row, round, state.log.length - 1)
+    })
+    const end = recorded.log.length - 1
+    const rr = roundResult(state)
+    if (rr) {
+      const { deltas } = settleRound(state.match, rr, {
+        sanma: rules.sanma,
+        format: game.rules.format,
+      })
+      push(resultRow(state, resultParams(state, rr), deltas), round, end)
+    }
+    if (recorded.notice) push(noticeRow(recorded.notice, state), round, end)
+  })
+  return rows
+}
+
+/** The rows a cursor has passed: every earlier round's, and this round's with `at < step` — the
+ *  board at `step` is `replayTo`'s position *before* `log[step]`, so its row is not yet there. */
+export function rowsBefore<T extends { round: number; at: number }>(
+  rows: T[],
+  cursor: { round: number; step: number },
+): T[] {
+  return rows.filter(
+    (r) => r.round < cursor.round || (r.round === cursor.round && r.at < cursor.step),
+  )
 }

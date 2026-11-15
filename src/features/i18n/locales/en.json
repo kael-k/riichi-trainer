@@ -262,7 +262,7 @@
     "match": {
       "title": "Full match",
       "desc": "Play a whole east-only or hanchan match against the bots — nothing graded, just the game.",
-      "intro": "Pick a format and a ruleset, choose who plays each seat, then play the match out round by round — dealer rotation, honba, riichi sticks and all. Nothing here is graded: the points are the score."
+      "intro": "Pick a format and a ruleset, choose who plays each seat, then play the match out round by round — dealer rotation, honba, riichi sticks and all. Nothing here is graded: the points are the score. Or load a tenhou.net/6 game log and step through it action by action, every hand face up."
     }
   },
   "efficiency": {
@@ -626,6 +626,22 @@
       "you": "You",
       "download": "Download log",
       "copy": "Copy log"
+    },
+    "replay": {
+      "load": "Load a game",
+      "close": "Close game",
+      "error": {
+        "notTenhou": "That file isn't a tenhou.net/6 game log.",
+        "tiles": "The log's tiles don't add up, so it can't be replayed.",
+        "rules": "The log's ruleset can't be replayed here.",
+        "kyoku": "(Round {{number}} of the log.)"
+      },
+      "prevRound": "Previous round",
+      "prevAction": "Previous action",
+      "nextAction": "Next action",
+      "nextRound": "Next round",
+      "scrub": "Position in the round",
+      "position": "{{round}} · {{honba}} honba · {{step}}/{{total}}"
     }
   },
   "log": {
@@ -658,7 +674,18 @@
       "call": "{{wind}}: {{kind}} on {{from}}’s tile",
       "kita": "{{wind}} pulls north (kita)",
       "kan": "{{wind}} kans {{tile}}",
-      "exportFailed": "Export failed — the played match couldn't be rebuilt"
+      "exportFailed": "Export failed — the played match couldn't be rebuilt",
+      "notice": {
+        "doubleRon": "Double ron: not modelled, so the round stops before it",
+        "chankan": "Chankan: not modelled, so the round stops before it",
+        "nagashiMangan": "Nagashi mangan: not modelled, so the round stops before it",
+        "suufonRenda": "Four winds abort: not modelled, so the round stops before it",
+        "suuchaRiichi": "Four riichi abort: not modelled, so the round stops before it",
+        "suukaikan": "Four kans abort: not modelled, so the round stops before it",
+        "sanchahou": "Triple ron: not modelled, so the round stops before it",
+        "stopped": "The engine refuses the log's next action, so the round stops here",
+        "pays": "The engine settles this round differently from the log (log → engine)"
+      }
     },
     "stats": {
       "line": "{{label}}: {{facts}}",

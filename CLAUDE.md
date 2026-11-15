@@ -503,6 +503,14 @@ duplicates under StrictMode.
 - `BoardStage` clears the log during its **first render**, not from a mount effect — effects run
   children-first, so a page that logs as its round mounts would have those rows wiped a moment
   later.
+- **`/match`'s replay of a tenhou.net/6 game (`ReplayBoard`) never writes the store at all**: its
+  rows reach `LogList` through `entries` (`BoardStage#logEntries`), which also drops Clear. They
+  are built **once per game** (`matchRows.ts#replayRows`), because each row's `stats` job is
+  `statsClient`'s cache key — rebuilt per cursor move, every row prices again.
+- The replay cursor's `step` **is `replayTo`'s `at`**: the board is the position _before_
+  `log[step]`, so the log shows rows with `at < step` (`rowsBefore`) — the deal tagged `-1`, a
+  round's result and notice `log.length - 1`. `SeatStrip`'s `name` swaps the algorithm badge for
+  the player's and drops the gear.
 
 **Per-seat table configuration** (`features/settings/tableSettings.ts`): `SeatConfig { modes; ev?
 }`. **`Table` itself has no concept of a "player"** — what makes a seat one somebody plays is

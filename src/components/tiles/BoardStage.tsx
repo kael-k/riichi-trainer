@@ -11,7 +11,7 @@ import {
 } from '../../features/settings/settingsStore'
 import type { TableApp } from '../../features/settings/tableSettings'
 import { useMediaQuery } from '../../lib/useMediaQuery'
-import { useLog } from '../../store/log'
+import { useLog, type LogEntry } from '../../store/log'
 import { InfoPopover } from '../InfoPopover'
 import { LogList } from '../LogList'
 import { ChromeLabel, CHROME_BUTTON } from '../TrainerControls'
@@ -68,6 +68,9 @@ interface BoardStageProps {
   /** The seat the log filters on (`LogList`'s `hero`) — `/match`, which logs every seat, passes
    *  the board's own perspective. Omitted by every graded trainer, whose log keeps All/Mistakes. */
   logHero?: number
+  /** Rows for the log to show instead of the store's (`LogList`'s `entries`) — `/match`'s replay
+   *  of a recorded game, whose rows are computed, never written. */
+  logEntries?: LogEntry[]
   /** The wall reveal (`WallDetails`, which is its own button + dialog), given a place of its own
    *  in the chrome row rather than a row in the panel behind a setting. Omitted only by a trainer
    *  that has no wall to show — shanten deals no wall at all, and the board trainers pass nothing
@@ -167,7 +170,11 @@ function StatusCard({ children, strip }: { children: ReactNode; strip?: boolean 
  * for both surfaces it appears on — docked beside the board from `lg` up, pulled over the top in a
  * drawer below that — so the two cannot drift apart.
  */
-function SessionPanel({ panel, logHero }: Pick<BoardStageProps, 'panel' | 'logHero'>) {
+function SessionPanel({
+  panel,
+  logHero,
+  logEntries,
+}: Pick<BoardStageProps, 'panel' | 'logHero' | 'logEntries'>) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       {panel && (
@@ -188,6 +195,7 @@ function SessionPanel({ panel, logHero }: Pick<BoardStageProps, 'panel' | 'logHe
       <LogList
         className="-mx-2 flex-auto border-t border-neutral-200 dark:border-neutral-800"
         hero={logHero}
+        entries={logEntries}
       />
     </div>
   )
@@ -209,6 +217,7 @@ export function BoardStage({
   end,
   panel,
   logHero,
+  logEntries,
   wall,
   children,
   flow,
@@ -531,7 +540,7 @@ export function BoardStage({
             data-testid="session-panel"
             className="flex w-[clamp(20rem,26vw,28rem)] shrink-0 flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
           >
-            <SessionPanel panel={panel} logHero={logHero} />
+            <SessionPanel panel={panel} logHero={logHero} logEntries={logEntries} />
           </aside>
         )}
 
@@ -552,7 +561,7 @@ export function BoardStage({
               // the first log row would otherwise start beneath the notch
               className="absolute inset-y-0 right-0 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
             >
-              <SessionPanel panel={panel} logHero={logHero} />
+              <SessionPanel panel={panel} logHero={logHero} logEntries={logEntries} />
             </div>
           </div>
         )}

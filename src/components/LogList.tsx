@@ -58,6 +58,7 @@ const ICON_BUTTON =
 export function LogList({
   className = 'max-h-48 short:max-h-none',
   hero,
+  entries: override,
 }: {
   className?: string
   /** The seat the board is drawn from, on a log that records every seat (`/match`). Set, the
@@ -65,9 +66,14 @@ export function LogList({
    *  "mistakes" would always be empty — and This seat shows `hero`'s own rows plus every row
    *  that belongs to no seat (a deal, a result). */
   hero?: number
+  /** Rows to show instead of the store's — a recorded game's replay, which computes its rows and
+   *  never writes the store. Set, there is no Clear: the list is the recording's, not a
+   *  session's. */
+  entries?: LogEntry[]
 }) {
   const { t } = useTranslation()
-  const { entries, clear } = useLog()
+  const { entries: stored, clear } = useLog()
+  const entries = override ?? stored
   // session-local, not a setting: it is a way of reading this list right now, not a preference
   // about every list from here on. One flag for both toggles: `narrow` is Mistakes on a graded
   // trainer and This seat on a seat-filtered one, and only the latter starts on
@@ -119,7 +125,7 @@ export function LogList({
             </button>
           ))}
         </div>
-        {entries.length > 0 && (
+        {!override && entries.length > 0 && (
           <button
             type="button"
             onClick={clear}

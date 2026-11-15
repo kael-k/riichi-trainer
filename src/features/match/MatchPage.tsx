@@ -16,6 +16,7 @@ import { ranks, resultPoints } from '../../core/placement'
 import { DetailLine } from '../../components/LogList'
 import type { MatchFormat, MatchState } from '../../core/match'
 import type { WinRecord } from '../../core/round'
+import { importTenhou, type ImportedGame, type ImportError } from '../../core/tenhouImport'
 import { tenhouMatchLog, type TenhouRules } from '../../core/tenhouLog'
 import { scoreDetail } from '../scoring/useScoringRound'
 import { mulberry32, shuffle } from '../../core/rng'
@@ -44,6 +45,7 @@ import { useUrlData } from '../situation/useUrlData'
 import { KitaKanControls, kitaKanVisible } from '../table/KitaKanControls'
 import { ManualControls, manualControlsVisible } from '../table/ManualControls'
 import { SeatStrip } from '../table/SeatStrip'
+import { ReplayBoard } from './ReplayBoard'
 import { linkedSeats, useMatchRound, type RoundSettlement } from './useMatchRound'
 
 /** Stable identity, so the "ignore the link this board mounted with" swap below never itself looks
@@ -97,8 +99,15 @@ export interface MatchConfig {
  *  offers, laid flat instead of behind a corner button since there is no felt to hang one off yet.
  *  A full-bot cast is legal here (`requireManual: false`) — the reader may move every seat off
  *  manual and just watch. */
-function MatchSetup({ onStart }: { onStart: (config: MatchConfig) => void }) {
+function MatchSetup({
+  onStart,
+  onLoad,
+}: {
+  onStart: (config: MatchConfig) => void
+  onLoad: (game: ImportedGame) => void
+}) {
   const { t } = useTranslation()
+  const [loadError, setLoadError] = useState<ImportError | null>(null)
   const sanma = useSettings((s) => s.sanma)
   const kiriageMangan = useSettings((s) => s.kiriageMangan)
   const { aka } = useAdvancedSettings()
@@ -121,6 +130,19 @@ function MatchSetup({ onStart }: { onStart: (config: MatchConfig) => void }) {
       seats = { modes: order.map((i) => resolved.modes[i]), ev: order.map((i) => resolved.ev?.[i]) }
     }
     onStart({ format, sanma, aka, kiriageMangan, seats })
+  }
+
+  /** A file the reader picked is untrusted input: anything that fails to parse or import is the
+   *  one "not a tenhou.net/6 log" answer rather than a crash. */
+  async function load(file: File) {
+    let result: { game: ImportedGame } | ImportError
+    try {
+      result = importTenhou(JSON.parse(await file.text()))
+    } catch {
+      result = { error: 'notTenhou' }
+    }
+    if ('game' in result) onLoad(result.game)
+    else setLoadError(result)
   }
 
   return (
@@ -198,13 +220,39 @@ function MatchSetup({ onStart }: { onStart: (config: MatchConfig) => void }) {
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={start}
-        className="min-h-11 w-fit rounded-lg bg-neutral-900 px-6 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
-      >
-        {t('match.start')}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={start}
+          className="min-h-11 w-fit rounded-lg bg-neutral-900 px-6 font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+        >
+          {t('match.start')}
+        </button>
+        {/* the input itself is visually hidden behind its label, which is the button a reader
+            sees and taps — the native picker, with the focus ring carried over */}
+        <label className="flex min-h-11 w-fit cursor-pointer items-center rounded-lg bg-neutral-200 px-6 font-medium text-neutral-900 focus-within:ring-2 focus-within:ring-neutral-500 dark:bg-neutral-800 dark:text-neutral-100">
+          {t('match.replay.load')}
+          <input
+            type="file"
+            accept=".json,application/json"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              // cleared, so picking the same file again after fixing it still fires
+              e.target.value = ''
+              setLoadError(null)
+              if (file) void load(file)
+            }}
+          />
+        </label>
+      </div>
+      {loadError && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {t(`match.replay.error.${loadError.error}`)}
+          {loadError.kyoku !== undefined &&
+            ` ${t('match.replay.error.kyoku', { number: loadError.kyoku + 1 })}`}
+        </p>
+      )}
     </div>
   )
 }
@@ -664,7 +712,8 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
  *  are the score. Two steps, one component each: `MatchSetup` until Start is pressed,
  *  `MatchBoard` for the length of the match — different component types in the same slot, so a
  *  fresh match after "New match" starts from a clean board rather than one that has to notice its
- *  config changed.
+ *  config changed. A tenhou.net/6 game loaded from the setup screen takes the slot instead
+ *  (`ReplayBoard`).
  *
  *  The swap goes through one blank render (`settled`) rather than straight from one to the other.
  *  `BoardStage` clears the shared log store inline during its own first render, not from a mount
@@ -701,24 +750,29 @@ export function MatchPage() {
           fromLink: true,
         },
   )
+  // a recorded game to step through, loaded from the setup screen — the third thing this page can
+  // show, through the same one-blank-render swap as the other two
+  const [game, setGame] = useState<ImportedGame | null>(null)
   const [settled, setSettled] = useState(true)
 
-  function transition(next: MatchConfig | null) {
+  function transition(next: MatchConfig | null, nextGame: ImportedGame | null = null) {
     setSettled(false)
     setConfig(next)
+    setGame(nextGame)
   }
   useEffect(() => {
     if (!settled) setSettled(true)
   }, [settled])
 
   if (!settled) return null
+  if (game) return <ReplayBoard game={game} onExit={() => transition(null)} />
   if (!config) {
     return (
       <BoardStage
         title={t('trainer.match.title')}
         intro={{ text: `${t('trainer.match.intro')}\n\n${t('common.alphaNote')}` }}
       >
-        <MatchSetup onStart={transition} />
+        <MatchSetup onStart={transition} onLoad={(loaded) => transition(null, loaded)} />
       </BoardStage>
     )
   }
