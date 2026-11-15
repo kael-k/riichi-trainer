@@ -469,7 +469,8 @@ Other rules that hold across trainers:
   a pending claim keeps open. Anything that should appear only at drill end reads **`drillOver`**.
 - **Sanma is "these ids have zero copies", not a smaller id space.** `NUM_TILE_TYPES` stays 34;
   `buildWall`/`deal` skip 2m-8m via `inTileSet`, and `improvingTiles`/`ukeire`/`evaluateDiscards`
-  take a `sanma` flag.
+  take a `sanma` flag. **Sanma has no chi**: `round.ts#canChi` is the one `fromKamicha` every call
+  reader is handed (manual prompt, AI seats, `actionStats`), never the bare seat arithmetic.
 - **Kita is graded, not free**: it reuses north's own `evaluateDiscards` entry (`NORTH = HONOR + 3`)
   against `ranked[0]` with `isBestDiscard`. No special tie-break is needed.
 - **The table app (never solo) can grade a plain discard on the EV model instead of ukeire,

@@ -14,6 +14,7 @@ import { EV_MODELS, type EvModelName } from './evModel'
 import { tileCount, type Hand } from './hand'
 import {
   beginTurn,
+  canChi,
   concealedTiles,
   createRound,
   isManual,
@@ -534,9 +535,9 @@ export function actionStats(job: StatsJob): ActionStats | null {
   // the claim is still open, so the discard it hangs on is the last one made
   const tile = core.round.discards.at(-1)!.tile.id
   const view = seatView(core.round, core.options, seat)
-  const fromKamicha = seat === (from + 1) % core.round.players.length
+  const chi = canChi(core.round, core.options, seat, from)
   const models = price((opts) => {
-    const ranked = rankCalls(view, tile, fromKamicha, opts)
+    const ranked = rankCalls(view, tile, chi, opts)
     const made = ranked.find(
       (row) => row.call?.kind === call.kind && row.call.from.join() === call.from.join(),
     )

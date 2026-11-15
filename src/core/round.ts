@@ -1290,7 +1290,7 @@ function resolveReactions(
           : ALGORITHMS[caller.algorithm].call(
               seatView(state, options, other),
               tile.id,
-              other === (discarder + 1) % state.players.length,
+              canChi(state, options, other, discarder),
             )
       if (!call) continue
 
@@ -1377,12 +1377,25 @@ export function claimOptions(
   const claims: ClaimOption[] = []
   if (tryWin(state, seat, options, tile, false, from)) claims.push({ kind: 'ron', from: [] })
   if (options.calls && player.riichiAt === undefined) {
-    const fromKamicha = seat === (from + 1) % state.players.length
-    for (const call of availableCalls(player.hand, tile.id, fromKamicha, options.calledKan)) {
+    const chi = canChi(state, options, seat, from)
+    for (const call of availableCalls(player.hand, tile.id, chi, options.calledKan)) {
       claims.push({ kind: call.kind, from: call.from })
     }
   }
   return claims
+}
+
+/** Whether `seat` may chi `from`'s discard: only off its kamicha, and never under sanma, which has
+ *  no chi. What every reader of call legality is handed as its `fromKamicha` — the manual prompt
+ *  (`claimOptions`), every AI seat (`resolveReactions`) and the pricing of a recorded call
+ *  (`table.ts#actionStats`) — so none re-derives the bare seat arithmetic and lets sanma chi. */
+export function canChi(
+  state: RoundState,
+  options: RoundOptions,
+  seat: number,
+  from: number,
+): boolean {
+  return !options.sanma && seat === (from + 1) % state.players.length
 }
 
 /**

@@ -811,6 +811,35 @@ describe('manual claims', () => {
     expect(pon?.from).toEqual([SOU + 8, SOU + 8])
   })
 
+  it('offers no chi under sanma — pon only, off the same discard yonma would also let it chi', () => {
+    // seat 1 holds 78s and 99s, so seat 0's 9s is a pon and, off its kamicha, a chi
+    const hands = ['19m2468p9s123456z', '19m13579p7899s17z'].map(parseTenhou)
+    const offered = (sanma: boolean) => {
+      const options: RoundOptions = {
+        ...(sanma ? SANMA : YONMA),
+        claims: true,
+        algorithms: manual(1),
+      }
+      const state = createRound(
+        wallWithHands(hands, sanma, false, 'sanma-chi'),
+        sanma ? 3 : 4,
+        options,
+      )
+      beginTurn(state, options)
+      finishTurn(state, options, { tile: { id: SOU + 8, red: false }, fromDrawn: false })
+      return discardClaim(state).options.map((o) => o.kind)
+    }
+    expect(offered(false)).toEqual(['pon', 'chi'])
+    expect(offered(true)).toEqual(['pon'])
+  })
+
+  it('never lets a sanma AI seat chi', () => {
+    for (let i = 0; i < 20; i++) {
+      const { events } = playRound(`golden-${i}`, 3, SANMA)
+      expect(events.some((e) => e.kind === 'call' && e.meld.kind === 'chi')).toBe(false)
+    }
+  })
+
   // a tenhou.net/6 record can show a player ponning with two plain fives and keeping the red for
   // later — spending the red anyway left `concealed` naming a plain five the hand no longer held,
   // and the red's own discard then silently missed it

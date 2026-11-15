@@ -77,8 +77,9 @@ declare const process: { env: Record<string, string | undefined> }
  *  here — a change that has to move these says so in its own commit. Four have: T3 of the
  *  seat-algorithm refactor (it changed what `defense`/`efficiency` decide), the move to real
  *  4/4/4+1 dealing (every seat is dealt different tiles off the same wall), cutting the dead wall
- *  into real stacks (which moves which tiles are dora and which ura pays out), and the
- *  turn seam.
+ *  into real stacks (which moves which tiles are dora and which ura pays out), the
+ *  turn seam, and sanma losing chi (the sanma column alone: six seeded sanma rounds had an AI seat
+ *  chi, which three-player rules forbid).
  *
  *  **The fourth move is the sanma column alone, and it is not a decision change.** Every one of
  *  the forty seeded rounds plays exactly the tiles it played before; what moved is that an AI
@@ -90,13 +91,13 @@ declare const process: { env: Record<string, string | undefined> }
 const GOLDEN: Record<string, [yonma: string, sanma: string]> = {
   'golden-0': ['1771f2e19c0e5bf8', '8a49ea858dd3ee22'],
   'golden-1': ['4047a43d61d584f0', 'cb12eb6c48b69292'],
-  'golden-2': ['41b64dafd8de6987', '0848579437debaa9'],
-  'golden-3': ['bb468b2afb281212', '81038a99e244d0fa'],
+  'golden-2': ['41b64dafd8de6987', '2dd2b8be6576ba46'],
+  'golden-3': ['bb468b2afb281212', 'c42bed1756bca4f7'],
   'golden-4': ['afc54c91dc9d069a', '78a1694797b8d6ca'],
   'golden-5': ['2a79119f8bea1b22', '427c24dfbe769e35'],
   'golden-6': ['3173e588cf15f213', '482da96e1005e2f2'],
-  'golden-7': ['eca7cd5f289ec8ab', 'a152ce5cc699f818'],
-  'golden-8': ['37046f5637bdbdff', '469f4b4b944ac8fe'],
+  'golden-7': ['eca7cd5f289ec8ab', 'c084f7e39a10b5cb'],
+  'golden-8': ['37046f5637bdbdff', '83a2858e78f656cb'],
   'golden-9': ['d4813c6b02bcfeff', '31bd8844e96fcaf6'],
   'golden-10': ['939714d757dc4101', 'f0faef8cf752794a'],
   'golden-11': ['1d199abe707275f6', '75c57dcccef83fe7'],
@@ -104,9 +105,9 @@ const GOLDEN: Record<string, [yonma: string, sanma: string]> = {
   'golden-13': ['d16d65d947b9955d', '4e3b023ee012b237'],
   'golden-14': ['95b5ade0a11929f6', '2523d073837811e1'],
   'golden-15': ['5cac3039e5faffab', '5ee2df9821e265c2'],
-  'golden-16': ['d9ad2a6b42c5f843', '02a95faa3b120816'],
+  'golden-16': ['d9ad2a6b42c5f843', 'e9068d454a4844e1'],
   'golden-17': ['e387e2fcea924abf', 'd2f9740eca98f15a'],
-  'golden-18': ['098ff6ac78118d20', '0ddc8b802d748cb6'],
+  'golden-18': ['098ff6ac78118d20', '3a785e5e782cbb53'],
   'golden-19': ['62be2ff8e1e0537f', '3214d0ee34a3f8e9'],
 }
 

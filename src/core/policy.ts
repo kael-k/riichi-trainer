@@ -183,7 +183,8 @@ export interface Call {
 }
 
 /** Every pon/chi (and, with `calledKan` on, minkan) this hand could legally make on `tile`; chi
- *  only from the player to the left, minkan from anyone including on an honour. Exported for the
+ *  only when `fromKamicha` — `round.ts#canChi`'s answer, which is also false under sanma, since
+ *  sanma has no chi — minkan from anyone including on an honour. Exported for the
  *  human claim prompt (`round.ts#claimOptions`), which offers exactly the calls the AI weighs
  *  here rather than deriving a second, drifting notion of what is legal.
  *
