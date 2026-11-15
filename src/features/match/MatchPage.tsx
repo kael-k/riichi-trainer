@@ -516,6 +516,8 @@ function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => voi
     <BoardStage
       title={t('trainer.match.title')}
       app="match"
+      // the log follows the eye: whoever the board is drawn from is whose actions it shows first
+      logHero={perspective}
       // alpha: not every match rule is modelled yet — said once here
       // rather than baked into four locales' worth of `trainer.match.intro` strings
       intro={{

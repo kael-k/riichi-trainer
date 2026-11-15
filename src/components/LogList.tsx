@@ -48,20 +48,36 @@ const ICON_BUTTON =
  * answer differently: the session panel hands it the space its own flex split left over
  * (`min-h-0 flex-1`), while a caller with a fixed slice of a scrolling column takes the default.
  */
-export function LogList({ className = 'max-h-48 short:max-h-none' }: { className?: string }) {
+export function LogList({
+  className = 'max-h-48 short:max-h-none',
+  hero,
+}: {
+  className?: string
+  /** The seat the board is drawn from, on a log that records every seat (`/match`). Set, the
+   *  toggle reads This seat / All seats instead of All / Mistakes — a match grades nobody, so
+   *  "mistakes" would always be empty — and This seat shows `hero`'s own rows plus every row
+   *  that belongs to no seat (a deal, a result). */
+  hero?: number
+}) {
   const { t } = useTranslation()
   const { entries, clear } = useLog()
   // session-local, not a setting: it is a way of reading this list right now, not a preference
-  // about every list from here on
-  const [mistakesOnly, setMistakesOnly] = useState(false)
+  // about every list from here on. One flag for both toggles: `narrow` is Mistakes on a graded
+  // trainer and This seat on a seat-filtered one, and only the latter starts on
+  const [narrow, setNarrow] = useState(hero !== undefined)
+  const seatFiltered = hero !== undefined
   // numbered from the session's first action, so the numbers stay put as the list grows — the
   // panel shows newest first, which would otherwise renumber every row each turn. Assigned before
-  // filtering, so a row keeps its number under `Mistakes` too and `log.rewound` stays honest
+  // filtering, so a row keeps its number under either filter and `log.rewound` stays honest
   const rows = entries
     .map((entry, i) => ({ entry, number: i + 1 }))
     .reverse()
-    .filter(
-      ({ entry }) => !mistakesOnly || entry.severity === 'warning' || entry.severity === 'error',
+    .filter(({ entry }) =>
+      !narrow
+        ? true
+        : seatFiltered
+          ? entry.seat === undefined || entry.seat === hero
+          : entry.severity === 'warning' || entry.severity === 'error',
     )
   return (
     // an inline-size container so the tile row below can cap itself against the column it is
@@ -72,19 +88,27 @@ export function LogList({ className = 'max-h-48 short:max-h-none' }: { className
       <div className="flex min-h-11 items-center gap-2 px-3 text-sm font-medium text-neutral-600 dark:text-neutral-400">
         {t('common.log', { count: entries.length })}
         <div className="ml-auto flex overflow-hidden rounded border border-neutral-200 text-xs dark:border-neutral-700">
-          {[false, true].map((only) => (
+          {(seatFiltered ? [true, false] : [false, true]).map((only) => (
             <button
               key={String(only)}
               type="button"
-              aria-pressed={mistakesOnly === only}
-              onClick={() => setMistakesOnly(only)}
+              aria-pressed={narrow === only}
+              onClick={() => setNarrow(only)}
               className={`px-2 py-1 ${
-                mistakesOnly === only
+                narrow === only
                   ? 'bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100'
                   : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
               }`}
             >
-              {t(only ? 'common.filterMistakes' : 'common.filterAll')}
+              {t(
+                seatFiltered
+                  ? only
+                    ? 'common.filterSeat'
+                    : 'common.filterAllSeats'
+                  : only
+                    ? 'common.filterMistakes'
+                    : 'common.filterAll',
+              )}
             </button>
           ))}
         </div>
@@ -108,7 +132,7 @@ export function LogList({ className = 'max-h-48 short:max-h-none' }: { className
       <ol className="min-h-0 flex-1 overflow-y-auto pb-2 [--tile-w-base:clamp(1.25rem,(100cqw_-_2rem)/14,calc(var(--tile-w-raw)*var(--tile-scale,1)*0.6))] [--tile-w:var(--tile-w-base)]">
         {rows.length === 0 && (
           <li className="px-3 py-1 text-sm text-neutral-400">
-            {t(mistakesOnly ? 'common.noMistakes' : 'common.noActions')}
+            {t(narrow && !seatFiltered ? 'common.noMistakes' : 'common.noActions')}
           </li>
         )}
         {rows.map(({ entry, number }) =>

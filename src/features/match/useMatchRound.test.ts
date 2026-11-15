@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { HONOR, PIN, parseTenhou } from '../../core/tiles'
 import { dealtIndices, wallWithHand } from '../../core/wall'
+import { useLog } from '../../store/log'
 import { emptySituation, type Situation } from '../situation/urlCodec'
 import { linkedSeats, useMatchRound, type MatchOptions } from './useMatchRound'
 
@@ -73,6 +74,7 @@ describe('useMatchRound', () => {
   // tens of seconds under a loaded run. The budget below guards against a hang, not against a
   // regression — the measurement that watches cost is `core/ev.bench.test.ts`.
   it('plays a round to its end and produces a settlement', () => {
+    useLog.setState({ entries: [] })
     const { result } = renderHook(() => useMatchRound(BARE, NO_LINK))
     playToSettlement(result)
 
@@ -80,6 +82,15 @@ describe('useMatchRound', () => {
     const { deltas, result: rr } = result.current.settlement!
     expect(deltas.length).toBe(4)
     expect(['win', 'exhaustive', 'abort']).toContain(rr.kind)
+
+    // every action row names its actor, which is what the log's seat filter reads; the deal and
+    // the result belong to no seat, so no filter ever hides them
+    const entries = useLog.getState().entries
+    const discards = entries.filter((e) => e.key.startsWith('log.match.discard'))
+    expect(discards.length).toBeGreaterThan(0)
+    expect(new Set(discards.map((e) => e.seat))).toEqual(new Set([0, 1, 2, 3]))
+    expect(entries.find((e) => e.key === 'log.dealt')?.seat).toBeUndefined()
+    expect(entries.find((e) => e.key === 'log.match.result')?.seat).toBeUndefined()
   }, 120_000)
 
   it('nextRound deals a fresh board and carries the settled points over', () => {

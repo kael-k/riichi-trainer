@@ -8,7 +8,7 @@ import {
 } from '../../core/match'
 import { roundResult, type RoundOptions, type RoundState } from '../../core/round'
 import type { TenhouRoundInput } from '../../core/tenhouLog'
-import { HONOR, tileCode, type ParsedTile } from '../../core/tiles'
+import { type ParsedTile } from '../../core/tiles'
 import { completeWall } from '../../core/wall'
 import { matchDefaultModes, resolveSeatConfig, type SeatConfig } from '../settings/tableSettings'
 import { useLog } from '../../store/log'
@@ -16,15 +16,14 @@ import { BACK_TILE } from '../folding/useFoldingRound'
 import {
   encodeSituation,
   matchOverrides,
-  seatWind,
   WINDS,
   type Situation,
   type Wind,
 } from '../situation/urlCodec'
 import { splitDrawn } from '../../core/table'
 import { type MatchResultParams } from '../i18n/formatLogEntry'
-import { scoreDetail } from '../scoring/useScoringRound'
 import { useRound, type RoundEventContext } from '../table/useRound'
+import { actionRow, resultParams, resultRow, roundWinds } from './matchRows'
 
 /**
  * Sequences rounds into a match on top of `useRound` — the same layer every board trainer sits
@@ -193,18 +192,13 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
       const rr = roundResult(core.round)
       if (!rr) return
       const stepped = settleRound(ended, rr, { sanma: options.sanma, format: options.format })
-      const winds = Array.from({ length: players }, (_, seat) =>
-        seatWind(seat, ended.dealer, players),
-      )
-      const result: MatchResultParams = {
-        roundWind: WINDS[ended.prevalentWind - HONOR] ?? 'E',
-        roundNumber: ended.round,
-        honba: ended.honba,
-        kind: rr.ended,
-        winner: rr.win === undefined ? undefined : winds[rr.win.seat],
-        loser: rr.win?.from === undefined ? undefined : winds[rr.win.from],
-      }
-      setSettlement({ result, deltas: stepped.deltas, settlement: stepped, winds })
+      const result = resultParams(core.round, rr)
+      setSettlement({
+        result,
+        deltas: stepped.deltas,
+        settlement: stepped,
+        winds: roundWinds(core.round),
+      })
       // `match` (this render's closure, not `core.round.match`) is this round's own *starting*
       // state — see `TenhouRoundInput.match`'s own doc comment on why it must never be the live,
       // riichi-mutated one. The wall is the opposite: `core.round.wall`, the one actually dealt,
@@ -221,27 +215,14 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
         return [...rounds.filter((r) => roundKey(r.match) !== key), entry]
       })
 
-      log({
-        key: 'log.match.result',
-        params: { ...result },
-        // the winning hand's own breakdown leads, then who paid what — the exact lines the
-        // round-end card draws (`MatchPage`'s `WinReport`), off the one `scoreDetail` the scoring
-        // trainer also uses, so the row and the card can never tell two stories about one hand
-        detail: [
-          ...(core.round.win ? scoreDetail(core.round.win.score) : []),
-          ...stepped.deltas
-            .map((delta, seat) => ({ seat, delta }))
-            .filter((d) => d.delta !== 0)
-            .map(({ seat, delta }) => ({
-              key: 'log.match.delta',
-              params: {
-                wind: winds[seat],
-                amount: (delta >= 0 ? '+' : '') + delta.toLocaleString(),
-              },
-            })),
-        ],
-        situation: encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength))),
-      })
+      log(
+        resultRow(
+          core.round,
+          result,
+          stepped.deltas,
+          encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength))),
+        ),
+      )
       return
     }
 
@@ -252,55 +233,12 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
     // place on the last bot turn forever during manual testing. Every other trainer sidesteps
     // this by only ever logging its own manual seat's actions at all (`useLabRound.ts`); this one
     // wants bot rows visible too (a full transcript), just not as undo points.
-    const situationAt = (seat: number) =>
+    const row = actionRow(event, core.round, (seat) =>
       manualSeats.includes(seat)
         ? encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength)))
-        : undefined
-    // resolved here rather than at render: the dealer moves between rounds, so a row written in
-    // East 2 must keep saying East 2's winds once East 3 is on the felt
-    const windAt = (seat: number) => seatWind(seat, core.round.match.dealer, players)
-    switch (event.kind) {
-      case 'discard':
-        log({
-          key: 'log.match.discard',
-          params: {
-            turn: core.round.turn,
-            wind: windAt(event.seat),
-            tile: tileCode(event.tile.id, event.tile.red),
-          },
-          situation: situationAt(event.seat),
-        })
-        break
-      case 'riichi':
-        log({
-          key: 'log.match.riichi',
-          params: { wind: windAt(event.seat) },
-          situation: situationAt(event.seat),
-        })
-        break
-      case 'call':
-        log({
-          key: 'log.match.call',
-          params: { wind: windAt(event.seat), from: windAt(event.from), kind: event.meld.kind },
-          situation: situationAt(event.seat),
-        })
-        break
-      case 'kita':
-        log({
-          key: 'log.match.kita',
-          params: { wind: windAt(event.seat) },
-          situation: situationAt(event.seat),
-        })
-        break
-      case 'ankan':
-      case 'kakan':
-        log({
-          key: 'log.match.kan',
-          params: { wind: windAt(event.seat), tile: tileCode(event.tile) },
-          situation: situationAt(event.seat),
-        })
-        break
-    }
+        : undefined,
+    )
+    if (row) log(row)
   }
 
   const table = useRound({

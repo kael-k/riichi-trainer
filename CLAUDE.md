@@ -617,6 +617,11 @@ perspective, not "the user's seat".
   computed where the row is written, never in the renderer), built by the one shared
   `evGrade.ts#evBandDetail` under one locale key for both trainers that write it.
 - **Ordinals are assigned before filtering**, so `log.rewound` stays honest.
+- **`hero` replaces All/Mistakes with This seat/All seats** — `/match` only, fed the board's
+  perspective through `BoardStage#logHero`. It filters on `LogEntry.seat` (the actor), and **a row
+  with no `seat` always shows**: the deal and the result belong to every seat. `/match`'s rows are
+  built by `features/match/matchRows.ts`, never inline in the hook, so a replay writes the same
+  rows; a declared seat's later throws are `log.match.discardForced`, never a plain discard.
 - **`log.dealt`/`log.dealtHand` carry no tiles** — a hand is drawn on exactly one row, the one that
   grades it.
 - **A tile is drawn once per row, and the sentence draws its own**: `splitTileCodes` tokenizes the

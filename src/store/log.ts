@@ -79,6 +79,10 @@ export interface LogEntry {
   severity?: LogSeverity
   /** What the deleted feedback panels drew, collapsed behind the row's own chevron. */
   detail?: LogDetail[]
+  /** The seat whose action this row is — `/match` logs every seat, and its log filters on this
+   *  (`LogList`'s `hero`). Absent on a row that belongs to nobody in particular (a deal, a
+   *  result), which every seat filter shows. */
+  seat?: number
 }
 
 interface LogState {

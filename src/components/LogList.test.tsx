@@ -167,3 +167,45 @@ describe('LogList sentences', () => {
     expect(container.textContent).toContain('Turn 4')
   })
 })
+
+describe('LogList seat filter', () => {
+  beforeEach(() => useLog.setState({ entries: [] }))
+
+  function renderRows(hero?: number) {
+    const { log } = useLog.getState()
+    log({ key: 'log.dealt' })
+    log({ key: 'log.match.riichi', params: { wind: 'E' }, seat: 0 })
+    log({ key: 'log.match.riichi', params: { wind: 'S' }, seat: 1, severity: 'error' })
+    log({ key: 'log.match.exhaustive', params: { round: 'East 1' } })
+    return render(
+      <MemoryRouter>
+        <LogList hero={hero} />
+      </MemoryRouter>,
+    )
+  }
+
+  it("shows the hero's own rows and every seat-less row, until All seats is pressed", () => {
+    renderRows(0)
+    expect(screen.getByText('This seat').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByText('Mistakes')).toBeNull()
+    expect(screen.getByText(/^E declares riichi/)).toBeTruthy()
+    expect(screen.queryByText(/^S declares riichi/)).toBeNull()
+    // the deal and the result belong to no seat, so the filter never hides them
+    expect(screen.getByText('Board dealt')).toBeTruthy()
+    expect(screen.getByText(/exhaustive draw/)).toBeTruthy()
+
+    fireEvent.click(screen.getByText('All seats'))
+    expect(screen.getByText(/^S declares riichi/)).toBeTruthy()
+    // numbered before filtering: South's row is entry 3 whichever filter showed it
+    expect(screen.getByText(/^S declares riichi/).closest('p')!.textContent).toMatch(/^3/)
+  })
+
+  it('keeps All / Mistakes on a log with no hero', () => {
+    renderRows()
+    expect(screen.queryByText('This seat')).toBeNull()
+    expect(screen.getByText(/^E declares riichi/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Mistakes'))
+    expect(screen.queryByText(/^E declares riichi/)).toBeNull()
+    expect(screen.getByText(/^S declares riichi/)).toBeTruthy()
+  })
+})

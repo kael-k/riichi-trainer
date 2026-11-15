@@ -82,6 +82,7 @@ export function formatMatchResult(t: TFunction, p: MatchResultParams): string {
 /** Match rows whose only render-time work is turning their own `wind` letter into a word. */
 const MATCH_WIND_KEYS = new Set([
   'log.match.discard',
+  'log.match.discardForced',
   'log.match.riichi',
   'log.match.kita',
   'log.match.kan',
