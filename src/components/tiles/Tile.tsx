@@ -140,7 +140,7 @@ export function MeldDisplay({ meld }: { meld: Meld }) {
  *
  *  **A face-down row gets the hole in its middle instead, and that is the whole point of the
  *  flag.** A hidden hand has no readable sort: every other trainer hands the felt `BACK_TILE`
- *  filler for one (`useMatchRound`, `useLabRound`, folding's threats — thirteen copies of id 0),
+ *  filler for one (`useMatchRound`, folding's threats — thirteen copies of id 0),
  *  so the sorted position of anything thrown out of it is `hand.length`, a spacer past the last
  *  tile that a centred row renders as a half-tile shudder rather than a hole. Which slot it came
  *  out of is not information the reader is owed anyway — *that* one left the hand at all is —

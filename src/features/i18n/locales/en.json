@@ -254,11 +254,6 @@
       "desc": "Someone declared riichi. Pick the safest tile to throw.",
       "intro": "What it is: an opponent has declared riichi and your own hand is not worth pushing. The board is handed to you a turn or two later, and from then until the hand ends you pick the tile least likely to deal into them.\n\nWhy it matters: dealing in is the single biggest way to lose points, and hands you cannot win are common. Folding well protects more points across a game than a few extra wins add.\n\nHow to play: judge from public information only — tiles they discarded themselves (genbutsu, which they can never win on), tiles thrown since their riichi without being claimed, suji, and shapes the visible tiles already rule out. What they actually hold never counts against you: a tile from the safest tier is graded correct even when it turns out to be in their wait."
     },
-    "lab": {
-      "title": "Statistical lab",
-      "desc": "Load or build any hand and see the full ranking — every discard's shanten and ukeire, every tile's danger tier.",
-      "intro": "Load a shared wall or build your own hand, tile by tile. Play only your own discards — opponents always play themselves. Nothing is graded: every discard's full ukeire ranking and every tile's full danger-tier breakdown are shown, the same numbers the other trainers compute and only show you a sliver of."
-    },
     "match": {
       "title": "Full match",
       "desc": "Play a whole east-only or hanchan match against the bots — nothing graded, just the game.",
@@ -567,40 +562,6 @@
       "evGrading": "Grade on EV instead of tiers"
     }
   },
-  "lab": {
-    "wallInputLabel": "Wall (tenhou notation)",
-    "loadWall": "Load wall",
-    "buildWall": "Build wall",
-    "resetWall": "Reset wall",
-    "empty": "No hand loaded. Load a shared wall link or build one to see its full analysis.",
-    "error": "That wall link isn't valid: {{zone}} has {{detail}}.",
-    "zone": {
-      "hand": "a seat's hand",
-      "wall": "the wall",
-      "deadWall": "the dead wall"
-    },
-    "reason": {
-      "length": "too many tiles",
-      "copies": "an invalid number of copies of {{tile}}",
-      "red": "an invalid red-five marking on {{tile}}",
-      "tileSet": "a tile that isn't part of this ruleset ({{tile}})"
-    },
-    "ranking": "Discard ranking",
-    "danger": "Danger tiers",
-    "ev": "Expected value",
-    "priceTurn": "Price this turn",
-    "evUnder": "{{wind}}, {{model}} model, playing for {{objective}}.",
-    "evUnsupported": "This model has no data for this ruleset: {{reason}}.",
-    "evPush": "push",
-    "evFold": "fold",
-    "evTerm": {
-      "win": "win",
-      "dealIn": "deal in",
-      "danger": "later turns",
-      "notWinning": "no win",
-      "tenpai": "tenpai at draw"
-    }
-  },
   "match": {
     "setup": {
       "format": "Format",
@@ -657,10 +618,6 @@
       "fuTotalExact": "Total: {{fu}} fu",
       "ukeireLegend": "Numbers under each tile: copies left in the wall",
       "evLegend": "Expected points per discard; bars are relative to the best one"
-    },
-    "lab": {
-      "abort": "Turn {{turn}}: {{wind}} declared nine orphans — the hand is abandoned",
-      "discard": "Turn {{turn}}: discarded {{tile}}"
     },
     "match": {
       "ron": "{{round}}: {{winner}} wins off {{loser}}",

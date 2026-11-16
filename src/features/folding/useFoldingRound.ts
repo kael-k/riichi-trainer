@@ -55,7 +55,7 @@ export type FoldingOptions = Settings['folding'] & {
    *  the reader choosing to spoil their own drill. */
   showSeatWaits: boolean
   /** Per-seat algorithm from the board's seat panel. Every seat can be set to `'manual'`, same as
-   *  efficiency/lab — the drill's own generated seat (`RoundCore.seatIndex`) is just the one the
+   *  efficiency/match — the drill's own generated seat (`RoundCore.seatIndex`) is just the one the
    *  handover always includes, not the only one that may be manual. Page state, not
    *  settings — see `FoldingPage`. Read at generation time to seed the handover, and live
    *  thereafter: a change here never rebuilds the round. */
@@ -214,19 +214,19 @@ interface RoundBoard {
 }
 
 /** Face-down filler: a back has no identity, and mid-hand the board must not be holding one.
- *  Exported so the lab's own reveal gate (`useLabRound.ts`) reuses this exact filler rather than
- *  redefining it — one definition of "no identity" for both trainers. */
+ *  Exported so the match's own reveal gate (`useMatchRound.ts`) reuses this exact filler rather
+ *  than redefining it — one definition of "no identity" for both trainers. */
 export const BACK_TILE: ParsedTile = { id: 0, red: false }
 
 /** `splitDrawn` for a hand that may be `BACK_TILE` filler rather than real tiles (any seat
- *  `boardHandsOf`/the lab's own reveal gate has not yet revealed): every slot is identical there,
+ *  `boardHandsOf`/the match's own reveal gate has not yet revealed): every slot is identical there,
  *  so identity matching against `drawn` either can't find it or, worse, could false-match a real
  *  tile id against filler that happens to share it. Detected by reference — `boardHandsOf` maps
  *  every hidden slot to this exact `BACK_TILE` object, never a copy — rather than a second
  *  `concealed` flag a caller could pass out of step with which array it actually built. The last
  *  slot is split off positionally instead there — which of several identical backs it is doesn't
  *  matter, only that one is. Real hands fall straight through to `splitDrawn`. Exported for the
- *  lab's own bottom-hand split (`useLabRound.ts`'s `boardHands` uses the same filler). */
+ *  match's own hand split (`MatchPage`; `useMatchRound.ts` uses the same filler). */
 export function splitConcealedDrawn(
   tiles: ParsedTile[],
   drawn: ParsedTile | undefined,

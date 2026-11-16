@@ -137,7 +137,7 @@ export interface EvSeat {
 /** What a seat runs on unless something says otherwise: the model that can explain itself from
  *  first principles, playing for placement — the currency the trainer is actually
  *  about. `EvOptions.objective`'s own fallback stays `'points'` (see its doc comment below) — a
- *  bare call with no seat behind it, like a test or the lab's manual price check, still means
+ *  bare call with no seat behind it, like a test, still means
  *  points unless asked otherwise; only the seat's live default moved. */
 export const DEFAULT_EV_SEAT: EvSeat = { model: 'statistical', objective: 'placement' }
 

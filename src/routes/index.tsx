@@ -5,11 +5,11 @@ import { ChinitsuPage } from '../features/chinitsu/ChinitsuPage'
 import { EfficiencyPage } from '../features/efficiency/EfficiencyPage'
 import { EfficiencySoloPage } from '../features/efficiency-solo/EfficiencySoloPage'
 import { FoldingPage } from '../features/folding/FoldingPage'
-import { LabPage } from '../features/lab/LabPage'
 import { MatchPage } from '../features/match/MatchPage'
 import { ScoringPage } from '../features/scoring/ScoringPage'
 import { ShantenPage } from '../features/shanten/ShantenPage'
 import { HomePage } from './HomePage'
+import { LabRedirect } from './LabRedirect'
 
 export const router = createBrowserRouter(
   [
@@ -25,7 +25,7 @@ export const router = createBrowserRouter(
         { path: 'chinitsu', element: <ChinitsuPage /> },
         { path: 'scoring', element: <ScoringPage /> },
         { path: 'folding', element: <FoldingPage /> },
-        { path: 'lab', element: <LabPage /> },
+        { path: 'lab', element: <LabRedirect /> },
         { path: 'match', element: <MatchPage /> },
       ],
     },

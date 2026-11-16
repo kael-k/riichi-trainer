@@ -427,6 +427,7 @@ What the models compute and why is the docs site. What breaks quietly:
   derives the wind beside it — `/match` builds its carry-in from `matchOverrides` alone.
 - What travels is the round's **starting** match, never the live `RoundState.match`: a riichi's 1000
   is re-applied when the link's `log` replays that discard.
+- **`/lab` is retired; its links redirect to `/match` with their query** (`routes/LabRedirect.tsx`).
 
 ### Trainer pattern (`src/features/*`)
 
@@ -526,8 +527,8 @@ duplicates under StrictMode.
   running.
 - **Every patch sent to `onChange` is built off the _raw_ `SeatConfig`, never the resolved one.**
 - **The graded `seatIndex` is the trainer's, never the seat panel's.**
-- **Whether a manual seat is asked about another seat's discard is not a setting** — lab and match
-  hardcode `claims: true`; folding and efficiency leave it unset.
+- **Whether a manual seat is asked about another seat's discard is not a setting** — match
+  hardcodes `claims: true`; folding and efficiency leave it unset.
 
 `ManualControls` **renders nothing once the hand is over with nothing left to answer**, or in the
 single-manual-seat, no-claim, no-riichi, own-perspective case, so every trainer mounts it
@@ -603,8 +604,8 @@ perspective, not "the user's seat".
 
 **Session panel** (docked from `lg` via `WIDE_QUERY`, drawer below that):
 
-- **Both halves override `--tile-w-base`, not `--tile-w` alone**, so a nested override composes with
-  the panel's 0.6 instead of ignoring it.
+- **The log overrides `--tile-w-base`, not `--tile-w` alone**, so a nested override composes with
+  its 0.6 instead of ignoring it.
 - **`UkeireTiles` wraps per suit, never inside one**, and the grouping is in the component, not in
   whoever renders it.
 - **`onLogOpen` (the clock pause) is derived from _drawer_ open, not panel open** — a docked panel
@@ -615,9 +616,9 @@ perspective, not "the user's seat".
 **`LogList` is the feedback surface**, not a transcript beside one.
 
 - **A row with no `severity` is a separate case from `'ok'` and must not fall back to it**
-  (`NO_VERDICT`): a rewind, a replayed discard, the tenpai note and every lab row are not graded
-  decisions, and a green spine beside one claims a verdict nobody gave. Spine width carries the
-  signal alongside colour, for a colour-blind reader.
+  (`NO_VERDICT`): a rewind, a replayed discard, the tenpai note and every `/match` row are not
+  graded decisions, and a green spine beside one claims a verdict nobody gave. Spine width carries
+  the signal alongside colour, for a colour-blind reader.
 - **A `LogDetail` is an i18n key plus params and tiles, never text.** `folding.equallySafe` is
   logged unconditionally and gated **at render**, so the toggle reaches rows already on the record.
 - **A detail line's three optional fields say what it _is_, and each has one owner.** `header` makes

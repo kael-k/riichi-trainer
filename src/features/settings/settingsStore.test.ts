@@ -98,6 +98,25 @@ describe('settingsStore table section', () => {
     expect(useSettings.getState().scoring.testHan).toBe(true)
   })
 
+  it('loads a v3 blob still carrying the retired lab’s table override, and never reads it', async () => {
+    localStorage.setItem(
+      'riichi-trainer-settings',
+      JSON.stringify({
+        state: {
+          table: { global: {}, apps: { lab: { threats: 3 }, folding: { threats: 2 } } },
+          locale: 'ja',
+        },
+        version: 3,
+      }),
+    )
+    const { useSettings } = await import('./settingsStore')
+    const { resolveTableSettings } = await import('./tableSettings')
+    const table = useSettings.getState().table
+    expect(useSettings.getState().locale).toBe('ja')
+    expect(resolveTableSettings('folding', table).threats).toBe(2)
+    expect(resolveTableSettings('match', table).threats).toBe(1)
+  })
+
   it('leaves a blob written before folding EV grading existed on its new defaults', async () => {
     localStorage.setItem(
       'riichi-trainer-settings',

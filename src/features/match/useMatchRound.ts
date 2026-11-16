@@ -27,8 +27,8 @@ import { actionRow, resultParams, resultRow, roundWinds } from './matchRows'
 
 /**
  * Sequences rounds into a match on top of `useRound` — the same layer every board trainer sits
- * on, plus `core/match.ts#settleRound` between deals. No grading, like the lab: the
- * points ARE the score. A new round is a fresh wall/match pair, and that new *wall array
+ * on, plus `core/match.ts#settleRound` between deals. No grading: the points ARE the
+ * score. A new round is a fresh wall/match pair, and that new *wall array
  * identity* is what makes `useRound` redeal — see `nextRound` below.
  */
 
@@ -138,9 +138,8 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
   // trainer's own hand link follows (CLAUDE.md). `situation`'s identity changes only on a real
   // navigation: the log's own rewind, the undo button, or a shared match-round link opened fresh.
   // `nextRound`'s own local wall/match advance never touches the URL, so it never trips this —
-  // "adjust state while rendering" (the same pattern `useLinkedHand` and `LabPage`'s own
-  // `lastSituation` check use), not an effect, so the resync lands before anything below reads
-  // `wall`/`match` this render.
+  // "adjust state while rendering" (the same pattern `useLinkedHand` uses), not an effect, so the
+  // resync lands before anything below reads `wall`/`match` this render.
   const [lastSituation, setLastSituation] = useState(situation)
   if (situation !== lastSituation) {
     setLastSituation(situation)
@@ -160,8 +159,8 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
   const log = useLog((s) => s.log)
   const loggedWall = useRef<ParsedTile[] | undefined>(undefined)
   // guards the settlement (and its log row) against StrictMode's double effect-invoke reporting
-  // the same round's end twice — same reasoning as `useLabRound`'s `loggedDeal`, keyed on the
-  // `RoundState` object itself since a fresh one is what a new wall identity builds
+  // the same round's end twice, keyed on the `RoundState` object itself since a fresh one is what
+  // a new wall identity builds
   const settledFor = useRef<RoundState | undefined>(undefined)
 
   const roundOptions: RoundOptions = {
@@ -174,8 +173,8 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
     wins: true,
     algorithms,
     ev: seats.ev,
-    // free play against bots, same as the lab — a manual seat is asked about every
-    // other seat's discard rather than silently skipped
+    // free play against bots — a manual seat is asked about every other seat's discard rather
+    // than silently skipped
     claims: true,
     // daiminkan/kakan — match-only ruleset, not a permission; `chooseCall` never sees the flag, so
     // no bot anywhere else ever takes a minkan regardless of this being on
@@ -231,8 +230,8 @@ export function useMatchRound(options: MatchOptions, situation: Situation) {
     // step back to — undoing "to right before it" just replays the same deterministic wall and
     // the bot immediately redecides the identical thing, which is what left `useLogBack` stuck in
     // place on the last bot turn forever during manual testing. Every other trainer sidesteps
-    // this by only ever logging its own manual seat's actions at all (`useLabRound.ts`); this one
-    // wants bot rows visible too (a full transcript), just not as undo points.
+    // this by only ever logging its own manual seat's actions at all; this one wants bot rows
+    // visible too (a full transcript), just not as undo points.
     const row = actionRow(event, core, (seat) =>
       manualSeats.includes(seat)
         ? encodeSituation(table.situation(seatIndex, core.round.log.slice(0, logLength)))

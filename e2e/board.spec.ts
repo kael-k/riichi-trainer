@@ -1,8 +1,8 @@
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test'
 import { dealtIndices } from '../src/core/wall.ts'
 
-/** The trainers that draw a `Table`. Scoring keeps its board behind its own setting and the lab's
- *  design is still open, so neither is asserted here. */
+/** The trainers that draw a `Table`. Scoring keeps its board behind its own setting and match opens
+ *  on its setup screen, so neither is asserted here. */
 const TABLE_TRAINERS = ['efficiency', 'folding'] as const
 
 /** Pacing off for every blob in this file. These tests measure layout, not timing, and the
@@ -943,10 +943,11 @@ test('a declared seat may only throw the tile it just drew', async ({ page }) =>
   ])
   // seat 0's declaring draw, a junk draw each for the other three, then seat 0's next draw
   const live = ['9s', '1z', '2z', '3z', '4z']
-  await page.goto(`/lab?wall=${tenhou([...deal, ...live])}&log=D09sTR&seat=0&sanma=0`)
+  // `/match` plays a linked wall with `?seat=` manual and every other seat a bot
+  await page.goto(`/match?wall=${tenhou([...deal, ...live])}&log=D09sTR&seat=0&sanma=0`)
   await expect(page.getByTestId('board').first()).toBeVisible()
 
-  const hand = page.locator('div.flex.justify-center').last()
+  const hand = page.getByTestId('hand-strip')
   await expect(hand.getByRole('img'), 'thirteen tiles plus the draw').toHaveCount(14)
   // every tile is a button now, playable or not — a bare `Tile` swapping in for a locked one is
   // what used to resize the hand strip turn to turn, which `TileButton`'s own `disabled` fixes.

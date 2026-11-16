@@ -57,3 +57,16 @@ test('a loaded game steps forward, its log growing and priced', async ({ page })
 
   expect(errors).toEqual([])
 })
+
+test('an old /lab situation link lands on /match with its query intact', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(String(error)))
+
+  // a full four-seat deal; `/match` completes the rest of the wall the way any short link does
+  const search = '?wall=123456789m123456789p123456789s1234567z123456789m123456789p&seat=0'
+  await page.goto(`/lab${search}`)
+
+  await expect(page).toHaveURL((url) => url.pathname === '/match' && url.search === search)
+  await expect(page.getByTestId('board').first()).toBeVisible()
+  expect(errors).toEqual([])
+})

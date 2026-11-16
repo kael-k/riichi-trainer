@@ -170,12 +170,6 @@ export function formatLogEntry(entry: LogEntry, t: TFunction): string {
     }
     return t('log.folding.dealIn', { wind: t(`wind.${WINDS[seat]}`), points, tile })
   }
-  // same shape as `log.folding.dealIn` above: the seat is logged as a raw number and the wind
-  // name is resolved here, so a language switch re-translates it
-  if (entry.key === 'log.lab.abort') {
-    const { turn, seat } = entry.params as unknown as { turn: number; seat: number }
-    return t('log.lab.abort', { turn, wind: t(`wind.${WINDS[seat]}`) })
-  }
   if (entry.key === 'log.match.result') {
     return formatMatchResult(t, entry.params as unknown as MatchResultParams)
   }

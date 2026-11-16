@@ -442,7 +442,7 @@ function FinalCard({
 }
 
 /** Step 2: the match itself, played out on the shared table layer exactly like every other board
- *  trainer — `useMatchRound` is the only thing this component doesn't share with the lab. */
+ *  trainer, sequenced by `useMatchRound`. */
 function MatchBoard({ config, onExit }: { config: MatchConfig; onExit: () => void }) {
   const { t } = useTranslation()
   const { showOpponentHands, showSeatWaits, seatsEnabled } = useTableSettings('match')

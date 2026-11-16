@@ -62,9 +62,6 @@ interface BoardStageProps {
   noticeKey?: string | number
   /** Shown once the hand is over, as a centred card over the board. */
   end?: ReactNode
-  /** The trainer's own extras — share link, the lab's rankings. They live in the session panel
-   *  beside the log, since they are things you read *about* the board rather than play on it. */
-  panel?: ReactNode
   /** The seat the log filters on (`LogList`'s `hero`) — `/match`, which logs every seat, passes
    *  the board's own perspective. Omitted by every graded trainer, whose log keeps All/Mistakes. */
   logHero?: number
@@ -77,7 +74,7 @@ interface BoardStageProps {
    *  until they have dealt one. */
   wall?: ReactNode
   /** Board-area content for a trainer that has no felt (shanten's puzzle, solo's river), and the
-   *  place a trainer with nothing dealt yet says so (folding's "dealing…", the lab's empty state).
+   *  place a trainer with nothing dealt yet says so (folding's "dealing…", match's setup).
    *  Centred where the board would otherwise be. */
   children?: ReactNode
   /** Read `children` as something that grows down the page rather than one block posed in the
@@ -164,31 +161,14 @@ function StatusCard({ children, strip }: { children: ReactNode; strip?: boolean 
 }
 
 /**
- * Everything that is not the board or the hand: whatever the trainer wants to say about the board
- * (the lab's rankings and wall authoring, the one remaining consumer), and the log menu — which is
- * now the feedback surface too, every turn of it rather than the last one. One renderer
- * for both surfaces it appears on — docked beside the board from `lg` up, pulled over the top in a
- * drawer below that — so the two cannot drift apart.
+ * Everything that is not the board or the hand: the log menu — which is now the feedback surface
+ * too, every turn of it rather than the last one. One renderer for both surfaces it appears on —
+ * docked beside the board from `lg` up, pulled over the top in a drawer below that — so the two
+ * cannot drift apart.
  */
-function SessionPanel({
-  panel,
-  logHero,
-  logEntries,
-}: Pick<BoardStageProps, 'panel' | 'logHero' | 'logEntries'>) {
+function SessionPanel({ logHero, logEntries }: Pick<BoardStageProps, 'logHero' | 'logEntries'>) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      {panel && (
-        // `flex-auto` on both halves rather than a fixed share: each is based on its own content
-        // and only gives ground in proportion to it, so a long ranking gets the room an empty log
-        // is not using, and a log that has run all game still keeps its own.
-        // Tiles here are read, not played, and the column is 320px on a laptop: at the hand's own
-        // size a single ukeire list filled the panel on its own, so they draw at the log's scale
-        // instead. `--tile-w-base`, not `--tile-w` alone, so a nested override (`UkeireTiles`
-        // scales 0.8 off the base) composes with this one rather than ignoring it
-        <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto [--tile-w-base:calc(var(--tile-w-raw)*var(--tile-scale,1)*0.6)] [--tile-w:var(--tile-w-base)]">
-          {panel}
-        </div>
-      )}
       {/* `-mx-2` spends the panel's own padding: the log's verdict rail then starts on the
           panel's border rather than 8px short of it, and the rule above it reads as a divider
           across the column instead of a line floating inside it */}
@@ -215,7 +195,6 @@ export function BoardStage({
   noticeCompact,
   noticeKey,
   end,
-  panel,
   logHero,
   logEntries,
   wall,
@@ -540,7 +519,7 @@ export function BoardStage({
             data-testid="session-panel"
             className="flex w-[clamp(20rem,26vw,28rem)] shrink-0 flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
           >
-            <SessionPanel panel={panel} logHero={logHero} logEntries={logEntries} />
+            <SessionPanel logHero={logHero} logEntries={logEntries} />
           </aside>
         )}
 
@@ -561,7 +540,7 @@ export function BoardStage({
               // the first log row would otherwise start beneath the notch
               className="absolute inset-y-0 right-0 flex w-[min(90vw,22rem)] flex-col border-l border-neutral-200 bg-white p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950"
             >
-              <SessionPanel panel={panel} logHero={logHero} logEntries={logEntries} />
+              <SessionPanel logHero={logHero} logEntries={logEntries} />
             </div>
           </div>
         )}

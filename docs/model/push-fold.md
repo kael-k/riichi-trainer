@@ -45,8 +45,8 @@ rather than trusted:
 ```
 
 Each line expands into its own terms, down to the individual wait hypotheses the deal-in figure was
-summed from. That is what the lab's EV panel shows, and it is why both layers underneath were built
-term-first rather than number-first.
+summed from, and that is why both layers underneath were built term-first rather than number-first.
+`/match`'s log shows the totals under each discard, once per model.
 
 ### A value is not an expectation
 

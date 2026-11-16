@@ -25,7 +25,7 @@ interface ManualControlsProps {
    *  regardless of which seat is being watched. */
   viewSeat: number
   /** The drill is over, so the riichi arm is stale and must not render on top of the end card.
-   *  Distinct per trainer (`drillOver` for efficiency, `finished` for folding/lab) — this
+   *  Distinct per trainer (`drillOver` for efficiency, `finished` for folding/match) — this
    *  component has no opinion about which. It deliberately does **not**
    *  outrank a pending `claim`: efficiency's `drillOver` is true for the whole window between the
    *  graded seat's tenpai discard and its next draw, and a *replayed* link lands in that window

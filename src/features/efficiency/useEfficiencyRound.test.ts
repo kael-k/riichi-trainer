@@ -230,8 +230,7 @@ describe('useEfficiencyRound', () => {
     // seat's own "no thanks" on a stray ron/pon/chi does not survive a round-trip through
     // `situationQuery`, so a wall this test happens to draw such an offer on would compare two
     // rounds that never reached the same point. A fixed seed keeps this test about the round-trip
-    // itself, not about that separate (and pre-existing, since the lab already ran claims on)
-    // engine gap.
+    // itself, not about that separate (and pre-existing) engine gap.
     situation.wall = completeWall([], false, true, 'round-trip-seed-a')
     const opts: EfficiencyOptions = {
       aka: true,

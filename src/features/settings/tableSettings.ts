@@ -121,10 +121,9 @@ export interface TableSettings {
   showSeatWaits: boolean
 }
 
-/** One id per board-rendering app. `lab` is the statistical lab (plan 01-07); it has no page yet
- *  but gets a default row here so it inherits sane behavior without adding its own settings
- *  surface the day it ships. */
-export type TableApp = 'efficiency' | 'efficiencySolo' | 'folding' | 'scoring' | 'lab' | 'match'
+/** One id per board-rendering app. The retired lab's `lab` is gone from here; a stored
+ *  `table.apps.lab` override rides along unread (`settingsStore.ts`'s merge). */
+export type TableApp = 'efficiency' | 'efficiencySolo' | 'folding' | 'scoring' | 'match'
 
 /** Shipped defaults per app. `opponentWins` is unread by the efficiency apps — those hardcode
  *  `wins: false` in their `RoundOptions` because ending the hand on someone else's tsumo would
@@ -150,12 +149,6 @@ export const TABLE_DEFAULTS: Record<TableApp, TableSettings> = {
   },
   scoring: {
     opponentWins: true,
-    threats: 1,
-    showOpponentHands: false,
-    showSeatWaits: false,
-  },
-  lab: {
-    opponentWins: false,
     threats: 1,
     showOpponentHands: false,
     showSeatWaits: false,
@@ -192,9 +185,9 @@ export function resolveTableSettings(
 export function useTableSettings(app: TableApp): TableSettings & { seatsEnabled: boolean } {
   const table = useSettings((s) => s.table)
   const advanced = useSettings((s) => s.advanced)
-  // the lab and the match drill are the exceptions to the Advanced gate — choosing who plays
-  // which seat is the whole point of both, not a jargon-gated extra
-  const seatsEnabled = advanced || app === 'lab' || app === 'match'
+  // the match drill is the exception to the Advanced gate — choosing who plays which seat is the
+  // whole point of it, not a jargon-gated extra
+  const seatsEnabled = advanced || app === 'match'
   return {
     ...resolveTableSettings(app, table),
     /** Whether the seat panel is offered at all — the per-seat algorithms themselves are page

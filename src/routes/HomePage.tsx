@@ -66,14 +66,6 @@ const MODES = [
     // mangan — a full hanchan can be played, but not every rule of one yet
     alpha: true,
   },
-  // Lab is under development, disabled for now — see README.
-  // {
-  //   to: '/lab',
-  //   titleKey: 'trainer.lab.title',
-  //   descKey: 'trainer.lab.desc',
-  //   introKey: 'trainer.lab.intro',
-  //   wikiUrl: TRAINER_WIKI.lab,
-  // },
 ] as const
 
 type Mode = (typeof MODES)[number]

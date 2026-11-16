@@ -222,8 +222,7 @@ export function wallWithPinned(
   )
 }
 
-/** One seat's starting hand pinned. What a link pinning a hand encodes, and what the lab's
- *  hand-authoring surface builds its walls with. */
+/** One seat's starting hand pinned. What a link pinning a hand encodes. */
 export function wallWithHand(
   seat: number,
   hand: ParsedTile[],

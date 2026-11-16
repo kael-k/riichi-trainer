@@ -246,7 +246,8 @@ export const useSettings = create<SettingsState>()(
       // and scoring settings to clear two keys that nothing reads any more. A stale `shanten`
       // object (and any stale key of `efficiency`'s own old shape, from before EV grading gave the
       // section a real reason to exist again) stays in the persisted JSON and is spread back onto
-      // state by the merge below, off the `Settings` type and unread.
+      // state by the merge below, off the `Settings` type and unread. A stored `table.apps.lab`
+      // (the retired lab's per-app override) is the same case one level down: kept, never read.
       version: 3,
       // zustand's default merge is shallow at the top level, so a persisted `scoring`/`folding`/
       // `efficiency` object from an older schema would wholesale overwrite (not fill in defaults

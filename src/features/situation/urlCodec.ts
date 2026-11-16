@@ -18,7 +18,7 @@ export function seatWind(seat: number, dealer = 0, players = WINDS.length): Wind
 export interface Situation {
   /** Seed backing the shanten trainer's continuous hand stream, and a pinned hand for its
    *  one-shot reveal. The shanten trainer is the only one left on this seed+hand format —
-   *  every wall-based trainer (efficiency, folding, scoring, the lab) shares a board via the
+   *  every wall-based trainer (efficiency, folding, scoring, match) shares a board via the
    *  explicit `wall` below instead. Optional rather than removed: `useShantenRound.ts` shares
    *  this codec and is out of this phase's scope. */
   seed?: string

@@ -9,8 +9,6 @@ export const TRAINER_WIKI = {
   chinitsu: 'https://riichi.wiki/Chiniisou',
   scoring: 'https://riichi.wiki/Japanese_mahjong_scoring_rules',
   folding: 'https://riichi.wiki/Defense',
-  // hand-picked, not derived from the key name: the lab's headline surface is the ukeire ranking
-  lab: 'https://riichi.wiki/Tile_efficiency',
   // riichi.wiki blocked verification at commit time (403 on every URL, this one included) — the
   // general rules page rather than a guessed /Hanchan slug, so this never links a dead page
   match: 'https://riichi.wiki/Japanese_mahjong',

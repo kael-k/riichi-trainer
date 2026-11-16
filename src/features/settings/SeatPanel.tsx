@@ -76,7 +76,7 @@ export interface SeatButtonProps {
  * this button now (`SeatStrip`'s own eye icon), not inside this dialog.
  *
  * Rendered only where `useTableSettings` says the panel is offered at all (`seatsEnabled`), which
- * is the Advanced gate everywhere except the lab. Setting every seat to an AI would leave nobody
+ * is the Advanced gate everywhere except the match. Setting every seat to an AI would leave nobody
  * to act, so the last manual seat's other options are disabled rather than silently overridden —
  * `resolveSeatConfig` would put it back anyway, and a control that undoes itself reads as broken.
  */

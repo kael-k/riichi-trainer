@@ -13,7 +13,7 @@ import { NUM_TILE_TYPES, type TileId } from './tiles'
  * other**. `statistical` derives every figure from combinatorics a reader can check on paper;
  * `houou` reads every figure off measurements taken over the same database. A mixed answer — a
  * measured fold price against a derived deal-in cost — would be a third model nobody chose, and
- * its terms would not decompose into anything a lab could show side by side.
+ * its terms would not decompose into anything a reader could compare side by side.
  *
  * What is *not* in here: probabilities. `dealIn.ts` and `probability.ts` compute those, and the
  * only weight either takes is `prior`. Table status is not in here either — points, placement and

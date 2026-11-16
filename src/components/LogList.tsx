@@ -32,7 +32,7 @@ const SPINE: Record<LogSeverity, string> = {
 }
 
 /** No `severity` is not the same claim as `severity: 'ok'`, which is why the spine does not fall
- *  back to it: a rewind, a replayed discard, the tenpai note and every row the lab writes are not
+ *  back to it: a rewind, a replayed discard, the tenpai note and every row `/match` writes are not
  *  graded decisions at all, and a green bar beside one says the reader got something right that
  *  nobody was scoring. */
 const NO_VERDICT = 'w-px bg-neutral-200 dark:bg-neutral-800'

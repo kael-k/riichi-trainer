@@ -7,7 +7,7 @@ import {
   type TableApp,
 } from './tableSettings'
 
-const APPS: TableApp[] = ['efficiency', 'efficiencySolo', 'folding', 'scoring', 'lab']
+const APPS: TableApp[] = ['efficiency', 'efficiencySolo', 'folding', 'scoring', 'match']
 
 describe('resolveTableSettings', () => {
   it('returns the app defaults untouched when both layers are empty', () => {

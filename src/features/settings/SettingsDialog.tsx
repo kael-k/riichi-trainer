@@ -345,7 +345,7 @@ export function MiscSettings() {
 }
 
 /** The board-rendering settings shared by every trainer that draws a `Table` (efficiency, scoring,
- *  folding, the lab): whether opponent hands, seat waits and tsumogiri/tedashi marks are shown.
+ *  folding, match): whether opponent hands, seat waits and tsumogiri/tedashi marks are shown.
  *  Its own section, separate from Ruleset/UI — these are about what the board shows, not the app
  *  as a whole. Edits the *global* layer of `table` (`tableSettings.ts`); the per-app
  *  override layer has no UI this phase (absent key means inherit — a three-state control is not

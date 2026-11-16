@@ -36,7 +36,7 @@ import { WINDS, type Situation } from '../situation/urlCodec'
 /**
  * The React layer over `core/table.ts`. It drives a match and **reports what the engine did**; it
  * has no opinion about what any of it means. Every trainer built on a real match —
- * efficiency (both routes), folding, scoring's replay, the lab — subscribes to one callback,
+ * efficiency (both routes), folding, scoring's replay, the match — subscribes to one callback,
  * `onEvent`, and decides for itself which seat it grades, when a round is over, and whether a
  * board is worth keeping.
  *

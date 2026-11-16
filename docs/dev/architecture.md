@@ -137,7 +137,6 @@ setting.
 | `folding/`         | `/folding`         | `useFoldingRound`        | Grading plus a pure board search          |
 | `scoring/`         | `/scoring`         | `useScoringRound`        | Generates a finished hand, never steps it |
 | `match/`           | `/match`           | `useMatchRound`          | Sequences rounds; free play, no grading   |
-| `lab/`             | `/lab`             | `useLabRound`            | Free play, no grading                     |
 
 `efficiency/useEfficiencyDrill.ts` is the grading and session-state core both efficiency hooks sit
 on.

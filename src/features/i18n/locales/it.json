@@ -254,11 +254,6 @@
       "desc": "Qualcuno ha dichiarato riichi. Scegli il tile più sicuro da scartare.",
       "intro": "Cos'è: un avversario ha dichiarato riichi e la tua mano non vale la spinta. Il tavolo ti viene passato un turno o due dopo, e da lì fino alla fine della mano scegli la tessera con meno probabilità di entrare nella sua mano.\n\nPerché conta: il tiro nella mano avversaria è il modo più grosso di perdere punti, e le mani invincibili sono frequenti. Difendersi bene protegge, sull'arco di una partita, più punti di quanti ne aggiungano qualche vittoria in più.\n\nCome si gioca: giudica solo dalle informazioni pubbliche — le tessere che ha scartato lui stesso (genbutsu, su cui non può mai vincere), quelle scartate dopo il suo riichi senza essere reclamate, i suji e le forme che le tessere visibili escludono già. Quello che ha davvero in mano non conta mai contro di te: una tessera del livello più sicuro è valutata corretta anche se poi si scopre che era nella sua attesa."
     },
-    "lab": {
-      "title": "Laboratorio statistico",
-      "desc": "Carica o costruisci qualsiasi mano e guarda la classifica completa — shanten e ukeire di ogni scarto, livello di pericolo di ogni tessera.",
-      "intro": "Carica un muro condiviso o costruisci la tua mano, tessera per tessera. Giochi solo i tuoi scarti — gli avversari giocano sempre da soli. Niente viene valutato: vengono mostrate la classifica ukeire completa di ogni scarto e la scomposizione completa del livello di pericolo di ogni tessera, gli stessi numeri che gli altri trainer calcolano e ti mostrano solo in parte."
-    },
     "match": {
       "title": "Partita completa",
       "desc": "Gioca una partita completa, solo Est o hanchan, contro i bot — niente viene valutato, solo la partita.",
@@ -567,40 +562,6 @@
       "evGrading": "Valuta su EV invece che sui livelli"
     }
   },
-  "lab": {
-    "wallInputLabel": "Muro (notazione tenhou)",
-    "loadWall": "Carica muro",
-    "buildWall": "Costruisci muro",
-    "resetWall": "Azzera muro",
-    "empty": "Nessuna mano caricata. Carica un link con un muro condiviso o costruiscine uno per vedere l'analisi completa.",
-    "error": "Quel link del muro non è valido: {{zone}} ha {{detail}}.",
-    "zone": {
-      "hand": "la mano di un giocatore",
-      "wall": "il muro",
-      "deadWall": "il muro morto"
-    },
-    "reason": {
-      "length": "troppe tessere",
-      "copies": "un numero di copie non valido di {{tile}}",
-      "red": "un contrassegno di cinque rosso non valido su {{tile}}",
-      "tileSet": "una tessera che non fa parte di questo regolamento ({{tile}})"
-    },
-    "ranking": "Classifica scarti",
-    "danger": "Livelli di pericolo",
-    "ev": "Valore atteso",
-    "priceTurn": "Calcola questo turno",
-    "evUnder": "{{wind}}, modello {{model}}, obiettivo {{objective}}.",
-    "evUnsupported": "Questo modello non ha dati per queste regole: {{reason}}.",
-    "evPush": "spingi",
-    "evFold": "ritirati",
-    "evTerm": {
-      "win": "vittoria",
-      "dealIn": "servito",
-      "danger": "turni successivi",
-      "notWinning": "nessuna vittoria",
-      "tenpai": "tenpai al pareggio"
-    }
-  },
   "match": {
     "setup": {
       "format": "Formato",
@@ -657,10 +618,6 @@
       "fuTotalExact": "Totale: {{fu}} fu",
       "ukeireLegend": "I numeri sotto le tessere: copie rimaste nel muro",
       "evLegend": "Punti attesi per scarto; le barre sono relative al migliore"
-    },
-    "lab": {
-      "abort": "Turno {{turn}}: {{wind}} dichiara nove orfani — la mano è annullata",
-      "discard": "Turno {{turn}}: scartato {{tile}}"
     },
     "match": {
       "ron": "{{round}}: {{winner}} vince da {{loser}}",

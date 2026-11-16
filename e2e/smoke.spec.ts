@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-/** Lab is deliberately absent: its design is still open, so it has nothing stable to assert. */
+/** Chinitsu and match have specs of their own; match opens on its setup screen, not a hand. */
 const TRAINERS = ['efficiency', 'efficiency-solo', 'shanten', 'scoring', 'folding'] as const
 
 test('home links every trainer', async ({ page }) => {
