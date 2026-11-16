@@ -643,8 +643,8 @@ perspective, not "the user's seat".
 - **A row's stats are a job, never stored text** (`LogEntry.stats: StatsJob`, on `/match`'s free
   discards and calls). `StatsLines` asks `features/match/statsClient.ts#requestStats` once the row
   is on screen; it prices in a **module worker** (an inline `setTimeout(0)` fallback where there is
-  no `Worker`, i.e. jsdom), cached on the **job object's identity** — so a job is built once, at
-  write time, never re-derived per render. The job's `match` is `core.options.match`, the round's
+  no `Worker`, i.e. jsdom), cached on the **job object's identity**, never a rejection (the next
+  mount retries) — so a job is built once, at write time, never re-derived per render. The job's `match` is `core.options.match`, the round's
   **starting** state, never `RoundState.match`. Deal-in and the heuristic tier appear only with a
   riichi on the board.
 - **`log.dealt`/`log.dealtHand` carry no tiles** — a hand is drawn on exactly one row, the one that

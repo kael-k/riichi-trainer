@@ -3,7 +3,7 @@ import { actionStats, type ActionStats, type StatsJob } from '../../core/table'
 type Reply = { id: number; stats: ActionStats | null } | { id: number; error: string }
 
 /** Keyed on the job object a log row carries, so a row priced once is never priced again however
- *  often it remounts — the filter toggle, the drawer reopening. */
+ *  often it remounts — the filter toggle, the drawer reopening. A rejected job is dropped. */
 const requested = new WeakMap<StatsJob, Promise<ActionStats | null>>()
 /** What `requested` has already answered, readable synchronously — so a remounted row draws its
  *  lines on its first render rather than flashing the pending state for a frame. */
@@ -67,9 +67,11 @@ export function requestStats(job: StatsJob): Promise<ActionStats | null> {
   let promise = requested.get(job)
   if (!promise) {
     promise = typeof Worker === 'undefined' ? inline(job) : inWorker(job)
+    // a failure is not cached: the next request for this row tries again (on a fresh worker, if
+    // the last one died) rather than leaving it unpriced for the rest of the session
     promise.then(
       (stats) => answered.set(job, stats),
-      () => {},
+      () => requested.delete(job),
     )
     requested.set(job, promise)
   }
