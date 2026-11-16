@@ -6,7 +6,7 @@ import { BoardStage } from '../../components/tiles/BoardStage'
 import { Table, type SeatView } from '../../components/tiles/Table'
 import { HandDisplay, WallDetails } from '../../components/tiles/Tile'
 import { replayTo, snapshotTable, splitDrawn, type ReplayRules } from '../../core/table'
-import type { ImportedGame } from '../../core/tenhouImport'
+import { doraIndex, type ImportedGame } from '../../core/tenhouImport'
 import { HONOR } from '../../core/tiles'
 import { TRAINER_WIKI } from '../i18n/trainerLinks'
 import { useTableSettings } from '../settings/tableSettings'
@@ -91,6 +91,14 @@ export function ReplayBoard({ game, onExit }: { game: ImportedGame; onExit: () =
     () => snapshotTable(replayTo(recorded, rules, cursor.step), true),
     [recorded, rules, cursor.step],
   )
+  // the importer fills every slot the record never shows at random: the wall draws those face
+  // down, and the felt leaves off an indicator the engine flipped that the record never did
+  const shown = useMemo(
+    () => recorded.wall.map((tile, i) => (recorded.revealed[i] ? tile : undefined)),
+    [recorded],
+  )
+  const dealt = snap.dealtTiles.length
+  const dead = dealt + snap.liveWallSnapshot.length
 
   // ←/→ step from anywhere but a field that takes its own arrows — the range input among them
   useEffect(() => {
@@ -153,10 +161,10 @@ export function ReplayBoard({ game, onExit }: { game: ImportedGame; onExit: () =
       chrome={<ResetButton onReset={onExit} resetLabel={t('match.replay.close')} />}
       wall={
         <WallDetails
-          dealt={snap.dealtTiles}
-          liveWall={snap.liveWallSnapshot}
+          dealt={shown.slice(0, dealt)}
+          liveWall={shown.slice(dealt, dead)}
           liveWallDrawn={snap.liveWallDrawn}
-          deadWall={snap.deadWallSnapshot}
+          deadWall={shown.slice(dead)}
           replacements={snap.replacements}
           players={players}
           seat={viewSeat}
@@ -237,7 +245,9 @@ export function ReplayBoard({ game, onExit }: { game: ImportedGame; onExit: () =
           roundNumber={snap.match.round}
           dealerRepeat={snap.match.dealerRepeat}
           dealer={snap.match.dealer}
-          doraIndicators={snap.doraIndicators}
+          doraIndicators={snap.doraIndicators.filter(
+            (_, i) => recorded.revealed[doraIndex(rules.sanma, i)],
+          )}
           wallCount={snap.liveWall.length}
           honba={snap.match.honba}
           activeSeat={snap.ended ? undefined : snap.seat}

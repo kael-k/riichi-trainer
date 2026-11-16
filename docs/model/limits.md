@@ -104,11 +104,13 @@ These are the rules the engine plays its own way:
 
 - **Kan dora timing.** The engine flips every kan's indicator at the kan; tenhou flips a called or
   added kan's only with the discard that follows. A hand that ends in between is scored with a
-  different set of indicators.
+  different set of indicators, the engine's extra one a tile the record never showed.
 - **Pao.** Liability payments are not modelled, so a pao win is paid the ordinary way.
 
-The tiles a record never reveals — unflipped dora, rinshan tiles nobody drew, the live wall past the
-last draw — are filled at random. Nothing in a replay reads them.
+The tiles a record never reveals — unflipped dora, ura under a hand nobody won in riichi, rinshan
+tiles nobody drew, the live wall past the last draw — are filled at random, and a replay never shows
+one: the wall draws them face down, and the felt only the indicators the record flips. The one
+thing that reads them is the kan-dora scoring above.
 
 **One record shape is guessed, not reconstructed.** A call is matched to the first discard of its
 tile from the seat it names. If that seat throws the same tile again before the caller's next turn

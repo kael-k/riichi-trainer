@@ -105,11 +105,13 @@ players)`, "am I dealer" is `seat === state.match.dealer`, and the turn counter 
   where `createRound` deals it: haipai at `dealtIndices`, live draw k at `13P + k`, replacement r at
   the dead chunk's `13 − r`, then (r ≥ 4) the live tail's `L − 1 − (r − 4)` — `drawReplacement`'s
   pop/backfill exactly, so **change either and the importer moves with it** — dora i at `8 − 2i`,
-  ura at `9 − 2i`; every other slot is fill nothing reads (`wallWithPinned`). Each round's log is
-  **truncated to what `replayLog` consumed**; an ending the engine does not model stops just
-  before it (a chankan drops the kan too), and a modelled one that settles differently is kept —
-  both with an `ImportNotice` code, never text. **`keepRed` is set only when the caller held the
-  red and the naki's own tiles leave it out.** Recorded deltas are compared with `settleRound`'s
+  ura at `9 − 2i` (`doraIndex`); every other slot is fill (`wallWithPinned`), and **a replay
+  draws face up only what `ImportedRound.revealed` marks** — the wall reveal masks the rest, the
+  felt drops an indicator the engine flipped and the record never did (kan-dora timing). Each
+  round's log is **truncated to what `replayLog` consumed**; an ending the engine does not model
+  stops just before it (a chankan drops the kan too), and a modelled one that settles differently is
+  kept — both with an `ImportNotice` code, never text. **`keepRed` is set only when the caller held
+  the red and the naki's own tiles leave it out.** Recorded deltas are compared with `settleRound`'s
   alone: an export from before the exporter left the deposits out replays whole but is flagged
   `pays`, rather than a second reading masking a real 1000-per-riichi disagreement.
 

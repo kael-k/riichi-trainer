@@ -383,15 +383,19 @@ export function River({
   )
 }
 
+/** A wall slot as the reveal draws it: `undefined` is one the reader may not see — a recorded
+ *  game's tiles its record never showed — drawn face down. */
+type WallSlot = ParsedTile | undefined
+
 /** One wall tile, greyed exactly like a tsumogiri discard (`Discard` above) once it has left the
  *  wall. Unconditional — not gated on `showTsumogiri`, which is about reading opponents' rivers,
  *  not about showing the wall honestly. `mine` is the exception: a tile dealt to the seat the
  *  board is being watched from keeps its colour and takes a ring, so the reader can pick their own
  *  thirteen out of a deal that hands four tiles to each seat in turn. */
-function WallTile({ tile, drawn, mine }: { tile: ParsedTile; drawn: boolean; mine?: boolean }) {
+function WallTile({ tile, drawn, mine }: { tile: WallSlot; drawn: boolean; mine?: boolean }) {
   return (
     <span className="relative flex">
-      <Tile id={tile.id} red={tile.red} />
+      <Tile id={tile?.id} red={tile?.red} />
       {drawn && !mine && (
         <span className="pointer-events-none absolute inset-0 rounded-[10%] bg-neutral-500/50" />
       )}
@@ -410,11 +414,11 @@ function WallRow({
   drawn,
   mine,
 }: {
-  tiles: ParsedTile[]
+  tiles: WallSlot[]
   drawn: (index: number) => boolean
   mine?: (index: number) => boolean
 }) {
-  const groups: ParsedTile[][] = []
+  const groups: WallSlot[][] = []
   for (let i = 0; i < tiles.length; i += 4) groups.push(tiles.slice(i, i + 4))
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
@@ -459,15 +463,15 @@ export function WallDetails({
 }: {
   /** Every seat's starting hand, in dealing order — always face-down/greyed, since it was drawn
    *  before this display's "already drawn" concept even applies. */
-  dealt: ParsedTile[]
+  dealt: WallSlot[]
   /** Whole live wall as dealt, draw order — not just what's left. */
-  liveWall: ParsedTile[]
+  liveWall: WallSlot[]
   /** How many of `liveWall`, from the front, are genuine draws. `replacements` more, off the
    *  tail, were pulled into the dead wall to backfill a kan (also greyed). */
   liveWallDrawn: number
   /** All 14 dead-wall tiles in build order: dora indicator(s), the rest of the dora/ura stacks,
    *  then the four rinshan tiles. Empty when the dead wall is off. */
-  deadWall: ParsedTile[]
+  deadWall: WallSlot[]
   /** Replacement (rinshan) draws taken so far — greys the last `replacements` tiles of `deadWall`
    *  (taken as kan draws) and, in tandem, the last `replacements` tiles of `liveWall` (pulled in
    *  to backfill them). */

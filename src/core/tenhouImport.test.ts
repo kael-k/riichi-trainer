@@ -19,8 +19,9 @@ import {
   type PendingClaim,
   type RoundOptions,
   type RoundState,
+  wallDrawnCount,
 } from './round'
-import { importTenhou, type ImportedGame, type ImportedRound } from './tenhouImport'
+import { doraIndex, importTenhou, type ImportedGame, type ImportedRound } from './tenhouImport'
 import {
   buildKyoku,
   tenhouMatchLog,
@@ -51,6 +52,25 @@ function replayed(round: ImportedRound, rules: TenhouRules) {
   const state = createRound(round.wall, rules.sanma ? 3 : 4, options)
   return { state, consumed: replayLog(state, options, round.log) }
 }
+
+/** Every wall slot the replayed engine read, ascending: the deal, each live draw, each replacement
+ *  (`drawReplacement`'s pop/backfill), each flipped indicator, and the ura under each one a riichi
+ *  win reads — what `revealed` has to cover, and all it may. */
+function slotsRead(round: ImportedRound, rules: TenhouRules): number[] {
+  const { state } = replayed(round, rules)
+  const dealt = (rules.sanma ? 3 : 4) * 13
+  const chunk = dealt + state.liveWallSnapshot.length
+  const slots = Array.from({ length: dealt + wallDrawnCount(state) }, (_, i) => i)
+  for (let r = 0; r < state.replacements; r++) {
+    slots.push(r < 4 ? chunk + 13 - r : chunk - 1 - (r - 4))
+  }
+  state.doraIndicators.forEach((_, i) => slots.push(doraIndex(rules.sanma, i)))
+  state.win?.uraIndicators.forEach((_, i) => slots.push(doraIndex(rules.sanma, i) + 1))
+  return slots.sort((a, b) => a - b)
+}
+
+const revealedSlots = (round: ImportedRound) =>
+  round.revealed.flatMap((shown, i) => (shown ? [i] : []))
 
 function settled(state: RoundState, rules: TenhouRules): number[] {
   const rr = roundResult(state)
@@ -133,6 +153,19 @@ describe('importTenhou — a real record (convlog)', () => {
       const result = (buildKyoku(round, game.rules) as unknown[])[16] as unknown[]
       expect(result[1], `kyoku ${i}`).toEqual((record[i][16] as unknown[])[1])
     })
+  })
+
+  it('reveals the haipai, every draw, each flipped indicator and a riichi win’s ura — nothing else', () => {
+    game.rounds.forEach((round, i) => {
+      expect(round.revealed, `kyoku ${i}`).toHaveLength(round.wall.length)
+      expect(revealedSlots(round), `kyoku ${i}`).toEqual(slotsRead(round, game.rules))
+    })
+    // the property is only as strong as what the rounds did: 0 is a riichi tsumo with its ura,
+    // 1 has a kan (a second indicator and a replacement), and no ura
+    const ura = doraIndex(false, 0) + 1
+    expect(game.rounds[0].revealed[ura]).toBe(true)
+    expect(game.rounds[1].revealed[ura]).toBe(false)
+    expect(game.rounds[1].revealed[doraIndex(false, 1)]).toBe(true)
   })
 
   it('settles every round the way the record does', () => {
@@ -226,7 +259,10 @@ describe('importTenhou — round trip through the exporter', () => {
     const inputs = Array.from({ length: 20 }, (_, i) =>
       playRecorded(`tenhou-import-${label}-${i}`, rules, i),
     )
-    roundTrip(inputs, rules)
+    const game = roundTrip(inputs, rules)
+    game.rounds.forEach((round, i) => {
+      expect(revealedSlots(round), `round ${i}`).toEqual(slotsRead(round, rules))
+    })
 
     // the property is only as strong as what the rounds actually did
     const logs = inputs.flatMap((r) => r.log)

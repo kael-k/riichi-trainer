@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { doraIndex, importTenhou } from '../../core/tenhouImport'
 import convlog from '../../core/testdata/convlog.json'
+import { tileName } from '../../core/tiles'
 import '../i18n'
 import { MatchPage } from './MatchPage'
 
@@ -71,6 +73,38 @@ describe('the replay', () => {
     // a round's deal steps back to the previous round's end
     fireEvent.click(first('Previous action'))
     expect(label()).toMatch(/^East 1 · 0 honba · (\d+)\/\1$/)
+  })
+
+  it('draws every wall slot the record never revealed face down', async () => {
+    const imported = importTenhou(convlog)
+    if ('error' in imported) throw new Error(imported.error)
+    const round = imported.game.rounds[0]
+    await loadFixture()
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Wall' }))[0])
+    const tiles = within(screen.getByRole('dialog')).getAllByRole('img')
+    // the dealt hands, the live wall and the dead wall run in wall order, one slot per tile
+    expect(tiles.map((tile) => tile.getAttribute('aria-label'))).toEqual(
+      round.wall.map((tile, i) => (round.revealed[i] ? tileName(tile.id) : 'face-down tile')),
+    )
+    expect(round.revealed).toContain(false)
+  })
+
+  it('leaves an indicator the record never flipped off the felt', async () => {
+    // East 2's kan flips a second indicator; a record that never shows it leaves it random fill
+    const json = structuredClone(convlog)
+    ;(json.log[1] as unknown[])[2] = [18]
+    await loadFixture(json)
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Next round' }))[0])
+    const range = screen.getAllByRole('slider')[0]
+    fireEvent.change(range, { target: { value: range.getAttribute('max') } })
+    const faceUp = within(screen.getByTestId('dora-row'))
+      .getAllByRole('img')
+      .filter((tile) => tile.getAttribute('aria-label') !== 'face-down tile')
+    expect(faceUp.map((tile) => tile.getAttribute('aria-label'))).toEqual([tileName(7)])
+
+    const imported = importTenhou(json)
+    if ('error' in imported) throw new Error(imported.error)
+    expect(imported.game.rounds[1].revealed[doraIndex(false, 1)]).toBe(false)
   })
 
   it('says why a file is refused, inline', async () => {

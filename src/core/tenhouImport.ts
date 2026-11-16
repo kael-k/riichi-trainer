@@ -21,8 +21,8 @@ import {
  * A record names actions, not wall positions, so the wall is rebuilt from where `createRound`
  * would have dealt each revealed tile: haipai at `dealtIndices`, the k-th live draw at `13P + k`,
  * replacements and dora indicators in the dead-wall chunk exactly as `drawReplacement` and
- * `createRound` read it. Every slot the record never reveals is filled at random — nothing in the
- * replay reads one.
+ * `createRound` read it. Every slot the record never reveals is filled at random and left out of
+ * `ImportedRound.revealed`, so the replay draws it face down.
  *
  * Every round is then replayed through the real engine, and **what the engine refuses is cut, not
  * repaired**: the log is truncated to what `replayLog` consumed and a notice says why. Endings the
@@ -53,6 +53,9 @@ export interface ImportedRound {
   /** The round's **starting** match, as `TenhouRoundInput.match` means it. */
   match: MatchState
   wall: ParsedTile[]
+  /** Indexed like `wall`: `true` for a slot the record shows (haipai, every draw, every flipped
+   *  indicator, the ura of a riichi win), `false` for random fill nobody may see face up. */
+  revealed: boolean[]
   /** Truncated to what the engine replayed, and carrying no `pass` — replay infers those. */
   log: LogEntry[]
   /** `TenhouRoundInput.deltas`: the engine's own settlement where it reached the record's ending,
@@ -65,6 +68,11 @@ export interface ImportedGame {
   rules: TenhouRules
   names: string[]
   rounds: ImportedRound[]
+}
+
+/** The wall index of the `i`-th dora indicator `createRound` flips; its ura sits at the next one. */
+export function doraIndex(sanma: boolean, i: number): number {
+  return fullWallSize(sanma) - DEAD_WALL_SIZE + 8 - 2 * i
 }
 
 /** `kyoku` is the index into the record's `log` of the round that failed. */
@@ -208,8 +216,8 @@ function importRound(
   const dora = asArray(entry[2])
   const ura = asArray(entry[3])
   if (dora.length > 5 || ura.length > 5) fail('notTenhou')
-  dora.forEach((code, i) => pin(chunk + 8 - 2 * i, decodeTile(code)))
-  ura.forEach((code, i) => pin(chunk + 9 - 2 * i, decodeTile(code)))
+  dora.forEach((code, i) => pin(doraIndex(sanma, i), decodeTile(code)))
+  ura.forEach((code, i) => pin(doraIndex(sanma, i) + 1, decodeTile(code)))
 
   const seats: Seat[] = Array.from({ length: players }, (_, s) => {
     const haipai = asArray(entry[4 + 3 * s])
@@ -354,6 +362,7 @@ function importRound(
   if (validateWall(tiles, players, sanma)) fail('tiles')
   if (!aka && tiles.some((t) => t.red)) fail('rules')
   const wall = wallWithPinned(pinned, sanma, aka, `tenhou-import-${index}`)
+  const revealed = wall.map((_, i) => pinned.has(i))
 
   const options: RoundOptions = {
     sanma,
@@ -386,12 +395,15 @@ function importRound(
     return {
       match,
       wall,
+      revealed,
       log: log.slice(0, consumed),
       deltas: recorded,
       notice: { code: 'stopped' },
     }
   }
-  if (!modelled || !rr) return { match, wall, log, deltas: recorded, ...(notice && { notice }) }
+  if (!modelled || !rr) {
+    return { match, wall, revealed, log, deltas: recorded, ...(notice && { notice }) }
+  }
   // a record's deltas leave the riichi deposits out, so they are `settleRound`'s own. An export
   // from before `buildKyoku` wrote them that way took 1000 off per riichi: it still replays whole,
   // flagged `pays` with the right deltas, which is not worth a second reading that would let a
@@ -401,6 +413,7 @@ function importRound(
   return {
     match,
     wall,
+    revealed,
     log,
     deltas: engine,
     ...(pays && { notice: { code: 'pays', record: recorded, engine } }),
