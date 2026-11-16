@@ -100,11 +100,14 @@ export function ReplayBoard({ game, onExit }: { game: ImportedGame; onExit: () =
   const dealt = snap.dealtTiles.length
   const dead = dealt + snap.liveWallSnapshot.length
 
-  // ←/→ step from anywhere but a field that takes its own arrows — the range input among them
+  // ←/→ step from anywhere but a field that takes its own arrows — the range input among them —
+  // or while a dialog is up (the wall, the settings sheet, a popover). None of those moves focus
+  // into itself, so the target alone cannot tell: an open one is found by its `aria-modal`
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.altKey || e.ctrlKey || e.metaKey) return
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      if (document.querySelector('[aria-modal="true"]')) return
       const el = e.target
       if (
         el instanceof HTMLElement &&

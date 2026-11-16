@@ -674,7 +674,8 @@ the accessible name never depends on the viewport.
 Advanced switch alone, since flipping it changes what the other sections show. A hidden row must
 never leave a feature silently running — `useAdvancedSettings` resolves the stored value either way.
 The docs link is a plain `<a>`: **the docs are not a route, so a `<Link>` renders the crash page**
-(`e2e/smoke.spec.ts` pins this).
+(`e2e/smoke.spec.ts` pins this). **No dialog moves focus into itself**, so a `document` key
+listener (`ReplayBoard`'s ←/→) yields to an open `[aria-modal="true"]`, never judged by the target.
 
 **Fullscreen is not a mode with a button or a store.** `useMobileFullscreen` asks on phone-sized
 viewports only, on the reader's **first `pointerdown`** — `requestFullscreen` is rejected outside a

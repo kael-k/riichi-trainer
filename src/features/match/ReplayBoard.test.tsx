@@ -76,6 +76,20 @@ describe('the replay', () => {
     expect(label()).toMatch(/^East 1 · 0 honba · (\d+)\/\1$/)
   })
 
+  it('leaves the arrows to an open dialog', async () => {
+    await loadFixture()
+    await screen.findAllByRole('button', { name: 'Next action' })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Wall' })[0])
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' })
+    expect(label()).toMatch(/ · 0\//)
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' })
+    expect(label()).toMatch(/ · 1\//)
+  })
+
   it('draws every wall slot the record never revealed face down', async () => {
     const imported = importTenhou(convlog)
     if ('error' in imported) throw new Error(imported.error)
