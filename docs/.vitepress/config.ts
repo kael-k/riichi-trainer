@@ -39,6 +39,7 @@ export default defineConfig({
         text: 'Development',
         items: [
           { text: 'Architecture', link: '/dev/architecture' },
+          { text: 'The board and the page', link: '/dev/ui' },
           { text: 'Contributing', link: '/dev/contributing' },
         ],
       },

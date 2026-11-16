@@ -7,3 +7,4 @@ convlog.json
   File:     inst/testdata/output_log.example.json
   Commit:   cf2b79a081d687ddb2be135ebc3ddbb10233198d
   Licence:  Apache License 2.0 — https://www.apache.org/licenses/LICENSE-2.0
+            A copy is in LICENSE-APACHE-2.0, beside this file.

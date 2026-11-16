@@ -74,7 +74,7 @@ declare const process: { env: Record<string, string | undefined> }
 
 /** Frozen event streams. Regenerate with `GENERATE_GOLDEN=1 npx vitest run
  *  src/core/round.golden.test.ts --disable-console-intercept` and paste the printed table back in
- *  here — a change that has to move these says so in its own commit. Four have: T3 of the
+ *  here — a change that has to move these says so in its own commit. Five have: T3 of the
  *  seat-algorithm refactor (it changed what `defense`/`efficiency` decide), the move to real
  *  4/4/4+1 dealing (every seat is dealt different tiles off the same wall), cutting the dead wall
  *  into real stacks (which moves which tiles are dora and which ura pays out), the

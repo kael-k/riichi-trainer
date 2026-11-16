@@ -552,147 +552,107 @@ perspective, not "the user's seat".
 **Board:**
 
 - **Absence of `tsumogiri` on a `RiverTile` means tedashi.** Flags, not parallel arrays.
-- **The caller owns the river's width, not `River`** — one that widens as it fills moves the hand
-  under it.
-- **`showsHands` counts melds and nuki as well as hands**: calls ride on the hand ring, so a board
-  with no hands but one call still pays for the ring.
-- **Points are board truth like `riichi`/`melds`, never `seatInfo`** — what the felt says must not
-  depend on whether the seat panel is enabled.
-- **A tedashi holds its own slot open; a tsumogiri never does**, and **a face-down row takes the
-  hole in its middle instead** — `gapIndex` plus its `concealed` flag (`Tile.tsx`), since
-  `BACK_TILE` filler puts a throw's sorted position past the last tile. **Both hands get it**
-  (`SeatView.tedashi`, `HandDisplay.tedashi`), **only while the board is paced**, and a tsumogiri
-  frame clears whatever the last throw left open.
+- **The caller owns the river's width, not `River`.**
+- **`showsHands` counts melds and nuki as well as hands.**
+- **Points are board truth like `riichi`/`melds`, never `seatInfo`.**
+- **A tedashi holds its own slot open; a tsumogiri never does; a face-down row takes the hole in
+  its middle instead** (`gapIndex` plus its `concealed` flag). **Both hands get it**
+  (`SeatView.tedashi`, `HandDisplay.tedashi`), **only while paced**, and a tsumogiri frame clears
+  whatever the last throw left open.
 - **Every seat's 14th tile is split off, not just the bottom hand's** (`SeatView.drawn`, via
   `splitDrawn`/`splitConcealedDrawn`).
 - **The `call` banner is a _value_**, `{ seat, kind }`, whose lifetime belongs to whoever set it.
-  **`Table` never derives which call a meld represents** — that is game logic in a pure view.
+  **`Table` never derives which call a meld represents.**
 - **Board motion is mount-once CSS and nothing else** (`motion-safe:` everywhere, gated on
-  `boardAnimation`). River tiles and melds are keyed positionally, so a landed tile is a new DOM
-  node and an unconditional `animation` runs exactly once — no refs, no length diffing. **Discard
-  origins are written in the river's own unrotated frame**, one keyframe pair for all four seats.
-  The **tsumogiri flash** is drawn only when the standing `showTsumogiri` mark is off.
-- **Each score pins to a square overlay that carries the seat's rotation**: a transform does not
-  move the box it was laid out in.
+  `boardAnimation`): river tiles and melds keyed positionally, no refs, no length diffing. **Discard
+  origins are written in the river's own unrotated frame.** The **tsumogiri flash** is drawn only
+  when the standing `showTsumogiri` mark is off.
+- **Each score pins to a square overlay that carries the seat's rotation.**
 - **`seatInfoNodes` is computed once per seat**, not per render.
-- **The wind's fallback is `||`, never `??`**: a caller returning `seatsEnabled && <SeatStrip/>`
-  hands back `false`, which a nullish check reads as a node.
+- **The wind's fallback is `||`, never `??`**: `seatsEnabled && <SeatStrip/>` hands back `false`.
 - **Transient controls (claim prompt, kita/kan, riichi arm) render in `BoardStage`'s `controls`
-  overlay, never in the `hand` slot** — the hand strip is `shrink-0` and its height feeds the board
-  area's `100cqh`, so a control in flow there resizes the felt and walks the hand under the reader's
-  finger. Pass `undefined`, never a node that renders empty: an empty card is still
-  `pointer-events-auto`, a dead zone on the felt.
+  overlay, never in the `hand` slot.** Pass `undefined`, never a node that renders empty.
 
 **Sizing — container units only, never pixels inside the square:**
 
-- **`--tile-w: calc(100cqw/14)` goes on the outer div**, never the square, or a `w-full` child
-  collapses when the board is a flex item.
+- **`--tile-w: calc(100cqw/14)` goes on the outer div**, never the square.
 - **Tracks stay `minmax(0,…)`**: a seat block is measured before it rotates.
-- **The felt is `aspect-square w-full`, never `h-full`** — a percentage height against a box sized
-  only by `aspect-ratio` is indefinite in WebKit. `e2e/board.spec.ts` asserts squareness; the bug
-  class is invisible to Chrome/Firefox device emulation, which is why the UI suite runs a real
-  WebKit.
-- Cap is `calc(min(100%, 100cqh) * var(--board-scale, 1))` — `100cqh` against a declared size
-  container is the height genuinely left, not an estimate.
-- **`--board-scale`/`--tile-scale` apply from `sizable:` up only**, and `SIZABLE_QUERY` is that
-  variant as a query — **keep the two in step**.
-- **A ≥44px target on the felt comes from an `after:size-11` pseudo-element**, never a pixel height:
-  a fixed `h-11` ran a phone-sized board's plate off the felt.
-- **The stage is capped from `ultrawide:` up** at `--stage-max`, and **everything docked to that
-  right edge is a child of the capped box — nothing re-derives the number**: the settings sheet
-  portals into the stage element `absolute inset-0`, and `HomePage` wraps the menu in the same
-  capped box off the same variable (`h-svh overflow-hidden`, menu scrolling inside), so the app box
-  does not change width between home and a trainer.
-- **`flow`'s board area is `container-type: inline-size`, not `size`** — size containment collapses
-  a box that sizes itself to its own content. Content that rides up must be **a fixed size whatever
-  it holds, and that is the page's job**.
+- **The felt is `aspect-square w-full`, never `h-full`** — `e2e/board.spec.ts` asserts squareness,
+  in a real WebKit.
+- Cap is `calc(min(100%, 100cqh) * var(--board-scale, 1))`.
+- **`--board-scale`/`--tile-scale` apply from `sizable:` up only**; **keep `SIZABLE_QUERY` in
+  step**.
+- **A ≥44px target on the felt comes from an `after:size-11` pseudo-element**, never a pixel height.
+- **The stage is capped from `ultrawide:` up** at `--stage-max`; **everything docked to that right
+  edge is a child of the capped box — nothing re-derives the number** (the settings sheet,
+  `HomePage`).
+- **`flow`'s board area is `container-type: inline-size`, not `size`**; content that rides up is
+  **a fixed size whatever it holds, and that is the page's job**.
 
 **Session panel** (docked from `lg` via `WIDE_QUERY`, drawer below that):
 
-- **The log overrides `--tile-w-base`, not `--tile-w` alone**, so a nested override composes with
-  its 0.6 instead of ignoring it.
-- **`UkeireTiles` wraps per suit, never inside one**, and the grouping is in the component, not in
-  whoever renders it.
-- **`onLogOpen` (the clock pause) is derived from _drawer_ open, not panel open** — a docked panel
-  hides nothing — and is reported from an effect on that one derived flag, so a resize, Escape or
-  the scrim each resume exactly once and never lift a pause the reader pressed themselves.
+- **The log overrides `--tile-w-base`, not `--tile-w` alone.**
+- **`UkeireTiles` wraps per suit, never inside one**, grouped in the component.
+- **`onLogOpen` (the clock pause) is derived from _drawer_ open, not panel open**, reported from an
+  effect on that one derived flag.
 - The drawer is the **stage's** child, not the board area's, so it covers the hand strip too.
 
 **`LogList` is the feedback surface**, not a transcript beside one.
 
 - **A row with no `severity` is a separate case from `'ok'` and must not fall back to it**
-  (`NO_VERDICT`): a rewind, a replayed discard, the tenpai note and every `/match` row are not
-  graded decisions, and a green spine beside one claims a verdict nobody gave. Spine width carries
-  the signal alongside colour, for a colour-blind reader.
+  (`NO_VERDICT`). Spine width carries the signal alongside colour.
 - **A `LogDetail` is an i18n key plus params and tiles, never text.** `folding.equallySafe` is
-  logged unconditionally and gated **at render**, so the toggle reaches rows already on the record.
-- **A detail line's three optional fields say what it _is_, and each has one owner.** `header` makes
-  it the muted label above a list — written only when one follows, and it **draws no tiles**. `tone:
-'error'` is decided where the wrong-answer _phrasing_ is (`fieldDetail`), never derived a second
-  time. `seam` splits the line's tiles, subject leading and evidence following — so a tier whose
-  evidence _is_ the subject (genbutsu) must drop it rather than draw it twice.
-- **`LogDetail.bars`** is per-tile EV normalized on the ranking's own best entry (`fraction`,
-  computed where the row is written, never in the renderer), built by the one shared
-  `evGrade.ts#evBandDetail` under one locale key for both trainers that write it.
-- **Ordinals are assigned before filtering**, so `log.rewound` stays honest.
-- **`hero` replaces All/Mistakes with This seat/All seats** — `/match` only, fed the board's
-  perspective through `BoardStage#logHero`. It filters on `LogEntry.seat` (the actor), and **a row
-  with no `seat` always shows**: the deal and the result belong to every seat. `/match`'s rows are
-  built by `features/match/matchRows.ts`, never inline in the hook, so a replay writes the same
-  rows; a declared seat's later throws are `log.match.discardForced`, never a plain discard.
+  logged unconditionally and gated **at render**.
+- **A detail line's three optional fields each have one owner.** `header` is the label above a
+  list, written only when one follows, and **draws no tiles**; `tone: 'error'` is decided in
+  `fieldDetail`, never derived a second time; `seam` splits subject from evidence (genbutsu drops
+  the evidence).
+- **`LogDetail.bars`** is per-tile EV over the ranking's own best (`fraction`, computed where the
+  row is written), built only by `evGrade.ts#evBandDetail` under one locale key.
+- **Ordinals are assigned before filtering.**
+- **`hero` replaces All/Mistakes with This seat/All seats** (`/match`, via `BoardStage#logHero`),
+  filtering on `LogEntry.seat`; **a row with no `seat` always shows**. `/match`'s rows are built in
+  `features/match/matchRows.ts`, never the hook; a declared seat's later throws are
+  `log.match.discardForced`.
 - **A row's stats are a job, never stored text** (`LogEntry.stats: StatsJob`, on `/match`'s free
-  discards and calls). `StatsLines` asks `features/match/statsClient.ts#requestStats` once the row
-  is on screen; it prices in a **module worker** (an inline `setTimeout(0)` fallback where there is
-  no `Worker`, i.e. jsdom), cached on the **job object's identity**, never a rejection (the next
-  mount retries) — so a job is built once, at write time, never re-derived per render. The job's `match` is `core.options.match`, the round's
-  **starting** state, never `RoundState.match`. Deal-in and the heuristic tier appear only with a
-  riichi on the board.
-- **`log.dealt`/`log.dealtHand` carry no tiles** — a hand is drawn on exactly one row, the one that
-  grades it.
-- **A tile is drawn once per row, and the sentence draws its own**: `splitTileCodes` tokenizes the
-  **already-translated** sentence and `LogSentence` draws every tenhou code where it stood. So
-  `LogEntry.tiles` carries only what the sentence **cannot** name, and **a locale string must never
-  contain a bare code** (`0p`, `4z`) or it silently becomes a tile — `formatLogEntry.test.ts` walks
-  the four JSONs and fails if one ever does.
+  discards and calls): `StatsLines` asks `statsClient.ts#requestStats` once the row is on screen, a
+  **module worker** prices it (inline `setTimeout(0)` without `Worker`), **cached on the job
+  object's identity, never a rejection**, so a job is built once, at write time. Its `match` is
+  `core.options.match`, never `RoundState.match`. Deal-in and the heuristic tier need a riichi.
+- **`log.dealt`/`log.dealtHand` carry no tiles.**
+- **A tile is drawn once per row, and the sentence draws its own** (`splitTileCodes` over the
+  translated sentence): `LogEntry.tiles` carries only what it **cannot** name, and **a locale string
+  never contains a bare code** (`0p`, `4z`) — `formatLogEntry.test.ts` walks the four JSONs.
 - Its rewind/share buttons are the one sharing surface a trainer has — no page-level copy-link.
 
-**Feedback is one line, everywhere.** `status` is **not** panel content — a clock behind a drawer
-tap goes unread — so it is a HUD strip above the board at every viewport, **except held sideways**
-(`short:`). **`status` is not `pointer-events-none` as a whole**: efficiency's ukeire line carries a
-live `GlossaryTerm` trigger, so only the wrapper is inert. The verdict chip is **top-centre,
-transient, `pointer-events-none` in every shape**. **Severity is derived at display level from the
-existing grade/partial credit, never a new grading concept.**
+**Feedback is one line, everywhere.** `status` is **never panel content**: a HUD strip above the
+board at every viewport, **except held sideways** (`short:`), and **only its wrapper is
+`pointer-events-none`**. The verdict chip is **top-centre, transient, `pointer-events-none` in every
+shape**. **Severity is derived at display level from the existing grade/partial credit, never a new
+grading concept.**
 
 **Chrome row**: back, `InfoButton`, the page's `TrainerToggles`, the `wall` slot, the log toggle,
-settings **last** (`BoardStage` renders `SettingsButton` itself). Board pages pass no `wall` until
-they have dealt, so the button is absent rather than empty. Names appear beside icons behind the
-`labelled:` variant, and **the visible text is the same string the `aria-label` already used**, so
-the accessible name never depends on the viewport.
+settings **last** (`BoardStage` renders `SettingsButton` itself). No `wall` until a page has dealt.
+Names appear beside icons behind `labelled:`, **the same string the `aria-label` already used**.
 
 **The settings dialog's own title never changes** — always `t('settings.button')`, portalled to
-`<body>`. Ruleset and UI render unconditionally on every screen, including home; Misc holds the
-Advanced switch alone, since flipping it changes what the other sections show. A hidden row must
-never leave a feature silently running — `useAdvancedSettings` resolves the stored value either way.
-The docs link is a plain `<a>`: **the docs are not a route, so a `<Link>` renders the crash page**
-(`e2e/smoke.spec.ts` pins this). **No dialog moves focus into itself**, so a `document` key
-listener (`ReplayBoard`'s ←/→) yields to an open `[aria-modal="true"]`, never judged by the target.
+`<body>`. Ruleset and UI render on every screen, including home; Misc holds the Advanced switch
+alone. A hidden row never leaves a feature silently running — `useAdvancedSettings` resolves the
+stored value either way. **The docs link is a plain `<a>`, never a `<Link>`** (`e2e/smoke.spec.ts`).
+**No dialog moves focus into itself**, so a `document` key listener (`ReplayBoard`'s ←/→) yields to
+an open `[aria-modal="true"]`, never judged by the target.
 
 **Fullscreen is not a mode with a button or a store.** `useMobileFullscreen` asks on phone-sized
-viewports only, on the reader's **first `pointerdown`** — `requestFullscreen` is rejected outside a
-real user gesture — and never again once they have left it. iOS Safari has no element fullscreen at
-all, so `IOSInstallHint.tsx` points at the PWA instead: dismissible, persisted, **home page only**.
-`viewport-fit=cover` plus `env(safe-area-inset-*)` padding keeps the layout clear of the bars, and
-the chrome row's padding side flips with orientation.
+viewports only, on the reader's **first `pointerdown`**, and never again once they have left it. iOS
+gets `IOSInstallHint.tsx` instead: dismissible, persisted, **home page only**. `viewport-fit=cover`
+plus `env(safe-area-inset-*)` padding; the chrome row's padding side flips with orientation.
 
 **Tiles and assets.** Tiles are `<use>` references into a build-time sprite; components scale
 locally by overriding `--tile-w`. Tailwind 4, dark mode a `dark` class on `<html>`, routing on
 `basename: import.meta.env.BASE_URL`, PWA via `vite-plugin-pwa`.
-**`workbox.navigateFallbackDenylist` keeps `/docs/` off the service worker's navigation fallback** —
-without it an installed worker answers a docs URL with the app shell, which react-router crashes on,
-and a first visit works so it ships unnoticed. The two app icons are hand-built SVGs, **not**
-produced by the sprite script: transparent, with **no corner radius of their own** and deliberately
-**`purpose: 'any'`, never `'maskable'`**, since a maskable crop would clip a tile that runs the
-square's full height.
+**`workbox.navigateFallbackDenylist` keeps `/docs/` off the service worker's navigation fallback.**
+The two app icons are hand-built SVGs, **not** the sprite script's: transparent, **no corner radius
+of their own**, **`purpose: 'any'`, never `'maskable'`**.
 
 **Audience: technical depth for advanced players, defaults a beginner can still use** — both, not
 one. Keep adding the precise feature, but ship it behind a setting whose default reads plainly to
@@ -701,19 +661,15 @@ and change before the screen makes sense.**
 
 Glossary rules (`features/i18n/glossary.ts`, marked inline with `<GlossaryTerm id="…">`):
 
-- **Never derive the wiki URL from the term id** — a naming-convention guess drifts the moment the
-  wiki's slugs don't match. Hand-check each.
+- **Never derive the wiki URL from the term id.** Hand-check each.
 - Terms a player is assumed to know (riichi, ippatsu) are deliberately absent.
 - **A term mid-sentence in a translated string is wrapped `<term>…</term>` in the locale JSON and
-  rendered via `Trans` + `components={{ term: <GlossaryTerm id="…" /> }}`** — this keeps word order
-  correct per language and the term appearing exactly once. **Do not hand-split a translation string
-  into prefix/suffix keys to fake it.**
+  rendered via `Trans` + `components={{ term: <GlossaryTerm id="…" /> }}`. Do not hand-split a
+  translation string into prefix/suffix keys to fake it.**
 - Pass `iconOnly` only when the surrounding label already spells the term out.
-- A furiten seat's felt mark uses `InfoPopover` **directly**, not `GlossaryTerm`: the plate is
-  rotated with its seat, so an inline hover card hangs sideways and the word draws at the page's
-  16px instead of the board's `cqw` scale.
+- A furiten seat's felt mark uses `InfoPopover` **directly**, not `GlossaryTerm`.
 
-**See:** [docs/dev/architecture.md](docs/dev/architecture.md)
+**See:** [docs/dev/architecture.md](docs/dev/architecture.md), [docs/dev/ui.md](docs/dev/ui.md)
 
 ## Working rules
 
