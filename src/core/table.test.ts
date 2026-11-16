@@ -13,6 +13,7 @@ import {
 } from './round'
 import type { SeatAlgorithm } from './policy'
 import { importTenhou } from './tenhouImport'
+import { tenhouTile } from './tenhouLog'
 import convlog from './testdata/convlog.json'
 import { NUM_TILE_TYPES, parseTenhou, PIN, SOU } from './tiles'
 import { DEAD_WALL_SIZE, INITIAL_HAND_SIZE, wallWithHands } from './wall'
@@ -471,6 +472,42 @@ describe('replayTo', () => {
     const core = replayTo(rounds[0], rules, rounds[0].log.length)
     expect(core.round.ended).toBe('win')
     expect(core.round.win?.seat).toBe(2)
+    expect(replayTo(rounds[8], rules, rounds[8].log.length).round.ended).toBe('exhaustive')
+  })
+
+  it('leaves a round cut before a double ron on its open claim, nobody passed and nobody drawn', () => {
+    // seat 0 throws its East into three ittsuu hands, each waiting on the East pair; the record
+    // names two winners, an ending the engine does not model, so the import stops at the discard
+    const codes = (hand: string) => parseTenhou(hand).map(tenhouTile)
+    const result = importTenhou({
+      name: ['A', 'B', 'C', 'D'],
+      rule: { disp: '南喰赤' },
+      log: [
+        [
+          [0, 0, 0],
+          [25000, 25000, 25000, 25000],
+          codes('9p'),
+          [],
+          ...[
+            ['123456789m123p1z', [42], [41]],
+            ['123456789m456p1z', [], []],
+            ['123456789m789p1z', [], []],
+            ['123456789s123s1z', [], []],
+          ].flatMap(([hand, takes, discards]) => [codes(hand as string), takes, discards]),
+          ['和了', [-1000, 1000, 0, 0], [1, 0, 1, ''], [-1000, 0, 1000, 0], [2, 0, 2, '']],
+        ],
+      ],
+    })
+    if ('error' in result) throw new Error(result.error)
+    const [round] = result.game.rounds
+    expect(round.notice).toEqual({ code: 'doubleRon' })
+
+    const core = replayTo(round, result.game.rules, round.log.length)
+    expect(core.round.ended).toBeUndefined()
+    expect(core.round.claim).toMatchObject({ kind: 'discard', from: 0, seat: 1 })
+    expect(core.round.players.map((p) => p.missedWin)).toEqual([false, false, false, false])
+    expect(counts(core)).toEqual([13, 13, 13, 13])
+    expect(core.round.players.every((p) => p.drawn === undefined)).toBe(true)
   })
 })
 

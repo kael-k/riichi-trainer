@@ -293,8 +293,11 @@ Other rules of the seam:
 - `goRound(core)` plays every AI-decided seat and stops at the next manual turn, a pending claim, or
   the hand's end.
 - **`replayTo(round, rules, at)` is the one way to rebuild a recorded position** (every seat
-  `'manual'`). `claims` is on only when `log[at]` is a call, a pass or a ron, so replay stops with
-  that claim open; otherwise the acting seat is handed its fourteen, tsumo declined.
+  `'manual'`). `claims` is on when `log[at]` is a call, a pass or a ron, so replay stops with that
+  claim open; otherwise the acting seat is handed its fourteen, tsumo declined. **At the log's end
+  (`at >= log.length`) `claims` stays on and no turn is begun**: a round cut short by an
+  `ImportNotice` keeps its last discard's claim open, never passing the record's real winners into
+  furiten or drawing a tile the record never had.
 
 **`useRound(input)` drives a round and reports what the engine did**; it has no opinion about what
 any of it means. One callback, `onEvent`, and a handler steers by what it **returns**: nothing to

@@ -3,7 +3,8 @@ import { MemoryRouter } from 'react-router'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { doraIndex, importTenhou } from '../../core/tenhouImport'
 import convlog from '../../core/testdata/convlog.json'
-import { tileName } from '../../core/tiles'
+import { tenhouTile } from '../../core/tenhouLog'
+import { parseTenhou, tileName } from '../../core/tiles'
 import '../i18n'
 import { MatchPage } from './MatchPage'
 
@@ -105,6 +106,35 @@ describe('the replay', () => {
     const imported = importTenhou(json)
     if ('error' in imported) throw new Error(imported.error)
     expect(imported.game.rounds[1].revealed[doraIndex(false, 1)]).toBe(false)
+  })
+
+  it('ends a round cut before a double ron on its open claim, without crashing', async () => {
+    // `table.test.ts`'s double-ron record: seat 0's East, ronned by two seats at once
+    const codes = (hand: string) => parseTenhou(hand).map(tenhouTile)
+    await loadFixture({
+      name: ['A', 'B', 'C', 'D'],
+      rule: { disp: '南喰赤' },
+      log: [
+        [
+          [0, 0, 0],
+          [25000, 25000, 25000, 25000],
+          codes('9p'),
+          [],
+          ...[
+            ['123456789m123p1z', [42], [41]],
+            ['123456789m456p1z', [], []],
+            ['123456789m789p1z', [], []],
+            ['123456789s123s1z', [], []],
+          ].flatMap(([hand, takes, discards]) => [codes(hand as string), takes, discards]),
+          ['和了', [-1000, 1000, 0, 0], [1, 0, 1, ''], [-1000, 0, 1000, 0], [2, 0, 2, '']],
+        ],
+      ],
+    })
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Next action' }))[0])
+    expect(label()).toMatch(/^East 1 · 0 honba · 1\/1$/)
+    expect(first('Next action')).toBeDisabled()
+    // the claim is open, and nobody is asked: the replay mounts no controls of its own
+    expect(screen.queryByRole('button', { name: 'Pass' })).toBeNull()
   })
 
   it('says why a file is refused, inline', async () => {

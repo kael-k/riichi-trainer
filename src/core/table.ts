@@ -398,15 +398,23 @@ export interface RecordedRound {
  *   so replay passes every claim the log leaves unanswered, then the turn is begun with the same
  *   `drawn` guard `stepRound` uses and the tsumo declined, exactly as replay declines one the log
  *   does not take. After a pon the caller already holds fourteen and `beginTurn` draws nothing.
+ * - **The log's end** (`at >= log.length`) decides nothing at all. A round that ended did so inside
+ *   the log; one the importer cut short before an ending the engine does not model (an
+ *   `ImportNotice`: a double ron, an abortive draw, …) stops where it was cut, with `claims` on so
+ *   its last discard's claim stays open and no turn begun. Passing that claim would mark the
+ *   record's real winners furiten, and the next seat's draw is one the record never had.
  *
  * Accepted edges: a ron on the last discard (houtei) is not suspended — replay never stops on a
- * dry wall — so the step before one shows as the exhaustive draw; and a manual seat's own offer
+ * dry wall — so the step before one shows as the exhaustive draw; a manual seat's own offer
  * (kyuushu, a rinshan tsumo) is still open at the discard that declined it, since `beginTurn`
- * asks whatever `claims` says. Nothing but a prompt reads either, and a replay draws none.
+ * asks whatever `claims` says; and a round cut before an action the engine refused ends without
+ * the acting seat's next draw, even where the record has it. Nothing but a prompt reads the
+ * first two, and a replay draws none.
  */
 export function replayTo(round: RecordedRound, rules: ReplayRules, at: number): TableCore {
   const players = rules.sanma ? 3 : 4
   const next = round.log[at]
+  const end = at >= round.log.length
   const options: RoundOptions = {
     sanma: rules.sanma,
     aka: rules.aka,
@@ -417,6 +425,7 @@ export function replayTo(round: RecordedRound, rules: ReplayRules, at: number): 
     wins: true,
     calledKan: true,
     claims:
+      end ||
       next?.kind === 'call' ||
       next?.kind === 'pass' ||
       (next?.kind === 'win' && next.from !== undefined),
@@ -425,7 +434,7 @@ export function replayTo(round: RecordedRound, rules: ReplayRules, at: number): 
   const state = createRound(round.wall, players, options)
   replayLog(state, options, round.log.slice(0, at))
   // a no-op on an ended round or an open claim — `beginTurn` guards both itself
-  if (state.players[state.seat].drawn === undefined) beginTurn(state, options, true)
+  if (!end && state.players[state.seat].drawn === undefined) beginTurn(state, options, true)
   return { round: state, options }
 }
 
